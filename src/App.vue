@@ -590,7 +590,7 @@
                     <th>Costo c/u</th>
                     <th>Ventas</th>
                     <th>Precio c/u</th>
-                    <th>Costo vta</th>
+                    
                     <th>Ingresos</th>
                     <th>Costo</th>
                     <th>Ganancia</th>
@@ -605,7 +605,7 @@
                     <td>{{ fmt(r.costoCompra) }}</td>
                     <td>{{ fmtCant(r.ventas) }}</td>
                     <td>{{ fmt(r.precioVenta) }}</td>
-                    <td>{{ fmt(r.costoVenta) }}</td>
+                    
                     <td class="pos">{{ fmt(r.ingresos) }}</td>
                     <td class="neg">{{ fmt(r.costo) }}</td>
                     <td :class="r.ganancia >= 0 ? 'pos' : 'neg'"><b>{{ fmt(r.ganancia) }}</b></td>
@@ -617,7 +617,6 @@
                     <td>{{ fmtCant(rep.resultado.totales.compras) }}</td>
                     <td></td>
                     <td>{{ fmtCant(rep.resultado.totales.ventas) }}</td>
-                    <td></td>
                     <td></td>
                     <td class="pos">{{ fmt(rep.resultado.totales.ingresos) }}</td>
                     <td class="neg">{{ fmt(rep.resultado.totales.costo) }}</td>
@@ -837,7 +836,8 @@ const PATHS = {
   diamond: '<path d="M2.7 10.3a2.41 2.41 0 000 3.41l7.59 7.59a2.41 2.41 0 003.41 0l7.59-7.59a2.41 2.41 0 000-3.41L13.7 2.71a2.41 2.41 0 00-3.41 0z"></path>',
   chevron: '<polyline points="6 9 12 15 18 9"></polyline>',
   share: '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>',
-  search: '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>'
+  search: '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
+  users: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path>'
 };
 
 export default {
@@ -1295,10 +1295,10 @@ export default {
           items.push({
             productoId: it.productoId, nombre: it.nombre, cantidad: c,
             unidad: it.unidad || '', precio: pr, costo: f.costoTotal,
-            ganancia: m(sub - f.costoTotal), lotesUsados: f.usados
+            ganancia: sub - f.costoTotal, lotesUsados: f.usados
           });
           tot = m(tot + sub);
-          gan = m(gan + (sub - f.costoTotal));
+          gan = gan + (sub - f.costoTotal);
           todos.push(...f.usados);
         }
         const venta = { id: genId('v'), fecha: new Date().toISOString(), items, total: tot, ganancia: gan, anulada: false };
@@ -1696,7 +1696,7 @@ export default {
         const ingresos = m(ventasProdItems.reduce((s, it) => s + n(it.precio) * n(it.cantidad), 0));
         const costoVentaTotal = m(ventasProdItems.reduce((s, it) => s + n(it.costo), 0));
         const precioVenta = ventasCant > 0 ? m(ingresos / ventasCant) : 0;
-        const costoVenta = ventasCant > 0 ? m(costoVentaTotal / ventasCant) : 0;
+        
 
         const stockFinal = this.stock(p.id);
         const costoRef = costoCompra || n(p.costo) || 0;
@@ -1705,7 +1705,7 @@ export default {
         return {
           id: p.id, nombre: p.nombre,
           compras: comprasCant, costoCompra,
-          ventas: ventasCant, precioVenta, costoVenta,
+          ventas: ventasCant, precioVenta,
           ingresos, costo: costoVentaTotal,
           ganancia: m(ingresos - costoVentaTotal),
           stockFinal, valorInv
@@ -1770,7 +1770,7 @@ export default {
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 8,
-        head: [['Producto', 'Compras', 'Costo c/u', 'Ventas', 'Precio c/u', 'Costo vta', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
+        head: [['Producto', 'Compras', 'Costo c/u', 'Ventas', 'Precio c/u', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
         body: r.cuadre.map(row => [
           row.nombre, fmtCant(row.compras), fmt(row.costoCompra),
           fmtCant(row.ventas), fmt(row.precioVenta), fmt(row.costoVenta),
@@ -1791,12 +1791,12 @@ export default {
           2: { cellWidth: 16, halign: 'right' },
           3: { cellWidth: 14, halign: 'right' },
           4: { cellWidth: 16, halign: 'right' },
-          5: { cellWidth: 16, halign: 'right' },
-          6: { cellWidth: 18, halign: 'right' },
-          7: { cellWidth: 16, halign: 'right' },
-          8: { cellWidth: 18, halign: 'right' },
-          9: { cellWidth: 14, halign: 'right' },
-          10: { cellWidth: 18, halign: 'right' }
+          
+          5: { cellWidth: 18, halign: 'right' },
+          6: { cellWidth: 16, halign: 'right' },
+          7: { cellWidth: 18, halign: 'right' },
+          8: { cellWidth: 14, halign: 'right' },
+          9: { cellWidth: 18, halign: 'right' }
         }
       });
 
