@@ -554,6 +554,9 @@
               @click="rep.fechaInicio = rep.fechaFin = new Date().toISOString().split('T')[0]">Hoy</button>
             <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="setMesActual()">Este mes</button>
           </div>
+          <button class="btn ghost" style="margin-bottom:.5rem;font-size:.72rem" @click="setPeriodoActual()">
+            Período actual (desde {{ fmtFecha(cfg.periodoInicio) }})
+          </button>
           <button class="btn pri" @click="generarReporte()">
             <icon name="search" :size="16" color="#fff"></icon> Generar Cuadre
           </button>
@@ -1650,6 +1653,11 @@ export default {
       const inicio = new Date(now.getFullYear(), now.getMonth(), 1);
       this.rep.fechaInicio = inicio.toISOString().split('T')[0];
       this.rep.fechaFin = now.toISOString().split('T')[0];
+    },
+
+    setPeriodoActual() {
+      this.rep.fechaInicio = this.cfg.periodoInicio.split('T')[0];
+      this.rep.fechaFin = new Date().toISOString().split('T')[0];
     },
 
     generarReporte() {
