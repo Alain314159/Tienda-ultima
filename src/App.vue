@@ -53,12 +53,12 @@
         </div>
 
         <div class="card" style="margin-top:.8rem">
-          <div class="card-title"><icon name="chart" :size="18"></icon> Ventas vs Ganancia (6 meses)</div>
+          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Ventas vs Ganancia (6 meses)</div>
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="diamond" :size="18"></icon> Top rentables del mes</div>
+          <div class="card-title"><icon name="diamond" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Top rentables del mes</div>
           <div v-if="topRentables.length === 0" class="empty">Sin ventas este mes</div>
           <div v-for="(p, i) in topRentables" :key="p.id" class="row">
             <span>{{ i + 1 }}. {{ p.nombre }}</span>
@@ -67,7 +67,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Accesos rápidos</div>
+          <div class="card-title"><icon name="zap" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Accesos rápidos</div>
           <div class="quick-grid">
             <button class="quick-btn" @click="ir('ventas')"><icon name="cart" :size="22"></icon>Nueva Venta</button>
             <button class="quick-btn" @click="ir('compras')"><icon name="bag" :size="22"></icon>Registrar Compra</button>
@@ -86,7 +86,7 @@
       <!-- ==================== VENTAS ==================== -->
       <section v-show="sec === 'ventas'" class="fade-up">
         <div class="card">
-          <div class="card-title"><icon name="cart" :size="18"></icon> Nueva Venta</div>
+          <div class="card-title"><icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta</div>
           <div class="search">
             <input v-model="busqVenta" type="text" placeholder="Buscar producto por nombre o código..."
               autocomplete="off" @focus="focusVenta = true" @click="focusVenta = true" @keyup.enter="agregarPrimero">
@@ -142,7 +142,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Historial de Ventas</div>
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Historial de Ventas</div>
           <div class="search"><input v-model="busqHist" type="text" placeholder="Buscar en historial..."></div>
           <div v-if="ventasFiltradas.length === 0" class="empty">Sin ventas</div>
           <div v-for="v in ventasFiltradas" :key="v.id" class="item" :class="{ anulada: v.anulada }">
@@ -159,7 +159,7 @@
       <!-- ==================== COMPRAS ==================== -->
       <section v-show="sec === 'compras'" class="fade-up">
         <div class="card">
-          <div class="card-title"><icon name="bag" :size="18"></icon> Registrar Compra</div>
+          <div class="card-title"><icon name="bag" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Registrar Compra</div>
           <div v-if="!compraForm.productoId">
             <div class="search">
               <input v-model="busqCompra" type="text" placeholder="Buscar producto..."
@@ -196,7 +196,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Historial de Compras</div>
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Historial de Compras</div>
           <div v-if="comprasOrdenadas.length === 0" class="empty">Sin compras</div>
           <div v-for="c in comprasOrdenadas" :key="c.id" class="item">
             <div class="info">
@@ -224,7 +224,7 @@
       <!-- ==================== PRODUCTOS ==================== -->
       <section v-show="sec === 'productos'" class="fade-up">
         <div class="card">
-          <div class="card-title"><icon name="tag" :size="18"></icon> {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto</div>
+          <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto</div>
           <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto">
           <input v-model="prodForm.codigo" type="text" placeholder="Código (opcional)">
           <div class="grid2">
@@ -249,7 +249,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="tag" :size="18"></icon> Productos</div>
+          <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> Productos</div>
           <div class="search"><input v-model="busqProd" type="text" placeholder="Buscar..."></div>
           <div style="text-align:right;margin-bottom:.4rem">
             <button class="btn ghost" style="width:auto;display:inline-block;padding:.3rem .7rem;font-size:.72rem"
@@ -323,7 +323,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="alert" :size="18" color="#d97706"></icon> Merma / Ajuste</div>
+          <div class="card-title"><icon name="alert" :size="18" :color="sec === 'inventario' ? '#2196F3' : '#d97706'"></icon> Merma / Ajuste</div>
           <select v-model="ajusteForm.productoId">
             <option value="">Seleccionar producto...</option>
             <option v-for="p in prodsActivos" :key="p.id" :value="p.id">
@@ -349,7 +349,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="package" :size="18"></icon> Inventario por producto</div>
+          <div class="card-title"><icon name="package" :size="18" :color="sec === 'inventario' ? '#2196F3' : mutColor"></icon> Inventario por producto</div>
           <div v-if="invAgrupado.length === 0" class="empty">Sin inventario</div>
           <div v-for="g in invAgrupado" :key="g.id" class="inv-group">
             <div class="inv-head" @click="invExpandido[g.id] = !invExpandido[g.id]">
@@ -370,7 +370,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="alert" :size="18"></icon> Últimos ajustes</div>
+          <div class="card-title"><icon name="alert" :size="18" :color="sec === 'inventario' ? '#2196F3' : mutColor"></icon> Últimos ajustes</div>
           <div v-if="ajustesRecientes.length === 0" class="empty">Sin ajustes</div>
           <div v-for="a in ajustesRecientes" :key="a.id" class="item">
             <div class="info">
@@ -399,7 +399,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18"></icon> Desglose</div>
+          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Desglose</div>
           <div class="row"><span>Capital inicial</span><span class="pos">+{{ fmt(cfg.capitalInicial || 0) }}</span></div>
           <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
           <div class="row"><span>Ventas contado</span><span class="pos">+{{ fmt(ventasContadoTotal) }}</span></div>
@@ -412,7 +412,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="check" :size="18"></icon> Arqueo de Caja</div>
+          <div class="card-title"><icon name="check" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Arqueo de Caja</div>
           <div class="info-box" style="margin-bottom:.6rem">
             Cuenta el dinero físico y escribe lo que tienes.
             Si es MENOR que el sistema = faltante; si es MAYOR = sobrante.
@@ -435,7 +435,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="list" :size="18"></icon> Movimientos recientes</div>
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Movimientos recientes</div>
           <div v-if="movimientosRecientes.length === 0" class="empty">Sin movimientos</div>
           <div v-for="m in movimientosRecientes" :key="m.id" class="item">
             <div class="info">
@@ -456,7 +456,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="chart" :size="18"></icon> Resumen contable</div>
+          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Resumen contable</div>
           <div class="row"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
           <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
           <div class="row total"><span>= CAPITAL</span><span>{{ fmt(capitalTotal) }}</span></div>
@@ -484,7 +484,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18"></icon> Capital Inicial</div>
+          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Capital Inicial</div>
           <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
             Actual: <b style="color:var(--txt)">{{ fmt(cfg.capitalInicial || 0) }}</b>
           </div>
@@ -495,7 +495,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="list" :size="18"></icon> Historial</div>
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Historial</div>
           <div v-if="movPatrimonio.length === 0" class="empty">Sin movimientos</div>
           <div v-for="m in movPatrimonio" :key="m.id" class="item">
             <div class="info">
@@ -511,7 +511,7 @@
       <section v-show="sec === 'reportes'" class="fade-up">
         <!-- Cerrar Período -->
         <div class="card">
-          <div class="card-title"><icon name="calendar" :size="18"></icon> Cerrar Período</div>
+          <div class="card-title"><icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período</div>
           <div class="info-box" style="margin-bottom:.6rem">
             Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
           </div>
@@ -532,7 +532,7 @@
 
         <!-- Historial de Cierres -->
         <div class="card">
-          <div class="card-title"><icon name="list" :size="18"></icon> Historial de Cierres</div>
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres</div>
           <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
           <div v-for="c in cierresOrdenados" :key="c.id" class="item">
             <div class="info">
@@ -544,7 +544,7 @@
 
         <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
         <div class="card">
-          <div class="card-title"><icon name="file" :size="18"></icon> Cuadre por Período</div>
+          <div class="card-title"><icon name="file" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cuadre por Período</div>
           <div class="grid2">
             <input v-model="rep.fechaInicio" type="date">
             <input v-model="rep.fechaFin" type="date">
