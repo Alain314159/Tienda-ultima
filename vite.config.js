@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  base: '/Tienda-ultima/',
   plugins: [
     vue(),
     VitePWA({
@@ -16,8 +17,8 @@ export default defineConfig({
         background_color: '#f3f4f6',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        scope: '/Tienda-ultima/',
+        start_url: '/Tienda-ultima/',
         icons: [
           {
             src: 'icons/icon-192.png',
