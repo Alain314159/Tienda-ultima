@@ -877,3 +877,9 @@ input:focus, select:focus {
   .no-print { display: none !important; }
   body { background: #fff; color: #000; }
 }
+
+/* ===== SHEET BUTTON ACTIVO ===== */
+.sheet-btn.activo {
+  background: rgba(33,150,243,.15);
+  color: var(--pri);
+}
