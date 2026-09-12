@@ -13,6 +13,8 @@ db.version(1).stores({
   cierres: 'id, fechaCierre',
   capital: 'id, fecha',
   retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
   config: 'key'
 });
 
@@ -69,7 +71,7 @@ export function fmtFH(iso) {
 // Exportar datos completos
 export function buildData(state) {
   return clean({
-    version: 6,
+    version: 7,
     fecha: new Date().toISOString(),
     cfg: state.cfg,
     productos: state.productos,
@@ -81,6 +83,8 @@ export function buildData(state) {
     movCaja: state.movCaja,
     cierres: state.cierres,
     capital: state.capital,
-    retiros: state.retiros
+    retiros: state.retiros,
+    socios: state.socios,
+    distribuciones: state.distribuciones
   });
 }
