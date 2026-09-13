@@ -15,8 +15,18 @@
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
-  <!-- ERUDA TEMPORAL: consola móvil para diagnóstico -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
+  <!-- Eruda: se carga dinamicamente desde Ajustes cuando se activa -->
+  <script>
+    window.__loadEruda = function() {
+      if (window.eruda) { try { window.eruda.init(); } catch(e){} return; }
+      var sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/eruda';
+      sc.onload = function() { try { window.eruda.init(); } catch(e){} };
+      document.head.appendChild(sc);
+    };
+    window.__unloadEruda = function() {
+      if (window.eruda && window.eruda.destroy) { try { window.eruda.destroy(); } catch(e){} }
+    };
+  </script>
 </body>
 </html>
