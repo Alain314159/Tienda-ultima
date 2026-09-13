@@ -579,8 +579,8 @@
         <div class="card">
           <div class="card-title"><icon name="file" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cuadre por Período</div>
           <div class="grid2">
-            <input v-model="rep.fechaInicio" type="date">
-            <input v-model="rep.fechaFin" type="date">
+            <input v-model="rep.fechaInicio" type="date" @input="rep.isoInicio = null; rep.isoFin = null">
+            <input v-model="rep.fechaFin" type="date" @input="rep.isoInicio = null; rep.isoFin = null">
           </div>
           <div class="grid2" style="margin-bottom:.5rem">
             <button class="btn ghost" style="margin-bottom:0;font-size:.72rem"
@@ -861,8 +861,8 @@
           <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row"><span>Pasivos</span><b>{{ fmt(pasivosTotal) }}</b></div>
-          <div class="row total"><span>= ACTIVO NETO</span><span>{{ fmt(activosTotal - pasivosTotal) }}</span></div>
+          <div class="row"><span>Pasivos</span><b>{{ fmt(pasivosTotalReal) }}</b></div>
+          <div class="row total"><span>= ACTIVO NETO</span><span>{{ fmt(activosTotal - pasivosTotalReal) }}</span></div>
           <div class="row" style="margin-top:.5rem"><span>Capital</span><span class="pos">{{ fmt(capitalTotal) }}</span></div>
           <div class="row"><span>Ganancias acumuladas</span><span class="pos">{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
@@ -899,7 +899,11 @@
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital</span><span>{{ fmt(capitalTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
-          <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
+          <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
+          <div class="row" :class="Math.abs(activosTotal - (pasivosTotal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'pos' : 'neg'">
+            <span>Cuadre contable</span>
+            <b>{{ Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) }}</b>
+          </div>
         </div>
 
         <div class="card">
@@ -1138,10 +1142,6 @@
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
       </div>
 
-      <div class="sheet-group">Sistema</div>
-      <div class="sheet-grid">
-        <button class="sheet-btn" style="grid-column:1/-1" @click="ajustesAbierto = true"><icon name="settings" :size="22"></icon>Ajustes</button>
-      </div>
     </div>
 
     <!-- ==================== SETTINGS MODAL ==================== -->
@@ -1174,38 +1174,43 @@
           <input v-model="cfg.pin" type="password" placeholder="PIN (4 dígitos)" maxlength="6" @change="guardarCfg">
         </div>
 
-        <div class="set-group">Alertas y umbrales</div>
-        <div class="set-row">
-          <span class="lbl">Dias para cierre pendiente</span>
-          <input v-model.number="cfg.umbralDiasCierre" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+        <div class="set-group" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" @click="umbralesAbierto = !umbralesAbierto">
+          <span>Alertas y umbrales</span>
+          <icon name="chevron" :size="14" :color="mutColor" :style="umbralesAbierto ? 'transform:rotate(180deg)' : ''"></icon>
         </div>
-        <div class="set-row">
-          <span class="lbl">Mermas por semana (alerta)</span>
-          <input v-model.number="cfg.umbralMermasSemana" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Faltantes por mes (alerta)</span>
-          <input v-model.number="cfg.umbralFaltantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Dias sin backup (alerta)</span>
-          <input v-model.number="cfg.umbralBackupDias" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Dias sin movimiento producto</span>
-          <input v-model.number="cfg.umbralSinMovimientoDias" type="number" min="7" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Descuento maximo (%)</span>
-          <input v-model.number="cfg.umbralDescuentoPct" type="number" min="0" max="100" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Sobrantes por mes (alerta)</span>
-          <input v-model.number="cfg.umbralSobrantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-        </div>
-        <div class="set-row">
-          <span class="lbl">Stock minimo por defecto</span>
-          <input v-model.number="cfg.stockMinDefault" type="number" min="0" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+        <div v-if="umbralesAbierto">
+          <div class="set-row">
+            <span class="lbl">Cierre pendiente (dias)</span>
+            <input v-model.number="cfg.umbralDiasCierre" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Mermas por semana</span>
+            <input v-model.number="cfg.umbralMermasSemana" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Faltantes por mes</span>
+            <input v-model.number="cfg.umbralFaltantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Sobrantes por mes</span>
+            <input v-model.number="cfg.umbralSobrantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Dias sin backup</span>
+            <input v-model.number="cfg.umbralBackupDias" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Dias sin movimiento</span>
+            <input v-model.number="cfg.umbralSinMovimientoDias" type="number" min="7" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Descuento maximo (%)</span>
+            <input v-model.number="cfg.umbralDescuentoPct" type="number" min="0" max="100" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Stock minimo default</span>
+            <input v-model.number="cfg.stockMinDefault" type="number" min="0" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
         </div>
 
         <div class="set-group">Datos</div>
@@ -1520,7 +1525,9 @@ export default {
       procesandoVenta: false,
       importFile: null,
       _chart: null,
-      _notifTimer: null
+      _notifTimer: null,
+      umbralesAbierto: false,
+      notifAvanzadoAbierto: false
     };
   },
 
@@ -1635,7 +1642,7 @@ export default {
       let gan = 0;
       for (const it of this.carrito) {
         const f = this.calcFIFO(it.productoId, n(it.cant));
-        if (!f.error) gan += (n(it.precio) * n(it.cant)) - f.costoTotal;
+        if (!f.error) gan = m(gan + ((n(it.precio) * n(it.cant)) - f.costoTotal));
       }
       return m(gan);
     },
@@ -1697,8 +1704,6 @@ export default {
 
     activosTotal() { return m(this.saldoCaja + this.valorInventario); },
 
-    pasivosTotal() { return this.pasivosTotalReal; },
-
     pasivosActivos() {
       return this.pasivos.filter(p => !p.pagado);
     },
@@ -1724,10 +1729,11 @@ export default {
     },
 
     flujoEntradas() {
+      const capitalIni = n(this.cfg.capitalInicial);
       const ventas = m(this.ventas.filter(v => !v.anulada).reduce((s,v) => s + n(v.total), 0));
       const aportes = this.aportesTotal;
       const sobrantes = m(this.movCaja.filter(mv => mv.tipo === 'ingreso' && mv.concepto && mv.concepto.includes('Sobrante')).reduce((s,mv) => s + n(mv.monto), 0));
-      return m(ventas + aportes + sobrantes);
+      return m(capitalIni + ventas + aportes + sobrantes);
     },
 
     flujoSalidas() {
@@ -2124,10 +2130,10 @@ export default {
           items.push({
             productoId: it.productoId, nombre: it.nombre, cantidad: c,
             unidad: it.unidad || '', precio: pr, costo: f.costoTotal,
-            ganancia: sub - f.costoTotal, lotesUsados: f.usados
+            ganancia: m(sub - f.costoTotal), lotesUsados: f.usados
           });
           tot = m(tot + sub);
-          gan = gan + (sub - f.costoTotal);
+          gan = m(gan + (sub - f.costoTotal));
           todos.push(...f.usados);
         }
         const venta = { id: genId('v'), fecha: new Date().toISOString(), items, total: tot, ganancia: gan, anulada: false };
@@ -2228,11 +2234,13 @@ export default {
         msg: '¿Eliminar compra de ' + c.productoNombre + '?',
         onOk: async () => {
           const l = this.lotes.find(x => x.compraId === id);
-          await db.transaction('rw', db.compras, db.lotes, async () => {
+          await db.transaction('rw', db.compras, db.lotes, db.asientos, async () => {
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
+            const as = this.asientos.filter(a => a.refTipo === 'compra' && a.refId === id);
+            if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
           });
-          await this.recargar(['compras', 'lotes']);
+          await this.recargar(['compras', 'lotes', 'asientos']);
           this.toastMsg('Compra eliminada');
         }
       };
@@ -2280,7 +2288,9 @@ export default {
             });
           }
           await this.recargar(['compras', 'lotes']);
-          const compraGuardada = this.compras.find(x => x.id === (f.editId || this.compras[0].id));
+          const compraGuardada = f.editId
+            ? this.compras.find(x => x.id === f.editId)
+            : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
           if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar(['asientos']); }
           this.resetCompra();
           this.toastMsg('Compra ' + fmt(total));
@@ -2596,7 +2606,7 @@ export default {
         stockPorProdCosto[key] += disp;
       });
 
-      const cuadre = this.productos.filter(p => !p.archivado).map(p => {
+      const cuadre = this.productos.filter(p => !p.archivado || this.stock(p.id) > 0).map(p => {
         const prodId = p.id;
         const claves = new Set();
         Object.keys(ventasPorClave).forEach(k => {
@@ -3434,11 +3444,20 @@ export default {
         activo: true, titulo: 'Eliminar gasto',
         msg: 'Eliminar "' + g.concepto + '" por ' + fmt(g.monto) + '?',
         onOk: async () => {
-          await db.transaction('rw', db.gastos, db.movCaja, async () => {
+          const esPagoPasivo = g.concepto && g.concepto.startsWith('Pago deuda:');
+          await db.transaction('rw', db.gastos, db.movCaja, db.asientos, db.pasivos, async () => {
             await db.gastos.delete(id);
             if (g.movId) await db.movCaja.delete(g.movId);
+            const as = this.asientos.filter(a => (a.refTipo === 'gasto' && a.refId === id) || (a.refTipo === 'pago_pasivo' && a.refId === id));
+            if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
+            if (esPagoPasivo) {
+              const pv = this.pasivos.find(p => p.movPagoId === g.movId);
+              if (pv) {
+                await P(db.pasivos, Object.assign({}, pv, { pagado: false, fechaPago: null, movPagoId: null }));
+              }
+            }
           });
-          await this.recargar(['gastos', 'movCaja']);
+          await this.recargar(['gastos', 'movCaja', 'asientos', 'pasivos']);
           this.toastMsg('Gasto eliminado');
         }
       };
