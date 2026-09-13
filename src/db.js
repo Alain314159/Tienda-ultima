@@ -36,6 +36,25 @@ db.version(2).stores({
   config: 'key'
 });
 
+// Version 3: agrega libro diario
+db.version(3).stores({
+  productos: 'id, nombre, archivado',
+  lotes: 'id, productoId, compraId, fecha',
+  ventas: 'id, fecha, anulada',
+  compras: 'id, productoId, fecha',
+  ajustes: 'id, productoId, fecha',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -107,6 +126,7 @@ export function buildData(state) {
     retiros: state.retiros,
     socios: state.socios,
     distribuciones: state.distribuciones,
-    gastos: state.gastos
+    gastos: state.gastos,
+    asientos: state.asientos
   });
 }
