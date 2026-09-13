@@ -55,6 +55,26 @@ db.version(3).stores({
   config: 'key'
 });
 
+// Version 4: agrega pasivos (deudas)
+db.version(4).stores({
+  productos: 'id, nombre, archivado',
+  lotes: 'id, productoId, compraId, fecha',
+  ventas: 'id, fecha, anulada',
+  compras: 'id, productoId, fecha',
+  ajustes: 'id, productoId, fecha',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -127,6 +147,7 @@ export function buildData(state) {
     socios: state.socios,
     distribuciones: state.distribuciones,
     gastos: state.gastos,
-    asientos: state.asientos
+    asientos: state.asientos,
+    pasivos: state.pasivos
   });
 }

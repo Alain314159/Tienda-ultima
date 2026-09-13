@@ -889,8 +889,12 @@
           <div class="row" style="font-weight:800;color:var(--pri)"><span>ACTIVOS</span><span>{{ fmt(activosTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PASIVOS</span><span>{{ fmt(pasivosTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Sin deudas registradas</span><span>{{ fmt(0) }}</span></div>
+          <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PASIVOS</span><span class="neg">{{ fmt(pasivosTotalReal) }}</span></div>
+          <div v-if="pasivosActivos.length === 0" class="row" style="padding-left:1rem;font-size:.78rem;color:var(--mut)"><span>Sin deudas activas</span><span>{{ fmt(0) }}</span></div>
+          <div v-for="p in pasivosActivos" :key="p.id" class="row" style="padding-left:1rem;font-size:.78rem">
+            <span>{{ p.acreedor }}{{ p.vencimiento && new Date(p.vencimiento) < new Date() ? ' ⚠ vencido' : '' }}</span>
+            <span class="neg">{{ fmt(p.monto) }}</span>
+          </div>
           <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PATRIMONIO</span><span>{{ fmt(capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital</span><span>{{ fmt(capitalTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
@@ -946,6 +950,73 @@
               <div style="color:var(--mut)">COGS: <b style="color:var(--bad)">-{{ fmt(c.cogs) }}</b></div>
               <div style="color:var(--mut)">Gastos: <b style="color:var(--bad)">-{{ fmt(c.gastos) }}</b></div>
               <div style="color:var(--mut)">Mermas: <b style="color:var(--bad)">-{{ fmt(c.mermas) }}</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="credit-card" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Cuentas por pagar ({{ pasivosActivos.length }})</div>
+          <div class="row total">
+            <span>Deuda activa</span>
+            <span class="neg">{{ fmt(pasivosTotalReal) }}</span>
+          </div>
+          <div v-if="pasivosVencidos.length" class="alert-box" style="margin:.5rem 0">
+            <icon name="alert" :size="14" color="#d97706"></icon>
+            {{ pasivosVencidos.length }} deuda(s) vencida(s)
+          </div>
+
+          <div style="margin-top:.6rem;border-top:1px solid var(--brd);padding-top:.6rem">
+            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">{{ pasivoForm.editId ? 'Editar' : 'Nueva' }} deuda</div>
+            <input v-model="pasivoForm.acreedor" type="text" placeholder="Acreedor (proveedor, banco, persona)">
+            <input v-model="pasivoForm.concepto" type="text" placeholder="Concepto (ej: compra a credito)">
+            <div class="grid2">
+              <input v-model="pasivoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto">
+              <input v-model="pasivoForm.fecha" type="date">
+            </div>
+            <input v-model="pasivoForm.vencimiento" type="date" placeholder="Vencimiento (opcional)">
+            <input v-model="pasivoForm.nota" type="text" placeholder="Nota (opcional)">
+            <button class="btn warn" @click="guardarPasivo()">
+              <icon name="check" :size="16" color="#fff"></icon>
+              {{ pasivoForm.editId ? 'Actualizar' : 'Registrar deuda' }}
+            </button>
+            <button v-if="pasivoForm.editId" class="btn ghost" @click="resetPasivo()">Cancelar</button>
+          </div>
+
+          <div v-if="pasivosActivos.length" style="margin-top:.8rem">
+            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">Deudas activas</div>
+            <div v-for="p in pasivosActivos" :key="p.id" class="item" style="flex-direction:column;align-items:stretch;gap:.3rem">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+                <div class="nm">{{ p.acreedor }}</div>
+                <b class="neg">{{ fmt(p.monto) }}</b>
+              </div>
+              <div class="det" style="font-size:.72rem">
+                {{ p.concepto }} · {{ fmtFecha(p.fecha) }}
+                <span v-if="p.vencimiento" :style="new Date(p.vencimiento) < new Date() ? 'color:var(--bad);font-weight:700' : ''">
+                  · Vence {{ fmtFecha(p.vencimiento) }}
+                </span>
+              </div>
+              <div class="act-btns" style="justify-content:flex-end">
+                <button class="btn ok" style="width:auto;padding:.3rem .7rem;font-size:.72rem;margin:0" @click="pagarPasivo(p.id)">
+                  <icon name="check" :size="12" color="#fff"></icon> Pagar
+                </button>
+                <button class="icon-btn" @click="editarPasivo(p.id)" aria-label="Editar">
+                  <icon name="edit" :size="14" :color="txtColor"></icon>
+                </button>
+                <button class="icon-btn bad" @click="eliminarPasivo(p.id)" aria-label="Eliminar">
+                  <icon name="trash" :size="14" color="#dc2626"></icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="pasivos.filter(p => p.pagado).length" style="margin-top:.8rem">
+            <div style="font-size:.78rem;font-weight:800;color:var(--mut);margin-bottom:.4rem">Pagadas recientemente</div>
+            <div v-for="p in pasivos.filter(x => x.pagado).slice(0, 5)" :key="p.id" class="item" style="opacity:.6">
+              <div class="info">
+                <div class="nm">{{ p.acreedor }}</div>
+                <div class="det">Pagada {{ fmtFecha(p.fechaPago || p.fecha) }}</div>
+              </div>
+              <b>{{ fmt(p.monto) }}</b>
             </div>
           </div>
         </div>
@@ -1303,7 +1374,8 @@ const PATHS = {
   chevron: '<polyline points="6 9 12 15 18 9"></polyline>',
   share: '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>',
   search: '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
-  users: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path>'
+  users: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path>',
+  'credit-card': '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line>'
 };
 
 export default {
@@ -1382,10 +1454,12 @@ export default {
       distribuciones: [],
       gastos: [],
       asientos: [],
+      pasivos: [],
       filtroAsientoInicio: new Date().toISOString().split('T')[0],
       filtroAsientoFin: new Date().toISOString().split('T')[0],
       filtroAsientoCuenta: '',
       filtroAsientoTipo: '',
+      pasivoForm: { editId: '', acreedor: '', concepto: '', monto: '', fecha: new Date().toISOString().split('T')[0], vencimiento: '', nota: '' },
       CUENTAS: {
         CAJA: 'Caja',
         INVENTARIO: 'Inventario',
@@ -1397,7 +1471,9 @@ export default {
         CAPITAL: 'Capital',
         APORTES: 'Aportes',
         SOBRANTES: 'Sobrantes de arqueo',
-        FALTANTES: 'Faltantes de arqueo'
+        FALTANTES: 'Faltantes de arqueo',
+        PASIVOS: 'Cuentas por pagar',
+        PAGO_PASIVOS: 'Pago de deudas'
       },
 
       prodExpandido: {},
@@ -1621,7 +1697,31 @@ export default {
 
     activosTotal() { return m(this.saldoCaja + this.valorInventario); },
 
-    pasivosTotal() { return 0; },
+    pasivosTotal() { return this.pasivosTotalReal; },
+
+    pasivosActivos() {
+      return this.pasivos.filter(p => !p.pagado);
+    },
+
+    pasivosTotalReal() {
+      return m(this.pasivosActivos.reduce((s, p) => s + n(p.monto), 0));
+    },
+
+    pasivosPagadosTotal() {
+      return m(this.pasivos.filter(p => p.pagado).reduce((s, p) => s + n(p.monto), 0));
+    },
+
+    pasivosOrdenados() {
+      return this.pasivos.slice().sort((a, b) => {
+        if (a.pagado !== b.pagado) return a.pagado ? 1 : -1;
+        return new Date(a.fecha) - new Date(b.fecha);
+      });
+    },
+
+    pasivosVencidos() {
+      const ahora = new Date();
+      return this.pasivosActivos.filter(p => p.vencimiento && new Date(p.vencimiento) < ahora);
+    },
 
     flujoEntradas() {
       const ventas = m(this.ventas.filter(v => !v.anulada).reduce((s,v) => s + n(v.total), 0));
@@ -2882,6 +2982,107 @@ export default {
       });
     },
 
+    // ===== PASIVOS =====
+    resetPasivo() {
+      this.pasivoForm = { editId: '', acreedor: '', concepto: '', monto: '', fecha: new Date().toISOString().split('T')[0], vencimiento: '', nota: '' };
+    },
+
+    async guardarPasivo() {
+      const f = this.pasivoForm;
+      const acreedor = (f.acreedor || '').trim();
+      const concepto = (f.concepto || '').trim();
+      const monto = n(f.monto);
+      if (!acreedor) return this.toastMsg('Acreedor obligatorio', 'bad');
+      if (!concepto) return this.toastMsg('Concepto obligatorio', 'bad');
+      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', 'bad');
+
+      const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
+      const vencISO = f.vencimiento ? new Date(f.vencimiento + 'T12:00:00').toISOString() : null;
+
+      if (f.editId) {
+        const o = this.pasivos.find(x => x.id === f.editId);
+        if (!o) return;
+        await P(db.pasivos, Object.assign({}, o, { acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '' }));
+        this.toastMsg('Pasivo actualizado');
+      } else {
+        await P(db.pasivos, { id: genId('pv'), acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '', pagado: false });
+        this.toastMsg('Pasivo registrado: ' + fmt(monto));
+      }
+      this.resetPasivo();
+      await this.recargar(['pasivos']);
+    },
+
+    editarPasivo(id) {
+      const p = this.pasivos.find(x => x.id === id);
+      if (!p) return;
+      this.pasivoForm = {
+        editId: p.id,
+        acreedor: p.acreedor || '',
+        concepto: p.concepto || '',
+        monto: String(p.monto || ''),
+        fecha: p.fecha ? p.fecha.split('T')[0] : new Date().toISOString().split('T')[0],
+        vencimiento: p.vencimiento ? p.vencimiento.split('T')[0] : '',
+        nota: p.nota || ''
+      };
+      window.scrollTo(0, 0);
+    },
+
+    eliminarPasivo(id) {
+      const p = this.pasivos.find(x => x.id === id);
+      if (!p) return;
+      this.confirm = {
+        activo: true, titulo: 'Eliminar pasivo',
+        msg: 'Eliminar deuda con "' + p.acreedor + '" por ' + fmt(p.monto) + '?',
+        onOk: async () => {
+          await db.pasivos.delete(id);
+          await this.recargar(['pasivos']);
+          this.toastMsg('Pasivo eliminado');
+        }
+      };
+    },
+
+    pagarPasivo(id) {
+      const p = this.pasivos.find(x => x.id === id);
+      if (!p || p.pagado) return;
+      this.confirm = {
+        activo: true, titulo: 'Pagar deuda',
+        msg: 'Pagar ' + fmt(p.monto) + ' a "' + p.acreedor + '"? Se registrara un gasto y saldra de caja.',
+        onOk: async () => {
+          try {
+            const ahora = new Date().toISOString();
+            const movId = genId('mc');
+            await db.transaction('rw', db.pasivos, db.movCaja, db.gastos, db.asientos, async () => {
+              await P(db.pasivos, Object.assign({}, p, { pagado: true, fechaPago: ahora, movPagoId: movId }));
+              await P(db.movCaja, {
+                id: movId,
+                fecha: ahora,
+                tipo: 'egreso',
+                monto: n(p.monto),
+                concepto: 'Pago deuda: ' + p.acreedor + ' - ' + p.concepto,
+                nota: p.nota || ''
+              });
+              const gastoId = genId('g');
+              await P(db.gastos, {
+                id: gastoId,
+                fecha: ahora,
+                categoria: 'Otros',
+                concepto: 'Pago deuda: ' + p.acreedor + ' - ' + p.concepto,
+                monto: n(p.monto),
+                nota: p.nota || '',
+                metodoPago: 'efectivo',
+                saleDeCaja: true,
+                movId
+              });
+              const as = this.crearAsientoObj(ahora, 'Pago deuda ' + p.acreedor, this.CUENTAS.PASIVOS, this.CUENTAS.CAJA, n(p.monto), 'pago_pasivo', p.id);
+              await P(db.asientos, as);
+            });
+            await this.recargar(['pasivos', 'movCaja', 'gastos', 'asientos']);
+            this.toastMsg('Deuda pagada: ' + fmt(p.monto));
+          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+        }
+      };
+    },
+
     // ===== ERUDA =====
     toggleEruda() {
       try {
@@ -3306,7 +3507,7 @@ export default {
     },
 
     async importarData(d) {
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos'];
       await db.transaction('rw', tables.concat(['config']), async () => {
         for (const t of tables) {
           await db.table(t).clear();
@@ -3373,7 +3574,8 @@ export default {
         socios: () => db.socios.toArray(),
         distribuciones: () => db.distribuciones.toArray(),
         gastos: () => db.gastos.toArray(),
-        asientos: () => db.asientos.toArray()
+        asientos: () => db.asientos.toArray(),
+        pasivos: () => db.pasivos.toArray()
       };
       for (const w of what) this[w] = await map[w]();
     },
@@ -3384,9 +3586,9 @@ export default {
         db.compras.toArray(), db.ajustes.toArray(), db.arqueos.toArray(),
         db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray(),
         db.socios.toArray(), db.distribuciones.toArray(), db.gastos.toArray(),
-        db.asientos.toArray()
+        db.asientos.toArray(), db.pasivos.toArray()
       ]);
-      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos'].forEach((k, i) => this[k] = r[i]);
+      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos'].forEach((k, i) => this[k] = r[i]);
     },
 
     // ===== CHART =====
