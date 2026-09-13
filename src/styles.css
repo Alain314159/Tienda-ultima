@@ -893,3 +893,20 @@ input:focus, select:focus {
 .cuadre-table tr.sub-row td:first-child { padding-left: 1.2rem; }
 .cuadre-table .det-cell { text-align: left; }
 .cuadre-table tr.sub-row .det-cell { color: var(--pri); font-weight: 600; }
+
+/* ===== PUNTO ROJO EN NAV ===== */
+.nav-dot {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 14px);
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--card);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
