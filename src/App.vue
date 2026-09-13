@@ -736,6 +736,83 @@
             <b class="pos">+{{ fmt(d.monto) }}</b>
           </div>
         </div>
+      <!-- ==================== GASTOS ==================== -->
+      <section v-show="sec === 'gastos'" class="fade-up">
+        <div class="balance neg">
+          <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Gastos del periodo</div>
+          <div class="val">{{ fmt(gastosOpPeriodo) }}</div>
+          <div class="sub">Acumulado: {{ fmt(gastosTotalAcumulado) }} · {{ gastos.length }} registro(s)</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="plus" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> {{ gastoForm.editId ? 'Editar' : 'Registrar' }} Gasto</div>
+          <div class="grid2">
+            <input v-model="gastoForm.fecha" type="date">
+            <select v-model="gastoForm.categoria">
+              <option value="">Categoria...</option>
+              <option value="Luz">Luz</option>
+              <option value="Agua">Agua</option>
+              <option value="Alquiler">Alquiler</option>
+              <option value="Internet">Internet</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Publicidad">Publicidad</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Limpieza">Limpieza</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <input v-model="gastoForm.concepto" type="text" placeholder="Concepto (ej: Recibo de luz agosto)">
+          <div class="grid2">
+            <input v-model="gastoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto">
+            <select v-model="gastoForm.metodoPago">
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <input v-model="gastoForm.nota" type="text" placeholder="Nota (opcional)">
+          <div class="set-row">
+            <span class="lbl"><icon name="wallet" :size="18"></icon> Sale de caja</span>
+            <label class="switch">
+              <input type="checkbox" v-model="gastoForm.saleDeCaja">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <button class="btn warn" @click="guardarGasto()">
+            <icon name="check" :size="16" color="#fff"></icon>
+            {{ gastoForm.editId ? 'Actualizar' : 'Registrar Gasto' }}
+          </button>
+          <button v-if="gastoForm.editId" class="btn ghost" @click="resetGasto()">Cancelar</button>
+        </div>
+
+        <div class="card" v-if="gastosPorCategoria.length">
+          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> Por categoria (acumulado)</div>
+          <div v-for="g in gastosPorCategoria" :key="g.cat" class="row">
+            <span>{{ g.cat }}</span>
+            <b class="neg">{{ fmt(g.monto) }}</b>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> Historial</div>
+          <div v-if="gastosOrdenados.length === 0" class="empty">Sin gastos registrados</div>
+          <div v-for="g in gastosOrdenados" :key="g.id" class="item">
+            <div class="info">
+              <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
+              <div class="det">{{ fmtFH(g.fecha) }} · {{ g.metodoPago || 'efectivo' }}{{ g.saleDeCaja ? ' · Caja' : ' · Sin caja' }}{{ g.nota ? ' · ' + g.nota : '' }}</div>
+            </div>
+            <div class="act-btns">
+              <b class="neg">-{{ fmt(g.monto) }}</b>
+              <button class="icon-btn" @click="editarGasto(g.id)" aria-label="Editar">
+                <icon name="edit" :size="15" :color="txtColor"></icon>
+              </button>
+              <button class="icon-btn bad" @click="eliminarGasto(g.id)" aria-label="Eliminar">
+                <icon name="trash" :size="15" color="#dc2626"></icon>
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
     </main>
@@ -769,6 +846,7 @@
         <button class="sheet-btn" :class="{ activo: sec === 'patrimonio' }" @click="ir('patrimonio')"><icon name="dollar" :size="22"></icon>Patrimonio</button>
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
         <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'gastos' }" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Gastos</button>
         <button class="sheet-btn" @click="ajustesAbierto = true"><icon name="settings" :size="22"></icon>Ajustes</button>
       </div>
     </div>
@@ -1003,6 +1081,7 @@ export default {
       retiros: [],
       socios: [],
       distribuciones: [],
+      gastos: [],
 
       prodExpandido: {},
       invExpandido: {},
@@ -1028,6 +1107,7 @@ export default {
       aporteForm: { monto: '', nota: '' },
       socioForm: { editId: '', nombre: '', porcentaje: '', aporte: '' },
       repartoForm: { monto: '', concepto: '' },
+      gastoForm: { editId: '', fecha: new Date().toISOString().split('T')[0], categoria: '', concepto: '', monto: '', nota: '', metodoPago: 'efectivo', saleDeCaja: true },
       capInicialStr: '',
 
       rep: {
@@ -1053,7 +1133,7 @@ export default {
   computed: {
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','inventario','patrimonio','reportes','socios'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','inventario','patrimonio','reportes','socios','gastos'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -1119,9 +1199,27 @@ export default {
 
     gastosOpPeriodo() {
       const ini = new Date(this.cfg.periodoInicio);
-      return m(this.movCaja
-        .filter(mv => mv.tipo === 'egreso' && mv.concepto && mv.concepto.toLowerCase().includes('gasto') && new Date(mv.fecha) >= ini)
-        .reduce((s, mv) => s + n(mv.monto), 0));
+      return m(this.gastos
+        .filter(g => new Date(g.fecha) >= ini)
+        .reduce((s, g) => s + n(g.monto), 0));
+    },
+
+    gastosOrdenados() {
+      return this.gastos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    },
+
+    gastosTotalAcumulado() {
+      return m(this.gastos.reduce((s, g) => s + n(g.monto), 0));
+    },
+
+    gastosPorCategoria() {
+      const map = {};
+      this.gastos.forEach(g => {
+        const c = g.categoria || 'Sin categoria';
+        if (!map[c]) map[c] = 0;
+        map[c] += n(g.monto);
+      });
+      return Object.keys(map).map(k => ({ cat: k, monto: m(map[k]) })).sort((a, b) => b.monto - a.monto);
     },
 
     gananciaNetaPeriodo() {
@@ -1797,13 +1895,9 @@ export default {
       const cp = this.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
       const gp = this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
-      let gastosTotal = 0;
-      try {
-        gastosTotal = m(this.movCaja
-          .filter(mv => mv.tipo === 'egreso' && mv.concepto && mv.concepto.toLowerCase().includes('gasto'))
-          .filter(mv => new Date(mv.fecha) >= i && new Date(mv.fecha) <= f)
-          .reduce((s, mv) => s + n(mv.monto), 0));
-      } catch (e) {}
+      const gastosTotal = m(this.gastos
+        .filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
+        .reduce((s, g) => s + n(g.monto), 0));
 
       const ing = m(vp.reduce((s, v) => s + n(v.total), 0));
       const cogs = m(vp.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
@@ -2231,6 +2325,87 @@ export default {
       });
     },
 
+    // ===== GASTOS =====
+    resetGasto() {
+      this.gastoForm = { editId: '', fecha: new Date().toISOString().split('T')[0], categoria: '', concepto: '', monto: '', nota: '', metodoPago: 'efectivo', saleDeCaja: true };
+    },
+
+    async guardarGasto() {
+      const f = this.gastoForm;
+      const categoria = (f.categoria || '').trim();
+      const concepto = (f.concepto || '').trim();
+      const monto = n(f.monto);
+      const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
+      if (!categoria) return this.toastMsg('Categoria obligatoria', 'bad');
+      if (!concepto) return this.toastMsg('Concepto obligatorio', 'bad');
+      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', 'bad');
+
+      if (f.editId) {
+        const o = this.gastos.find(x => x.id === f.editId);
+        if (!o) return;
+        await db.transaction('rw', db.gastos, db.movCaja, async () => {
+          let movId = o.movId || null;
+          if (f.saleDeCaja && movId) {
+            await P(db.movCaja, { id: movId, fecha: fechaISO, tipo: 'egreso', monto, concepto: 'Gasto: ' + categoria + ' - ' + concepto, nota: f.nota || '' });
+          } else if (f.saleDeCaja && !movId) {
+            movId = genId('mc');
+            await P(db.movCaja, { id: movId, fecha: fechaISO, tipo: 'egreso', monto, concepto: 'Gasto: ' + categoria + ' - ' + concepto, nota: f.nota || '' });
+          } else if (!f.saleDeCaja && movId) {
+            await db.movCaja.delete(movId);
+            movId = null;
+          }
+          await P(db.gastos, { id: o.id, fecha: fechaISO, categoria, concepto, monto, nota: f.nota || '', metodoPago: f.metodoPago, saleDeCaja: !!f.saleDeCaja, movId });
+        });
+        this.toastMsg('Gasto actualizado');
+      } else {
+        const id = genId('g');
+        let movId = null;
+        await db.transaction('rw', db.gastos, db.movCaja, async () => {
+          if (f.saleDeCaja) {
+            movId = genId('mc');
+            await P(db.movCaja, { id: movId, fecha: fechaISO, tipo: 'egreso', monto, concepto: 'Gasto: ' + categoria + ' - ' + concepto, nota: f.nota || '' });
+          }
+          await P(db.gastos, { id, fecha: fechaISO, categoria, concepto, monto, nota: f.nota || '', metodoPago: f.metodoPago, saleDeCaja: !!f.saleDeCaja, movId });
+        });
+        this.toastMsg('Gasto registrado: ' + fmt(monto));
+      }
+      this.resetGasto();
+      await this.recargar(['gastos', 'movCaja']);
+    },
+
+    editarGasto(id) {
+      const g = this.gastos.find(x => x.id === id);
+      if (!g) return;
+      this.gastoForm = {
+        editId: g.id,
+        fecha: g.fecha ? g.fecha.split('T')[0] : new Date().toISOString().split('T')[0],
+        categoria: g.categoria || '',
+        concepto: g.concepto || '',
+        monto: String(g.monto || ''),
+        nota: g.nota || '',
+        metodoPago: g.metodoPago || 'efectivo',
+        saleDeCaja: g.saleDeCaja !== false
+      };
+      window.scrollTo(0, 0);
+    },
+
+    eliminarGasto(id) {
+      const g = this.gastos.find(x => x.id === id);
+      if (!g) return;
+      this.confirm = {
+        activo: true, titulo: 'Eliminar gasto',
+        msg: 'Eliminar "' + g.concepto + '" por ' + fmt(g.monto) + '?',
+        onOk: async () => {
+          await db.transaction('rw', db.gastos, db.movCaja, async () => {
+            await db.gastos.delete(id);
+            if (g.movId) await db.movCaja.delete(g.movId);
+          });
+          await this.recargar(['gastos', 'movCaja']);
+          this.toastMsg('Gasto eliminado');
+        }
+      };
+    },
+
     // ===== COMPARTIR EXISTENCIA (NUEVO) =====
     async compartirExistencia() {
       const lineas = this.productos
@@ -2294,7 +2469,7 @@ export default {
     },
 
     async importarData(d) {
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos'];
       await db.transaction('rw', tables.concat(['config']), async () => {
         for (const t of tables) {
           await db.table(t).clear();
@@ -2359,7 +2534,8 @@ export default {
         capital: () => db.capital.toArray(),
         retiros: () => db.retiros.toArray(),
         socios: () => db.socios.toArray(),
-        distribuciones: () => db.distribuciones.toArray()
+        distribuciones: () => db.distribuciones.toArray(),
+        gastos: () => db.gastos.toArray()
       };
       for (const w of what) this[w] = await map[w]();
     },
@@ -2369,9 +2545,9 @@ export default {
         db.productos.toArray(), db.lotes.toArray(), db.ventas.toArray(),
         db.compras.toArray(), db.ajustes.toArray(), db.arqueos.toArray(),
         db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray(),
-        db.socios.toArray(), db.distribuciones.toArray()
+        db.socios.toArray(), db.distribuciones.toArray(), db.gastos.toArray()
       ]);
-      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones'].forEach((k, i) => this[k] = r[i]);
+      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos'].forEach((k, i) => this[k] = r[i]);
     },
 
     // ===== CHART =====
@@ -2458,7 +2634,7 @@ export default {
           if (b2) this.ultimoBackup = b2;
         }
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos'];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);

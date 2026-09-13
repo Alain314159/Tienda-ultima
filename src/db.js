@@ -18,6 +18,24 @@ db.version(1).stores({
   config: 'key'
 });
 
+// Version 2: agrega gastos operativos
+db.version(2).stores({
+  productos: 'id, nombre, archivado',
+  lotes: 'id, productoId, compraId, fecha',
+  ventas: 'id, fecha, anulada',
+  compras: 'id, productoId, fecha',
+  ajustes: 'id, productoId, fecha',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -88,6 +106,7 @@ export function buildData(state) {
     capital: state.capital,
     retiros: state.retiros,
     socios: state.socios,
-    distribuciones: state.distribuciones
+    distribuciones: state.distribuciones,
+    gastos: state.gastos
   });
 }
