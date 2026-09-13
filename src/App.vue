@@ -736,6 +736,7 @@
             <b class="pos">+{{ fmt(d.monto) }}</b>
           </div>
         </div>
+      </section>
       <!-- ==================== GASTOS ==================== -->
       <section v-show="sec === 'gastos'" class="fade-up">
         <div class="balance neg">
