@@ -632,6 +632,20 @@
             <button class="btn ok" style="margin-top:.8rem" @click="generarPDFCuadre()">
               <icon name="file" :size="16" color="#fff"></icon> Exportar PDF
             </button>
+
+            <!-- Reparto entre socios -->
+            <div v-if="sociosActivos.length" style="margin-top:1.2rem">
+              <div class="card-title"><icon name="users" :size="18"></icon> Reparto entre socios</div>
+              <div class="info-box" style="margin-bottom:.5rem">
+                Ganancia neta del periodo: <b>{{ fmt(rep.resultado.neta) }}</b>
+              </div>
+              <div v-for="s in sociosActivos" :key="s.id" class="row">
+                <span>{{ s.nombre }} ({{ n(s.porcentaje).toFixed(2) }}%)</span>
+                <b :class="(rep.resultado.neta * n(s.porcentaje) / 100) >= 0 ? 'pos' : 'neg'">
+                  {{ fmt(rep.resultado.neta * n(s.porcentaje) / 100) }}
+                </b>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1783,8 +1797,7 @@ export default {
         
 
         const stockFinal = this.stock(p.id);
-        const costoRef = costoCompra || n(p.costo) || 0;
-        const valorInv = m(stockFinal * costoRef);
+        const valorInv = this.valorLotesProducto(p.id);
 
         return {
           id: p.id, nombre: p.nombre,
@@ -1857,12 +1870,12 @@ export default {
         head: [['Producto', 'Compras', 'Costo c/u', 'Ventas', 'Precio c/u', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
         body: r.cuadre.map(row => [
           row.nombre, fmtCant(row.compras), fmt(row.costoCompra),
-          fmtCant(row.ventas), fmt(row.precioVenta), fmt(row.costoVenta),
+          fmtCant(row.ventas), fmt(row.precioVenta),
           fmt(row.ingresos), fmt(row.costo), fmt(row.ganancia),
           fmtCant(row.stockFinal), fmt(row.valorInv)
         ]),
         foot: [[
-          'TOTAL', fmtCant(r.totales.compras), '', fmtCant(r.totales.ventas), '', '',
+          'TOTAL', fmtCant(r.totales.compras), '', fmtCant(r.totales.ventas), '',
           fmt(r.totales.ingresos), fmt(r.totales.costo), fmt(r.totales.ganancia),
           fmtCant(r.totales.stockFinal), fmt(r.totales.valorInv)
         ]],
@@ -2175,9 +2188,14 @@ export default {
     },
 
     aplicarUpdate() {
-      if (this._swWaiting) {
-        this._aplicando = true;
-        try { this._swWaiting.postMessage('SKIP_WAITING'); } catch (e) {}
+      this._aplicando = true;
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          setTimeout(() => location.reload(), 500);
+        }).catch(() => location.reload());
+      } else {
+        location.reload();
       }
     },
 
@@ -2231,6 +2249,7 @@ export default {
 
   mounted() {
     this.inicializar();
+    window.addEventListener('pwa:update', () => { this.hayUpdate = true; });
     window.addEventListener('online', () => this.online = true);
     window.addEventListener('offline', () => this.online = false);
     window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
