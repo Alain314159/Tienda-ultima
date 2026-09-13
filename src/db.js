@@ -20,8 +20,8 @@ db.version(1).stores({
 
 // Helpers numéricos
 export const n = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
-export const m = v => Math.round((n(v) + Number.EPSILON) * 100) / 100;
-export const q = v => Math.round((n(v) + Number.EPSILON) * 1000) / 1000;
+export const m = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
+export const q = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
 
 // ID único
 export const genId = prefix => prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -47,7 +47,7 @@ export function fmt(v) {
 export function fmtCant(v) {
   const num = parseFloat(v);
   if (isNaN(num)) return '0';
-  return num % 1 === 0 ? String(num) : num.toFixed(3).replace(/\.?0+$/, '');
+  return num % 1 === 0 ? String(num) : num.toFixed(4).replace(/\.?0+$/, '');
 }
 
 export function fmtFecha(iso) {

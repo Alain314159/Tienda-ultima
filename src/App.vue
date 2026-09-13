@@ -1114,7 +1114,7 @@ export default {
     },
 
     margenPeriodo() {
-      return this.ventasPeriodo > 0 ? ((this.gananciaNetaPeriodo / this.ventasPeriodo) * 100).toFixed(1) : '0.0';
+      return this.ventasPeriodo > 0 ? ((this.gananciaNetaPeriodo / this.ventasPeriodo) * 100).toFixed(2) : '0.00';
     },
 
     totalCarrito() {
@@ -1825,8 +1825,8 @@ export default {
       this.rep.resultado = {
         ingresos: ing, cogs, bruta, mermas, gastos: gastosTotal,
         neta, numVentas: vp.length,
-        margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(1) : '0.0',
-        margenN: ing > 0 ? ((neta / ing) * 100).toFixed(1) : '0.0',
+        margenB: ing > 0 ? ((bruta / ing) * 100).toFixed(2) : '0.00',
+        margenN: ing > 0 ? ((neta / ing) * 100).toFixed(2) : '0.00',
         cuadre, totales,
         _fechaI: this.rep.fechaInicio,
         _fechaF: this.rep.fechaFin
