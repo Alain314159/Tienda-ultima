@@ -884,3 +884,12 @@ input:focus, select:focus {
   color: var(--pri);
 }
 .sheet-btn.activo { background: rgba(33,150,243,.15); color: var(--pri); }
+
+
+/* ===== CUADRE: FILA PRODUCTO / SUB-FILA DETALLE ===== */
+.cuadre-table tr.product-row { background: rgba(33,150,243,.08); }
+.cuadre-table tr.product-row td { font-weight: 700; }
+.cuadre-table tr.sub-row { font-size: .68rem; color: var(--mut); background: rgba(33,150,243,.02); }
+.cuadre-table tr.sub-row td:first-child { padding-left: 1.2rem; }
+.cuadre-table .det-cell { text-align: left; }
+.cuadre-table tr.sub-row .det-cell { color: var(--pri); font-weight: 600; }

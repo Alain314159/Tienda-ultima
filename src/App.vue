@@ -551,7 +551,7 @@
           </div>
           <div class="grid2" style="margin-bottom:.5rem">
             <button class="btn ghost" style="margin-bottom:0;font-size:.72rem"
-              @click="rep.fechaInicio = rep.fechaFin = new Date().toISOString().split('T')[0]">Hoy</button>
+              @click="setHoy()">Hoy</button>
             <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="setMesActual()">Este mes</button>
           </div>
           <button class="btn ghost" style="margin-bottom:.5rem;font-size:.72rem" @click="setPeriodoActual()">
@@ -586,11 +586,11 @@
                 <thead>
                   <tr>
                     <th>Producto</th>
+                    <th>Detalle</th>
                     <th>Compras</th>
                     <th>Costo c/u</th>
                     <th>Ventas</th>
                     <th>Precio c/u</th>
-                    
                     <th>Ingresos</th>
                     <th>Costo</th>
                     <th>Ganancia</th>
@@ -599,21 +599,37 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="r in rep.resultado.cuadre" :key="r.id">
-                    <td>{{ r.nombre }}</td>
-                    <td>{{ fmtCant(r.compras) }}</td>
-                    <td>{{ fmt(r.costoCompra) }}</td>
-                    <td>{{ fmtCant(r.ventas) }}</td>
-                    <td>{{ fmt(r.precioVenta) }}</td>
-                    
-                    <td class="pos">{{ fmt(r.ingresos) }}</td>
-                    <td class="neg">{{ fmt(r.costo) }}</td>
-                    <td :class="r.ganancia >= 0 ? 'pos' : 'neg'"><b>{{ fmt(r.ganancia) }}</b></td>
-                    <td>{{ fmtCant(r.stockFinal) }}</td>
-                    <td>{{ fmt(r.valorInv) }}</td>
-                  </tr>
+                  <template v-for="r in rep.resultado.cuadre" :key="r.id">
+                    <tr class="product-row">
+                      <td><b>{{ r.nombre }}</b></td>
+                      <td class="det-cell">—</td>
+                      <td>{{ fmtCant(r.compras) }}</td>
+                      <td>{{ fmt(r.costoCompra) }}</td>
+                      <td>{{ fmtCant(r.ventas) }}</td>
+                      <td>{{ fmt(r.precioVenta) }}</td>
+                      <td class="pos">{{ fmt(r.ingresos) }}</td>
+                      <td class="neg">{{ fmt(r.costo) }}</td>
+                      <td :class="r.ganancia >= 0 ? 'pos' : 'neg'"><b>{{ fmt(r.ganancia) }}</b></td>
+                      <td>{{ fmtCant(r.stockFinal) }}</td>
+                      <td>{{ fmt(r.valorInv) }}</td>
+                    </tr>
+                    <tr v-for="(sf, i) in r.subfilas" :key="r.id + '_' + i" class="sub-row">
+                      <td></td>
+                      <td class="det-cell">↳ {{ fmt(sf.costo) }}{{ sf.precio !== null ? ' → ' + fmt(sf.precio) : ' (sin ventas)' }}</td>
+                      <td>{{ sf.comprasCant ? fmtCant(sf.comprasCant) : '—' }}</td>
+                      <td>{{ fmt(sf.costo) }}</td>
+                      <td>{{ sf.cantVend ? fmtCant(sf.cantVend) : '—' }}</td>
+                      <td>{{ sf.precio !== null ? fmt(sf.precio) : '—' }}</td>
+                      <td class="pos">{{ sf.ingresos ? fmt(sf.ingresos) : '—' }}</td>
+                      <td class="neg">{{ sf.costoVend ? fmt(sf.costoVend) : '—' }}</td>
+                      <td :class="sf.ganancia >= 0 ? 'pos' : 'neg'">{{ sf.ganancia ? fmt(sf.ganancia) : '—' }}</td>
+                      <td>{{ fmtCant(sf.stockActual) }}</td>
+                      <td>{{ fmt(sf.valorActual) }}</td>
+                    </tr>
+                  </template>
                   <tr class="total-row">
                     <td>TOTAL</td>
+                    <td></td>
                     <td>{{ fmtCant(rep.resultado.totales.compras) }}</td>
                     <td></td>
                     <td>{{ fmtCant(rep.resultado.totales.ventas) }}</td>
@@ -1017,6 +1033,8 @@ export default {
       rep: {
         fechaInicio: new Date().toISOString().split('T')[0],
         fechaFin: new Date().toISOString().split('T')[0],
+        isoInicio: null,
+        isoFin: null,
         resultado: null
       },
 
@@ -1746,22 +1764,33 @@ export default {
     },
 
     // ===== CUADRE / REPORTES (NUEVO) =====
+    setHoy() {
+      this.rep.fechaInicio = this.rep.fechaFin = new Date().toISOString().split('T')[0];
+      this.rep.isoInicio = null;
+      this.rep.isoFin = null;
+    },
+
     setMesActual() {
       const now = new Date();
       const inicio = new Date(now.getFullYear(), now.getMonth(), 1);
       this.rep.fechaInicio = inicio.toISOString().split('T')[0];
       this.rep.fechaFin = now.toISOString().split('T')[0];
+      this.rep.isoInicio = null;
+      this.rep.isoFin = null;
     },
 
     setPeriodoActual() {
       this.rep.fechaInicio = this.cfg.periodoInicio.split('T')[0];
       this.rep.fechaFin = new Date().toISOString().split('T')[0];
+      this.rep.isoInicio = this.cfg.periodoInicio;
+      this.rep.isoFin = new Date().toISOString();
     },
 
     generarReporte() {
       if (!this.rep.fechaInicio || !this.rep.fechaFin) return this.toastMsg('Selecciona fechas', 'bad');
-      const i = new Date(this.rep.fechaInicio), f = new Date(this.rep.fechaFin);
-      f.setHours(23, 59, 59);
+      const i = this.rep.isoInicio ? new Date(this.rep.isoInicio) : new Date(this.rep.fechaInicio);
+      const f = this.rep.isoFin ? new Date(this.rep.isoFin) : new Date(this.rep.fechaFin);
+      if (!this.rep.isoFin) f.setHours(23, 59, 59, 999);
       if (i > f) return this.toastMsg('Fecha inicio > fin', 'bad');
 
       const vp = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
@@ -1782,44 +1811,110 @@ export default {
       const mermas = m(gp.reduce((s, a) => s + n(a.costoPerdida), 0));
       const neta = m(bruta - mermas - gastosTotal);
 
+      // Agrupar ventas por (producto, costo, precio)
+      const ventasPorClave = {};
+      vp.forEach(v => {
+        v.items.forEach(it => {
+          if (!it.lotesUsados) return;
+          it.lotesUsados.forEach(u => {
+            const costo = n(u.costo), precio = n(it.precio);
+            const key = it.productoId + '|' + costo + '|' + precio;
+            if (!ventasPorClave[key]) ventasPorClave[key] = { productoId: it.productoId, costo, precio, cantVend: 0, ingresos: 0, costoTotal: 0 };
+            ventasPorClave[key].cantVend += n(u.cantidad);
+            ventasPorClave[key].ingresos += n(it.precio) * n(u.cantidad);
+            ventasPorClave[key].costoTotal += n(u.costo) * n(u.cantidad);
+          });
+        });
+      });
+
+      // Compras por (producto, costo)
+      const comprasPorProdCosto = {};
+      cp.forEach(c => {
+        const key = c.productoId + '|' + n(c.costo);
+        if (!comprasPorProdCosto[key]) comprasPorProdCosto[key] = { cant: 0, total: 0 };
+        comprasPorProdCosto[key].cant += n(c.cantidad);
+        comprasPorProdCosto[key].total += n(c.total);
+      });
+
+      // Stock actual por (producto, costo)
+      const stockPorProdCosto = {};
+      this.lotes.forEach(l => {
+        const key = l.productoId + '|' + n(l.costo);
+        const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+        if (!stockPorProdCosto[key]) stockPorProdCosto[key] = 0;
+        stockPorProdCosto[key] += disp;
+      });
+
       const cuadre = this.productos.filter(p => !p.archivado).map(p => {
-        const comprasProd = cp.filter(c => c.productoId === p.id);
-        const ventasProdItems = vp.flatMap(v => v.items).filter(it => it.productoId === p.id);
+        const prodId = p.id;
+        const claves = new Set();
+        Object.keys(ventasPorClave).forEach(k => {
+          if (ventasPorClave[k].productoId === prodId) claves.add(ventasPorClave[k].costo + '|' + ventasPorClave[k].precio);
+        });
+        Object.keys(stockPorProdCosto).forEach(k => {
+          if (!k.startsWith(prodId + '|')) return;
+          const costo = n(k.split('|')[1]);
+          const stock = stockPorProdCosto[k];
+          let tieneFila = false;
+          claves.forEach(ck => { if (n(ck.split('|')[0]) === costo) tieneFila = true; });
+          if (!tieneFila && stock > 0) claves.add(costo + '|stock');
+        });
 
-        const comprasCant = m(comprasProd.reduce((s, c) => s + n(c.cantidad), 0));
-        const comprasTotal = m(comprasProd.reduce((s, c) => s + n(c.total), 0));
-        const costoCompra = comprasCant > 0 ? m(comprasTotal / comprasCant) : 0;
+        const subfilas = [];
+        claves.forEach(ck => {
+          const partes = ck.split('|');
+          const costo = n(partes[0]);
+          const precio = partes[1] === 'stock' ? null : n(partes[1]);
+          const v = ventasPorClave[prodId + '|' + costo + '|' + precio] || { cantVend: 0, ingresos: 0, costoTotal: 0 };
+          const c = comprasPorProdCosto[prodId + '|' + costo] || { cant: 0, total: 0 };
+          const stock = stockPorProdCosto[prodId + '|' + costo] || 0;
+          subfilas.push({
+            costo, precio,
+            comprasCant: m(c.cant),
+            cantVend: m(v.cantVend),
+            ingresos: m(v.ingresos),
+            costoVend: m(v.costoTotal),
+            ganancia: m(v.ingresos - v.costoTotal),
+            stockActual: q(stock),
+            valorActual: m(stock * costo)
+          });
+        });
+        subfilas.sort((a, b) => {
+          if (a.costo !== b.costo) return a.costo - b.costo;
+          if (a.precio === null && b.precio !== null) return 1;
+          if (a.precio !== null && b.precio === null) return -1;
+          return (a.precio || 0) - (b.precio || 0);
+        });
 
-        const ventasCant = m(ventasProdItems.reduce((s, it) => s + n(it.cantidad), 0));
-        const ingresos = m(ventasProdItems.reduce((s, it) => s + n(it.precio) * n(it.cantidad), 0));
-        const costoVentaTotal = m(ventasProdItems.reduce((s, it) => s + n(it.costo), 0));
-        const precioVenta = ventasCant > 0 ? m(ingresos / ventasCant) : 0;
-        
-
-        const stockFinal = this.stock(p.id);
-        const valorInv = this.valorLotesProducto(p.id);
+        const comprasProdCant = m(Object.keys(comprasPorProdCosto).filter(k => k.startsWith(prodId + '|')).reduce((s, k) => s + comprasPorProdCosto[k].cant, 0));
+        const comprasProdTotal = m(Object.keys(comprasPorProdCosto).filter(k => k.startsWith(prodId + '|')).reduce((s, k) => s + comprasPorProdCosto[k].total, 0));
+        const ventasProdCant = m(subfilas.reduce((s, f) => s + f.cantVend, 0));
+        const ingresosProd = m(subfilas.reduce((s, f) => s + f.ingresos, 0));
+        const costoProdVend = m(subfilas.reduce((s, f) => s + f.costoVend, 0));
+        const stockProd = q(subfilas.reduce((s, f) => s + f.stockActual, 0));
+        const valorProd = m(subfilas.reduce((s, f) => s + f.valorActual, 0));
 
         return {
           id: p.id, nombre: p.nombre,
-          compras: comprasCant, costoCompra,
-          ventas: ventasCant, precioVenta,
-          ingresos, costo: costoVentaTotal,
-          ganancia: m(ingresos - costoVentaTotal),
-          stockFinal, valorInv
+          compras: comprasProdCant,
+          costoCompra: comprasProdCant > 0 ? m(comprasProdTotal / comprasProdCant) : 0,
+          ventas: ventasProdCant,
+          precioVenta: ventasProdCant > 0 ? m(ingresosProd / ventasProdCant) : 0,
+          ingresos: ingresosProd,
+          costo: costoProdVend,
+          ganancia: m(ingresosProd - costoProdVend),
+          stockFinal: stockProd,
+          valorInv: valorProd,
+          subfilas
         };
       });
 
       const totales = cuadre.reduce((acc, r) => {
-        acc.compras += r.compras;
-        acc.ventas += r.ventas;
-        acc.ingresos += r.ingresos;
-        acc.costo += r.costo;
-        acc.ganancia += r.ganancia;
-        acc.stockFinal += r.stockFinal;
-        acc.valorInv += r.valorInv;
+        acc.compras += r.compras; acc.ventas += r.ventas; acc.ingresos += r.ingresos;
+        acc.costo += r.costo; acc.ganancia += r.ganancia;
+        acc.stockFinal += r.stockFinal; acc.valorInv += r.valorInv;
         return acc;
       }, { compras: 0, ventas: 0, ingresos: 0, costo: 0, ganancia: 0, stockFinal: 0, valorInv: 0 });
-
       Object.keys(totales).forEach(k => totales[k] = m(totales[k]));
 
       this.rep.resultado = {
