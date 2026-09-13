@@ -1,4 +1,4 @@
-import Dexie from 'dexie';
+import Dexnie from 'dexie';
 
 export const db = new Dexie('TiendaProDB');
 
@@ -17,6 +17,9 @@ db.version(1).stores({
   distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
   config: 'key'
 });
+
+// Exponer db en window para debugging (útil con Eruda/F12)
+if (typeof window !== 'undefined') window.db = db;
 
 // Helpers numéricos
 export const n = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
