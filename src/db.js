@@ -1,4 +1,4 @@
-import Dexnie from 'dexie';
+import Dexie from 'dexie';
 
 export const db = new Dexie('TiendaProDB');
 
