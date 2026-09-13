@@ -883,3 +883,4 @@ input:focus, select:focus {
   background: rgba(33,150,243,.15);
   color: var(--pri);
 }
+.sheet-btn.activo { background: rgba(33,150,243,.15); color: var(--pri); }

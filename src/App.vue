@@ -635,6 +635,79 @@
           </div>
         </div>
       </section>
+      <!-- ==================== SOCIOS ==================== -->
+      <section v-show="sec === 'socios'" class="fade-up">
+        <div class="balance morado">
+          <div class="lbl"><icon name="users" :size="14" color="#fff"></icon> Socios activos</div>
+          <div class="val">{{ sociosActivos.length }}</div>
+          <div class="sub">Repartido: {{ fmt(totalDistribuido) }} · {{ sumaPorcentajes }}% en total</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><icon name="plus" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> {{ socioForm.editId ? 'Editar' : 'Agregar' }} Socio</div>
+          <input v-model="socioForm.nombre" type="text" placeholder="Nombre del socio">
+          <div class="grid2">
+            <input v-model="socioForm.porcentaje" type="number" inputmode="decimal" step="0.01" placeholder="% participacion">
+            <input v-model="socioForm.aporte" type="number" inputmode="decimal" step="0.01" placeholder="Aporte inicial">
+          </div>
+          <div class="info-box" style="margin-bottom:.5rem">
+            Suma actual: <b>{{ sumaPorcentajes }}%</b>
+            <span v-if="Math.abs(sumaPorcentajes - 100) < 0.01"> OK</span>
+            <span v-else style="color:var(--warn)"> (debe sumar 100%)</span>
+          </div>
+          <button class="btn pri" @click="guardarSocio()">
+            <icon name="check" :size="16" color="#fff"></icon>
+            {{ socioForm.editId ? 'Actualizar' : 'Agregar Socio' }}
+          </button>
+          <button v-if="socioForm.editId" class="btn ghost" @click="resetSocio()">Cancelar</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><icon name="users" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Socios</div>
+          <div v-if="socios.length === 0" class="empty">Sin socios registrados</div>
+          <div v-for="s in socios" :key="s.id" class="item">
+            <div class="info">
+              <div class="nm">{{ s.nombre }}</div>
+              <div class="det">{{ n(s.porcentaje).toFixed(2) }}% · Aporte {{ fmt(s.aporte) }} · Recibido {{ fmt(totalPorSocio(s.id)) }}</div>
+            </div>
+            <div class="act-btns">
+              <button class="icon-btn" @click="editarSocio(s.id)" aria-label="Editar">
+                <icon name="edit" :size="15" :color="txtColor"></icon>
+              </button>
+              <button class="icon-btn bad" @click="eliminarSocio(s.id)" aria-label="Eliminar">
+                <icon name="trash" :size="15" color="#dc2626"></icon>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Repartir Ganancia</div>
+          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
+            Disponible: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+          </div>
+          <input v-model="repartoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a repartir">
+          <input v-model="repartoForm.concepto" type="text" placeholder="Concepto (ej: Reparto mensual)">
+          <div v-if="n(repartoForm.monto) > 0 && sociosActivos.length" class="info-box" style="margin-bottom:.5rem">
+            <div v-for="s in sociosActivos" :key="s.id" style="display:flex;justify-content:space-between;padding:.15rem 0">
+              <span>{{ s.nombre }} ({{ n(s.porcentaje).toFixed(2) }}%)</span>
+              <b>{{ fmt(n(repartoForm.monto) * n(s.porcentaje) / 100) }}</b>
+            </div>
+          </div>
+          <button class="btn ok" @click="repartirGanancia()">
+            <icon name="check" :size="16" color="#fff"></icon> Repartir
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Historial de Distribuciones</div>
+          <div v-if="distribucionesOrdenadas.length === 0" class="empty">Sin distribuciones</div>
+          <div v-for="d in distribucionesOrdenadas" :key="d.id" class="item">
+            <div class="info">
+              <div class="nm">{{ d.socioNombre }}</div>
+              <div class="det">{{ fmtFH(d.fecha) }} · {{ d.concepto }}</div>
+            </div>
+            <b class="pos">+{{ fmt(d.monto) }}</b>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -651,8 +724,8 @@
       <button :class="{ activo: sec === 'caja' }" @click="ir('caja')">
         <icon name="wallet" :size="22" :color="sec === 'caja' ? '#2196F3' : '#6b7280'"></icon><span>Caja</span>
       </button>
-      <button :class="{ activo: masAbierto }" @click="masAbierto = !masAbierto">
-        <icon name="menu" :size="22" :color="masAbierto ? '#2196F3' : '#6b7280'"></icon><span>Más</span>
+      <button :class="{ activo: masActivo }" @click="masAbierto = !masAbierto">
+        <icon name="menu" :size="22" :color="masActivo ? '#2196F3' : '#6b7280'"></icon><span>Más</span>
       </button>
     </nav>
 
@@ -661,10 +734,11 @@
     <div v-if="masAbierto" class="sheet no-print">
       <div class="handle"></div>
       <div class="sheet-grid">
-        <button class="sheet-btn" @click="ir('productos')"><icon name="tag" :size="22"></icon>Productos</button>
-        <button class="sheet-btn" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
-        <button class="sheet-btn" @click="ir('patrimonio')"><icon name="dollar" :size="22"></icon>Patrimonio</button>
-        <button class="sheet-btn" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'productos' }" @click="ir('productos')"><icon name="tag" :size="22"></icon>Productos</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'inventario' }" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'patrimonio' }" @click="ir('patrimonio')"><icon name="dollar" :size="22"></icon>Patrimonio</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
         <button class="sheet-btn" @click="ajustesAbierto = true"><icon name="settings" :size="22"></icon>Ajustes</button>
       </div>
     </div>
@@ -897,6 +971,8 @@ export default {
       cierres: [],
       capital: [],
       retiros: [],
+      socios: [],
+      distribuciones: [],
 
       prodExpandido: {},
       invExpandido: {},
@@ -920,6 +996,8 @@ export default {
 
       retiroForm: { monto: '', concepto: '' },
       aporteForm: { monto: '', nota: '' },
+      socioForm: { editId: '', nombre: '', porcentaje: '', aporte: '' },
+      repartoForm: { monto: '', concepto: '' },
       capInicialStr: '',
 
       rep: {
@@ -943,6 +1021,7 @@ export default {
   computed: {
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
+    masActivo() { return this.masAbierto || ['productos','inventario','patrimonio','reportes','socios'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -1133,6 +1212,11 @@ export default {
     cierresOrdenados() {
       return this.cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre));
     },
+
+    sociosActivos() { return this.socios.filter(s => s.activo !== false); },
+    sumaPorcentajes() { return m(this.sociosActivos.reduce((s, x) => s + n(x.porcentaje), 0)); },
+    totalDistribuido() { return m(this.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
+    distribucionesOrdenadas() { return this.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
 
     topRentables() {
       const now = new Date();
@@ -1812,6 +1896,89 @@ export default {
       this.toastMsg('PDF generado');
     },
 
+    // ===== SOCIOS =====
+    totalPorSocio(sid) {
+      return m(this.distribuciones.filter(d => d.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
+    },
+    resetSocio() {
+      this.socioForm = { editId: '', nombre: '', porcentaje: '', aporte: '' };
+    },
+    async guardarSocio() {
+      const f = this.socioForm;
+      const nombre = (f.nombre || '').trim();
+      const pct = n(f.porcentaje);
+      const aporte = n(f.aporte);
+      if (!nombre) return this.toastMsg('Nombre obligatorio', 'bad');
+      if (pct < 0 || pct > 100) return this.toastMsg('Porcentaje entre 0 y 100', 'bad');
+      if (aporte < 0) return this.toastMsg('Aporte invalido', 'bad');
+      const dup = this.socios.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== f.editId);
+      if (dup) return this.toastMsg('Ya existe ese socio', 'bad');
+      if (f.editId) {
+        const o = this.socios.find(x => x.id === f.editId);
+        await P(db.socios, Object.assign({}, o, { nombre, porcentaje: pct, aporte }));
+        this.toastMsg('Socio actualizado');
+      } else {
+        await P(db.socios, { id: genId('so'), nombre, porcentaje: pct, aporte, fecha: new Date().toISOString(), activo: true });
+        this.toastMsg('Socio agregado');
+      }
+      this.resetSocio();
+      await this.recargar(['socios']);
+    },
+    editarSocio(id) {
+      const s = this.socios.find(x => x.id === id);
+      if (!s) return;
+      this.socioForm = { editId: id, nombre: s.nombre, porcentaje: String(s.porcentaje || ''), aporte: String(s.aporte || '') };
+      window.scrollTo(0, 0);
+    },
+    eliminarSocio(id) {
+      const s = this.socios.find(x => x.id === id);
+      if (!s) return;
+      this.confirm = {
+        activo: true, titulo: 'Eliminar socio',
+        msg: 'Eliminar a "' + s.nombre + '"? Las distribuciones previas se conservan.',
+        onOk: async () => {
+          await db.socios.delete(id);
+          await this.recargar(['socios']);
+          this.toastMsg('Socio eliminado');
+        }
+      };
+    },
+    repartirGanancia() {
+      const monto = n(this.repartoForm.monto);
+      const concepto = (this.repartoForm.concepto || '').trim() || 'Reparto de ganancia';
+      if (monto <= 0) return this.toastMsg('Monto invalido', 'bad');
+      if (!this.sociosActivos.length) return this.toastMsg('Sin socios activos', 'bad');
+      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Maximo ' + fmt(this.gananciaDisponible), 'bad');
+      if (Math.abs(this.sumaPorcentajes - 100) > 0.01) return this.toastMsg('Los porcentajes deben sumar 100% (actual: ' + this.sumaPorcentajes + '%)', 'bad');
+      this.pedirPin(async () => {
+        try {
+          const dists = this.sociosActivos.map(s => ({
+            id: genId('di'),
+            fecha: new Date().toISOString(),
+            socioId: s.id,
+            socioNombre: s.nombre,
+            montoTotal: monto,
+            monto: m(monto * n(s.porcentaje) / 100),
+            porcentaje: n(s.porcentaje),
+            concepto
+          }));
+          await db.transaction('rw', db.distribuciones, db.retiros, async () => {
+            await db.distribuciones.bulkPut(dists.map(x => clean(x)));
+            await P(db.retiros, {
+              id: genId('r'),
+              fecha: new Date().toISOString(),
+              monto,
+              concepto: 'Reparto a socios: ' + concepto,
+              socios: dists.map(d => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto }))
+            });
+          });
+          await this.recargar(['distribuciones', 'retiros']);
+          this.repartoForm = { monto: '', concepto: '' };
+          this.toastMsg('Repartido ' + fmt(monto));
+        } catch (e) { this.toastMsg(e.message, 'bad'); }
+      });
+    },
+
     // ===== COMPARTIR EXISTENCIA (NUEVO) =====
     async compartirExistencia() {
       const lineas = this.productos
@@ -1875,7 +2042,7 @@ export default {
     },
 
     async importarData(d) {
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones'];
       await db.transaction('rw', tables.concat(['config']), async () => {
         for (const t of tables) {
           await db.table(t).clear();
@@ -1938,7 +2105,9 @@ export default {
         movCaja: () => db.movCaja.toArray(),
         cierres: () => db.cierres.toArray(),
         capital: () => db.capital.toArray(),
-        retiros: () => db.retiros.toArray()
+        retiros: () => db.retiros.toArray(),
+        socios: () => db.socios.toArray(),
+        distribuciones: () => db.distribuciones.toArray()
       };
       for (const w of what) this[w] = await map[w]();
     },
@@ -1947,9 +2116,10 @@ export default {
       const r = await Promise.all([
         db.productos.toArray(), db.lotes.toArray(), db.ventas.toArray(),
         db.compras.toArray(), db.ajustes.toArray(), db.arqueos.toArray(),
-        db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray()
+        db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray(),
+        db.socios.toArray(), db.distribuciones.toArray()
       ]);
-      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros'].forEach((k, i) => this[k] = r[i]);
+      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones'].forEach((k, i) => this[k] = r[i]);
     },
 
     // ===== CHART =====
@@ -2031,7 +2201,7 @@ export default {
           if (b2) this.ultimoBackup = b2;
         }
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios'];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
