@@ -910,3 +910,31 @@ input:focus, select:focus {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.3); }
 }
+
+/* ===== CUADRE COLAPSABLE ===== */
+.cuadre-table tr.product-row { cursor: pointer; }
+.cuadre-table tr.product-row:hover { background: rgba(33,150,243,.12); }
+.cuadre-table .chev { display: inline-flex; transition: transform .2s; }
+.cuadre-table .chev.open { transform: rotate(180deg); }
+.badge-lotes {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .1rem .4rem;
+  border-radius: 99px;
+  background: rgba(33,150,243,.15);
+  color: var(--pri);
+  font-size: .58rem;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.cuadre-table tr.sub-row {
+  background: rgba(33,150,243,.03);
+  font-size: .68rem;
+}
+.cuadre-table tr.sub-row td { color: var(--mut); padding-left: 1.5rem; }
+.cuadre-table tr.sub-row td:first-child { color: var(--mut); }
+.sub-lote-cell { text-align: left !important; }
+.sub-arrow { color: var(--pri); font-weight: 800; margin-right: .3rem; }
+.sub-num { font-weight: 700; color: var(--pri); margin-right: .5rem; font-size: .64rem; }
+.sub-fechas { color: var(--mut); font-size: .62rem; }
+.sub-sin-venta { font-style: italic; opacity: .7; }

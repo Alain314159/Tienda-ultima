@@ -7,3 +7,5 @@ dist/
 fix-*.mjs
 fix-*.js
 *.bak
+.env
+.env.local

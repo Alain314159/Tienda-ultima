@@ -6,21 +6,33 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "node tests/smoke.spec.mjs",
+    "smoke:local": "BASE_URL=http://localhost:4173/Tienda-ultima/ node tests/smoke.spec.mjs",
+    "functional": "node tests/functional.spec.mjs",
+    "functional:local": "BASE_URL=http://localhost:4173/Tienda-ultima/ node tests/functional.spec.mjs",
+    "test:all": "vitest run && node tests/smoke.spec.mjs && node tests/functional.spec.mjs"
   },
   "dependencies": {
-    "vue": "^3.4.38",
-    "dexie": "^4.0.8",
     "chart.js": "^4.4.4",
+    "date-fns": "^3.6.0",
+    "dexie": "^4.0.8",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.3",
     "lucide-vue-next": "^0.441.0",
-    "date-fns": "^3.6.0",
+    "vue": "^3.4.38",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.3",
+    "dotenv": "^17.4.2",
+    "fake-indexeddb": "^6.0.0",
+    "happy-dom": "^15.0.0",
+    "playwright-core": "^1.63.0",
     "vite": "^5.4.3",
-    "vite-plugin-pwa": "^0.20.5"
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.0.0"
   }
 }

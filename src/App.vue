@@ -619,7 +619,6 @@
                 <thead>
                   <tr>
                     <th>Producto</th>
-                    <th>Detalle</th>
                     <th>Compras</th>
                     <th>Costo c/u</th>
                     <th>Ventas</th>
@@ -633,9 +632,14 @@
                 </thead>
                 <tbody>
                   <template v-for="r in rep.resultado.cuadre" :key="r.id">
-                    <tr class="product-row">
-                      <td><b>{{ r.nombre }}</b></td>
-                      <td class="det-cell">—</td>
+                    <tr class="product-row" style="cursor:pointer" @click="r.subfilas.length > 1 ? toggleCuadreProducto(r.id) : null">
+                      <td>
+                        <span v-if="r.subfilas.length > 1" class="chev" :class="{ open: cuadreExpandido[r.id] }" style="margin-right:.3rem;display:inline-flex">
+                          <icon name="chevron" :size="12" :color="mutColor"></icon>
+                        </span>
+                        <b>{{ r.nombre }}</b>
+                        <span v-if="r.subfilas.length > 1" class="badge-lotes">{{ r.subfilas.length }} lotes</span>
+                      </td>
                       <td>{{ fmtCant(r.compras) }}</td>
                       <td>{{ fmt(r.costoCompra) }}</td>
                       <td>{{ fmtCant(r.ventas) }}</td>
@@ -646,9 +650,12 @@
                       <td>{{ fmtCant(r.stockFinal) }}</td>
                       <td>{{ fmt(r.valorInv) }}</td>
                     </tr>
-                    <tr v-for="(sf, i) in r.subfilas" :key="r.id + '_' + i" class="sub-row">
-                      <td></td>
-                      <td class="det-cell">↳ {{ fmt(sf.costo) }}{{ sf.precio !== null ? ' → ' + fmt(sf.precio) : ' (sin ventas)' }}</td>
+                    <tr v-if="r.subfilas.length > 1 && cuadreExpandido[r.id]" v-for="(sf, i) in r.subfilas" :key="r.id + '_' + i" class="sub-row">
+                      <td class="sub-lote-cell">
+                        <span class="sub-arrow">└</span>
+                        <span class="sub-num">Lote {{ i + 1 }}</span>
+                        <span class="sub-fechas">{{ fmt(sf.costo) }}<span v-if="sf.precio !== null"> → {{ fmt(sf.precio) }}</span><span v-else class="sub-sin-venta"> · sin ventas</span></span>
+                      </td>
                       <td>{{ sf.comprasCant ? fmtCant(sf.comprasCant) : '—' }}</td>
                       <td>{{ fmt(sf.costo) }}</td>
                       <td>{{ sf.cantVend ? fmtCant(sf.cantVend) : '—' }}</td>
@@ -662,7 +669,6 @@
                   </template>
                   <tr class="total-row">
                     <td>TOTAL</td>
-                    <td></td>
                     <td>{{ fmtCant(rep.resultado.totales.compras) }}</td>
                     <td></td>
                     <td>{{ fmtCant(rep.resultado.totales.ventas) }}</td>
@@ -1486,6 +1492,7 @@ export default {
 
       prodExpandido: {},
       invExpandido: {},
+      cuadreExpandido: {},
 
       busqVenta: '',
       focusVenta: false,
@@ -1985,6 +1992,17 @@ export default {
       return this.anomalias.filter(a => a.nivel === 'alta').length;
     },
 
+    lotesPorProducto() {
+      const map = {};
+      this.lotes.forEach(l => {
+        if (!map[l.productoId]) map[l.productoId] = new Set();
+        map[l.productoId].add(n(l.costo));
+      });
+      const out = {};
+      Object.keys(map).forEach(k => { out[k] = map[k].size; });
+      return out;
+    },
+
     ultimaActividad() {
       const fechas = [
         ...this.ventas.map(v => v.fecha),
@@ -2045,6 +2063,10 @@ export default {
       this.masAbierto = false;
       this.sec = s;
       try { history.pushState({ sec: s }, '', '#' + s); } catch (e) {}
+    },
+
+    toggleCuadreProducto(id) {
+      this.cuadreExpandido[id] = !this.cuadreExpandido[id];
     },
 
     // ===== VENTAS =====
@@ -2735,9 +2757,9 @@ export default {
 
       // --- Resumen financiero ---
       doc.setTextColor(30, 41, 59);
-      doc.setFontSize(13);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Resumen financiero', 14, 44);
+      doc.text('Resumen financiero', 14, 35);
 
       const rowHighlight = (label) => {
         if (label === 'GANANCIA BRUTA') return { fontStyle: 'bold', fillColor: [230, 240, 255] };
@@ -2746,7 +2768,7 @@ export default {
       };
 
       autoTable(doc, {
-        startY: 48,
+        startY: 38,
         head: [['Concepto', 'Monto']],
         body: [
           ['Ingresos por ventas', fmt(r.ingresos)],
@@ -2759,7 +2781,9 @@ export default {
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
         styles: { fontSize: 10, cellPadding: 3 },
-        columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 76, halign: 'right' } },
+        margin: { left: 14 },
+        tableWidth: 130,
+        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 50, halign: 'right' } },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
           const label = data.row.raw[0];
@@ -2768,21 +2792,20 @@ export default {
         }
       });
 
-      // --- Situación financiera ---
-      let y = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(13);
+      // --- Situación financiera (a la derecha) ---
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 41, 59);
-      doc.text('Situacion financiera', 14, y);
+      doc.text('Situacion financiera', 155, 35);
 
       autoTable(doc, {
-        startY: y + 4,
+        startY: 38,
         head: [['Concepto', 'Monto']],
         body: [
-          ['Caja (efectivo disponible)', fmt(this.saldoCaja)],
+          ['Caja', fmt(this.saldoCaja)],
           ['Valor del inventario', fmt(this.valorInventario)],
           ['ACTIVOS TOTALES', fmt(this.saldoCaja + this.valorInventario)],
-          ['Capital (inicial + aportes)', fmt(this.capitalTotal)],
+          ['Capital', fmt(this.capitalTotal)],
           ['Ganancias acumuladas', fmt(this.gananciasAcumuladas)],
           ['PATRIMONIO', fmt(this.patrimonioTotal)],
           ['Disponible para retiro', fmt(this.gananciaDisponible)]
@@ -2790,7 +2813,9 @@ export default {
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
         styles: { fontSize: 10, cellPadding: 3 },
-        columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 76, halign: 'right' } },
+        margin: { left: 155 },
+        tableWidth: 130,
+        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 50, halign: 'right' } },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
           const label = data.row.raw[0];
@@ -2801,11 +2826,12 @@ export default {
         }
       });
 
-      // --- Reparto entre socios ---
+      // --- Reparto entre socios (abajo a la izquierda) ---
       if (this.sociosActivos.length > 0) {
-        y = doc.lastAutoTable.finalY + 10;
-        doc.setFontSize(13);
+        const y = doc.lastAutoTable.finalY + 8;
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
         doc.text('Reparto entre socios', 14, y);
 
         const socioRows = this.sociosActivos.map(sc => [
@@ -2816,13 +2842,15 @@ export default {
         socioRows.push(['TOTAL', '100.00%', fmt(r.neta)]);
 
         autoTable(doc, {
-          startY: y + 4,
+          startY: y + 3,
           head: [['Socio', '% Participacion', 'Monto a recibir']],
           body: socioRows,
           theme: 'grid',
           headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 10 },
           styles: { fontSize: 10, cellPadding: 3 },
-          columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 50, halign: 'center' }, 2: { cellWidth: 56, halign: 'right' } },
+          margin: { left: 14 },
+          tableWidth: 130,
+          columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 40, halign: 'right' } },
           didParseCell: (data) => {
             if (data.section !== 'body') return;
             if (data.row.raw[0] === 'TOTAL') {
@@ -2834,16 +2862,16 @@ export default {
       }
 
       // ============ PÁGINA 2+: TABLA POR PRODUCTO ============
-      doc.addPage();
+      doc.addPage('a4', 'landscape');
       doc.setFillColor(33, 150, 243);
-      doc.rect(0, 0, PW, 20, 'F');
+      doc.rect(0, 0, PW, 16, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Detalle por producto', 14, 13);
+      doc.text('Detalle por producto', 14, 11);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text((this.cfg.nombre || '') + '  ·  ' + r._fechaI + ' al ' + r._fechaF, PW - 14, 13, { align: 'right' });
+      doc.text((this.cfg.nombre || '') + '  ·  ' + r._fechaI + ' al ' + r._fechaF, PW - 14, 11, { align: 'right' });
 
       const PFILL = [235, 244, 255];
       const TFILL = [229, 231, 235];
@@ -2852,7 +2880,6 @@ export default {
       r.cuadre.forEach(row => {
         bodyRows.push([
           { content: row.nombre, styles: { fontStyle: 'bold', fillColor: PFILL } },
-          { content: '', styles: { fillColor: PFILL } },
           { content: fmtCant(row.compras), styles: { halign: 'right', fillColor: PFILL } },
           { content: fmt(row.costoCompra), styles: { halign: 'right', fillColor: PFILL } },
           { content: fmtCant(row.ventas), styles: { halign: 'right', fillColor: PFILL } },
@@ -2863,10 +2890,9 @@ export default {
           { content: fmtCant(row.stockFinal), styles: { halign: 'right', fillColor: PFILL } },
           { content: fmt(row.valorInv), styles: { halign: 'right', fillColor: PFILL } }
         ]);
-        row.subfilas.forEach(sf => {
+        row.subfilas.forEach((sf, si) => {
           bodyRows.push([
-            { content: '', styles: { fontSize: 7 } },
-            { content: '  -> ' + fmt(sf.costo) + (sf.precio !== null ? ' -> ' + fmt(sf.precio) : ' (sin ventas)'), styles: { fontSize: 7, textColor: [33, 150, 243] } },
+            { content: '     Lote ' + (si + 1) + ': ' + fmt(sf.costo) + (sf.precio !== null ? ' -> ' + fmt(sf.precio) : ' (sin ventas)'), styles: { fontSize: 8, textColor: [33, 150, 243] } },
             { content: sf.comprasCant ? fmtCant(sf.comprasCant) : '-', styles: { halign: 'right', fontSize: 7 } },
             { content: fmt(sf.costo), styles: { halign: 'right', fontSize: 7 } },
             { content: sf.cantVend ? fmtCant(sf.cantVend) : '-', styles: { halign: 'right', fontSize: 7 } },
@@ -2882,7 +2908,6 @@ export default {
 
       bodyRows.push([
         { content: 'TOTAL', styles: { fontStyle: 'bold', fillColor: TFILL } },
-        { content: '', styles: { fillColor: TFILL } },
         { content: fmtCant(r.totales.compras), styles: { halign: 'right', fontStyle: 'bold', fillColor: TFILL } },
         { content: '', styles: { fillColor: TFILL } },
         { content: fmtCant(r.totales.ventas), styles: { halign: 'right', fontStyle: 'bold', fillColor: TFILL } },
@@ -2895,23 +2920,22 @@ export default {
       ]);
 
       autoTable(doc, {
-        startY: 26,
-        head: [['Producto', 'Detalle', 'Compras', 'Costo u.', 'Ventas', 'Precio u.', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
+        startY: 20,
+        head: [['Producto', 'Compras', 'Costo u.', 'Ventas', 'Precio u.', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
         body: bodyRows,
-        styles: { fontSize: 8, cellPadding: 1.5, overflow: 'linebreak' },
-        headStyles: { fillColor: [33, 150, 243], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 2, overflow: 'linebreak' },
+        headStyles: { fillColor: [33, 150, 243], textColor: 255, fontSize: 9, fontStyle: 'bold' },
         columnStyles: {
-          0: { cellWidth: 28 },
-          1: { cellWidth: 26, textColor: [100, 100, 100] },
-          2: { cellWidth: 13, halign: 'right' },
-          3: { cellWidth: 15, halign: 'right' },
-          4: { cellWidth: 13, halign: 'right' },
-          5: { cellWidth: 15, halign: 'right' },
-          6: { cellWidth: 17, halign: 'right' },
-          7: { cellWidth: 14, halign: 'right' },
-          8: { cellWidth: 17, halign: 'right' },
-          9: { cellWidth: 12, halign: 'right' },
-          10: { cellWidth: 15, halign: 'right' }
+          0: { cellWidth: 70 },
+          1: { cellWidth: 22, halign: 'right' },
+          2: { cellWidth: 24, halign: 'right' },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 28, halign: 'right' },
+          6: { cellWidth: 24, halign: 'right' },
+          7: { cellWidth: 28, halign: 'right' },
+          8: { cellWidth: 20, halign: 'right' },
+          9: { cellWidth: 25, halign: 'right' }
         },
         margin: { left: 10, right: 10 }
       });
