@@ -2781,9 +2781,8 @@ export default {
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
         styles: { fontSize: 10, cellPadding: 3 },
-        margin: { left: 14 },
-        tableWidth: 130,
-        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 50, halign: 'right' } },
+        margin: { left: 14, right: 158 },
+        columnStyles: { 0: { cellWidth: 78 }, 1: { cellWidth: 47, halign: 'right' } },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
           const label = data.row.raw[0];
@@ -2813,9 +2812,8 @@ export default {
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
         styles: { fontSize: 10, cellPadding: 3 },
-        margin: { left: 155 },
-        tableWidth: 130,
-        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 50, halign: 'right' } },
+        margin: { left: 155, right: 14 },
+        columnStyles: { 0: { cellWidth: 78 }, 1: { cellWidth: 47, halign: 'right' } },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
           const label = data.row.raw[0];
@@ -2848,9 +2846,8 @@ export default {
           theme: 'grid',
           headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 10 },
           styles: { fontSize: 10, cellPadding: 3 },
-          margin: { left: 14 },
-          tableWidth: 130,
-          columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 40, halign: 'right' } },
+          margin: { left: 14, right: 158 },
+          columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 32, halign: 'center' }, 2: { cellWidth: 38, halign: 'right' } },
           didParseCell: (data) => {
             if (data.section !== 'body') return;
             if (data.row.raw[0] === 'TOTAL') {
@@ -2923,19 +2920,19 @@ export default {
         startY: 20,
         head: [['Producto', 'Compras', 'Costo u.', 'Ventas', 'Precio u.', 'Ingresos', 'Costo', 'Ganancia', 'Stock', 'Valor']],
         body: bodyRows,
-        styles: { fontSize: 9, cellPadding: 2, overflow: 'linebreak' },
-        headStyles: { fillColor: [33, 150, 243], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 1.8, overflow: 'linebreak' },
+        headStyles: { fillColor: [33, 150, 243], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
         columnStyles: {
-          0: { cellWidth: 70 },
-          1: { cellWidth: 22, halign: 'right' },
-          2: { cellWidth: 24, halign: 'right' },
-          3: { cellWidth: 22, halign: 'right' },
-          4: { cellWidth: 24, halign: 'right' },
-          5: { cellWidth: 28, halign: 'right' },
-          6: { cellWidth: 24, halign: 'right' },
-          7: { cellWidth: 28, halign: 'right' },
-          8: { cellWidth: 20, halign: 'right' },
-          9: { cellWidth: 25, halign: 'right' }
+          0: { cellWidth: 65 },
+          1: { cellWidth: 18, halign: 'right' },
+          2: { cellWidth: 21, halign: 'right' },
+          3: { cellWidth: 18, halign: 'right' },
+          4: { cellWidth: 21, halign: 'right' },
+          5: { cellWidth: 24, halign: 'right' },
+          6: { cellWidth: 21, halign: 'right' },
+          7: { cellWidth: 24, halign: 'right' },
+          8: { cellWidth: 17, halign: 'right' },
+          9: { cellWidth: 22, halign: 'right' }
         },
         margin: { left: 10, right: 10 }
       });
