@@ -938,3 +938,33 @@ input:focus, select:focus {
 .sub-num { font-weight: 700; color: var(--pri); margin-right: .5rem; font-size: .64rem; }
 .sub-fechas { color: var(--mut); font-size: .62rem; }
 .sub-sin-venta { font-style: italic; opacity: .7; }
+
+/* ===== ANOMALIAS MEJORADAS ===== */
+.anomalia-item {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+}
+.anomalia-item .info {
+  flex: 1;
+  min-width: 0;
+}
+.anomalia-item .icon-btn {
+  flex-shrink: 0;
+  opacity: .5;
+  transition: opacity .2s;
+}
+.anomalia-item .icon-btn:hover {
+  opacity: 1;
+}
+
+/* ===== HIGHLIGHT FLASH (cuando navegas desde una anomalia) ===== */
+@keyframes flashHighlight {
+  0% { background-color: rgba(251, 191, 36, 0.5); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.6); }
+  50% { background-color: rgba(251, 191, 36, 0.2); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3); }
+  100% { background-color: transparent; box-shadow: 0 0 0 0 transparent; }
+}
+.highlight-flash {
+  animation: flashHighlight 3s ease-out;
+  border-radius: var(--r-sm);
+}

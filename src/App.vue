@@ -84,18 +84,24 @@
             Anomalias ({{ anomalias.length }})
             <span v-if="anomaliasCriticas > 0" class="badge out" style="margin-left:auto">{{ anomaliasCriticas }} criticas</span>
           </div>
-          <div v-for="(a, i) in anomalias.slice(0, 5)" :key="i" class="item" style="cursor:pointer" @click="ir(a.sec)">
-            <div class="info">
+          <div v-for="(a, i) in anomalias.slice(0, 5)" :key="i" class="item anomalia-item">
+            <div class="info" style="cursor:pointer" @click="ir(a.sec, a.refId)">
               <div class="nm">
                 <span class="badge" :class="a.nivel === 'alta' ? 'out' : (a.nivel === 'media' ? 'low' : 'arch')" style="margin-right:.3rem">{{ a.nivel.toUpperCase() }}</span>
                 {{ a.titulo }}
               </div>
               <div class="det">{{ a.detalle }}</div>
             </div>
-            <icon name="chevron" :size="14" :color="mutColor" style="transform:rotate(-90deg)"></icon>
+            <button class="icon-btn" @click.stop="descartarAnomalia(a.clave)" aria-label="Descartar" title="Descartar">
+              <icon name="x" :size="14" :color="mutColor"></icon>
+            </button>
           </div>
           <div v-if="anomalias.length > 5" class="det" style="text-align:center;margin-top:.4rem;font-size:.72rem;color:var(--mut)">
             + {{ anomalias.length - 5 }} mas
+          </div>
+          <div v-if="cfg.anomaliasDescartadas && cfg.anomaliasDescartadas.length" class="det" style="text-align:center;margin-top:.5rem;font-size:.72rem;color:var(--mut)">
+            {{ cfg.anomaliasDescartadas.length }} descartada(s)
+            <button class="link-btn" @click="restaurarAnomalias" style="margin-left:.3rem">Restaurar</button>
           </div>
         </div>
 
@@ -168,7 +174,7 @@
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Historial de Ventas</div>
           <div class="search"><input v-model="busqHist" type="text" placeholder="Buscar en historial..."></div>
           <div v-if="ventasFiltradas.length === 0" class="empty">Sin ventas</div>
-          <div v-for="v in ventasFiltradas" :key="v.id" class="item" :class="{ anulada: v.anulada }">
+          <div v-for="v in ventasFiltradas" :key="v.id" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
             <div class="info">
               <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad) + (x.unidad ? (' ' + x.unidad) : '')).join(', ') }}</div>
               <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
@@ -221,7 +227,7 @@
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Historial de Compras</div>
           <div v-if="comprasOrdenadas.length === 0" class="empty">Sin compras</div>
-          <div v-for="c in comprasOrdenadas" :key="c.id" class="item">
+          <div v-for="c in comprasOrdenadas" :key="c.id" class="item" :id="'ref-' + c.id">
             <div class="info">
               <div class="nm"><icon name="bag" :size="14"></icon> {{ c.productoNombre }}</div>
               <div class="det">{{ fmtFH(c.fecha) }} · {{ fmtCant(c.cantidad) }} {{ c.unidad || '' }} × {{ fmt(c.costo) }}</div>
@@ -281,7 +287,7 @@
             </button>
           </div>
           <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
-          <div v-for="p in prodsFiltrados" :key="p.id" class="prod-wrap">
+          <div v-for="p in prodsFiltrados" :key="p.id" class="prod-wrap" :id="'ref-' + p.id">
             <div class="item" :style="p.archivado ? 'opacity:.5' : ''" style="cursor:pointer"
               @click="prodExpandido[p.id] = !prodExpandido[p.id]">
               <div class="info">
@@ -374,7 +380,7 @@
         <div class="card">
           <div class="card-title"><icon name="package" :size="18" :color="sec === 'inventario' ? '#2196F3' : mutColor"></icon> Inventario por producto</div>
           <div v-if="invAgrupado.length === 0" class="empty">Sin inventario</div>
-          <div v-for="g in invAgrupado" :key="g.id" class="inv-group">
+          <div v-for="g in invAgrupado" :key="g.id" class="inv-group" :id="'ref-' + g.id">
             <div class="inv-head" @click="invExpandido[g.id] = !invExpandido[g.id]">
               <div>
                 <div class="nm">{{ g.nombre }}</div>
@@ -1448,7 +1454,8 @@ export default {
         umbralSinMovimientoDias: 60,
         umbralDescuentoPct: 20,
         umbralSobrantesMes: 2,
-        stockMinDefault: 5
+        stockMinDefault: 5,
+        anomaliasDescartadas: []
       },
 
       productos: [],
@@ -1493,6 +1500,7 @@ export default {
       prodExpandido: {},
       invExpandido: {},
       cuadreExpandido: {},
+      _highlightTimer: null,
 
       busqVenta: '',
       focusVenta: false,
@@ -1872,10 +1880,12 @@ export default {
       const hace7d = new Date(ahora.getTime() - 7 * 86400000);
       const hace30d = new Date(ahora.getTime() - 30 * 86400000);
       const umbralSinMov = new Date(ahora.getTime() - n(this.cfg.umbralSinMovimientoDias || 60) * 86400000);
+      const descartadas = this.cfg.anomaliasDescartadas || [];
+      const add = (obj) => { if (!descartadas.includes(obj.clave)) out.push(obj); };
 
       // 1. Caja negativa
       if (this.saldoCaja < -0.01) {
-        out.push({ nivel: 'alta', icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'caja' });
+        add({ nivel: 'alta', icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'caja', clave: 'caja-negativa' });
       }
 
       // 2. Ventas bajo costo
@@ -1883,13 +1893,15 @@ export default {
         .flatMap(v => v.items.filter(it => it.ganancia < 0).map(it => ({ venta: v, item: it })));
       if (ventasBajoCosto.length > 0) {
         const totalPerdido = m(ventasBajoCosto.reduce((s, x) => s + n(x.item.ganancia), 0));
-        out.push({ nivel: 'alta', icono: 'trend', titulo: ventasBajoCosto.length + ' venta(s) bajo costo', detalle: 'Perdida: ' + fmt(totalPerdido), sec: 'ventas' });
+        add({ nivel: 'alta', icono: 'trend', titulo: ventasBajoCosto.length + ' venta(s) bajo costo', detalle: 'Perdida: ' + fmt(totalPerdido), sec: 'ventas', clave: 'ventas-bajo-costo-' + ventasBajoCosto.length });
       }
 
       // 3. Stock negativo
       const stockNeg = this.productos.filter(p => !p.archivado && this.stock(p.id) < -0.001);
       if (stockNeg.length > 0) {
-        out.push({ nivel: 'alta', icono: 'package', titulo: stockNeg.length + ' producto(s) con stock negativo', detalle: stockNeg.slice(0,3).map(p => p.nombre).join(', '), sec: 'inventario' });
+        stockNeg.forEach(p => {
+          add({ nivel: 'alta', icono: 'package', titulo: p.nombre + ': stock negativo', detalle: 'Stock actual: ' + fmtCant(this.stock(p.id)), sec: 'productos', refId: p.id, clave: 'stock-neg-' + p.id });
+        });
       }
 
       // 4. Mermas frecuentes
@@ -1900,7 +1912,7 @@ export default {
       Object.keys(mermasSemana).forEach(pid => {
         if (mermasSemana[pid] >= n(this.cfg.umbralMermasSemana || 3)) {
           const p = this.productos.find(x => x.id === pid);
-          out.push({ nivel: 'media', icono: 'alert', titulo: (p ? p.nombre : 'Producto') + ': mermas frecuentes', detalle: mermasSemana[pid] + ' mermas en 7 dias', sec: 'inventario' });
+          add({ nivel: 'media', icono: 'alert', titulo: (p ? p.nombre : 'Producto') + ': mermas frecuentes', detalle: mermasSemana[pid] + ' mermas en 7 dias', sec: 'productos', refId: pid, clave: 'mermas-frec-' + pid });
         }
       });
 
@@ -1908,7 +1920,7 @@ export default {
       const faltantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d);
       if (faltantes.length >= n(this.cfg.umbralFaltantesMes || 2)) {
         const total = m(faltantes.reduce((s, f) => s + n(f.monto), 0));
-        out.push({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja' });
+        add({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'faltantes-' + faltantes.length });
       }
 
       // 6. Compras con costo elevado
@@ -1918,34 +1930,34 @@ export default {
         const ult = n(comprasProd[0].costo);
         const prom = comprasProd.slice(1, 6).reduce((s, c) => s + n(c.costo), 0) / Math.min(comprasProd.length - 1, 5);
         if (prom > 0 && ult > prom * 1.5) {
-          out.push({ nivel: 'baja', icono: 'bag', titulo: p.nombre + ': compra ' + ((ult/prom - 1) * 100).toFixed(0) + '% mas caro', detalle: fmt(ult) + ' vs ' + fmt(prom) + ' promedio', sec: 'compras' });
+          add({ nivel: 'baja', icono: 'bag', titulo: p.nombre + ': compra ' + ((ult/prom - 1) * 100).toFixed(0) + '% mas caro', detalle: fmt(ult) + ' vs ' + fmt(prom) + ' promedio', sec: 'compras', refId: comprasProd[0].id, clave: 'compra-cara-' + comprasProd[0].id });
         }
       });
 
       // 7. Ventas anuladas recientes
       const anuladas30 = this.ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d);
       if (anuladas30.length > 3) {
-        out.push({ nivel: 'baja', icono: 'x', titulo: anuladas30.length + ' ventas anuladas en 30 dias', detalle: 'Revisar historial', sec: 'ventas' });
+        add({ nivel: 'baja', icono: 'x', titulo: anuladas30.length + ' ventas anuladas en 30 dias', detalle: 'Revisar historial', sec: 'ventas', clave: 'anuladas-' + anuladas30.length });
       }
 
       // 8. Productos sin movimiento con stock
       const sinMov = this.productos.filter(p => !p.archivado && this.stock(p.id) > 0 && !this.ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id)));
-      if (sinMov.length > 0) {
-        out.push({ nivel: 'baja', icono: 'package', titulo: sinMov.length + ' producto(s) sin movimiento', detalle: 'Con stock, sin ventas en ' + (this.cfg.umbralSinMovimientoDias || 60) + ' dias', sec: 'inventario' });
-      }
+      sinMov.forEach(p => {
+        add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': sin movimiento', detalle: 'Stock ' + fmtCant(this.stock(p.id)) + ', sin ventas en ' + (this.cfg.umbralSinMovimientoDias || 60) + ' dias', sec: 'productos', refId: p.id, clave: 'sin-mov-' + p.id });
+      });
 
       // 9. Cierre pendiente
       const ultimoCierre = this.cierres.length > 0 ? Math.max(...this.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.cfg.periodoInicio).getTime();
       const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
       if (diasSinCierre >= n(this.cfg.umbralDiasCierre || 30)) {
-        out.push({ nivel: 'media', icono: 'calendar', titulo: 'Cierre pendiente', detalle: diasSinCierre + ' dias sin cerrar periodo', sec: 'reportes' });
+        add({ nivel: 'media', icono: 'calendar', titulo: 'Cierre pendiente', detalle: diasSinCierre + ' dias sin cerrar periodo', sec: 'reportes', clave: 'cierre-pendiente' });
       }
 
       // 10. Backup viejos
       if (this.ultimoBackup && this.ultimoBackup.fecha) {
         const diasSinBackup = Math.floor((ahora.getTime() - new Date(this.ultimoBackup.fecha).getTime()) / 86400000);
         if (diasSinBackup >= n(this.cfg.umbralBackupDias || 7)) {
-          out.push({ nivel: 'baja', icono: 'download', titulo: 'Backup antiguo', detalle: diasSinBackup + ' dias desde el ultimo backup', sec: 'ajustes' });
+          add({ nivel: 'baja', icono: 'download', titulo: 'Backup antiguo', detalle: diasSinBackup + ' dias desde el ultimo backup', sec: 'ajustes', clave: 'backup-viejo' });
         }
       }
 
@@ -1962,7 +1974,7 @@ export default {
           });
         });
         if (descAltos.length > 0) {
-          out.push({ nivel: 'media', icono: 'trend', titulo: descAltos.length + ' venta(s) con descuento > ' + umbralDesc + '%', detalle: 'Revisar precios aplicados', sec: 'ventas' });
+          add({ nivel: 'media', icono: 'trend', titulo: descAltos.length + ' venta(s) con descuento > ' + umbralDesc + '%', detalle: 'Revisar precios aplicados', sec: 'ventas', clave: 'descuentos-' + descAltos.length });
         }
       }
 
@@ -1970,7 +1982,7 @@ export default {
       const sobrantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d);
       if (sobrantes.length >= n(this.cfg.umbralSobrantesMes || 2)) {
         const total = m(sobrantes.reduce((s, f) => s + n(f.monto), 0));
-        out.push({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja' });
+        add({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'sobrantes-' + sobrantes.length });
       }
 
       // 13. Movimientos raros de inventario (subidas sin compra)
@@ -1980,7 +1992,7 @@ export default {
         // Si hay lotes pero no hay compras, o hay lotes manuales (ajustes con cantidad > 0)
         const lotesSinCompra = lotesProd.filter(l => !l.compraId || l.compraId.startsWith('aj-'));
         if (lotesSinCompra.length > 0 && comprasProd.length === 0 && this.stock(p.id) > 0) {
-          out.push({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': stock sin compra registrada', detalle: lotesSinCompra.length + ' lote(s) por ajuste', sec: 'inventario' });
+          add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': stock sin compra registrada', detalle: lotesSinCompra.length + ' lote(s) por ajuste', sec: 'productos', refId: p.id, clave: 'stock-sin-compra-' + p.id });
         }
       });
 
@@ -2059,10 +2071,38 @@ export default {
       if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
     },
 
-    ir(s) {
+    ir(s, refId) {
       this.masAbierto = false;
       this.sec = s;
       try { history.pushState({ sec: s }, '', '#' + s); } catch (e) {}
+      if (refId) {
+        this.$nextTick(() => {
+          setTimeout(() => {
+            const el = document.getElementById('ref-' + refId);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('highlight-flash');
+              clearTimeout(this._highlightTimer);
+              this._highlightTimer = setTimeout(() => el.classList.remove('highlight-flash'), 3000);
+            }
+          }, 400);
+        });
+      }
+    },
+
+    descartarAnomalia(clave) {
+      if (!this.cfg.anomaliasDescartadas) this.cfg.anomaliasDescartadas = [];
+      if (!this.cfg.anomaliasDescartadas.includes(clave)) {
+        this.cfg.anomaliasDescartadas.push(clave);
+        this.guardarCfg();
+        this.toastMsg('Anomalia descartada');
+      }
+    },
+
+    restaurarAnomalias() {
+      this.cfg.anomaliasDescartadas = [];
+      this.guardarCfg();
+      this.toastMsg('Anomalias restauradas');
     },
 
     toggleCuadreProducto(id) {
