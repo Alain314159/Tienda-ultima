@@ -703,7 +703,7 @@
           <div v-for="s in socios" :key="s.id" class="item">
             <div class="info">
               <div class="nm">{{ s.nombre }}</div>
-              <div class="det">{{ n(s.porcentaje).toFixed(2) }}% · Aporte {{ fmt(s.aporte) }} · Recibido {{ fmt(totalPorSocio(s.id)) }}</div>
+              <div class="det">{{ n(s.porcentaje).toFixed(2) }}% · Aporte inicial {{ fmt(s.aporte) }} · Aportes extra {{ fmt(totalAportesSocio(s.id)) }} · Recibido {{ fmt(totalPorSocio(s.id)) }}</div>
             </div>
             <div class="act-btns">
               <button class="icon-btn" @click="editarSocio(s.id)" aria-label="Editar">
@@ -750,6 +750,20 @@
           <input v-model="capInicialStr" type="number" inputmode="decimal" step="0.01" placeholder="Nuevo capital inicial">
           <button class="btn pri" @click="guardarCapInicial()">
             <icon name="check" :size="16" color="#fff"></icon> Guardar Capital Inicial
+          </button>
+        </div>
+
+        <div v-if="aportesSinSocio.length" class="card" style="border:2px solid var(--warn)">
+          <div class="card-title"><icon name="alert" :size="18" :color="'#d97706'"></icon> Aportes sin asignar</div>
+          <div class="info-box" style="background:rgba(217,119,6,.1);color:var(--warn)">
+            Tienes <b>{{ aportesSinSocio.length }}</b> aporte(s) por <b>{{ fmt(aportesSinSocioTotal) }}</b> que no estan asignados a ningun socio (son de antes de crear el modulo de socios).
+          </div>
+          <select v-model="migrarSocioId">
+            <option value="">Elegir socio...</option>
+            <option v-for="s in sociosActivos" :key="s.id" :value="s.id">{{ s.nombre }}</option>
+          </select>
+          <button class="btn warn" @click="asignarAportesViejos()">
+            <icon name="check" :size="16" color="#fff"></icon> Asignar a este socio
           </button>
         </div>
 
@@ -1256,6 +1270,18 @@
           <icon name="check" :size="14" :color="mutColor"></icon> Probar notificacion
         </button>
 
+        <div class="set-group">Ventas</div>
+        <div class="set-row">
+          <span class="lbl"><icon name="dollar" :size="18"></icon> Calculadora de billetes al cobrar</span>
+          <label class="switch">
+            <input type="checkbox" v-model="cfg.calcBilletesActiva" @change="guardarCfg">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Muestra un panel de denominaciones (10, 20, 50...) para contar el efectivo al cobrar.
+        </div>
+
         <div class="set-group">Avanzado</div>
         <div class="set-row">
           <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
@@ -1283,11 +1309,28 @@
       <div class="modal-box">
         <div class="modal-title"><icon name="check" :size="20"></icon> Cobrar Venta</div>
         <div class="cobro-modal">Total a Pagar: {{ fmt(cobroModal.total) }}</div>
-        <input v-model="cobroModal.recibido" type="number" inputmode="decimal" step="0.01"
-          placeholder="Monto recibido" @input="calcVuelto" autofocus>
-        <button class="btn ghost" style="margin-bottom:.5rem"
-          @click="cobroModal.recibido = cobroModal.total; calcVuelto()">Pagar Exacto</button>
-        <div v-if="cobroModal.vuelto > 0" class="cobro-vuelto">Vuelto: {{ fmt(cobroModal.vuelto) }}</div>
+
+        <button v-if="cfg.calcBilletesActiva" class="btn ghost" style="margin-bottom:.5rem;font-size:.8rem"
+          @click="cobroModal.calcAbierta = !cobroModal.calcAbierta">
+          <icon name="dollar" :size="14" :color="mutColor"></icon>
+          {{ cobroModal.calcAbierta ? 'Ocultar' : 'Mostrar' }} calculadora de billetes
+        </button>
+
+        <div v-if="cfg.calcBilletesActiva && cobroModal.calcAbierta" class="calc-billetes">
+          <div v-for="d in denominaciones" :key="d" class="denom-row">
+            <span class="denom-label">{{ fmt(d) }}</span>
+            <input type="number" inputmode="numeric" min="0" step="1"
+              v-model.number="cobroModal.billetes[d]" @input="calcBilletes" placeholder="0">
+            <span class="denom-sub">{{ fmt(d * (n(cobroModal.billetes[d]) || 0)) }}</span>
+          </div>
+          <div class="calc-total">
+            <div class="row"><span>Total contado</span><b>{{ fmt(cobroModal.totalContado) }}</b></div>
+            <div v-if="cobroModal.falta > 0.01" class="row"><span>Falta</span><b class="neg">{{ fmt(cobroModal.falta) }}</b></div>
+            <div v-else-if="cobroModal.sobra > 0.01" class="row"><span>Vuelto</span><b class="pos">{{ fmt(cobroModal.sobra) }}</b></div>
+            <div v-else-if="cobroModal.totalContado > 0" class="row"><span>Estado</span><b class="pos">Exacto ✓</b></div>
+          </div>
+        </div>
+
         <button class="btn ok" @click="procesarVenta" :disabled="procesandoVenta">
           <icon name="check" :size="16" color="#fff"></icon>
           {{ procesandoVenta ? 'Procesando...' : 'Confirmar Pago' }}
@@ -1318,6 +1361,10 @@
         <div class="modal-title"><icon name="plus" :size="20"></icon> Aportar Capital</div>
         <input v-model="aporteForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto del aporte">
         <input v-model="aporteForm.nota" type="text" placeholder="Nota (opcional)">
+        <select v-model="aporteForm.socioId">
+          <option value="">Sin asignar (capital general)</option>
+          <option v-for="s in sociosActivos" :key="s.id" :value="s.id">{{ s.nombre }}</option>
+        </select>
         <div class="grid2">
           <button class="btn ok" @click="registrarAporte">Registrar Aporte</button>
           <button class="btn ghost" @click="aporteAbierto = false">Cancelar</button>
@@ -1462,7 +1509,8 @@ export default {
         umbralDescuentoPct: 20,
         umbralSobrantesMes: 2,
         stockMinDefault: 5,
-        anomaliasDescartadas: []
+        anomaliasDescartadas: [],
+        calcBilletesActiva: false
       },
 
       productos: [],
@@ -1527,7 +1575,8 @@ export default {
       arqueoPreview: { fisico: 0, diff: 0, class: 'cuadre' },
 
       retiroForm: { monto: '', concepto: '' },
-      aporteForm: { monto: '', nota: '' },
+      aporteForm: { monto: '', nota: '', socioId: '' },
+      migrarSocioId: '',
       socioForm: { editId: '', nombre: '', porcentaje: '', aporte: '' },
       repartoForm: { monto: '', concepto: '' },
       gastoForm: { editId: '', fecha: new Date().toISOString().split('T')[0], categoria: '', concepto: '', monto: '', nota: '', metodoPago: 'efectivo', saleDeCaja: true },
@@ -1542,7 +1591,8 @@ export default {
         periodoActivo: null
       },
 
-      cobroModal: { activo: false, total: 0, recibido: '', vuelto: 0 },
+      cobroModal: { activo: false, total: 0, calcAbierta: false, billetes: {}, totalContado: 0, falta: 0, sobra: 0 },
+      denominaciones: [10, 20, 50, 100, 200, 500, 1000, 2000, 5000],
       confirm: { activo: false, titulo: '', msg: '', onOk: null },
       prompt: { activo: false, titulo: '', msg: '', placeholder: '', type: 'text', value: '', onOk: null },
       toast: { show: false, msg: '', type: 'ok', accionTxt: '', accionFn: null, timer: null },
@@ -1865,6 +1915,8 @@ export default {
     },
 
     sociosActivos() { return this.socios.filter(s => s.activo !== false); },
+    aportesSinSocio() { return this.capital.filter(x => !x.socioId); },
+    aportesSinSocioTotal() { return m(this.aportesSinSocio.reduce((s, x) => s + n(x.monto), 0)); },
     sumaPorcentajes() { return m(this.sociosActivos.reduce((s, x) => s + n(x.porcentaje), 0)); },
     totalDistribuido() { return m(this.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
     distribucionesOrdenadas() { return this.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
@@ -2231,14 +2283,20 @@ export default {
       const inv = this.carrito.filter(it => n(it.cant) <= 0);
       if (inv.length) return this.toastMsg('Todas las cantidades deben ser > 0', 'bad');
       this.cobroModal.total = this.totalCarrito;
-      this.cobroModal.recibido = '';
-      this.cobroModal.vuelto = 0;
+      this.cobroModal.calcAbierta = false;
+      this.cobroModal.billetes = {};
+      this.cobroModal.totalContado = 0;
+      this.cobroModal.falta = 0;
+      this.cobroModal.sobra = 0;
       this.cobroModal.activo = true;
     },
 
-    calcVuelto() {
-      const rec = n(this.cobroModal.recibido);
-      this.cobroModal.vuelto = rec > 0 ? m(rec - this.cobroModal.total) : 0;
+    calcBilletes() {
+      const contado = this.denominaciones.reduce((s, d) => s + d * (n(this.cobroModal.billetes[d]) || 0), 0);
+      this.cobroModal.totalContado = m(contado);
+      const diff = m(contado - this.cobroModal.total);
+      this.cobroModal.falta = diff < 0 ? Math.abs(diff) : 0;
+      this.cobroModal.sobra = diff > 0 ? diff : 0;
     },
 
     async procesarVenta() {
@@ -2594,11 +2652,11 @@ export default {
     async registrarAporte() {
       const monto = n(this.aporteForm.monto);
       if (monto <= 0) return this.toastMsg('Monto inválido', 'bad');
-      await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '' });
+      await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
       const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
       if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar(['asientos']); }
-      this.aporteForm = { monto: '', nota: '' };
+      this.aporteForm = { monto: '', nota: '', socioId: '' };
       this.aporteAbierto = false;
       this.toastMsg('Aporte registrado');
     },
@@ -3063,6 +3121,35 @@ export default {
     },
 
 // ===== SOCIOS =====
+    aportesDeSocio(sid) {
+      return this.capital.filter(x => x.socioId === sid);
+    },
+    totalAportesSocio(sid) {
+      return m(this.aportesDeSocio(sid).reduce((s, x) => s + n(x.monto), 0));
+    },
+    asignarAportesViejos() {
+      const sid = this.migrarSocioId;
+      if (!sid) return this.toastMsg('Elige un socio primero', 'bad');
+      const sinAsignar = this.aportesSinSocio;
+      if (!sinAsignar.length) return this.toastMsg('No hay aportes sin asignar', 'warn');
+      const socio = this.socios.find(x => x.id === sid);
+      if (!socio) return;
+      const total = this.aportesSinSocioTotal;
+      this.confirm = {
+        activo: true,
+        titulo: 'Asignar aportes',
+        msg: 'Asignar ' + sinAsignar.length + ' aporte(s) por ' + fmt(total) + ' a ' + socio.nombre + '?',
+        onOk: async () => {
+          try {
+            const actualizados = sinAsignar.map(x => Object.assign({}, x, { socioId: sid }));
+            await db.capital.bulkPut(actualizados.map(x => clean(x)));
+            await this.recargar(['capital']);
+            this.migrarSocioId = '';
+            this.toastMsg('Asignados ' + actualizados.length + ' aportes');
+          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+        }
+      };
+    },
     totalPorSocio(sid) {
       return m(this.distribuciones.filter(d => d.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
     },
