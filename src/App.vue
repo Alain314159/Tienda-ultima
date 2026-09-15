@@ -105,11 +105,6 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="det" style="font-size:.78rem;color:var(--mut)">
-            Última actividad: <b style="color:var(--txt)">{{ ultimaActividad }}</b>
-          </div>
-        </div>
       </section>
 
       <!-- ==================== VENTAS ==================== -->
@@ -167,7 +162,9 @@
               <icon name="trash" :size="14" :color="mutColor"></icon> Limpiar carrito
             </button>
           </div>
-          <div v-if="!carrito.length && !focusVenta" class="empty">Toca el buscador y agrega productos al carrito</div>
+          <div v-if="!carrito.length && !focusVenta" class="det" style="text-align:center;font-size:.75rem;color:var(--mut);padding:.4rem 0">
+            Toca el buscador para agregar productos
+          </div>
         </div>
 
         <div class="card">
@@ -538,17 +535,29 @@
         <div class="card">
           <div class="card-title"><icon name="file" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cuadre por Período</div>
           <div class="grid2">
-            <input v-model="rep.fechaInicio" type="date" @input="rep.isoInicio = null; rep.isoFin = null">
-            <input v-model="rep.fechaFin" type="date" @input="rep.isoInicio = null; rep.isoFin = null">
+            <input v-model="rep.fechaInicio" type="date" @input="rep.isoInicio = null; rep.isoFin = null; rep.periodoActivo = null">
+            <input v-model="rep.fechaFin" type="date" @input="rep.isoInicio = null; rep.isoFin = null; rep.periodoActivo = null">
           </div>
           <div class="grid2" style="margin-bottom:.5rem">
-            <button class="btn ghost" style="margin-bottom:0;font-size:.72rem"
+            <button class="btn" :class="rep.periodoActivo === 'hoy' ? 'pri' : 'ghost'" style="margin-bottom:0;font-size:.72rem"
               @click="setHoy()">Hoy</button>
-            <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="setMesActual()">Este mes</button>
+            <button class="btn" :class="rep.periodoActivo === 'mes' ? 'pri' : 'ghost'" style="margin-bottom:0;font-size:.72rem"
+              @click="setMesActual()">Este mes</button>
           </div>
-          <button class="btn ghost" style="margin-bottom:.5rem;font-size:.72rem" @click="setPeriodoActual()">
-            Período actual (desde {{ fmtFecha(cfg.periodoInicio) }})
+          <button class="btn" :class="rep.periodoActivo === 'actual' ? 'pri' : 'ghost'" style="margin-bottom:.5rem;font-size:.72rem" @click="setPeriodoActual()">
+            Periodo actual (desde {{ fmtFecha(cfg.periodoInicio) }})
           </button>
+          <div v-if="cierresOrdenados.length" style="margin-bottom:.7rem">
+            <div class="det" style="font-size:.72rem;color:var(--mut);margin-bottom:.35rem">Periodos cerrados anteriores:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+              <button v-for="c in cierresOrdenados.slice(0, 6)" :key="c.id"
+                class="btn" :class="rep.periodoActivo === c.id ? 'pri' : 'ghost'"
+                style="width:auto;padding:.35rem .7rem;font-size:.68rem;margin:0"
+                @click="setPeriodoCierre(c)">
+                {{ c.periodo }}
+              </button>
+            </div>
+          </div>
           <button class="btn pri" @click="generarReporte()">
             <icon name="search" :size="16" color="#fff"></icon> Generar Cuadre
           </button>
@@ -770,7 +779,7 @@
       </section>
       <!-- ==================== GASTOS ==================== -->
       <section v-show="sec === 'gastos'" class="fade-up">
-        <div class="balance neg">
+        <div class="balance gastos-bal">
           <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Gastos del periodo</div>
           <div class="val">{{ fmt(gastosOpPeriodo) }}</div>
           <div class="sub">Acumulado: {{ fmt(gastosTotalAcumulado) }} · {{ gastos.length }} registro(s)</div>
@@ -1165,16 +1174,9 @@
       <div class="modal-box">
         <div class="modal-title"><icon name="settings" :size="20"></icon> Ajustes</div>
 
-        <div class="set-group">Apariencia</div>
+        <div class="set-group">Tienda</div>
         <div class="set-row">
-          <span class="lbl"><icon name="moon" :size="18"></icon> Modo oscuro</span>
-          <label class="switch">
-            <input type="checkbox" v-model="cfg.tema" true-value="dark" false-value="light" @change="toggleTema">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="set-row">
-          <span class="lbl"><icon name="store" :size="18"></icon> Tienda</span>
+          <span class="lbl"><icon name="store" :size="18"></icon> Nombre de tienda</span>
           <input v-model="cfg.nombre" type="text" style="width:auto;flex:1;margin:0;padding:.4rem .6rem" @change="guardarCfg">
         </div>
 
@@ -1535,7 +1537,8 @@ export default {
         fechaFin: new Date().toISOString().split('T')[0],
         isoInicio: null,
         isoFin: null,
-        resultado: null
+        resultado: null,
+        periodoActivo: null
       },
 
       cobroModal: { activo: false, total: 0, recibido: '', vuelto: 0 },
@@ -1889,12 +1892,13 @@ export default {
 
       // 1. Caja negativa
       if (this.saldoCaja < -0.01) {
-        add({ nivel: 'alta', icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'caja', clave: 'caja-negativa' });
+        const nivel = this.saldoCaja < -1000 ? 'alta' : 'media';
+        add({ nivel, icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'caja', clave: 'caja-negativa' });
       }
 
       // 2. Ventas bajo costo
       const ventasBajoCosto = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d)
-        .flatMap(v => v.items.filter(it => it.ganancia < 0).map(it => ({ venta: v, item: it })));
+        .flatMap(v => v.items.filter(it => n(it.ganancia) < -0.01).map(it => ({ venta: v, item: it })));
       if (ventasBajoCosto.length > 0) {
         const totalPerdido = m(ventasBajoCosto.reduce((s, x) => s + n(x.item.ganancia), 0));
         add({ nivel: 'alta', icono: 'trend', titulo: ventasBajoCosto.length + ' venta(s) bajo costo', detalle: 'Perdida: ' + fmt(totalPerdido), sec: 'ventas', clave: 'ventas-bajo-costo-' + ventasBajoCosto.length });
@@ -1922,30 +1926,41 @@ export default {
 
       // 5. Faltantes repetidos
       const faltantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d);
-      if (faltantes.length >= n(this.cfg.umbralFaltantesMes || 2)) {
+      if (faltantes.length >= n(this.cfg.umbralFaltantesMes || 3)) {
         const total = m(faltantes.reduce((s, f) => s + n(f.monto), 0));
         add({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'faltantes-' + faltantes.length });
       }
 
       // 6. Compras con costo elevado
       this.productos.filter(p => !p.archivado).forEach(p => {
-        const comprasProd = this.compras.filter(c => c.productoId === p.id).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-        if (comprasProd.length < 2) return;
+        const comprasProd = this.compras.filter(c => c.productoId === p.id && !c.anulada).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+        if (comprasProd.length < 3) return;
         const ult = n(comprasProd[0].costo);
-        const prom = comprasProd.slice(1, 6).reduce((s, c) => s + n(c.costo), 0) / Math.min(comprasProd.length - 1, 5);
-        if (prom > 0 && ult > prom * 1.5) {
+        const ultFecha = new Date(comprasProd[0].fecha);
+        if (ultFecha < hace30d) return;
+        const previas = comprasProd.slice(1, 6);
+        const prom = previas.reduce((s, c) => s + n(c.costo), 0) / previas.length;
+        if (prom > 0.01 && ult > prom * 1.3) {
           add({ nivel: 'baja', icono: 'bag', titulo: p.nombre + ': compra ' + ((ult/prom - 1) * 100).toFixed(0) + '% mas caro', detalle: fmt(ult) + ' vs ' + fmt(prom) + ' promedio', sec: 'compras', refId: comprasProd[0].id, clave: 'compra-cara-' + comprasProd[0].id });
         }
       });
 
       // 7. Ventas anuladas recientes
       const anuladas30 = this.ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d);
-      if (anuladas30.length > 3) {
+      if (anuladas30.length >= 5) {
         add({ nivel: 'baja', icono: 'x', titulo: anuladas30.length + ' ventas anuladas en 30 dias', detalle: 'Revisar historial', sec: 'ventas', clave: 'anuladas-' + anuladas30.length });
       }
 
       // 8. Productos sin movimiento con stock
-      const sinMov = this.productos.filter(p => !p.archivado && this.stock(p.id) > 0 && !this.ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id)));
+      const sinMov = this.productos.filter(p => {
+        if (p.archivado) return false;
+        const stock = this.stock(p.id);
+        if (stock <= 0) return false;
+        const fechaCompra = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
+        if (fechaCompra && fechaCompra > umbralSinMov) return false;
+        const ventasRecientes = this.ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id));
+        return !ventasRecientes;
+      });
       sinMov.forEach(p => {
         add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': sin movimiento', detalle: 'Stock ' + fmtCant(this.stock(p.id)) + ', sin ventas en ' + (this.cfg.umbralSinMovimientoDias || 60) + ' dias', sec: 'productos', refId: p.id, clave: 'sin-mov-' + p.id });
       });
@@ -1956,6 +1971,43 @@ export default {
       if (diasSinCierre >= n(this.cfg.umbralDiasCierre || 30)) {
         add({ nivel: 'media', icono: 'calendar', titulo: 'Cierre pendiente', detalle: diasSinCierre + ' dias sin cerrar periodo', sec: 'reportes', clave: 'cierre-pendiente' });
       }
+
+      // N2. Ganancia del periodo negativa o muy baja
+      if (this.ventasPeriodo > 100 && this.gananciaNetaPeriodo < 0) {
+        add({ nivel: 'alta', icono: 'trend', titulo: 'Ganancia neta negativa', detalle: 'Periodo actual: ' + fmt(this.gananciaNetaPeriodo), sec: 'contabilidad', clave: 'ganancia-neg-periodo' });
+      } else if (this.ventasPeriodo > 100 && this.margenPeriodo < 3) {
+        add({ nivel: 'media', icono: 'trend', titulo: 'Margen neto muy bajo', detalle: 'Margen: ' + this.margenPeriodo + '%', sec: 'contabilidad', clave: 'margen-bajo-periodo' });
+      }
+
+      // N3. Mermas por valor alto
+      const mermasValorAlto = m(this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= hace30d).reduce((s, a) => s + n(a.costoPerdida), 0));
+      if (mermasValorAlto > 0 && this.ventasPeriodo > 0) {
+        const pctMermas = (mermasValorAlto / this.ventasPeriodo) * 100;
+        if (pctMermas > 5) {
+          add({ nivel: 'media', icono: 'alert', titulo: 'Mermas elevadas', detalle: fmt(mermasValorAlto) + ' (' + pctMermas.toFixed(1) + '% de ventas)', sec: 'inventario', clave: 'mermas-valor-alto' });
+        }
+      }
+
+      // N4. Descuadre contable
+      const cuadreDebe = this.balanzaPorCuenta.reduce((s, b) => s + b.debe, 0);
+      const cuadreHaber = this.balanzaPorCuenta.reduce((s, b) => s + b.haber, 0);
+      if (Math.abs(cuadreDebe - cuadreHaber) > 0.01 && this.asientos.length > 0) {
+        add({ nivel: 'alta', icono: 'alert', titulo: 'Descuadre en libro diario', detalle: 'Debe: ' + fmt(cuadreDebe) + ' · Haber: ' + fmt(cuadreHaber), sec: 'contabilidad', clave: 'descuadre-libro' });
+      }
+
+      // N5. Productos con muchas ventas anuladas
+      const anuladasPorProd = {};
+      this.ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d).forEach(v => {
+        v.items.forEach(it => {
+          anuladasPorProd[it.productoId] = (anuladasPorProd[it.productoId] || 0) + 1;
+        });
+      });
+      Object.keys(anuladasPorProd).forEach(pid => {
+        if (anuladasPorProd[pid] >= 3) {
+          const p = this.productos.find(x => x.id === pid);
+          add({ nivel: 'baja', icono: 'x', titulo: (p ? p.nombre : 'Producto') + ': ventas anuladas frecuentes', detalle: anuladasPorProd[pid] + ' anulaciones en 30 dias', sec: 'ventas', clave: 'anuladas-prod-' + pid });
+        }
+      });
 
       // 10. Backup viejos
       if (this.ultimoBackup && this.ultimoBackup.fecha) {
@@ -1972,9 +2024,10 @@ export default {
         this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d).forEach(v => {
           v.items.forEach(it => {
             const prod = this.productos.find(p => p.id === it.productoId);
-            if (!prod || !prod.precio) return;
+            if (!prod || !prod.precio || n(prod.precio) <= 0) return;
+            if (n(it.precio) <= 0) return;
             const pctDesc = ((n(prod.precio) - n(it.precio)) / n(prod.precio)) * 100;
-            if (pctDesc >= umbralDesc) descAltos.push({ venta: v, item: it, pct: pctDesc });
+            if (pctDesc >= umbralDesc && n(it.cantidad) > 0) descAltos.push({ venta: v, item: it, pct: pctDesc });
           });
         });
         if (descAltos.length > 0) {
@@ -1984,7 +2037,7 @@ export default {
 
       // 12. Sobrantes repetidos de caja
       const sobrantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d);
-      if (sobrantes.length >= n(this.cfg.umbralSobrantesMes || 2)) {
+      if (sobrantes.length >= n(this.cfg.umbralSobrantesMes || 3)) {
         const total = m(sobrantes.reduce((s, f) => s + n(f.monto), 0));
         add({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'sobrantes-' + sobrantes.length });
       }
@@ -1995,7 +2048,7 @@ export default {
         const comprasProd = this.compras.filter(c => c.productoId === p.id && !c.anulada);
         // Si hay lotes pero no hay compras, o hay lotes manuales (ajustes con cantidad > 0)
         const lotesSinCompra = lotesProd.filter(l => !l.compraId || l.compraId.startsWith('aj-'));
-        if (lotesSinCompra.length > 0 && comprasProd.length === 0 && this.stock(p.id) > 0) {
+        if (lotesSinCompra.length > 0 && comprasProd.length === 0 && this.stock(p.id) > 3) {
           add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': stock sin compra registrada', detalle: lotesSinCompra.length + ' lote(s) por ajuste', sec: 'productos', refId: p.id, clave: 'stock-sin-compra-' + p.id });
         }
       });
@@ -2620,6 +2673,17 @@ export default {
       this.rep.fechaInicio = this.rep.fechaFin = new Date().toISOString().split('T')[0];
       this.rep.isoInicio = null;
       this.rep.isoFin = null;
+      this.rep.periodoActivo = 'hoy';
+    },
+
+    setPeriodoCierre(c) {
+      const ini = new Date(c.periodoInicio || c.fechaCierre);
+      const fin = new Date(c.periodoFin || c.fechaCierre);
+      this.rep.fechaInicio = ini.toISOString().split('T')[0];
+      this.rep.fechaFin = fin.toISOString().split('T')[0];
+      this.rep.isoInicio = ini.toISOString();
+      this.rep.isoFin = fin.toISOString();
+      this.rep.periodoActivo = c.id;
     },
 
     setMesActual() {
@@ -2629,6 +2693,7 @@ export default {
       this.rep.fechaFin = now.toISOString().split('T')[0];
       this.rep.isoInicio = null;
       this.rep.isoFin = null;
+      this.rep.periodoActivo = 'mes';
     },
 
     setPeriodoActual() {
@@ -2636,6 +2701,7 @@ export default {
       this.rep.fechaFin = new Date().toISOString().split('T')[0];
       this.rep.isoInicio = this.cfg.periodoInicio;
       this.rep.isoFin = new Date().toISOString();
+      this.rep.periodoActivo = 'actual';
     },
 
     generarReporte() {
