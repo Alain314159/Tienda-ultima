@@ -171,13 +171,46 @@
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Historial de Ventas</div>
           <div class="search"><input v-model="busqHist" type="text" placeholder="Buscar en historial..."></div>
           <div v-if="ventasFiltradas.length === 0" class="empty">Sin ventas</div>
-          <div v-for="v in ventasFiltradas" :key="v.id" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
-            <div class="info">
-              <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad) + (x.unidad ? (' ' + x.unidad) : '')).join(', ') }}</div>
-              <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
+
+          <div v-if="ventasPorPeriodo.actual.length" class="hist-grupo">
+            <div class="hist-head">
+              <span class="badge ok">ACTUAL</span>
+              <span class="hist-titulo">Periodo actual</span>
+              <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
-            <button v-if="!v.anulada" class="link-btn" @click="anularVenta(v.id)">Anular</button>
-            <span v-else class="badge arch">ANULADA</span>
+            <div v-for="v in histItemsMostrados(ventasPorPeriodo.actual, 'ventas')" :key="v.id" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
+              <div class="info">
+                <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
+                <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
+              </div>
+              <button v-if="!v.anulada" class="link-btn" @click="anularVenta(v.id)">Anular</button>
+              <span v-else class="badge arch">ANULADA</span>
+            </div>
+            <div v-if="histHayMas(ventasPorPeriodo.actual, 'ventas')" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas ({{ histRestantes(ventasPorPeriodo.actual, 'ventas') }} restantes)</button>
+            </div>
+          </div>
+
+          <div v-for="g in ventasPorPeriodo.cerrados" :key="g.cierre.id" class="hist-grupo hist-cerrado">
+            <div class="hist-head hist-head-click" @click="histToggle('ventas', g.cierre.id)">
+              <span class="badge arch">CERRADO</span>
+              <span class="hist-titulo">{{ g.cierre.periodo }}</span>
+              <span class="hist-count">{{ g.items.length }}</span>
+              <span class="chev" :class="{ open: histAbierto('ventas', g.cierre.id) }">
+                <icon name="chevron" :size="14" :color="mutColor"></icon>
+              </span>
+            </div>
+            <div v-if="histAbierto('ventas', g.cierre.id)">
+              <div v-for="v in histItemsMostrados(g.items, 'ventas')" :key="v.id" class="item" :class="{ anulada: v.anulada }">
+                <div class="info">
+                  <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
+                  <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
+                </div>
+              </div>
+              <div v-if="histHayMas(g.items, 'ventas')" class="hist-mas">
+                <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -224,24 +257,56 @@
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Historial de Compras</div>
           <div v-if="comprasOrdenadas.length === 0" class="empty">Sin compras</div>
-          <div v-for="c in comprasOrdenadas" :key="c.id" class="item" :id="'ref-' + c.id">
-            <div class="info">
-              <div class="nm"><icon name="bag" :size="14"></icon> {{ c.productoNombre }}</div>
-              <div class="det">{{ fmtFH(c.fecha) }} · {{ fmtCant(c.cantidad) }} {{ c.unidad || '' }} × {{ fmt(c.costo) }}</div>
+
+          <div v-if="comprasPorPeriodo.actual.length" class="hist-grupo">
+            <div class="hist-head">
+              <span class="badge ok">ACTUAL</span>
+              <span class="hist-titulo">Periodo actual</span>
+              <span class="hist-count">{{ comprasPorPeriodo.actual.length }}</span>
             </div>
-            <div class="act-btns">
-              <b class="neg">{{ fmt(c.total) }}</b>
-              <template v-if="loteSinVentas(c.id)">
-                <button class="icon-btn" @click="editarCompra(c.id)" aria-label="Editar">
-                  <icon name="edit" :size="15" :color="txtColor"></icon>
-                </button>
-                <button class="icon-btn bad" @click="eliminarCompra(c.id)" aria-label="Eliminar">
-                  <icon name="trash" :size="15" color="#dc2626"></icon>
-                </button>
-              </template>
-              <span v-else class="lock" title="Con ventas: no editable">
-                <icon name="lock" :size="15" :color="mutColor"></icon>
+            <div v-for="c in histItemsMostrados(comprasPorPeriodo.actual, 'compras')" :key="c.id" class="item" :id="'ref-' + c.id">
+              <div class="info">
+                <div class="nm"><icon name="bag" :size="14"></icon> {{ c.productoNombre }}</div>
+                <div class="det">{{ fmtFH(c.fecha) }} · {{ fmtCant(c.cantidad) }} × {{ fmt(c.costo) }}</div>
+              </div>
+              <div class="act-btns">
+                <b class="neg">{{ fmt(c.total) }}</b>
+                <template v-if="loteSinVentas(c.id)">
+                  <button class="icon-btn" @click="editarCompra(c.id)" aria-label="Editar">
+                    <icon name="edit" :size="15" :color="txtColor"></icon>
+                  </button>
+                  <button class="icon-btn bad" @click="eliminarCompra(c.id)" aria-label="Eliminar">
+                    <icon name="trash" :size="15" color="#dc2626"></icon>
+                  </button>
+                </template>
+                <span v-else class="lock"><icon name="lock" :size="15" :color="mutColor"></icon></span>
+              </div>
+            </div>
+            <div v-if="histHayMas(comprasPorPeriodo.actual, 'compras')" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('compras')">Mostrar 20 mas ({{ histRestantes(comprasPorPeriodo.actual, 'compras') }} restantes)</button>
+            </div>
+          </div>
+
+          <div v-for="g in comprasPorPeriodo.cerrados" :key="g.cierre.id" class="hist-grupo hist-cerrado">
+            <div class="hist-head hist-head-click" @click="histToggle('compras', g.cierre.id)">
+              <span class="badge arch">CERRADO</span>
+              <span class="hist-titulo">{{ g.cierre.periodo }}</span>
+              <span class="hist-count">{{ g.items.length }}</span>
+              <span class="chev" :class="{ open: histAbierto('compras', g.cierre.id) }">
+                <icon name="chevron" :size="14" :color="mutColor"></icon>
               </span>
+            </div>
+            <div v-if="histAbierto('compras', g.cierre.id)">
+              <div v-for="c in histItemsMostrados(g.items, 'compras')" :key="c.id" class="item">
+                <div class="info">
+                  <div class="nm"><icon name="bag" :size="14"></icon> {{ c.productoNombre }}</div>
+                  <div class="det">{{ fmtFH(c.fecha) }} · {{ fmtCant(c.cantidad) }} × {{ fmt(c.costo) }}</div>
+                </div>
+                <b class="neg">{{ fmt(c.total) }}</b>
+              </div>
+              <div v-if="histHayMas(g.items, 'compras')" class="hist-mas">
+                <button class="link-btn" @click="histMostrarMas('compras')">Mostrar 20 mas</button>
+              </div>
             </div>
           </div>
         </div>
@@ -252,21 +317,10 @@
         <div class="card">
           <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto</div>
           <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto">
-          <input v-model="prodForm.codigo" type="text" placeholder="Código (opcional)">
           <div class="grid2">
             <input v-model="prodForm.precio" type="number" inputmode="decimal" step="0.01" placeholder="Precio venta">
             <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín.">
           </div>
-          <div class="info-box" style="margin-bottom:.5rem">
-            Define la unidad de medida si vendes por peso/volumen (ej: kg, lb, gr, litro).
-            Si es un paquete o unidad suelta, pon "u" o déjalo vacío.
-          </div>
-          <input v-model="prodForm.unidad" type="text" placeholder="Unidad (kg, lb, gr, u, paq)" list="unidades-list">
-          <datalist id="unidades-list">
-            <option value="u"></option><option value="kg"></option><option value="lb"></option>
-            <option value="gr"></option><option value="litro"></option><option value="m"></option>
-            <option value="caja"></option><option value="paq"></option>
-          </datalist>
           <button class="btn pri" @click="guardarProducto()">
             <icon name="check" :size="16" color="#fff"></icon>
             {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
@@ -290,11 +344,10 @@
               <div class="info">
                 <div class="nm">
                   {{ p.nombre }}
-                  <span v-if="p.codigo" style="color:var(--mut);font-weight:400;font-size:.72rem">({{ p.codigo }})</span>
                 </div>
                 <div class="stock-line">
                   <span class="badge" :class="badgeStock(p)">{{ txtBadge(p) }}</span>
-                  <span class="stock-num">Stock: {{ fmtCant(stock(p.id)) }} {{ p.unidad || '' }}</span>
+                  <span class="stock-num">Stock: {{ fmtCant(stock(p.id)) }}</span>
                   <span style="color:var(--mut);font-size:.72rem">{{ fmt(p.precio) }}</span>
                   <span v-if="lotesDeProducto(p.id).length" class="chev" :class="{ open: prodExpandido[p.id] }">
                     <icon name="chevron" :size="14" :color="mutColor"></icon>
@@ -463,12 +516,46 @@
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Movimientos recientes</div>
           <div v-if="movimientosRecientes.length === 0" class="empty">Sin movimientos</div>
-          <div v-for="m in movimientosRecientes" :key="m.id" class="item">
-            <div class="info">
-              <div class="nm">{{ m.concepto }}</div>
-              <div class="det">{{ fmtFH(m.fecha) }}</div>
+
+          <div v-if="cajaPorPeriodo.actual.length" class="hist-grupo">
+            <div class="hist-head">
+              <span class="badge ok">ACTUAL</span>
+              <span class="hist-titulo">Periodo actual</span>
+              <span class="hist-count">{{ cajaPorPeriodo.actual.length }}</span>
             </div>
-            <b :class="m.tipo === 'ingreso' ? 'pos' : 'neg'">{{ m.tipo === 'ingreso' ? '+' : '-' }}{{ fmt(m.monto) }}</b>
+            <div v-for="m in histItemsMostrados(cajaPorPeriodo.actual, 'caja')" :key="m.id" class="item">
+              <div class="info">
+                <div class="nm">{{ m.concepto }}</div>
+                <div class="det">{{ fmtFH(m.fecha) }}</div>
+              </div>
+              <b :class="m.tipo === 'ingreso' ? 'pos' : 'neg'">{{ m.tipo === 'ingreso' ? '+' : '-' }}{{ fmt(m.monto) }}</b>
+            </div>
+            <div v-if="histHayMas(cajaPorPeriodo.actual, 'caja')" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('caja')">Mostrar 20 mas</button>
+            </div>
+          </div>
+
+          <div v-for="g in cajaPorPeriodo.cerrados" :key="g.cierre.id" class="hist-grupo hist-cerrado">
+            <div class="hist-head hist-head-click" @click="histToggle('caja', g.cierre.id)">
+              <span class="badge arch">CERRADO</span>
+              <span class="hist-titulo">{{ g.cierre.periodo }}</span>
+              <span class="hist-count">{{ g.items.length }}</span>
+              <span class="chev" :class="{ open: histAbierto('caja', g.cierre.id) }">
+                <icon name="chevron" :size="14" :color="mutColor"></icon>
+              </span>
+            </div>
+            <div v-if="histAbierto('caja', g.cierre.id)">
+              <div v-for="m in histItemsMostrados(g.items, 'caja')" :key="m.id" class="item">
+                <div class="info">
+                  <div class="nm">{{ m.concepto }}</div>
+                  <div class="det">{{ fmtFH(m.fecha) }}</div>
+                </div>
+                <b :class="m.tipo === 'ingreso' ? 'pos' : 'neg'">{{ m.tipo === 'ingreso' ? '+' : '-' }}{{ fmt(m.monto) }}</b>
+              </div>
+              <div v-if="histHayMas(g.items, 'caja')" class="hist-mas">
+                <button class="link-btn" @click="histMostrarMas('caja')">Mostrar 20 mas</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -852,19 +939,53 @@
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> Historial</div>
           <div v-if="gastosOrdenados.length === 0" class="empty">Sin gastos registrados</div>
-          <div v-for="g in gastosOrdenados" :key="g.id" class="item">
-            <div class="info">
-              <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
-              <div class="det">{{ fmtFH(g.fecha) }} · {{ g.metodoPago || 'efectivo' }}{{ g.saleDeCaja ? ' · Caja' : ' · Sin caja' }}{{ g.nota ? ' · ' + g.nota : '' }}</div>
+
+          <div v-if="gastosPorPeriodo.actual.length" class="hist-grupo">
+            <div class="hist-head">
+              <span class="badge ok">ACTUAL</span>
+              <span class="hist-titulo">Periodo actual</span>
+              <span class="hist-count">{{ gastosPorPeriodo.actual.length }}</span>
             </div>
-            <div class="act-btns">
-              <b class="neg">-{{ fmt(g.monto) }}</b>
-              <button class="icon-btn" @click="editarGasto(g.id)" aria-label="Editar">
-                <icon name="edit" :size="15" :color="txtColor"></icon>
-              </button>
-              <button class="icon-btn bad" @click="eliminarGasto(g.id)" aria-label="Eliminar">
-                <icon name="trash" :size="15" color="#dc2626"></icon>
-              </button>
+            <div v-for="g in histItemsMostrados(gastosPorPeriodo.actual, 'gastos')" :key="g.id" class="item">
+              <div class="info">
+                <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
+                <div class="det">{{ fmtFH(g.fecha) }} · {{ g.saleDeCaja ? 'Caja' : 'Sin caja' }}</div>
+              </div>
+              <div class="act-btns">
+                <b class="neg">-{{ fmt(g.monto) }}</b>
+                <button class="icon-btn" @click="editarGasto(g.id)" aria-label="Editar">
+                  <icon name="edit" :size="15" :color="txtColor"></icon>
+                </button>
+                <button class="icon-btn bad" @click="eliminarGasto(g.id)" aria-label="Eliminar">
+                  <icon name="trash" :size="15" color="#dc2626"></icon>
+                </button>
+              </div>
+            </div>
+            <div v-if="histHayMas(gastosPorPeriodo.actual, 'gastos')" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('gastos')">Mostrar 20 mas ({{ histRestantes(gastosPorPeriodo.actual, 'gastos') }} restantes)</button>
+            </div>
+          </div>
+
+          <div v-for="g in gastosPorPeriodo.cerrados" :key="g.cierre.id" class="hist-grupo hist-cerrado">
+            <div class="hist-head hist-head-click" @click="histToggle('gastos', g.cierre.id)">
+              <span class="badge arch">CERRADO</span>
+              <span class="hist-titulo">{{ g.cierre.periodo }}</span>
+              <span class="hist-count">{{ g.items.length }}</span>
+              <span class="chev" :class="{ open: histAbierto('gastos', g.cierre.id) }">
+                <icon name="chevron" :size="14" :color="mutColor"></icon>
+              </span>
+            </div>
+            <div v-if="histAbierto('gastos', g.cierre.id)">
+              <div v-for="g in histItemsMostrados(g.items, 'gastos')" :key="g.id" class="item">
+                <div class="info">
+                  <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
+                  <div class="det">{{ fmtFH(g.fecha) }}</div>
+                </div>
+                <b class="neg">-{{ fmt(g.monto) }}</b>
+              </div>
+              <div v-if="histHayMas(g.items, 'gastos')" class="hist-mas">
+                <button class="link-btn" @click="histMostrarMas('gastos')">Mostrar 20 mas</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1566,7 +1687,7 @@ export default {
       focusCompra: false,
       compraForm: { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', unidad: '' },
 
-      prodForm: { editId: '', nombre: '', codigo: '', precio: '', stockMin: '5', unidad: '' },
+      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5' },
       busqProd: '',
       mostrarArchivados: false,
 
@@ -1603,7 +1724,17 @@ export default {
       _chart: null,
       _notifTimer: null,
       umbralesAbierto: false,
-      notifAvanzadoAbierto: false
+      notifAvanzadoAbierto: false,
+      porPagina: 20,
+      historial: {
+        ventas: { pagina: 1, abiertos: {} },
+        compras: { pagina: 1, abiertos: {} },
+        gastos: { pagina: 1, abiertos: {} },
+        caja: { pagina: 1, abiertos: {} },
+        ajustes: { pagina: 1, abiertos: {} },
+        distribuciones: { pagina: 1, abiertos: {} },
+        asientos: { pagina: 1, abiertos: {} }
+      }
     };
   },
 
@@ -1744,7 +1875,7 @@ export default {
       let list = this.productos;
       if (!this.mostrarArchivados) list = list.filter(p => !p.archivado);
       const q = this.busqProd.toLowerCase().trim();
-      if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)));
+      if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q));
       return list.sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
 
@@ -1772,6 +1903,34 @@ export default {
         };
       }).filter(g => g.stockTotal > 0 || g.lotes.length > 0)
         .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    },
+
+    ventasPorPeriodo() {
+      return this.agruparHistorial(this.ventasFiltradas, 'fecha');
+    },
+
+    comprasPorPeriodo() {
+      return this.agruparHistorial(this.comprasOrdenadas, 'fecha');
+    },
+
+    gastosPorPeriodo() {
+      return this.agruparHistorial(this.gastosOrdenados, 'fecha');
+    },
+
+    cajaPorPeriodo() {
+      return this.agruparHistorial(this.movimientosRecientes, 'fecha');
+    },
+
+    ajustesPorPeriodo() {
+      return this.agruparHistorial(this.ajustesRecientes, 'fecha');
+    },
+
+    distribucionesPorPeriodo() {
+      return this.agruparHistorial(this.distribucionesOrdenadas, 'fecha');
+    },
+
+    asientosPorPeriodo() {
+      return this.agruparHistorial(this.asientosFiltrados, 'fecha');
     },
 
     ajustesRecientes() {
@@ -2219,6 +2378,84 @@ export default {
       this.cuadreExpandido[id] = !this.cuadreExpandido[id];
     },
 
+    // ===== HISTORIAL PAGINADO POR PERIODOS =====
+    agruparHistorial(items, keyFecha = 'fecha') {
+      const ini = new Date(this.cfg.periodoInicio);
+      const actual = [];
+      const cerrados = [];
+      const sinCierre = [];
+
+      items.forEach(it => {
+        const f = new Date(it[keyFecha]);
+        if (f >= ini) {
+          actual.push(it);
+          return;
+        }
+        const cierre = this.cierres.find(c => {
+          const ci = new Date(c.periodoInicio || c.fechaCierre);
+          const cf = new Date(c.periodoFin || c.fechaCierre);
+          return f >= ci && f < cf;
+        });
+        if (cierre) {
+          let grupo = cerrados.find(g => g.cierre.id === cierre.id);
+          if (!grupo) { grupo = { cierre, items: [] }; cerrados.push(grupo); }
+          grupo.items.push(it);
+        } else {
+          sinCierre.push(it);
+        }
+      });
+
+      if (sinCierre.length) {
+        cerrados.push({ cierre: { id: '__antiguos__', periodo: 'Anteriores al primer cierre', fechaCierre: null }, items: sinCierre });
+      }
+
+      cerrados.sort((a, b) => {
+        const fa = a.cierre.fechaCierre ? new Date(a.cierre.fechaCierre).getTime() : 0;
+        const fb = b.cierre.fechaCierre ? new Date(b.cierre.fechaCierre).getTime() : 0;
+        return fb - fa;
+      });
+
+      return { actual, cerrados };
+    },
+
+    histPag(key) {
+      if (!this.historial[key]) this.historial[key] = { pagina: 1, abiertos: {} };
+      return this.historial[key];
+    },
+
+    histItemsMostrados(items, key) {
+      const h = this.histPag(key);
+      return items.slice(0, h.pagina * this.porPagina);
+    },
+
+    histHayMas(items, key) {
+      const h = this.histPag(key);
+      return items.length > h.pagina * this.porPagina;
+    },
+
+    histRestantes(items, key) {
+      const h = this.histPag(key);
+      return Math.max(0, items.length - h.pagina * this.porPagina);
+    },
+
+    histMostrarMas(key) {
+      this.histPag(key).pagina++;
+    },
+
+    histMostrarMenos(key) {
+      this.histPag(key).pagina = 1;
+    },
+
+    histToggle(key, id) {
+      const h = this.histPag(key);
+      h.abiertos[id] = !h.abiertos[id];
+    },
+
+    histAbierto(key, id) {
+      const h = this.histPag(key);
+      return !!h.abiertos[id];
+    },
+
     // ===== VENTAS =====
     calcFIFO(pid, cant) {
       const lotes = this.lotes
@@ -2488,7 +2725,7 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', codigo: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), unidad: '' };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5) };
     },
 
     async guardarProducto() {
@@ -2496,17 +2733,16 @@ export default {
       const nombre = (p.nombre || '').trim();
       const precio = n(p.precio);
       const min = n(p.stockMin);
-      const unidad = (p.unidad || '').trim();
       if (!nombre) return this.toastMsg('Nombre obligatorio', 'bad');
       if (precio <= 0) return this.toastMsg('Precio debe ser > 0', 'bad');
       const dup = this.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
       if (dup) return this.toastMsg('Ya existe ese nombre', 'bad');
       if (p.editId) {
         const o = this.productos.find(x => x.id === p.editId);
-        await P(db.productos, Object.assign({}, o, { nombre, codigo: (p.codigo || '').trim(), precio, stockMinimo: min, unidad }));
+        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min }));
         this.toastMsg('Producto actualizado');
       } else {
-        await P(db.productos, { id: genId('p'), nombre, codigo: (p.codigo || '').trim(), precio, stockMinimo: min, archivado: false, unidad });
+        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false });
         this.toastMsg('Producto agregado');
       }
       this.resetProd();
@@ -2516,7 +2752,7 @@ export default {
     editarProducto(id) {
       const p = this.productos.find(x => x.id === id);
       if (!p) return;
-      this.prodForm = { editId: id, nombre: p.nombre, codigo: p.codigo || '', precio: String(p.precio), stockMin: String(p.stockMinimo || 5), unidad: p.unidad || '' };
+      this.prodForm = { editId: id, nombre: p.nombre, precio: String(p.precio), stockMin: String(p.stockMinimo || 5) };
       window.scrollTo(0, 0);
     },
 

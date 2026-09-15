@@ -1512,3 +1512,65 @@ input::placeholder, textarea::placeholder {
   font-size: .88rem;
   border-bottom: 1px solid var(--brd);
 }
+
+/* ===== HISTORIAL PAGINADO POR PERIODOS ===== */
+.hist-grupo {
+  margin-bottom: .85rem;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--brd);
+  background: var(--card);
+}
+.hist-grupo.hist-cerrado {
+  background: var(--bg);
+}
+
+.hist-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .65rem .9rem;
+  background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(59,130,246,.03) 100%);
+  border-bottom: 1px solid var(--brd);
+  font-size: .8rem;
+}
+
+.hist-head.hist-head-click {
+  cursor: pointer;
+  transition: background var(--tr);
+}
+.hist-head.hist-head-click:active {
+  background: rgba(59,130,246,.15);
+}
+
+.hist-titulo {
+  font-weight: 800;
+  flex: 1;
+  color: var(--txt);
+  font-size: .82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hist-count {
+  font-weight: 800;
+  font-size: .72rem;
+  color: var(--mut);
+  background: var(--bg);
+  padding: .15rem .5rem;
+  border-radius: 99px;
+  min-width: 2rem;
+  text-align: center;
+}
+
+.hist-mas {
+  padding: .55rem .9rem;
+  text-align: center;
+  border-top: 1px dashed var(--brd);
+  background: var(--card-2);
+}
+
+.hist-grupo.hist-cerrado .hist-head {
+  background: rgba(100,116,139,.08);
+}
