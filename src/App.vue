@@ -484,55 +484,8 @@
           <div class="sub">Capital {{ fmt(capitalTotal) }} · Gan. acum. {{ fmt(gananciasAcumuladas) }}</div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Resumen contable</div>
-          <div class="row"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
-          <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
-          <div class="row total"><span>= CAPITAL</span><span>{{ fmt(capitalTotal) }}</span></div>
-          <div class="row" style="margin-top:.5rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
-          <div class="row"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row total"><span>= ACTIVOS</span><span>{{ fmt(saldoCaja + valorInventario) }}</span></div>
-          <div class="row" style="margin-top:.5rem"><span>Ganancia bruta</span><span>{{ fmt(gananciaBrutaPeriodo) }}</span></div>
-          <div class="row"><span>Gastos operativos</span><span class="neg">-{{ fmt(gastosOpPeriodo) }}</span></div>
-          <div class="row total"><span>= Ganancia neta (período)</span>
-            <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }}</span>
-          </div>
-          <div class="row hl">
-            <span>DISPONIBLE PARA RETIRO</span>
-            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
-          </div>
-        </div>
-
-        <div class="grid2">
-          <button class="btn bad" @click="retiroAbierto = true">
-            <icon name="dollar" :size="16" color="#fff"></icon> Retirar Ganancia
-          </button>
-          <button class="btn ok" @click="aporteAbierto = true">
-            <icon name="plus" :size="16" color="#fff"></icon> Aportar Capital
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Capital Inicial</div>
-          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
-            Actual: <b style="color:var(--txt)">{{ fmt(cfg.capitalInicial || 0) }}</b>
-          </div>
-          <input v-model="capInicialStr" type="number" inputmode="decimal" step="0.01" placeholder="Nuevo capital inicial">
-          <button class="btn pri" @click="guardarCapInicial()">
-            <icon name="check" :size="16" color="#fff"></icon> Guardar Capital Inicial
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="list" :size="18" :color="sec === 'patrimonio' ? '#2196F3' : mutColor"></icon> Historial</div>
-          <div v-if="movPatrimonio.length === 0" class="empty">Sin movimientos</div>
-          <div v-for="m in movPatrimonio" :key="m.id" class="item">
-            <div class="info">
-              <div class="nm">{{ m.tipo }}</div>
-              <div class="det">{{ fmtFH(m.fecha) }}{{ m.nota ? ' · ' + m.nota : '' }}</div>
-            </div>
-            <b :class="m.tipo === 'Retiro' ? 'neg' : 'pos'">{{ m.tipo === 'Retiro' ? '-' : '+' }}{{ fmt(m.monto) }}</b>
-          </div>
+        <div class="info-box">
+          El detalle contable completo esta en <b>Contabilidad</b>. La gestion de capital, aportes y retiros esta en <b>Socios</b>.
         </div>
       </section>
 
@@ -770,6 +723,39 @@
             <icon name="check" :size="16" color="#fff"></icon> Repartir
           </button>
         </div>
+
+        <div class="grid2">
+          <button class="btn bad" @click="retiroAbierto = true">
+            <icon name="dollar" :size="16" color="#fff"></icon> Retirar Ganancia
+          </button>
+          <button class="btn ok" @click="aporteAbierto = true">
+            <icon name="plus" :size="16" color="#fff"></icon> Aportar Capital
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Capital Inicial</div>
+          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
+            Actual: <b style="color:var(--txt)">{{ fmt(cfg.capitalInicial || 0) }}</b>
+          </div>
+          <input v-model="capInicialStr" type="number" inputmode="decimal" step="0.01" placeholder="Nuevo capital inicial">
+          <button class="btn pri" @click="guardarCapInicial()">
+            <icon name="check" :size="16" color="#fff"></icon> Guardar Capital Inicial
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="list" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Historial de capital</div>
+          <div v-if="movPatrimonio.length === 0" class="empty">Sin movimientos</div>
+          <div v-for="m in movPatrimonio" :key="m.id" class="item">
+            <div class="info">
+              <div class="nm">{{ m.tipo }}</div>
+              <div class="det">{{ fmtFH(m.fecha) }}{{ m.nota ? ' · ' + m.nota : '' }}</div>
+            </div>
+            <b :class="m.tipo === 'Retiro' ? 'neg' : 'pos'">{{ m.tipo === 'Retiro' ? '-' : '+' }}{{ fmt(m.monto) }}</b>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Historial de Distribuciones</div>
           <div v-if="distribucionesOrdenadas.length === 0" class="empty">Sin distribuciones</div>
@@ -866,6 +852,25 @@
           <div class="lbl"><icon name="chart" :size="14" color="#fff"></icon> Resultado del periodo</div>
           <div class="val" :style="gananciaNetaPeriodo >= 0 ? '' : 'color:#fca5a5'">{{ fmt(gananciaNetaPeriodo) }}</div>
           <div class="sub">Margen neto: {{ margenNetoPct }}% · Margen bruto: {{ margenBrutoPct }}%</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Resumen contable</div>
+          <div class="row"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
+          <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
+          <div class="row total"><span>= CAPITAL</span><span>{{ fmt(capitalTotal) }}</span></div>
+          <div class="row" style="margin-top:.5rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
+          <div class="row"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
+          <div class="row total"><span>= ACTIVOS</span><span>{{ fmt(saldoCaja + valorInventario) }}</span></div>
+          <div class="row" style="margin-top:.5rem"><span>Ganancia bruta</span><span>{{ fmt(gananciaBrutaPeriodo) }}</span></div>
+          <div class="row"><span>Gastos operativos</span><span class="neg">-{{ fmt(gastosOpPeriodo) }}</span></div>
+          <div class="row total"><span>= Ganancia neta (periodo)</span>
+            <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }}</span>
+          </div>
+          <div class="row hl">
+            <span>DISPONIBLE PARA RETIRO</span>
+            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
+          </div>
         </div>
 
         <div class="card">
