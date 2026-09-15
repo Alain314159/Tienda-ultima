@@ -857,72 +857,21 @@ input::placeholder, textarea::placeholder {
 
 .del-btn:active { transform: scale(.85); }
 
-.qty-row {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  flex-wrap: wrap;
-  margin-top: .5rem;
-}
 
-.qty-row label {
-  font-size: .68rem;
-  color: var(--mut);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  width: 2.8rem;
-}
 
-.qty-input {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  background: var(--card);
-  border: 1.5px solid var(--brd);
-  border-radius: .65rem;
-  overflow: hidden;
-  transition: border-color var(--tr);
-}
+
+
+
 
 .qty-input:focus-within { border-color: var(--pri); }
 
-.qty-input button {
-  background: var(--bg);
-  border: none;
-  width: 2.1rem;
-  height: 2.1rem;
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--pri);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--tr);
-}
 
-.qty-input button:active { background: var(--bg-2); }
 
-.qty-input input {
-  width: 4rem;
-  text-align: center;
-  border: none;
-  border-radius: 0;
-  padding: .45rem 0;
-  margin: 0;
-  font-size: .9rem;
-  background: transparent;
-  font-weight: 700;
-}
 
-.price-input {
-  width: 5.5rem;
-  text-align: center;
-  padding: .45rem;
-  margin: 0;
-  font-weight: 700;
-}
+
+
+
+
 
 .total-box {
   background: linear-gradient(135deg, rgba(34,197,94,.12) 0%, rgba(34,197,94,.06) 100%);
@@ -2047,18 +1996,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 /* ===== CARRITO: LAYOUT FINAL ===== */
-.cart-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: .6rem;
-  margin-top: .55rem;
-  align-items: end;
-}
-.cart-field {
-  display: flex;
-  flex-direction: column;
-  gap: .28rem;
-}
+
+
 .cart-field label {
   font-size: .65rem;
   color: var(--mut);
@@ -2067,65 +2006,12 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   letter-spacing: .05em;
   padding-left: .1rem;
 }
-.cart-field .qty-input {
-  width: 100%;
-  display: flex;
-  height: 2.6rem;
-  border: 1.5px solid var(--brd);
-  border-radius: .65rem;
-  overflow: hidden;
-  background: var(--card);
-}
-.cart-field .qty-input button {
-  background: var(--bg);
-  border: none;
-  width: 2.2rem;
-  height: 100%;
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--pri);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--tr);
-  flex-shrink: 0;
-}
-.cart-field .qty-input button:active { background: var(--bg-2); }
-.cart-field .qty-input input {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-  border: none;
-  border-radius: 0;
-  padding: .3rem .2rem;
-  margin: 0;
-  font-size: .95rem;
-  font-weight: 800;
-  text-align: center;
-  background: transparent;
-  color: var(--txt);
-  outline: none;
-}
-.cart-field .price-input {
-  width: 100%;
-  height: 2.6rem;
-  padding: .55rem .7rem;
-  font-weight: 800;
-  border: 1.5px solid var(--brd);
-  border-radius: .65rem;
-  background: var(--card);
-  color: var(--txt);
-  text-align: center;
-  font-size: .95rem;
-  margin: 0;
-  outline: none;
-}
-.cart-field .price-input:focus,
-.cart-field .qty-input:focus-within {
-  border-color: var(--pri);
-  box-shadow: 0 0 0 3px rgba(59,130,246,.14);
-}
+
+
+
+
+
+
 
 /* ===== LINEA TOTAL DEL ITEM ===== */
 .cart-total-line {
@@ -2320,4 +2206,94 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
+}
+
+
+/* ===== CARRITO DEFINITIVO ===== */
+.cart-controls {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: .6rem !important;
+  margin-top: .55rem !important;
+  align-items: end !important;
+}
+.cart-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .28rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.cart-field > label {
+  font-size: .65rem !important;
+  color: var(--mut) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .05em !important;
+  padding-left: .1rem !important;
+}
+.cart-field .qty-input {
+  width: 100% !important;
+  display: flex !important;
+  height: 2.6rem !important;
+  border: 1.5px solid var(--brd) !important;
+  border-radius: .65rem !important;
+  overflow: hidden !important;
+  background: var(--card) !important;
+  box-sizing: border-box !important;
+}
+.cart-field .qty-input button {
+  background: var(--bg) !important;
+  border: none !important;
+  width: 2.2rem !important;
+  height: 100% !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  color: var(--pri) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.cart-field .qty-input input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: .3rem .2rem !important;
+  margin: 0 !important;
+  font-size: .95rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  background: transparent !important;
+  color: var(--txt) !important;
+  outline: none !important;
+}
+.cart-field .price-input {
+  width: 100% !important;
+  height: 2.6rem !important;
+  padding: .55rem .7rem !important;
+  font-weight: 800 !important;
+  border: 1.5px solid var(--brd) !important;
+  border-radius: .65rem !important;
+  background: var(--card) !important;
+  color: var(--txt) !important;
+  text-align: center !important;
+  font-size: .95rem !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  -moz-appearance: textfield !important;
+}
+.cart-field .price-input::-webkit-outer-spin-button,
+.cart-field .price-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+.cart-field .price-input:focus {
+  border-color: var(--pri) !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.14) !important;
 }

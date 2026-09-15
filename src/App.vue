@@ -1911,7 +1911,7 @@
     <!-- ONBOARDING -->
     <Onboarding
       :activo="tutorialActivo"
-      :pasos="pasosTutorial"
+      :pasos="pasosTutorial()"
       @cerrar="cerrarTutorial"
       @ir="onTutorialIr"
       @accion="onTutorialAccion"
