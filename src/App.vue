@@ -1491,26 +1491,13 @@
     />
 
     <!-- MORE MENU SHEET -->
-    <div v-if="masAbierto" class="overlay no-print" @click="masAbierto = false"></div>
-    <div v-if="masAbierto" class="sheet no-print">
-      <div class="handle"></div>
-      <div class="sheet-group">Operaciones</div>
-      <div class="sheet-grid">
-        <button class="sheet-btn" :class="{ activo: sec === 'productos' }" @click="ir('productos')"><icon name="tag" :size="22"></icon>Productos</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'caja' }" @click="ir('caja')"><icon name="wallet" :size="22"></icon>Caja</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'gastos' }" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Gastos</button>
-      </div>
-
-      <div class="sheet-group">Finanzas y reportes</div>
-      <div class="sheet-grid">
-        <button class="sheet-btn" :class="{ activo: sec === 'contabilidad' }" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'auditoria' }" @click="ir('auditoria')"><icon name="check" :size="22"></icon>Auditoria</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'patrimonio' }" @click="ir('patrimonio')"><icon name="dollar" :size="22"></icon>Patrimonio</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
-      </div>
-
-    </div>
+    <SheetMas
+      :abierto="masAbierto"
+      :sec="sec"
+      @cerrar="masAbierto = false"
+      @ir="ir"
+      @abrir-ajustes="masAbierto = false; ajustesAbierto = true"
+    />
 
     <!-- ==================== SETTINGS MODAL ==================== -->
     <div v-if="ajustesAbierto" class="modal no-print" @click.self="ajustesAbierto = false">
@@ -1709,73 +1696,40 @@
       </div>
     </div>
 
-    <!-- ==================== CONFIRM MODAL ==================== -->
-    <div v-if="confirm.activo" class="modal no-print">
-      <div class="modal-box">
-        <div class="modal-title">{{ confirm.titulo }}</div>
-        <p style="margin-bottom:1rem;font-size:.9rem;white-space:pre-line">{{ confirm.msg }}</p>
-        <div class="grid2">
-          <button class="btn ok" @click="okConfirm">Confirmar</button>
-          <button class="btn ghost" @click="confirm.activo = false">Cancelar</button>
-        </div>
-      </div>
-    </div>
+    <!-- CONFIRM MODAL -->
+    <ModalConfirm
+      :activo="confirm.activo"
+      :titulo="confirm.titulo"
+      :msg="confirm.msg"
+      @ok="okConfirm"
+      @cancelar="confirm.activo = false"
+    />
 
-    <!-- ==================== IMPORT PREVIEW MODAL ==================== -->
-    <div v-if="importPreview" class="modal no-print" @click.self="cancelarImport()">
-      <div class="modal-box" @click.stop>
-        <div class="modal-title"><icon name="upload" :size="20"></icon> Vista previa de importacion</div>
-        <div class="info-box" style="margin-bottom:.7rem;font-size:.78rem">
-          <div><b>Tienda:</b> {{ importPreview.tiendaArchivo }}</div>
-          <div v-if="importPreview.fechaArchivo"><b>Fecha del respaldo:</b> {{ fmtFH(importPreview.fechaArchivo) }}</div>
-        </div>
-        <div class="import-compare">
-          <div class="import-head">
-            <span>Dato</span>
-            <span>Actual</span>
-            <span>Nuevo</span>
-          </div>
-          <div v-for="c in importPreview.campos" :key="c.key" class="import-row"
-            :class="{ 'import-bad': importPreview.nuevos[c.key] < importPreview.actuales[c.key], 'import-ok': importPreview.nuevos[c.key] > importPreview.actuales[c.key] }">
-            <span>{{ c.label }}</span>
-            <span>{{ importPreview.actuales[c.key] }}</span>
-            <span>{{ importPreview.nuevos[c.key] }}</span>
-          </div>
-        </div>
-        <div class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);margin-top:.7rem;font-size:.78rem">
-          ⚠ Los datos actuales seran <b>reemplazados</b> por los del archivo. Los que no vengan en el archivo se perderan.
-        </div>
-        <div class="grid2" style="margin-top:.6rem">
-          <button class="btn bad" @click="ejecutarImport()">Importar</button>
-          <button class="btn ghost" @click="cancelarImport()">Cancelar</button>
-        </div>
-      </div>
-    </div>
+    <!-- PROMPT MODAL -->
+    <ModalPrompt
+      :activo="prompt.activo"
+      :titulo="prompt.titulo"
+      :msg="prompt.msg"
+      :placeholder="prompt.placeholder"
+      :type="prompt.type"
+      :value="prompt.value"
+      @update:value="prompt.value = $event"
+      @ok="okPrompt"
+      @cancelar="cancelPrompt"
+    />
 
-    <!-- ==================== PROMPT MODAL ==================== -->
-    <div v-if="prompt.activo" class="modal no-print">
-      <div class="modal-box">
-        <div class="modal-title">{{ prompt.titulo }}</div>
-        <p style="margin-bottom:.8rem;font-size:.9rem">{{ prompt.msg }}</p>
-        <input v-model="prompt.value" :type="prompt.type || 'text'" :placeholder="prompt.placeholder"
-          @keyup.enter="okPrompt" autofocus>
-        <div class="grid2" style="margin-top:.5rem">
-          <button class="btn ok" @click="okPrompt">Aceptar</button>
-          <button class="btn ghost" @click="cancelPrompt">Cancelar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== TOAST ==================== -->
-    <div class="toast" :class="[toast.type, { show: toast.show }]">
-      {{ toast.msg }}
-      <button v-if="toast.accionTxt" @click="toast.accionFn && toast.accionFn(); toast.show = false">{{ toast.accionTxt }}</button>
-    </div>
+    <!-- TOAST -->
+    <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
+</div>
   </div>
 </template>
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
+import SheetMas from './components/SheetMas.vue';
+import ModalConfirm from './components/ModalConfirm.vue';
+import ModalPrompt from './components/ModalPrompt.vue';
+import AppToast from './components/AppToast.vue';
 // Chart.js se carga dinamicamente en renderChart()
 // jsPDF se carga dinamicamente al exportar PDF
 
@@ -1784,7 +1738,7 @@ import BottomNav from './components/BottomNav.vue';
 
 export default {
   name: 'App',
-  components: { BottomNav },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast },
 
 
   data() {
