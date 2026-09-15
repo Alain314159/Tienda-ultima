@@ -1348,6 +1348,134 @@
           </div>
         </div>
 
+      <!-- ==================== AUDITORIA ==================== -->
+      <section v-show="sec === 'auditoria'" class="fade-up">
+        <div v-if="!auditActiva" class="balance morado">
+          <div class="lbl"><icon name="check" :size="14" color="#fff"></icon> Auditoria fisica</div>
+          <div v-if="ultimaAuditoria" class="val" :class="ultimaAuditoria.resumen.totalDif >= 0 ? '' : ''">{{ fmt(ultimaAuditoria.resumen.totalDif) }}</div>
+          <div v-else class="val">Sin auditorias</div>
+          <div v-if="ultimaAuditoria" class="sub">Ultima: hace {{ auditDiasDesde }} dia(s) · {{ ultimaAuditoria.resumen.totalContados || ultimaAuditoria.inventario.items.length }} productos</div>
+          <div v-else class="sub">Nunca has hecho una auditoria</div>
+        </div>
+
+        <!-- SIN AUDITORIA ACTIVA -->
+        <div v-if="!auditActiva">
+          <div class="card">
+            <div class="card-title"><icon name="check" :size="18" :color="sec === 'auditoria' ? '#2196F3' : mutColor"></icon> Iniciar auditoria</div>
+            <div class="info-box" style="margin-bottom:.5rem">
+              Une arqueo de caja + conteo de inventario en un solo flujo. Al cerrar se registran los ajustes automaticamente.
+            </div>
+            <button class="btn pri" @click="iniciarAuditoria()">
+              <icon name="plus" :size="16" color="#fff"></icon> Nueva auditoria
+            </button>
+          </div>
+
+          <div class="card" v-if="auditoriasOrdenadas.length">
+            <div class="card-title"><icon name="list" :size="18" :color="sec === 'auditoria' ? '#2196F3' : mutColor"></icon> Historial</div>
+            <div v-for="a in auditoriasOrdenadas" :key="a.id" class="audit-hist">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <b>{{ fmtFH(a.fechaFin) }}</b>
+                <b :class="a.resumen.totalDif >= 0 ? 'pos' : 'neg'">{{ fmt(a.resumen.totalDif) }}</b>
+              </div>
+              <div class="det" style="font-size:.72rem;color:var(--mut);margin-top:.2rem">
+                Caja: {{ fmt(a.caja.diferencia) }} · Inv: {{ fmt(a.resumen.difInventarioCosto) }} · {{ a.inventario.items.filter(x => x.activo).length }} contados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUDITORIA ACTIVA -->
+        <div v-else>
+          <div class="audit-steps">
+            <div class="audit-step" :class="{ activo: auditForm.paso === 1, done: auditForm.paso > 1 }">
+              <span class="audit-step-num">1</span> Caja
+            </div>
+            <div class="audit-step" :class="{ activo: auditForm.paso === 2, done: auditForm.paso > 2 }">
+              <span class="audit-step-num">2</span> Inventario
+            </div>
+            <div class="audit-step" :class="{ activo: auditForm.paso === 3 }">
+              <span class="audit-step-num">3</span> Resumen
+            </div>
+          </div>
+
+          <!-- PASO 1: CAJA -->
+          <div v-if="auditForm.paso === 1" class="card">
+            <div class="card-title"><icon name="wallet" :size="18"></icon> Paso 1 · Arqueo de caja</div>
+            <div class="row"><span>Sistema dice</span><b>{{ fmt(saldoCaja) }}</b></div>
+            <input v-model="auditForm.cajaContada" type="number" inputmode="decimal" step="0.01" placeholder="Monto contado fisicamente">
+            <div v-if="auditForm.cajaContada !== ''" class="arqueo-prev" :class="Math.abs(n(auditForm.cajaContada) - saldoCaja) < 0.01 ? 'cuadre' : (n(auditForm.cajaContada) > saldoCaja ? 'sobrante' : 'faltante')">
+              Diferencia: <b>{{ fmt(n(auditForm.cajaContada) - saldoCaja) }}</b>
+              <span v-if="Math.abs(n(auditForm.cajaContada) - saldoCaja) < 0.01"> (exacto ✓)</span>
+            </div>
+            <input v-model="auditForm.cajaNota" type="text" placeholder="Nota (opcional)">
+            <div class="grid2">
+              <button class="btn ghost" @click="cancelarAuditoria()">Cancelar</button>
+              <button class="btn pri" @click="auditSiguientePaso()">Siguiente →</button>
+            </div>
+          </div>
+
+          <!-- PASO 2: INVENTARIO -->
+          <div v-if="auditForm.paso === 2" class="card">
+            <div class="card-title"><icon name="package" :size="18"></icon> Paso 2 · Conteo de inventario</div>
+            <div class="info-box" style="margin-bottom:.5rem">
+              Deja vacio lo que no cuentes. Solo se ajustaran los productos donde pongas cantidad.
+            </div>
+            <div class="grid2" style="margin-bottom:.5rem">
+              <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="marcarTodoIgual">
+                <icon name="check" :size="12" :color="mutColor"></icon> Todo igual
+              </button>
+              <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="limpiarConteos">
+                <icon name="x" :size="12" :color="mutColor"></icon> Limpiar
+              </button>
+            </div>
+            <div class="audit-lista">
+              <div v-for="item in auditConteoActual" :key="item.productoId" class="audit-item" :class="{ 'audit-con-dif': item.activo && item.dif !== 0 }">
+                <div style="flex:1;min-width:0">
+                  <div class="nm" style="font-size:.85rem;font-weight:700">{{ item.nombre }}</div>
+                  <div class="det" style="font-size:.7rem;color:var(--mut)">Sistema: {{ fmtCant(item.sistema) }}</div>
+                </div>
+                <input type="number" inputmode="decimal" step="0.01" class="audit-input"
+                  :value="auditForm.conteos[item.productoId]?.contado ?? ''"
+                  @input="setAuditConteo(item.productoId, $event.target.value)"
+                  placeholder="contado">
+                <div class="audit-dif" v-if="item.activo" :class="item.dif > 0 ? 'pos' : (item.dif < 0 ? 'neg' : '')">
+                  {{ item.dif > 0 ? '+' : '' }}{{ item.dif }}
+                </div>
+                <div class="audit-dif" v-else style="width:2.5rem"></div>
+              </div>
+            </div>
+            <div class="grid2" style="margin-top:.6rem">
+              <button class="btn ghost" @click="auditPasoAnterior()">← Atras</button>
+              <button class="btn pri" @click="auditSiguientePaso()">Resumen →</button>
+            </div>
+          </div>
+
+          <!-- PASO 3: RESUMEN -->
+          <div v-if="auditForm.paso === 3 && auditResumen" class="card">
+            <div class="card-title"><icon name="chart" :size="18"></icon> Paso 3 · Resumen</div>
+            <div class="row"><span>Caja sistema</span><span>{{ fmt(auditResumen.cajaSistema) }}</span></div>
+            <div class="row"><span>Caja contada</span><span>{{ fmt(auditResumen.cajaContada) }}</span></div>
+            <div class="row"><span>Diferencia caja</span><b :class="auditResumen.difCaja >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.difCaja) }}</b></div>
+            <div class="row" style="margin-top:.4rem"><span>Productos contados</span><span>{{ auditResumen.totalContados }} / {{ auditResumen.totalProductos }}</span></div>
+            <div class="row"><span>Diferencia inventario (costo)</span><b :class="auditResumen.difInventarioCosto >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.difInventarioCosto) }}</b></div>
+            <div class="row total"><span>= DIFERENCIA TOTAL</span><span :class="auditResumen.totalDif >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.totalDif) }}</span></div>
+
+            <div v-if="auditResumen.conteo.filter(x => x.dif !== 0).length" style="margin-top:.6rem">
+              <div class="card-title" style="margin-top:0;font-size:.85rem"><icon name="alert" :size="14"></icon> Ajustes a aplicar</div>
+              <div v-for="c in auditResumen.conteo.filter(x => x.dif !== 0)" :key="c.productoId" class="row" style="font-size:.78rem">
+                <span>{{ c.nombre }}</span>
+                <b :class="c.dif > 0 ? 'pos' : 'neg'">{{ c.dif > 0 ? '+' : '' }}{{ c.dif }} und ({{ fmt(c.costoDif) }})</b>
+              </div>
+            </div>
+
+            <div class="grid2" style="margin-top:.6rem">
+              <button class="btn ghost" @click="auditPasoAnterior()">← Atras</button>
+              <button class="btn ok" @click="cerrarAuditoria()">
+                <icon name="check" :size="16" color="#fff"></icon> Cerrar auditoria
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
     </main>
@@ -1386,6 +1514,7 @@
       <div class="sheet-group">Finanzas y reportes</div>
       <div class="sheet-grid">
         <button class="sheet-btn" :class="{ activo: sec === 'contabilidad' }" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'auditoria' }" @click="ir('auditoria')"><icon name="check" :size="22"></icon>Auditoria</button>
         <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
         <button class="sheet-btn" :class="{ activo: sec === 'patrimonio' }" @click="ir('patrimonio')"><icon name="dollar" :size="22"></icon>Patrimonio</button>
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="ir('reportes')"><icon name="file" :size="22"></icon>Reportes</button>
@@ -1777,6 +1906,9 @@ export default {
       gastos: [],
       asientos: [],
       pasivos: [],
+      auditorias: [],
+      auditActiva: null,
+      auditForm: { cajaContada: '', cajaNota: '', paso: 1, conteos: {} },
       filtroAsientoInicio: new Date().toISOString().split('T')[0],
       filtroAsientoFin: new Date().toISOString().split('T')[0],
       filtroAsientoCuenta: '',
@@ -1871,7 +2003,7 @@ export default {
   computed: {
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','caja','patrimonio','reportes','socios','gastos','contabilidad'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','caja','patrimonio','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -2416,6 +2548,51 @@ export default {
       return out;
     },
 
+    auditoriasOrdenadas() { return this.auditorias.slice().sort((a,b) => new Date(b.fechaInicio) - new Date(a.fechaInicio)); },
+    ultimaAuditoria() { return this.auditoriasOrdenadas.find(a => a.estado === 'cerrada') || null; },
+    auditDiasDesde() {
+      if (!this.ultimaAuditoria) return null;
+      return Math.floor((Date.now() - new Date(this.ultimaAuditoria.fechaFin).getTime()) / 86400000);
+    },
+    auditConteoActual() {
+      if (!this.auditActiva) return [];
+      const conteos = this.auditForm.conteos || {};
+      return this.prodsActivos.map(p => {
+        const c = conteos[p.id] || {};
+        const sistema = m(this.stock(p.id));
+        const contado = c.contado !== '' && c.contado !== undefined && c.contado !== null ? n(c.contado) : null;
+        const dif = contado !== null ? m(contado - sistema) : 0;
+        const costoUnit = this.costoPromProducto(p.id);
+        return {
+          productoId: p.id,
+          nombre: p.nombre,
+          sistema,
+          contado,
+          dif,
+          costoUnit,
+          costoDif: m(dif * costoUnit),
+          activo: contado !== null
+        };
+      });
+    },
+    auditResumen() {
+      if (!this.auditActiva) return null;
+      const cajaSistema = this.saldoCaja;
+      const cajaContada = this.auditForm.cajaContada !== '' ? n(this.auditForm.cajaContada) : null;
+      const difCaja = cajaContada !== null ? m(cajaContada - cajaSistema) : 0;
+      const conteo = this.auditConteoActual.filter(x => x.activo);
+      const difInventarioCosto = m(conteo.reduce((s, x) => s + x.costoDif, 0));
+      return {
+        cajaSistema,
+        cajaContada,
+        difCaja,
+        conteo,
+        totalContados: conteo.length,
+        totalProductos: this.prodsActivos.length,
+        difInventarioCosto,
+        totalDif: m(difCaja + difInventarioCosto)
+      };
+    },
     ultimaActividad() {
       const fechas = [
         ...this.ventas.map(v => v.fecha),
@@ -4049,6 +4226,188 @@ export default {
       if (cambio) await this.guardarCfg();
     },
 
+    // ===== AUDITORIA =====
+    costoPromProducto(pid) {
+      const lotes = this.lotes.filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+      const tot = lotes.reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
+      if (tot <= 0) return 0;
+      const val = lotes.reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0);
+      return m(val / tot);
+    },
+
+    iniciarAuditoria() {
+      this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
+      this.auditActiva = {
+        id: genId('aud'),
+        fechaInicio: new Date().toISOString(),
+        estado: 'en_progreso',
+        caja: null,
+        inventario: null,
+        resumen: null
+      };
+      this.toastMsg('Auditoria iniciada');
+    },
+
+    cancelarAuditoria() {
+      this.confirm = {
+        activo: true, titulo: 'Cancelar auditoria',
+        msg: 'Se descartara el progreso actual. Continuar?',
+        onOk: () => {
+          this.auditActiva = null;
+          this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
+          this.toastMsg('Auditoria cancelada');
+        }
+      };
+    },
+
+    auditSiguientePaso() {
+      if (this.auditForm.paso === 1) {
+        if (this.auditForm.cajaContada === '') return this.toastMsg('Escribe el monto contado', 'bad');
+        this.auditForm.paso = 2;
+      } else if (this.auditForm.paso === 2) {
+        this.auditForm.paso = 3;
+      }
+    },
+
+    auditPasoAnterior() {
+      if (this.auditForm.paso > 1) this.auditForm.paso--;
+    },
+
+    setAuditConteo(pid, val) {
+      if (!this.auditForm.conteos[pid]) this.auditForm.conteos[pid] = {};
+      this.auditForm.conteos[pid].contado = val;
+    },
+
+    limpiarConteo(pid) {
+      if (this.auditForm.conteos[pid]) {
+        this.auditForm.conteos[pid].contado = '';
+      }
+    },
+
+    marcarTodoIgual() {
+      this.prodsActivos.forEach(p => {
+        if (!this.auditForm.conteos[p.id]) this.auditForm.conteos[p.id] = {};
+        this.auditForm.conteos[p.id].contado = m(this.stock(p.id));
+      });
+      this.toastMsg('Todos marcados como igual al sistema');
+    },
+
+    limpiarConteos() {
+      this.auditForm.conteos = {};
+      this.toastMsg('Conteos limpiados');
+    },
+
+    async cerrarAuditoria() {
+      if (!this.auditActiva) return;
+      const r = this.auditResumen;
+      if (!r) return;
+      const difCaja = r.difCaja;
+      const conteoAjustes = r.conteo.filter(x => x.dif !== 0);
+      const totalDif = r.totalDif;
+
+      const listado = [];
+      if (Math.abs(difCaja) > 0.01) listado.push('Caja: ' + fmt(difCaja));
+      conteoAjustes.forEach(x => listado.push(x.nombre + ': ' + x.dif + ' und (' + fmt(x.costoDif) + ')'));
+      if (!listado.length) listado.push('Sin diferencias');
+
+      this.confirm = {
+        activo: true,
+        titulo: 'Cerrar auditoria',
+        msg: 'Diferencia total: ' + fmt(totalDif) + '\n\n' + listado.join('\n') + '\n\nSe generaran ajustes automaticos. Continuar?',
+        onOk: async () => {
+          try {
+            const ahora = new Date().toISOString();
+            const auditId = this.auditActiva.id;
+            const C = this.CUENTAS;
+            const asientos = [];
+            const ajustesNuevos = [];
+            const movCajaNuevos = [];
+
+            // 1. Ajuste de caja
+            if (Math.abs(difCaja) > 0.01) {
+              const movId = genId('mc');
+              if (difCaja > 0) {
+                movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'ingreso', monto: difCaja, concepto: 'Sobrante de auditoria', nota: this.auditForm.cajaNota || '' });
+                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante caja', C.CAJA, C.SOBRANTES, difCaja, 'auditoria', auditId));
+              } else {
+                movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'egreso', monto: Math.abs(difCaja), concepto: 'Faltante de auditoria', nota: this.auditForm.cajaNota || '' });
+                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante caja', C.FALTANTES, C.CAJA, Math.abs(difCaja), 'auditoria', auditId));
+              }
+            }
+
+            // 2. Ajustes de inventario
+            for (const item of conteoAjustes) {
+              const ajId = genId('a');
+              if (item.dif < 0) {
+                // Faltante: usar FIFO para calcular el costo real
+                const res = this.calcFIFO(item.productoId, Math.abs(item.dif));
+                if (!res.error) {
+                  ajustesNuevos.push({
+                    id: ajId,
+                    fecha: ahora,
+                    productoId: item.productoId,
+                    productoNombre: item.nombre,
+                    cantidad: item.dif,
+                    motivo: 'auditoria',
+                    costoPerdida: res.costoTotal,
+                    lotesUsados: res.usados,
+                    auditoriaId: auditId
+                  });
+                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante ' + item.nombre, C.MERMAS, C.INVENTARIO, res.costoTotal, 'auditoria', auditId));
+                  // Aplicar al lote
+                  for (const u of res.usados) {
+                    const l = this.lotes.find(x => x.id === u.loteId);
+                    if (l) {
+                      l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
+                      await P(db.lotes, clean(l));
+                    }
+                  }
+                }
+              } else {
+                // Sobrante
+                const cs = item.costoUnit || 0;
+                const ajObj = {
+                  id: ajId, fecha: ahora, productoId: item.productoId, productoNombre: item.nombre,
+                  cantidad: item.dif, motivo: 'auditoria', costoPerdida: 0, auditoriaId: auditId
+                };
+                ajustesNuevos.push(ajObj);
+                const loteId = genId('l');
+                await P(db.lotes, clean({
+                  id: loteId, compraId: 'aud-' + ajId, productoId: item.productoId,
+                  productoNombre: item.nombre, cantidadInicial: item.dif, cantidadVendida: 0,
+                  costo: cs, fecha: ahora
+                }));
+                if (cs > 0) {
+                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante ' + item.nombre, C.INVENTARIO, C.SOBRANTES_INV, m(item.dif * cs), 'auditoria', auditId));
+                }
+              }
+            }
+
+            // Guardar todo
+            await db.transaction('rw', db.auditorias, db.ajustes, db.movCaja, db.asientos, async () => {
+              if (ajustesNuevos.length) await db.ajustes.bulkPut(ajustesNuevos.map(x => clean(x)));
+              if (movCajaNuevos.length) await db.movCaja.bulkPut(movCajaNuevos.map(x => clean(x)));
+              if (asientos.length) await db.asientos.bulkPut(asientos.map(x => clean(x)));
+              await P(db.auditorias, clean({
+                id: auditId,
+                fechaInicio: this.auditActiva.fechaInicio,
+                fechaFin: ahora,
+                estado: 'cerrada',
+                caja: { sistema: r.cajaSistema, contado: r.cajaContada, diferencia: difCaja, nota: this.auditForm.cajaNota },
+                inventario: { items: r.conteo, conteoCompleto: r.totalContados === r.totalProductos },
+                resumen: { difCaja, difInventarioCosto: r.difInventarioCosto, totalDif }
+              }));
+            });
+
+            await this.recargar(['auditorias', 'ajustes', 'movCaja', 'asientos', 'lotes']);
+            this.auditActiva = null;
+            this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
+            this.toastMsg('Auditoria cerrada · Dif ' + fmt(totalDif));
+          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+        }
+      };
+    },
+
     // ===== LIBRO DIARIO =====
     setMesAsientos() {
       const now = new Date();
@@ -4408,7 +4767,7 @@ export default {
     },
 
     async importarData(d) {
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
       await db.transaction('rw', tables.concat(['config']), async () => {
         for (const t of tables) {
           await db.table(t).clear();
@@ -4476,7 +4835,8 @@ export default {
         distribuciones: () => db.distribuciones.toArray(),
         gastos: () => db.gastos.toArray(),
         asientos: () => db.asientos.toArray(),
-        pasivos: () => db.pasivos.toArray()
+        pasivos: () => db.pasivos.toArray(),
+        auditorias: () => db.auditorias.toArray()
       };
       for (const w of what) this[w] = await map[w]();
     },
@@ -4487,9 +4847,9 @@ export default {
         db.compras.toArray(), db.ajustes.toArray(), db.arqueos.toArray(),
         db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray(),
         db.socios.toArray(), db.distribuciones.toArray(), db.gastos.toArray(),
-        db.asientos.toArray(), db.pasivos.toArray()
+        db.asientos.toArray(), db.pasivos.toArray(), db.auditorias.toArray()
       ]);
-      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos'].forEach((k, i) => this[k] = r[i]);
+      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'].forEach((k, i) => this[k] = r[i]);
     },
 
     // ===== CHART =====
@@ -4654,7 +5014,7 @@ export default {
         }
 
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);

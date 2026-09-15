@@ -75,6 +75,27 @@ db.version(4).stores({
   config: 'key'
 });
 
+// Version 5: auditorias fisicas
+db.version(5).stores({
+  productos: 'id, nombre, archivado',
+  lotes: 'id, productoId, compraId, fecha',
+  ventas: 'id, fecha, anulada',
+  compras: 'id, productoId, fecha',
+  ajustes: 'id, productoId, fecha',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  auditorias: 'id, fechaInicio, estado',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -148,6 +169,7 @@ export function buildData(state) {
     distribuciones: state.distribuciones,
     gastos: state.gastos,
     asientos: state.asientos,
-    pasivos: state.pasivos
+    pasivos: state.pasivos,
+    auditorias: state.auditorias
   });
 }
