@@ -1139,7 +1139,14 @@
             <span class="neg">{{ fmt(p.monto) }}</span>
           </div>
           <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PATRIMONIO</span><span>{{ fmt(capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital</span><span>{{ fmt(capitalTotal) }}</span></div>
+          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
+          <div v-if="aportesTotal > 0" class="row" style="padding-left:1rem;font-size:.78rem"><span>Aportes</span><span>{{ fmt(aportesTotal) }}</span></div>
+          <div v-for="s in sociosActivos" :key="'ap_' + s.id" v-if="totalAportesSocio(s.id) > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
+            <span>· {{ s.nombre }}</span><span>{{ fmt(totalAportesSocio(s.id)) }}</span>
+          </div>
+          <div v-if="aportesSinSocioTotal > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
+            <span>· Sin asignar</span><span>{{ fmt(aportesSinSocioTotal) }}</span>
+          </div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
           <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
@@ -3145,12 +3152,30 @@ export default {
     },
 
     // ===== PATRIMONIO =====
-    guardarCapInicial() {
+    async guardarCapInicial() {
       const val = n(this.capInicialStr);
+      const anterior = n(this.cfg.capitalInicial);
+      const diff = m(val - anterior);
+      if (Math.abs(diff) < 0.01) {
+        this.capInicialStr = '';
+        return this.toastMsg('Sin cambios');
+      }
+      const C = this.CUENTAS;
+      const fecha = new Date().toISOString();
       this.cfg.capitalInicial = val;
-      this.guardarCfg();
+      try {
+        await db.transaction('rw', db.asientos, db.config, async () => {
+          await P(db.config, { key: 'cfg', value: this.cfg });
+          if (diff > 0) {
+            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAJA, C.CAPITAL, diff, 'capital', 'cap_' + Date.now()));
+          } else {
+            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAPITAL, C.CAJA, Math.abs(diff), 'capital', 'cap_' + Date.now()));
+          }
+        });
+        await this.recargar(['asientos']);
+      } catch (e) { console.error('guardarCapInicial', e); }
       this.capInicialStr = '';
-      this.toastMsg('Capital inicial guardado');
+      this.toastMsg('Capital inicial: ' + fmt(val));
     },
 
     registrarRetiro() {
@@ -3225,24 +3250,42 @@ export default {
               cerrado: true
             };
             this.cfg.periodoInicio = f.toISOString();
+            const C = this.CUENTAS;
             await db.transaction('rw', db.cierres, db.asientos, async () => {
               await P(db.cierres, c);
-              if (Math.abs(neta) > 0.01) {
-                const asCierre = this.crearAsientoObj(
-                  f.toISOString(),
-                  'Cierre periodo ' + fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString()),
-                  this.CUENTAS.RESULTADO,
-                  this.CUENTAS.GANANCIAS_ACUM,
-                  Math.abs(neta),
-                  'cierre',
-                  c.id
-                );
-                await P(db.asientos, asCierre);
+              const asientos = [];
+              const desc = 'Cierre ' + fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString());
+
+              // 1. Cerrar Ventas
+              if (totVentas > 0.01) {
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Ventas', C.VENTAS, C.RESULTADO, totVentas, 'cierre', c.id));
               }
+              // 2. Cerrar Costo de ventas
+              if (cogs > 0.01) {
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Costo ventas', C.RESULTADO, C.COSTO_VENTAS, cogs, 'cierre', c.id));
+              }
+              // 3. Cerrar Gastos
+              if (totGastos > 0.01) {
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Gastos', C.RESULTADO, C.GASTOS, totGastos, 'cierre', c.id));
+              }
+              // 4. Cerrar Mermas
+              if (totMermas > 0.01) {
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Mermas', C.RESULTADO, C.MERMAS, totMermas, 'cierre', c.id));
+              }
+              // 5. Transferir resultado a Ganancias acumuladas
+              if (Math.abs(neta) > 0.01) {
+                if (neta > 0) {
+                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Resultado a Ganancias', C.RESULTADO, C.GANANCIAS_ACUM, neta, 'cierre', c.id));
+                } else {
+                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Perdida a Ganancias', C.GANANCIAS_ACUM, C.RESULTADO, Math.abs(neta), 'cierre', c.id));
+                }
+              }
+
+              if (asientos.length) await db.asientos.bulkPut(asientos.map(x => clean(x)));
             });
             await this.guardarCfg();
             await this.recargar(['cierres', 'asientos']);
-            this.toastMsg('Período cerrado · Ganancia ' + fmt(neta));
+            this.toastMsg('Período cerrado · Resultado ' + fmt(neta));
           }
         };
       });
