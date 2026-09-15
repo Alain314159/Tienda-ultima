@@ -1786,18 +1786,6 @@ export default {
   name: 'App',
   components: { BottomNav },
 
-      render() {
-        const s = parseInt(this.size) || 22;
-        return h('svg', {
-          width: s, height: s, viewBox: '0 0 24 24', fill: 'none',
-          stroke: this.color, 'stroke-width': 2,
-          'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-          style: 'flex-shrink:0;vertical-align:middle;display:inline-block;',
-          innerHTML: PATHS[this.name] || ''
-        });
-      }
-    }
-  },
 
   data() {
     return {
