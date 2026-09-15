@@ -2965,8 +2965,7 @@ export default {
 
       if (conPerdida.length > 0) {
         const totalPerdida = m(conPerdida.reduce((s, x) => s + x.perdida, 0));
-        const lista = conPerdida.map(x => '• ' + x.nombre + ': pierdes ' + fmt(x.perdida)).join('
-');
+        const lista = conPerdida.map(x => '• ' + x.nombre + ': pierdes ' + fmt(x.perdida)).join('\n');
         this.confirm = {
           activo: true,
           titulo: '⚠ Venta con perdida',
