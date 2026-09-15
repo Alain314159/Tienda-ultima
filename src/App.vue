@@ -1720,7 +1720,6 @@
 
     <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
-</div>
   </div>
 </template>
 <script>
