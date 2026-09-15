@@ -543,8 +543,20 @@
 
         <!-- NUEVO: Compartir existencia -->
         <div class="card" style="padding:.8rem">
-          <button class="btn pri" @click="compartirExistencia()">
-            <icon name="share" :size="16" color="#fff"></icon> Compartir existencia
+          <button class="btn pri" @click="compartirPrecios()">
+            <icon name="share" :size="16" color="#fff"></icon> Compartir lista de precios
+          </button>
+          <button class="btn ghost" style="margin-top:.5rem" @click="copiarPrecios()">
+            <icon name="file" :size="16" :color="mutColor"></icon> Copiar al portapapeles
+          </button>
+          <div style="font-size:.7rem;color:var(--mut);text-align:center;margin-top:.3rem">
+            Lista bonita con nombres y precios (incluye escalones y empaques) lista para WhatsApp.
+          </div>
+        </div>
+
+        <div class="card" style="padding:.8rem">
+          <button class="btn ghost" @click="compartirExistencia()">
+            <icon name="package" :size="16" :color="mutColor"></icon> Compartir existencia
           </button>
           <div style="font-size:.7rem;color:var(--mut);text-align:center;margin-top:.3rem">
             Envía la lista de productos y stock por WhatsApp, Telegram, etc.
@@ -1784,8 +1796,8 @@
 
         <div class="set-group">Ayuda</div>
         <div class="set-row">
-          <span class="lbl"><icon name="zap" :size="18"></icon> Ver tutorial de nuevo</span>
-          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="repetirTutorial">Repetir</button>
+          <span class="lbl"><icon name="zap" :size="18"></icon> Ver tutorial</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="repetirTutorial">Abrir</button>
         </div>
 
         <div class="set-group">Avanzado</div>
@@ -5156,6 +5168,117 @@ export default {
       }
     },
 
+    // ===== COMPARTIR PRECIOS =====
+    generarTextoPrecios() {
+      const nombre = this.cfg.nombre || 'Tienda Pro';
+      const fecha = fmtFecha(new Date().toISOString());
+      const prods = this.prodsActivos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+      if (prods.length === 0) return null;
+
+      const lineas = [];
+      lineas.push('🏪 *' + nombre + '*');
+      lineas.push('📅 ' + fecha);
+      lineas.push('');
+      lineas.push('━━━━━━━━━━━━━━━');
+      lineas.push('🛒 *LISTA DE PRECIOS*');
+      lineas.push('━━━━━━━━━━━━━━━');
+      lineas.push('');
+
+      prods.forEach(p => {
+        // Nombre del producto
+        lineas.push('📦 *' + p.nombre + '*');
+
+        // Precio base
+        const precioBase = n(p.precio);
+        lineas.push('   💵 ' + fmt(precioBase) + ' c/u');
+
+        // Escalones de precio (si tiene)
+        if (p.preciosEscalonados && p.preciosEscalonados.length) {
+          const esc = p.preciosEscalonados.slice().sort((a, b) => a.min - b.min);
+          esc.forEach(e => {
+            lineas.push('   📊 Desde ' + e.min + ': ' + fmt(e.precio) + ' c/u');
+          });
+        }
+
+        // Empaques (si tiene)
+        if (p.empaques && p.empaques.length) {
+          p.empaques.forEach(e => {
+            const total = m(precioBase * e.unidades);
+            lineas.push('   📦 ' + e.nombre + ' (' + e.unidades + ' und): ' + fmt(total));
+          });
+        }
+
+        lineas.push('');
+      });
+
+      lineas.push('━━━━━━━━━━━━━━━');
+      lineas.push('');
+      lineas.push('📍 *Nos encontramos en:*');
+      lineas.push('');
+      lineas.push('Calle 27, # 41, entre Manuel Angulo y Adel Calderón. Reparto 26 de Julio.');
+      lineas.push('');
+      lineas.push('*Punto de referencia:* Carretera Central, Servicentro La Curva, entrando por el hotelito de las ferromosas, cruza la línea y en la 2da cuadra doble a mano izquierda, a mano derecha la 5ta casa, preguntar por Yuliet.');
+      lineas.push('');
+      lineas.push('📞 *Contactarnos:*');
+      lineas.push('');
+      lineas.push('📱 58154333');
+      lineas.push('📱 56763562');
+      lineas.push('📱 51438680');
+      lineas.push('📱 50102979');
+      lineas.push('');
+      lineas.push('☎️ 24429628');
+      lineas.push('');
+      lineas.push('━━━━━━━━━━━━━━━');
+      lineas.push('💬 *Únete a nuestro grupo de WhatsApp:*');
+      lineas.push('https://chat.whatsapp.com/I9U92wF5PmV7XGsvqbsfQm');
+
+      return lineas.join('\n');
+    },
+
+    async compartirPrecios() {
+      const texto = this.generarTextoPrecios();
+      if (!texto) return this.toastMsg('No hay productos para compartir', 'warn');
+
+      // Preview antes de compartir
+      this.confirm = {
+        activo: true,
+        titulo: 'Compartir precios',
+        msg: 'Se compartira la lista de precios de ' + this.prodsActivos.length + ' producto(s). ¿Continuar?',
+        onOk: async () => {
+          try {
+            if (navigator.share) {
+              await navigator.share({ title: 'Lista de precios', text: texto });
+              this.toastMsg('Compartido');
+            } else {
+              await navigator.clipboard.writeText(texto);
+              this.toastMsg('Copiado al portapapeles');
+            }
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              // Fallback a clipboard
+              try {
+                await navigator.clipboard.writeText(texto);
+                this.toastMsg('Copiado al portapapeles');
+              } catch (e2) {
+                this.toastMsg('No se pudo compartir', 'bad');
+              }
+            }
+          }
+        }
+      };
+    },
+
+    async copiarPrecios() {
+      const texto = this.generarTextoPrecios();
+      if (!texto) return this.toastMsg('No hay productos para copiar', 'warn');
+      try {
+        await navigator.clipboard.writeText(texto);
+        this.toastMsg('Lista copiada al portapapeles');
+      } catch (e) {
+        this.toastMsg('No se pudo copiar', 'bad');
+      }
+    },
+
     // ===== DATOS / BACKUP =====
     exportar() {
       const d = buildData(this);
@@ -6112,10 +6235,7 @@ export default {
           } catch (e) { console.error('auto asientos', e); }
         }
 
-        // Tutorial en primera apertura
-        if (!this.cfg.tutorialVisto && !this.safeMode) {
-          setTimeout(() => { this.tutorialActivo = true; }, 800);
-        }
+        // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
         // Telegram: usar token default o guardado (no en safe mode)
         if (!this.safeMode && !this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
         if (this.cfg.tgChatId) this.tgEstado = 'conectado';
