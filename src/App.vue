@@ -28,9 +28,15 @@
           <div class="sub">Inventario: {{ fmt(valorInventario) }} · Desde {{ fmtFecha(cfg.periodoInicio) }}</div>
         </div>
 
-        <div v-if="productosBajoStock.length || productosAgotados.length" class="alert-box" @click="ir('inventario')">
-          <icon name="alert" :size="16" color="#d97706"></icon>
-          {{ productosAgotados.length }} agotado(s) · {{ productosBajoStock.length }} bajo(s)
+        <div v-if="productosBajoStock.length || productosAgotados.length" class="alert-box-stock">
+          <div v-if="productosAgotados.length" class="alert-chip alert-out" @click="irAStock('agotados')">
+            <icon name="alert" :size="14" color="#fff"></icon>
+            <b>{{ productosAgotados.length }}</b> agotado(s)
+          </div>
+          <div v-if="productosBajoStock.length" class="alert-chip alert-low" @click="irAStock('bajos')">
+            <icon name="alert" :size="14" color="#fff"></icon>
+            <b>{{ productosBajoStock.length }}</b> bajo(s)
+          </div>
         </div>
 
         <div class="grid2">
@@ -99,9 +105,11 @@
           <div v-if="anomalias.length > 5" class="det" style="text-align:center;margin-top:.4rem;font-size:.72rem;color:var(--mut)">
             + {{ anomalias.length - 5 }} mas
           </div>
-          <div v-if="cfg.anomaliasDescartadas && cfg.anomaliasDescartadas.length" class="det" style="text-align:center;margin-top:.5rem;font-size:.72rem;color:var(--mut)">
-            {{ cfg.anomaliasDescartadas.length }} descartada(s)
-            <button class="link-btn" @click="restaurarAnomalias" style="margin-left:.3rem">Restaurar</button>
+          <div style="display:flex;justify-content:center;gap:1rem;margin-top:.5rem;flex-wrap:wrap">
+            <button v-if="anomalias.length > 1" class="link-btn" @click="descartarTodasAnomalias">Descartar todas</button>
+            <button v-if="cfg.anomaliasDescartadas && cfg.anomaliasDescartadas.length" class="link-btn" @click="restaurarAnomalias">
+              Restaurar {{ cfg.anomaliasDescartadas.length }} descartada(s)
+            </button>
           </div>
         </div>
 
@@ -407,8 +415,12 @@
               {{ mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
             </button>
           </div>
+          <div v-if="filtroStock" class="info-box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+            <span>Filtro: <b>{{ filtroStock === 'agotados' ? 'Agotados' : 'Stock bajo' }}</b></span>
+            <button class="link-btn" @click="limpiarFiltroStock">Quitar filtro</button>
+          </div>
           <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
-          <div v-for="p in prodsFiltrados" :key="p.id" class="prod-wrap" :id="'ref-' + p.id">
+          <div v-for="p in prodsFiltrados" :key="p.id" class="prod-wrap" :id="'ref-' + p.id" :class="'prod-' + badgeStock(p)">
             <div class="item" :style="p.archivado ? 'opacity:.5' : ''" style="cursor:pointer"
               @click="prodExpandido[p.id] = !prodExpandido[p.id]">
               <div class="info">
@@ -1375,8 +1387,8 @@
     </div>
 
     <!-- ==================== SETTINGS MODAL ==================== -->
-    <div v-if="ajustesAbierto" class="modal no-print">
-      <div class="modal-box">
+    <div v-if="ajustesAbierto" class="modal no-print" @click.self="ajustesAbierto = false">
+      <div class="modal-box" @click.stop>
         <div class="modal-title"><icon name="settings" :size="20"></icon> Ajustes</div>
 
         <div class="set-group">Tienda</div>
@@ -1473,6 +1485,14 @@
           Muestra un panel de denominaciones (10, 20, 50...) para contar el efectivo al cobrar.
         </div>
 
+        <div class="set-group" style="color:var(--bad)">Zona peligrosa</div>
+        <button class="btn bad" @click="borrarTodo()">
+          <icon name="trash" :size="16" color="#fff"></icon> Borrar TODOS los datos
+        </button>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Elimina permanentemente productos, ventas, compras, gastos, socios, asientos, pasivos, etc. No se puede deshacer.
+        </div>
+
         <div class="set-group">Avanzado</div>
         <div class="set-row">
           <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
@@ -1567,10 +1587,41 @@
     <div v-if="confirm.activo" class="modal no-print">
       <div class="modal-box">
         <div class="modal-title">{{ confirm.titulo }}</div>
-        <p style="margin-bottom:1rem;font-size:.9rem">{{ confirm.msg }}</p>
+        <p style="margin-bottom:1rem;font-size:.9rem;white-space:pre-line">{{ confirm.msg }}</p>
         <div class="grid2">
           <button class="btn ok" @click="okConfirm">Confirmar</button>
           <button class="btn ghost" @click="confirm.activo = false">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== IMPORT PREVIEW MODAL ==================== -->
+    <div v-if="importPreview" class="modal no-print" @click.self="cancelarImport()">
+      <div class="modal-box" @click.stop>
+        <div class="modal-title"><icon name="upload" :size="20"></icon> Vista previa de importacion</div>
+        <div class="info-box" style="margin-bottom:.7rem;font-size:.78rem">
+          <div><b>Tienda:</b> {{ importPreview.tiendaArchivo }}</div>
+          <div v-if="importPreview.fechaArchivo"><b>Fecha del respaldo:</b> {{ fmtFH(importPreview.fechaArchivo) }}</div>
+        </div>
+        <div class="import-compare">
+          <div class="import-head">
+            <span>Dato</span>
+            <span>Actual</span>
+            <span>Nuevo</span>
+          </div>
+          <div v-for="c in importPreview.campos" :key="c.key" class="import-row"
+            :class="{ 'import-bad': importPreview.nuevos[c.key] < importPreview.actuales[c.key], 'import-ok': importPreview.nuevos[c.key] > importPreview.actuales[c.key] }">
+            <span>{{ c.label }}</span>
+            <span>{{ importPreview.actuales[c.key] }}</span>
+            <span>{{ importPreview.nuevos[c.key] }}</span>
+          </div>
+        </div>
+        <div class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);margin-top:.7rem;font-size:.78rem">
+          ⚠ Los datos actuales seran <b>reemplazados</b> por los del archivo. Los que no vengan en el archivo se perderan.
+        </div>
+        <div class="grid2" style="margin-top:.6rem">
+          <button class="btn bad" @click="ejecutarImport()">Importar</button>
+          <button class="btn ghost" @click="cancelarImport()">Cancelar</button>
         </div>
       </div>
     </div>
@@ -1747,6 +1798,8 @@ export default {
       invExpandido: {},
       cuadreExpandido: {},
       _highlightTimer: null,
+      filtroStock: null,
+      importPreview: null,
 
       busqVenta: '',
       focusVenta: false,
@@ -1944,6 +1997,8 @@ export default {
     prodsFiltrados() {
       let list = this.productos;
       if (!this.mostrarArchivados) list = list.filter(p => !p.archivado);
+      if (this.filtroStock === 'agotados') list = list.filter(p => this.stock(p.id) === 0);
+      else if (this.filtroStock === 'bajos') list = list.filter(p => { const st = this.stock(p.id); return st > 0 && st <= n(p.stockMinimo); });
       const q = this.busqProd.toLowerCase().trim();
       if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q));
       return list.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -2410,6 +2465,15 @@ export default {
       if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
     },
 
+    irAStock(filtro) {
+      this.filtroStock = filtro;
+      this.ir('productos');
+    },
+
+    limpiarFiltroStock() {
+      this.filtroStock = null;
+    },
+
     ir(s, refId) {
       this.masAbierto = false;
       this.sec = s;
@@ -2427,6 +2491,17 @@ export default {
           }, 400);
         });
       }
+    },
+
+    descartarTodasAnomalias() {
+      const claves = this.anomalias.map(a => a.clave);
+      if (!claves.length) return;
+      if (!this.cfg.anomaliasDescartadas) this.cfg.anomaliasDescartadas = [];
+      claves.forEach(k => {
+        if (!this.cfg.anomaliasDescartadas.includes(k)) this.cfg.anomaliasDescartadas.push(k);
+      });
+      this.guardarCfg();
+      this.toastMsg(claves.length + ' anomalia(s) descartada(s)');
     },
 
     descartarAnomalia(clave) {
@@ -2635,13 +2710,41 @@ export default {
     iniciarCobro() {
       const inv = this.carrito.filter(it => n(it.cant) <= 0);
       if (inv.length) return this.toastMsg('Todas las cantidades deben ser > 0', 'bad');
-      this.cobroModal.total = this.totalCarrito;
-      this.cobroModal.calcAbierta = false;
-      this.cobroModal.billetes = {};
-      this.cobroModal.totalContado = 0;
-      this.cobroModal.falta = 0;
-      this.cobroModal.sobra = 0;
-      this.cobroModal.activo = true;
+
+      // Detectar ventas con perdida
+      const conPerdida = [];
+      for (const it of this.carrito) {
+        const f = this.calcFIFO(it.productoId, n(it.cant));
+        if (f.error) continue;
+        const ingreso = n(it.precio) * n(it.cant);
+        if (ingreso < f.costoTotal - 0.01) {
+          conPerdida.push({ nombre: it.nombre, ingreso, costo: f.costoTotal, perdida: f.costoTotal - ingreso });
+        }
+      }
+
+      const abrirCobro = () => {
+        this.cobroModal.total = this.totalCarrito;
+        this.cobroModal.calcAbierta = false;
+        this.cobroModal.billetes = {};
+        this.cobroModal.totalContado = 0;
+        this.cobroModal.falta = 0;
+        this.cobroModal.sobra = 0;
+        this.cobroModal.activo = true;
+      };
+
+      if (conPerdida.length > 0) {
+        const totalPerdida = m(conPerdida.reduce((s, x) => s + x.perdida, 0));
+        const lista = conPerdida.map(x => '• ' + x.nombre + ': pierdes ' + fmt(x.perdida)).join('
+');
+        this.confirm = {
+          activo: true,
+          titulo: '⚠ Venta con perdida',
+          msg: conPerdida.length + ' producto(s) se venden por debajo del costo. Perdida total: ' + fmt(totalPerdida) + '.\n\n' + lista + '\n\n¿Continuar?',
+          onOk: abrirCobro
+        };
+        return;
+      }
+      abrirCobro();
     },
 
     calcBilletes() {
@@ -3739,6 +3842,36 @@ export default {
       };
     },
 
+    borrarTodo() {
+      this.confirm = {
+        activo: true,
+        titulo: '⚠ BORRAR TODO',
+        msg: 'Esto eliminara PERMANENTEMENTE todos los datos de la app. No se puede deshacer.',
+        onOk: () => {
+          this.prompt = {
+            activo: true,
+            titulo: 'Confirmacion final',
+            msg: 'Escribe BORRAR (en mayusculas) para confirmar:',
+            placeholder: 'BORRAR',
+            type: 'text',
+            value: '',
+            onOk: async (v) => {
+              if (v !== 'BORRAR') return this.toastMsg('Cancelado', 'warn');
+              try {
+                const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos'];
+                await db.transaction('rw', tables.concat(['config']), async () => {
+                  for (const t of tables) await db.table(t).clear();
+                  await db.config.clear();
+                });
+                this.toastMsg('Todos los datos eliminados');
+                setTimeout(() => location.reload(), 1200);
+              } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+            }
+          };
+        }
+      };
+    },
+
     // ===== ERUDA =====
     toggleEruda() {
       try {
@@ -4154,7 +4287,59 @@ export default {
       if (!file) return;
       this.importFile = file;
       e.target.value = '';
-      this.confirm = { activo: true, titulo: 'Importar datos', msg: 'Esto REEMPLAZARÁ todos los datos actuales. ¿Continuar?', onOk: () => this.ejecutarImport() };
+      const rd = new FileReader();
+      rd.onload = (ev) => {
+        try {
+          const d = JSON.parse(ev.target.result);
+          if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
+          const campos = [
+            { key: 'productos', label: 'Productos' },
+            { key: 'lotes', label: 'Lotes' },
+            { key: 'ventas', label: 'Ventas' },
+            { key: 'compras', label: 'Compras' },
+            { key: 'gastos', label: 'Gastos' },
+            { key: 'socios', label: 'Socios' },
+            { key: 'asientos', label: 'Asientos' },
+            { key: 'pasivos', label: 'Pasivos' }
+          ];
+          const actuales = {
+            productos: this.productos.length, lotes: this.lotes.length, ventas: this.ventas.length,
+            compras: this.compras.length, gastos: this.gastos.length, socios: this.socios.length,
+            asientos: this.asientos.length, pasivos: this.pasivos.length
+          };
+          const nuevos = {};
+          campos.forEach(c => { nuevos[c.key] = (d[c.key] || []).length; });
+
+          this.importPreview = {
+            archivo: d,
+            campos,
+            actuales,
+            nuevos,
+            fechaArchivo: d.fecha || null,
+            tiendaArchivo: (d.cfg && d.cfg.nombre) || '(sin nombre)'
+          };
+
+          const totalActual = campos.reduce((s2, c) => s2 + actuales[c.key], 0);
+          const totalNuevo = campos.reduce((s2, c) => s2 + nuevos[c.key], 0);
+
+          let adv = '';
+          if (totalActual > 0 && totalNuevo === 0) {
+            adv = '⚠ El archivo NO TIENE datos. Importar VACIARA la app.';
+          } else if (totalActual > 0 && totalNuevo < totalActual * 0.3) {
+            adv = '⚠ El archivo tiene MUCHOS MENOS datos que los actuales. Podrias perder informacion.';
+          } else if (totalActual > 0) {
+            adv = 'Se reemplazaran TODOS los datos actuales con los del archivo.';
+          }
+
+          this.confirm = {
+            activo: true,
+            titulo: 'Importar datos',
+            msg: adv,
+            onOk: () => this.ejecutarImport()
+          };
+        } catch (err) { this.toastMsg('Error: ' + err.message, 'bad'); }
+      };
+      rd.readAsText(file);
     },
 
     ejecutarImport() {
@@ -4164,13 +4349,19 @@ export default {
       rd.onload = async (ev) => {
         try {
           const d = JSON.parse(ev.target.result);
-          if (!d.productos && !d.ventas) throw new Error('Archivo inválido');
+          if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
           await this.importarData(d);
+          this.importPreview = null;
           this.ajustesAbierto = false;
           this.toastMsg('Datos importados');
         } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
       };
       rd.readAsText(file);
+    },
+
+    cancelarImport() {
+      this.importPreview = null;
+      this.importFile = null;
     },
 
     async importarData(d) {

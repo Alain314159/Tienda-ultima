@@ -1644,3 +1644,86 @@ input::placeholder, textarea::placeholder {
   border-top: 1px solid var(--brd) !important;
   padding-top: .3rem !important;
 }
+
+/* ===== ALERTA STOCK CON CHIPS ===== */
+.alert-box-stock {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: .85rem;
+  flex-wrap: wrap;
+}
+.alert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .65rem 1rem;
+  border-radius: var(--r-sm);
+  font-weight: 800;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: transform var(--tr);
+  flex: 1;
+  justify-content: center;
+}
+.alert-chip:active { transform: scale(.97); }
+.alert-chip b { font-size: 1.1rem; }
+.alert-chip.alert-out {
+  background: linear-gradient(135deg, var(--bad) 0%, var(--bad-d) 100%);
+  color: #fff;
+  box-shadow: var(--sh-bad);
+}
+.alert-chip.alert-low {
+  background: linear-gradient(135deg, var(--warn) 0%, var(--warn-d) 100%);
+  color: #fff;
+  box-shadow: var(--sh-warn);
+}
+
+/* ===== COLORES DE STOCK EN PRODUCTOS ===== */
+.prod-wrap.prod-out .item {
+  border-left: 4px solid var(--bad);
+  background: rgba(239,68,68,.05);
+}
+.prod-wrap.prod-low .item {
+  border-left: 4px solid var(--warn);
+  background: rgba(245,158,11,.05);
+}
+.prod-wrap.prod-ok .item {
+  border-left: 4px solid transparent;
+}
+.prod-wrap.prod-arch .item {
+  border-left: 4px solid var(--mut);
+}
+
+/* ===== IMPORT COMPARE ===== */
+.import-compare {
+  border: 1px solid var(--brd);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.import-head,
+.import-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 70px;
+  gap: .5rem;
+  padding: .5rem .8rem;
+  font-size: .82rem;
+  border-bottom: 1px solid var(--brd);
+  align-items: center;
+}
+.import-head {
+  background: var(--bg);
+  font-weight: 800;
+  font-size: .72rem;
+  text-transform: uppercase;
+  color: var(--mut);
+  letter-spacing: .03em;
+}
+.import-head span:not(:first-child),
+.import-row span:not(:first-child) {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.import-row:last-child { border-bottom: none; }
+.import-row.import-bad span:last-child { color: var(--bad); }
+.import-row.import-ok span:last-child { color: var(--ok); }
