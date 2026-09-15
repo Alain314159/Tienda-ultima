@@ -187,7 +187,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="v in histItemsMostrados(ventasPorPeriodo.actual, 'ventas')" :key="v.id" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
+            <div v-for="v in histItemsMostrados(ventasPorPeriodo.actual, 'ventas')" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
               <div class="info">
                 <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                 <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
@@ -420,7 +420,7 @@
             <button class="link-btn" @click="limpiarFiltroStock">Quitar filtro</button>
           </div>
           <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
-          <div v-for="p in prodsFiltrados" :key="p.id" class="prod-wrap" :id="'ref-' + p.id" :class="'prod-' + badgeStock(p)">
+          <div v-for="p in prodsFiltrados" :key="p.id" v-memo="[p.id, p.nombre, p.precio, p.archivado, stock(p.id), prodExpandido[p.id]]" class="prod-wrap" :id="'ref-' + p.id" :class="'prod-' + badgeStock(p)">
             <div class="item" :style="p.archivado ? 'opacity:.5' : ''" style="cursor:pointer"
               @click="prodExpandido[p.id] = !prodExpandido[p.id]">
               <div class="info">
@@ -1785,7 +1785,7 @@
 </template>
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
-import Chart from 'chart.js/auto';
+// Chart.js se carga dinamicamente en renderChart()
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -1985,6 +1985,7 @@ export default {
       importFile: null,
       _chart: null,
       _notifTimer: null,
+      _fifoCache: {},
       umbralesAbierto: false,
       notifAvanzadoAbierto: false,
       porPagina: 20,
@@ -2787,6 +2788,9 @@ export default {
 
     // ===== VENTAS =====
     calcFIFO(pid, cant) {
+      const key = pid + '|' + q(cant);
+      const cached = this._fifoCache[key];
+      if (cached) return cached;
       const lotes = this.lotes
         .filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
@@ -2799,8 +2803,15 @@ export default {
         usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
         rest -= usar;
       }
-      if (rest > 0.001) return { error: 'Stock insuficiente (faltan ' + rest.toFixed(3) + ')' };
-      return { costoTotal: total, usados };
+      let result;
+      if (rest > 0.001) result = { error: 'Stock insuficiente (faltan ' + rest.toFixed(3) + ')' };
+      else result = { costoTotal: total, usados };
+      this._fifoCache[key] = result;
+      return result;
+    },
+
+    invalidarFifoCache() {
+      this._fifoCache = {};
     },
 
     agregarCarrito(p) {
@@ -4842,22 +4853,25 @@ export default {
     },
 
     async recargarTodo() {
-      const r = await Promise.all([
-        db.productos.toArray(), db.lotes.toArray(), db.ventas.toArray(),
-        db.compras.toArray(), db.ajustes.toArray(), db.arqueos.toArray(),
-        db.movCaja.toArray(), db.cierres.toArray(), db.capital.toArray(), db.retiros.toArray(),
-        db.socios.toArray(), db.distribuciones.toArray(), db.gastos.toArray(),
-        db.asientos.toArray(), db.pasivos.toArray(), db.auditorias.toArray()
-      ]);
-      ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'].forEach((k, i) => this[k] = r[i]);
+      const t = performance.now();
+      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos','auditorias'];
+      let r;
+      await db.transaction('r', tables.map(tb => db.table(tb)), async () => {
+        r = await Promise.all(tables.map(tb => db.table(tb).toArray()));
+      });
+      tables.forEach((k, i) => this[tables[i]] = r[i]);
+      this.invalidarFifoCache();
+      const ms = (performance.now() - t).toFixed(1);
+      if (ms > 100) console.log('recargarTodo: ' + ms + 'ms');
     },
 
     // ===== CHART =====
-    renderChart() {
+    async renderChart() {
       try {
         const cv = document.getElementById('chartVentas');
         if (!cv) return;
         if (this._chart) { try { this._chart.destroy(); } catch (e) {} this._chart = null; }
+        const { default: Chart } = await import('chart.js/auto');
         const meses = [];
         const now = new Date();
         for (let i = 5; i >= 0; i--) {
@@ -4918,6 +4932,7 @@ export default {
 
     // ===== INICIALIZACIÓN =====
     async inicializar() {
+      const _t0 = performance.now();
       try {
         const c = await db.config.get('cfg');
         if (c) this.cfg = Object.assign({}, this.cfg, c.value);
@@ -5021,12 +5036,18 @@ export default {
         this.toastMsg('Error al cargar datos', 'bad');
       } finally {
         this.cargando = false;
+        const _ms = (performance.now() - _t0).toFixed(1);
+        console.log('Inicializacion: ' + _ms + 'ms');
         this.$nextTick(() => { if (this.sec === 'dashboard') requestAnimationFrame(() => this.renderChart()); });
       }
     }
   },
 
   watch: {
+    lotes: {
+      handler() { this.invalidarFifoCache(); },
+      deep: false
+    },
     carrito: {
       handler(val) {
         try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
