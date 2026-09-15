@@ -2049,8 +2049,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 /* ===== CARRITO: LAYOUT FINAL ===== */
 .cart-controls {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: .55rem;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem;
   margin-top: .55rem;
   align-items: end;
 }
