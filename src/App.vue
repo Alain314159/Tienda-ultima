@@ -24,7 +24,7 @@
 
     <main>
       <!-- ==================== DASHBOARD ==================== -->
-      <section v-show="sec === 'dashboard'" class="fade-up">
+      <section v-if="sec === 'dashboard'" class="fade-up">
         <div class="balance azul">
           <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Efectivo en Caja</div>
           <div class="val">{{ fmt(saldoCaja) }}</div>
@@ -139,7 +139,7 @@
       </section>
 
       <!-- ==================== VENTAS ==================== -->
-      <section v-show="sec === 'ventas'" class="fade-up">
+      <section v-if="sec === 'ventas'" class="fade-up">
         <div class="card">
           <div class="card-title"><icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta</div>
           <div class="search">
@@ -248,7 +248,7 @@
       </section>
 
       <!-- ==================== COMPRAS ==================== -->
-      <section v-show="sec === 'compras'" class="fade-up">
+      <section v-if="sec === 'compras'" class="fade-up">
         <div class="card">
           <div class="card-title"><icon name="bag" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Registrar Compra</div>
           <div v-if="!compraForm.productoId">
@@ -375,7 +375,7 @@
       </section>
 
       <!-- ==================== PRODUCTOS ==================== -->
-      <section v-show="sec === 'productos'" class="fade-up">
+      <section v-if="sec === 'productos'" class="fade-up">
         <div class="card">
           <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto</div>
           <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto">
@@ -489,7 +489,7 @@
       </section>
 
       <!-- ==================== INVENTARIO ==================== -->
-      <section v-show="sec === 'inventario'" class="fade-up">
+      <section v-if="sec === 'inventario'" class="fade-up">
         <div class="balance verde">
           <div class="lbl"><icon name="package" :size="14" color="#fff"></icon> Valor del Inventario</div>
           <div class="val">{{ fmt(valorInventario) }}</div>
@@ -570,7 +570,7 @@
       </section>
 
       <!-- ==================== CAJA ==================== -->
-      <section v-show="sec === 'caja'" class="fade-up">
+      <section v-if="sec === 'caja'" class="fade-up">
         <div class="balance" :class="saldoCaja < 0 ? 'neg' : 'azul'">
           <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Saldo en Caja</div>
           <div class="val">{{ fmt(saldoCaja) }}</div>
@@ -666,7 +666,7 @@
       </section>
 
       <!-- ==================== PATRIMONIO ==================== -->
-      <section v-show="sec === 'patrimonio'" class="fade-up">
+      <section v-if="sec === 'patrimonio'" class="fade-up">
         <div class="balance morado">
           <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Patrimonio Total</div>
           <div class="val">{{ fmt(patrimonioTotal) }}</div>
@@ -679,7 +679,7 @@
       </section>
 
       <!-- ==================== REPORTES (CON CUADRE NUEVO) ==================== -->
-      <section v-show="sec === 'reportes'" class="fade-up">
+      <section v-if="sec === 'reportes'" class="fade-up">
         <!-- Cerrar Período -->
         <div class="card">
           <div class="card-title"><icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período</div>
@@ -866,7 +866,7 @@
         </div>
       </section>
       <!-- ==================== SOCIOS ==================== -->
-      <section v-show="sec === 'socios'" class="fade-up">
+      <section v-if="sec === 'socios'" class="fade-up">
         <div class="balance morado">
           <div class="lbl"><icon name="users" :size="14" color="#fff"></icon> Socios activos</div>
           <div class="val">{{ sociosActivos.length }}</div>
@@ -985,7 +985,7 @@
         </div>
       </section>
       <!-- ==================== GASTOS ==================== -->
-      <section v-show="sec === 'gastos'" class="fade-up">
+      <section v-if="sec === 'gastos'" class="fade-up">
         <div class="balance gastos-bal">
           <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Gastos del periodo</div>
           <div class="val">{{ fmt(gastosOpPeriodo) }}</div>
@@ -1097,7 +1097,7 @@
         </div>
       </section>
       <!-- ==================== CONTABILIDAD ==================== -->
-      <section v-show="sec === 'contabilidad'" class="fade-up">
+      <section v-if="sec === 'contabilidad'" class="fade-up">
         <div class="balance azul">
           <div class="lbl"><icon name="chart" :size="14" color="#fff"></icon> Resultado del periodo</div>
           <div class="val" :style="gananciaNetaPeriodo >= 0 ? '' : 'color:#fca5a5'">{{ fmt(gananciaNetaPeriodo) }}</div>
@@ -1374,7 +1374,7 @@
       </section>
 
       <!-- ==================== AUDITORIA ==================== -->
-      <section v-show="sec === 'auditoria'" class="fade-up">
+      <section v-if="sec === 'auditoria'" class="fade-up">
         <div v-if="!auditActiva" class="balance morado">
           <div class="lbl"><icon name="check" :size="14" color="#fff"></icon> Auditoria fisica</div>
           <div v-if="ultimaAuditoria" class="val" :class="ultimaAuditoria.resumen.totalDif >= 0 ? '' : ''">{{ fmt(ultimaAuditoria.resumen.totalDif) }}</div>
@@ -1598,7 +1598,10 @@
         </div>
 
         <div class="set-group">Notificaciones</div>
-        <div class="set-row">
+        <div v-if="!soportaNotif" class="info-box" style="background:rgba(220,38,38,.1);color:var(--bad);border-color:var(--bad);font-size:.75rem">
+          Este dispositivo no soporta notificaciones del sistema. En iPhone necesitas instalar la app como PWA (Compartir > Agregar a pantalla de inicio).
+        </div>
+        <div class="set-row" v-if="soportaNotif">
           <span class="lbl"><icon name="alert" :size="18"></icon> Activar notificaciones</span>
           <label class="switch">
             <input type="checkbox" :checked="cfg.notifActivo" @change="cfg.notifActivo ? desactivarNotif() : pedirPermisoNotif()">
@@ -1935,6 +1938,10 @@ export default {
   },
 
   computed: {
+    soportaNotif() {
+      return typeof window !== 'undefined' && 'Notification' in window;
+    },
+
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
     masActivo() { return this.masAbierto || ['productos','caja','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
@@ -4137,24 +4144,35 @@ export default {
     // ===== NOTIFICACIONES =====
     async enviarNotif(titulo, cuerpo) {
       try {
-        if (!('Notification' in window)) return;
-        if (Notification.permission !== 'granted') return;
+        if (!('Notification' in window)) return { ok: false, motivo: 'sin-soporte' };
+        if (Notification.permission !== 'granted') return { ok: false, motivo: 'sin-permiso' };
         const opts = {
           body: cuerpo,
           icon: '/Tienda-ultima/icons/icon-192.png',
           badge: '/Tienda-ultima/icons/icon-192.png',
-          tag: 'tienda-' + Date.now(),
-          vibrate: [200, 100, 200]
+          tag: 'tienda-' + Date.now()
         };
+        // Intentar con ServiceWorker primero (requerido en Chrome movil)
         if ('serviceWorker' in navigator) {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg && reg.showNotification) {
-            await reg.showNotification(titulo, opts);
-            return;
-          }
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            if (reg && reg.showNotification) {
+              await reg.showNotification(titulo, opts);
+              return { ok: true, via: 'sw' };
+            }
+          } catch (e) { /* sigue con fallback */ }
         }
-        new Notification(titulo, opts);
-      } catch (e) { console.error('enviarNotif', e); }
+        // Fallback a constructor (escritorio)
+        try {
+          new Notification(titulo, opts);
+          return { ok: true, via: 'constructor' };
+        } catch (e2) {
+          return { ok: false, motivo: 'constructor-bloqueado', error: e2.message };
+        }
+      } catch (e) {
+        console.error('enviarNotif', e);
+        return { ok: false, motivo: 'error', error: e.message };
+      }
     },
 
     async pedirPermisoNotif() {
@@ -4187,13 +4205,20 @@ export default {
       this.toastMsg('Notificaciones desactivadas');
     },
 
-    probarNotif() {
-      if (!('Notification' in window) || Notification.permission !== 'granted') {
-        this.toastMsg('Primero activa las notificaciones', 'warn');
-        return;
+    async probarNotif() {
+      if (!('Notification' in window)) {
+        return this.toastMsg('Este dispositivo no soporta notificaciones', 'bad');
       }
-      this.enviarNotif('Tienda Pro', 'Esta es una notificacion de prueba');
-      this.toastMsg('Notificacion enviada');
+      if (Notification.permission !== 'granted') {
+        return this.toastMsg('Primero activa las notificaciones', 'warn');
+      }
+      const r = await this.enviarNotif('Tienda Pro', 'Esta es una notificacion de prueba');
+      if (r && r.ok) {
+        this.toastMsg('Notificacion enviada (' + r.via + ')');
+      } else {
+        const m = r ? (r.motivo || 'desconocido') : 'error';
+        this.toastMsg('Fallo: ' + m + ' - revisa permisos del navegador', 'bad');
+      }
     },
 
     async chequearNotificaciones() {
