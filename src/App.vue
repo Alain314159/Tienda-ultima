@@ -1,7 +1,25 @@
 <template>
   <div v-cloak :data-theme="cfg.tema">
+    <!-- SPLASH -->
+    <div v-if="splashVisible" class="splash-screen">
+      <div class="splash-logo">
+        <icon name="store" :size="48" color="#fff"></icon>
+      </div>
+      <div class="splash-title">{{ cfg.nombre || 'Tienda Pro' }}</div>
+      <div class="splash-spinner"></div>
+    </div>
+
+    <!-- PULL TO REFRESH INDICATOR -->
+    <div v-if="pullDist > 0 || refrescando" class="pull-indicator" :style="{ transform: 'translateY(' + Math.min(pullDist, 70) + 'px)' }">
+      <div class="pull-spinner" :class="{ spin: refrescando || pullDist >= 70 }"></div>
+      <span>{{ refrescando ? 'Actualizando...' : (pullDist >= 70 ? 'Suelta para actualizar' : 'Desliza para actualizar') }}</span>
+    </div>
+
     <!-- BANNERS -->
-    <div v-if="!online" class="banner off no-print">Sin conexión — los datos se guardan localmente</div>
+    <div v-if="!online" class="banner off no-print">
+      <icon name="alert" :size="14" color="#fff"></icon>
+      Sin conexion — los datos se guardan localmente
+    </div>
     <div v-if="hayUpdate" class="banner upd no-print" @click="aplicarUpdate">Nueva versión disponible — tocar para actualizar</div>
 
     <!-- HEADER -->
@@ -22,7 +40,7 @@
       </div>
     </header>
 
-    <main>
+    <main @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
       <!-- ==================== DASHBOARD ==================== -->
       <section v-if="sec === 'dashboard'" class="fade-up">
         <div class="balance azul">
@@ -403,6 +421,9 @@
             </div>
           </div>
 
+          <textarea v-model="prodForm.nota" placeholder="Nota interna (opcional)" rows="2"
+            style="resize:none;font-family:inherit;font-size:.85rem"></textarea>
+
           <div class="escalones-box">
             <div class="escalones-header">
               <span>Empaques (opcional)</span>
@@ -450,6 +471,7 @@
                 <div class="nm">
                   {{ p.nombre }}
                 </div>
+                <div v-if="p.nota" class="det" style="font-size:.72rem;font-style:italic;color:var(--mut);margin-top:.15rem">📝 {{ p.nota }}</div>
                 <div class="stock-line">
                   <span class="badge" :class="badgeStock(p)">{{ txtBadge(p) }}</span>
                   <span class="stock-num">Stock: {{ formatStock(p.id, stock(p.id)) }}</span>
@@ -1528,6 +1550,18 @@
       <div class="modal-box" @click.stop>
         <div class="modal-title"><icon name="settings" :size="20"></icon> Ajustes</div>
 
+        <div class="set-group">Interfaz</div>
+        <div class="set-row">
+          <span class="lbl"><icon name="list" :size="18"></icon> Modo compacto</span>
+          <label class="switch">
+            <input type="checkbox" v-model="cfg.modoCompacto" @change="toggleModoCompacto">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
+          Reduce el espaciado para ver mas informacion en pantalla.
+        </div>
+
         <div class="set-group">Tienda</div>
         <div class="set-row">
           <span class="lbl"><icon name="store" :size="18"></icon> Nombre de tienda</span>
@@ -1818,7 +1852,9 @@ export default {
         umbralSobrantesMes: 2,
         stockMinDefault: 5,
         anomaliasDescartadas: [],
-        calcBilletesActiva: false
+        calcBilletesActiva: false,
+        modoCompacto: false,
+        mostrarSplash: true
       },
 
       productos: [],
@@ -1869,6 +1905,11 @@ export default {
       _highlightTimer: null,
       filtroStock: null,
       busquedaGlobalAbierta: false,
+      splashVisible: true,
+      _pullStartY: 0,
+      _pulling: false,
+      pullDist: 0,
+      refrescando: false,
       importPreview: null,
 
       busqVenta: '',
@@ -1880,7 +1921,7 @@ export default {
       focusCompra: false,
       compraForm: { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', empaqueSel: '', costoPorEmpaque: false },
 
-      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5', preciosEscalonados: [], empaques: [] },
+      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5', preciosEscalonados: [], empaques: [], nota: '' },
       busqProd: '',
       mostrarArchivados: false,
 
@@ -2618,6 +2659,39 @@ export default {
       this.toast.timer = setTimeout(() => { this.toast.show = false; }, accionTxt ? 5000 : 3000);
     },
 
+    async onPullRefresh() {
+      if (this.refrescando) return;
+      this.refrescando = true;
+      try { await this.recargarTodo(); } catch (e) {}
+      setTimeout(() => { this.refrescando = false; this.pullDist = 0; }, 500);
+      this.toastMsg('Datos actualizados');
+    },
+
+    onTouchStart(e) {
+      if (window.scrollY > 0) return;
+      this._pullStartY = e.touches[0].clientY;
+      this._pulling = true;
+    },
+
+    onTouchMove(e) {
+      if (!this._pulling) return;
+      const dy = e.touches[0].clientY - this._pullStartY;
+      if (dy > 0) this.pullDist = Math.min(dy, 90);
+    },
+
+    onTouchEnd() {
+      if (!this._pulling) return;
+      if (this.pullDist >= 70) this.onPullRefresh();
+      this._pulling = false;
+      setTimeout(() => { this.pullDist = 0; }, 300);
+    },
+
+    toggleModoCompacto() {
+      this.cfg.modoCompacto = !this.cfg.modoCompacto;
+      this.guardarCfg();
+      try { document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0'); } catch (e) {}
+    },
+
     toggleTema() {
       this.cfg.tema = this.cfg.tema === 'dark' ? 'light' : 'dark';
       try { document.documentElement.setAttribute('data-theme', this.cfg.tema); } catch (e) {}
@@ -3154,7 +3228,7 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [] };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [], nota: '' };
     },
 
     agregarEscalon() {
@@ -3194,13 +3268,14 @@ export default {
       const empaques = (p.empaques || [])
         .filter(e => (e.nombre || '').trim() && n(e.unidades) > 0)
         .map(e => ({ nombre: e.nombre.trim(), unidades: Math.floor(n(e.unidades)) }));
+      const nota = (p.nota || '').trim();
 
       if (p.editId) {
         const o = this.productos.find(x => x.id === p.editId);
-        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques }));
+        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques, nota }));
         this.toastMsg('Producto actualizado');
       } else {
-        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones, empaques });
+        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones, empaques, nota });
         this.toastMsg('Producto agregado');
       }
       this.resetProd();
@@ -3214,7 +3289,8 @@ export default {
         editId: id, nombre: p.nombre, precio: String(p.precio),
         stockMin: String(p.stockMinimo || 5),
         preciosEscalonados: (p.preciosEscalonados || []).map(e => ({ min: String(e.min), precio: String(e.precio) })),
-        empaques: (p.empaques || []).map(e => ({ nombre: e.nombre, unidades: String(e.unidades) }))
+        empaques: (p.empaques || []).map(e => ({ nombre: e.nombre, unidades: String(e.unidades) })),
+        nota: p.nota || ''
       };
       window.scrollTo(0, 0);
     },
@@ -5048,7 +5124,10 @@ export default {
         const c = await db.config.get('cfg');
         if (c) this.cfg = Object.assign({}, this.cfg, c.value);
         else await this.guardarCfg();
-        try { document.documentElement.setAttribute('data-theme', this.cfg.tema); } catch (e) {}
+        try {
+          document.documentElement.setAttribute('data-theme', this.cfg.tema);
+          document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0');
+        } catch (e) {}
         this.capInicialStr = String(this.cfg.capitalInicial || '');
         await this.recargarTodo();
         const b = await db.config.get('backupAuto');
@@ -5147,6 +5226,7 @@ export default {
         this.toastMsg('Error al cargar datos', 'bad');
       } finally {
         this.cargando = false;
+        this.splashVisible = false;
         const _ms = (performance.now() - _t0).toFixed(1);
         console.log('Inicializacion: ' + _ms + 'ms');
         this.$nextTick(() => {
