@@ -9,9 +9,6 @@
         <button class="sheet-btn" :class="{ activo: sec === 'productos' }" @click="$emit('ir', 'productos')">
           <icon name="tag" :size="22"></icon>Productos
         </button>
-        <button class="sheet-btn" :class="{ activo: sec === 'caja' }" @click="$emit('ir', 'caja')">
-          <icon name="wallet" :size="22"></icon>Caja
-        </button>
         <button class="sheet-btn" :class="{ activo: sec === 'gastos' }" @click="$emit('ir', 'gastos')">
           <icon name="dollar" :size="22"></icon>Gastos
         </button>

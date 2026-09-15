@@ -2156,3 +2156,19 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   background: rgba(22,163,74,.15);
   color: var(--ok-d);
 }
+
+/* ===== CONTABILIDAD COLAPSABLE ===== */
+.contab-card { padding: 1rem 1.15rem; }
+.contab-toggle {
+  cursor: pointer;
+  margin-bottom: 0;
+  user-select: none;
+  padding: .2rem 0;
+}
+.contab-card .contab-toggle + div[class] { margin-top: .8rem; }
+.contab-card .chev {
+  display: inline-flex;
+  transition: transform var(--tr);
+  margin-left: auto;
+}
+.contab-card .chev.open { transform: rotate(180deg); }

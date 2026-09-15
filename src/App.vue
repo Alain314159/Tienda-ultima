@@ -117,7 +117,7 @@
             <button class="quick-btn" @click="ir('ventas')"><icon name="cart" :size="22"></icon>Nueva Venta</button>
             <button class="quick-btn" @click="ir('compras')"><icon name="bag" :size="22"></icon>Registrar Compra</button>
             <button class="quick-btn" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Registrar Gasto</button>
-            <button class="quick-btn" @click="ir('caja')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
+            <button class="quick-btn" @click="ir('contabilidad')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
             <button class="quick-btn" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
             <button class="quick-btn" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
           </div>
@@ -615,87 +615,7 @@
       </section>
 
       <!-- ==================== CAJA ==================== -->
-      <section v-if="sec === 'caja'" class="fade-up">
-        <div class="balance" :class="saldoCaja < 0 ? 'neg' : 'azul'">
-          <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Saldo en Caja</div>
-          <div class="val">{{ fmt(saldoCaja) }}</div>
-          <div v-if="saldoCaja < 0" class="sub" style="font-weight:800">Caja en negativo</div>
-        </div>
 
-        <div class="info-box" style="margin-bottom:.8rem">
-          El saldo de caja es <b>acumulativo</b> (incluye todo el historial).
-          El cierre de período solo reinicia los contadores de ventas, compras y ganancia del dashboard.
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Desglose</div>
-          <div class="row"><span>Capital inicial</span><span class="pos">+{{ fmt(cfg.capitalInicial || 0) }}</span></div>
-          <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
-          <div class="row"><span>Ventas contado</span><span class="pos">+{{ fmt(ventasContadoTotal) }}</span></div>
-          <div class="row"><span>Compras</span><span class="neg">-{{ fmt(comprasTotal) }}</span></div>
-          <div class="row"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
-          <div class="row"><span>Ajustes arqueo</span>
-            <span :class="arqueoNeto >= 0 ? 'pos' : 'neg'">{{ arqueoNeto >= 0 ? '+' : '' }}{{ fmt(arqueoNeto) }}</span>
-          </div>
-          <div class="row total"><span>= SALDO</span><span>{{ fmt(saldoCaja) }}</span></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="check" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Arqueo de caja</div>
-          <div class="info-box" style="margin-bottom:.6rem;font-size:.75rem">
-            El arqueo ahora se hace dentro de <b>Auditoria</b> junto con el conteo de inventario, para que todo quede en un solo registro.
-          </div>
-          <button class="btn pri" @click="ir('auditoria')">
-            <icon name="check" :size="16" color="#fff"></icon> Ir a Auditoria
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="list" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Movimientos recientes</div>
-          <div v-if="movimientosRecientes.length === 0" class="empty">Sin movimientos</div>
-
-          <div v-if="cajaPorPeriodo.actual.length" class="hist-grupo">
-            <div class="hist-head">
-              <span class="badge ok">ACTUAL</span>
-              <span class="hist-titulo">Periodo actual</span>
-              <span class="hist-count">{{ cajaPorPeriodo.actual.length }}</span>
-            </div>
-            <div v-for="m in histItemsMostrados(cajaPorPeriodo.actual, 'caja')" :key="m.id" class="item">
-              <div class="info">
-                <div class="nm">{{ m.concepto }}</div>
-                <div class="det">{{ fmtFH(m.fecha) }}</div>
-              </div>
-              <b :class="m.tipo === 'ingreso' ? 'pos' : 'neg'">{{ m.tipo === 'ingreso' ? '+' : '-' }}{{ fmt(m.monto) }}</b>
-            </div>
-            <div v-if="histHayMas(cajaPorPeriodo.actual, 'caja')" class="hist-mas">
-              <button class="link-btn" @click="histMostrarMas('caja')">Mostrar 20 mas</button>
-            </div>
-          </div>
-
-          <div v-for="g in cajaPorPeriodo.cerrados" :key="g.cierre.id" class="hist-grupo hist-cerrado">
-            <div class="hist-head hist-head-click" @click="histToggle('caja', g.cierre.id)">
-              <span class="badge arch">CERRADO</span>
-              <span class="hist-titulo">{{ g.cierre.periodo }}</span>
-              <span class="hist-count">{{ g.items.length }}</span>
-              <span class="chev" :class="{ open: histAbierto('caja', g.cierre.id) }">
-                <icon name="chevron" :size="14" :color="mutColor"></icon>
-              </span>
-            </div>
-            <div v-if="histAbierto('caja', g.cierre.id)">
-              <div v-for="m in histItemsMostrados(g.items, 'caja')" :key="m.id" class="item">
-                <div class="info">
-                  <div class="nm">{{ m.concepto }}</div>
-                  <div class="det">{{ fmtFH(m.fecha) }}</div>
-                </div>
-                <b :class="m.tipo === 'ingreso' ? 'pos' : 'neg'">{{ m.tipo === 'ingreso' ? '+' : '-' }}{{ fmt(m.monto) }}</b>
-              </div>
-              <div v-if="histHayMas(g.items, 'caja')" class="hist-mas">
-                <button class="link-btn" @click="histMostrarMas('caja')">Mostrar 20 mas</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!-- ==================== PATRIMONIO ==================== -->
       <section v-if="sec === 'patrimonio'" class="fade-up">
@@ -1137,10 +1057,44 @@
       </section>
       <!-- ==================== CONTABILIDAD ==================== -->
       <section v-if="sec === 'contabilidad'" class="fade-up">
+        <!-- RESUMEN PRINCIPAL -->
         <div class="balance azul">
           <div class="lbl"><icon name="chart" :size="14" color="#fff"></icon> Resultado del periodo</div>
           <div class="val" :style="gananciaNetaPeriodo >= 0 ? '' : 'color:#fca5a5'">{{ fmt(gananciaNetaPeriodo) }}</div>
           <div class="sub">Margen neto: {{ margenNetoPct }}% · Margen bruto: {{ margenBrutoPct }}%</div>
+        </div>
+
+        <!-- KPIs PRINCIPALES -->
+        <div class="grid2" style="margin-bottom:.85rem">
+          <div class="stat">
+            <div class="lbl"><icon name="trend" :size="12" :color="mutColor"></icon> Ingresos</div>
+            <div class="val" style="color:var(--pri)">{{ fmt(ventasContadoTotal) }}</div>
+          </div>
+          <div class="stat">
+            <div class="lbl"><icon name="chart" :size="12" :color="mutColor"></icon> COGS</div>
+            <div class="val neg">{{ fmt(m(ventasContadoTotal - gananciaBrutaPeriodo)) }}</div>
+          </div>
+          <div class="stat">
+            <div class="lbl"><icon name="dollar" :size="12" :color="mutColor"></icon> Caja</div>
+            <div class="val" :style="saldoCaja >= 0 ? 'color:var(--ok-d)' : 'color:var(--bad)'">{{ fmt(saldoCaja) }}</div>
+          </div>
+          <div class="stat">
+            <div class="lbl"><icon name="package" :size="12" :color="mutColor"></icon> Inventario</div>
+            <div class="val" style="color:var(--pri)">{{ fmt(valorInventario) }}</div>
+          </div>
+        </div>
+
+        <!-- POSICION FINANCIERA -->
+        <div class="card" style="background:linear-gradient(135deg,rgba(59,130,246,.06) 0%,rgba(59,130,246,.02) 100%);border-color:rgba(59,130,246,.15)">
+          <div class="card-title"><icon name="dollar" :size="18" :color="'#3B82F6'"></icon> Posicion financiera</div>
+          <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
+          <div class="row"><span>Pasivos (deudas)</span><b :class="pasivosTotalReal > 0 ? 'neg' : ''">{{ fmt(pasivosTotalReal) }}</b></div>
+          <div class="row total"><span>= PATRIMONIO NETO</span><span>{{ fmt(activosTotal - pasivosTotalReal) }}</span></div>
+        </div>
+
+        <!-- AVISO: desgloses mas abajo -->
+        <div class="info-box" style="text-align:center;font-size:.75rem;margin-bottom:.85rem">
+          ↓ Desgloses detallados ↓
         </div>
 
         <div class="card">
@@ -1162,8 +1116,15 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Balance de situacion</div>
+        <div class="card contab-card">
+          <div class="card-title contab-toggle" @click="toggleContab('situacion')">
+            <icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
+            Balance de situacion
+            <span class="chev" :class="{ open: contabExpandido.situacion }" style="margin-left:auto">
+              <icon name="chevron" :size="16" :color="mutColor"></icon>
+            </span>
+          </div>
+          <div v-if="contabExpandido.situacion">
           <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
@@ -1173,10 +1134,18 @@
           <div class="row"><span>Ganancias acumuladas</span><span class="pos">{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
           <div class="row total"><span>= PATRIMONIO</span><span>{{ fmt(patrimonioTotal - retirosTotal + 0) }}</span></div>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Estado de resultados</div>
+        <div class="card contab-card">
+          <div class="card-title contab-toggle" @click="toggleContab('resultados')">
+            <icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
+            Estado de resultados
+            <span class="chev" :class="{ open: contabExpandido.resultados }" style="margin-left:auto">
+              <icon name="chevron" :size="16" :color="mutColor"></icon>
+            </span>
+          </div>
+          <div v-if="contabExpandido.resultados">
           <div class="row"><span>Ingresos por ventas</span><b class="pos">{{ fmt(ventasContadoTotal) }}</b></div>
           <div class="row"><span>(-) Costo de lo vendido</span><b class="neg">{{ fmt(-1 * m(ventasContadoTotal - gananciaBrutaPeriodo)) }}</b></div>
           <div class="row total"><span>= GANANCIA BRUTA</span><span>{{ fmt(gananciaBrutaPeriodo) }} <span style="font-weight:400;font-size:.78rem">({{ margenBrutoPct }}%)</span></span></div>
@@ -1185,10 +1154,18 @@
           <div class="row total"><span>= GANANCIA NETA</span>
             <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }} <span style="font-weight:400;font-size:.78rem">({{ margenNetoPct }}%)</span></span>
           </div>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Balance general</div>
+        <div class="card contab-card">
+          <div class="card-title contab-toggle" @click="toggleContab('balance')">
+            <icon name="dollar" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
+            Balance general
+            <span class="chev" :class="{ open: contabExpandido.balance }" style="margin-left:auto">
+              <icon name="chevron" :size="16" :color="mutColor"></icon>
+            </span>
+          </div>
+          <div v-if="contabExpandido.balance">
           <div class="info-box" style="margin-bottom:.6rem;font-size:.72rem">
             Activo = Pasivo + Patrimonio
           </div>
@@ -1219,10 +1196,18 @@
             <span>Cuadre contable</span>
             <b>{{ Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) }}</b>
           </div>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="wallet" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Flujo de caja</div>
+        <div class="card contab-card">
+          <div class="card-title contab-toggle" @click="toggleContab('flujo')">
+            <icon name="wallet" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
+            Flujo de caja
+            <span class="chev" :class="{ open: contabExpandido.flujo }" style="margin-left:auto">
+              <icon name="chevron" :size="16" :color="mutColor"></icon>
+            </span>
+          </div>
+          <div v-if="contabExpandido.flujo">
           <div class="row" style="font-weight:800;color:var(--ok)"><span>ENTRADAS</span><span>+{{ fmt(flujoEntradas) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ventas al contado</span><span>{{ fmt(ventasContadoTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Aportes de capital</span><span>{{ fmt(aportesTotal) }}</span></div>
@@ -1234,6 +1219,7 @@
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Faltantes de arqueo</span><span>{{ fmt(this.movCaja.filter(mv => mv.tipo === 'egreso' && mv.concepto && mv.concepto.includes('Faltante')).reduce((s,mv) => s + n(mv.monto), 0)) }}</span></div>
           <div class="row total"><span>= FLUJO NETO</span>
             <span :class="flujoNeto >= 0 ? 'pos' : 'neg'">{{ fmt(flujoNeto) }}</span>
+          </div>
           </div>
         </div>
 
@@ -1340,8 +1326,15 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Libro diario ({{ asientosFiltrados.length }})</div>
+        <div class="card contab-card">
+          <div class="card-title contab-toggle" @click="toggleContab('libro')">
+            <icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
+            Libro diario ({{ asientosFiltrados.length }})
+            <span class="chev" :class="{ open: contabExpandido.libro }" style="margin-left:auto">
+              <icon name="chevron" :size="16" :color="mutColor"></icon>
+            </span>
+          </div>
+          <div v-if="contabExpandido.libro">
           <div class="grid2" style="margin-bottom:.5rem">
             <input v-model="filtroAsientoInicio" type="date">
             <input v-model="filtroAsientoFin" type="date">
@@ -1410,6 +1403,7 @@
               :style="Math.abs(totalDebe - totalHaber) < 0.01 ? 'color:var(--ok)' : 'color:var(--bad)'">
               {{ Math.abs(totalDebe - totalHaber) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(Math.abs(totalDebe - totalHaber)) }}
             </div>
+          </div>
           </div>
         </div>
       </section>
@@ -2032,6 +2026,15 @@ export default {
       cuadreExpandido: {},
       _highlightTimer: null,
       filtroStock: null,
+      contabExpandido: {
+        situacion: false,
+        resultados: false,
+        balance: false,
+        flujo: false,
+        libro: false,
+        cierres: false,
+        pasivos: false
+      },
       busquedaGlobalAbierta: false,
       splashVisible: true,
       safeMode: false,
@@ -2121,7 +2124,7 @@ export default {
 
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','caja','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -2930,6 +2933,10 @@ export default {
       this.cfg.anomaliasDescartadas = [];
       this.guardarCfg();
       this.toastMsg('Anomalias restauradas');
+    },
+
+    toggleContab(seccion) {
+      this.contabExpandido[seccion] = !this.contabExpandido[seccion];
     },
 
     toggleCuadreProducto(id) {
@@ -5948,7 +5955,7 @@ export default {
           setTimeout(() => this.tgAutoDetectarChat(), 2000);
         }
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
