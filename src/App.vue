@@ -1,5 +1,23 @@
 <template>
   <div v-cloak :data-theme="cfg.tema">
+    <!-- MULTI-TAB WARNING -->
+    <div v-if="_otraPestana" class="multi-tab-warn no-print">
+      <div style="flex:1">
+        <b>⚠ App abierta en otra pestaña</b><br>
+        <span style="font-size:.72rem">Tenerla abierta en dos lugares puede causar problemas. Cierra la otra.</span>
+      </div>
+      <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="_otraPestana = false">OK</button>
+    </div>
+
+    <!-- SAFE MODE BANNER -->
+    <div v-if="safeMode" class="safe-mode-banner no-print">
+      <div style="flex:1">
+        <b>Modo seguro activado</b><br>
+        <span style="font-size:.72rem">La app fallo al iniciar varias veces. Algunas funciones estan deshabilitadas.</span>
+      </div>
+      <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="salirSafeMode">Reintentar</button>
+    </div>
+
     <!-- SPLASH -->
     <div v-if="splashVisible" class="splash-screen">
       <div class="splash-logo">
@@ -2015,6 +2033,8 @@ export default {
       filtroStock: null,
       busquedaGlobalAbierta: false,
       splashVisible: true,
+      safeMode: false,
+      _tabId: null,
       tgEstado: 'sin-config',
       tgBackups: [],
       tgCargando: false,
@@ -2767,6 +2787,24 @@ export default {
       return m(this.lotesDeProducto(pid).reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
     },
 
+    async conWatchdog(nombre, promesa, timeoutMs = 15000) {
+      const t0 = performance.now();
+      let timeoutId;
+      const timeout = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Operacion "' + nombre + '" tardo mas de ' + (timeoutMs / 1000) + 's. Puede haber quedado a medias.'));
+        }, timeoutMs);
+      });
+      try {
+        const res = await Promise.race([promesa, timeout]);
+        const ms = (performance.now() - t0).toFixed(0);
+        if (ms > 3000) console.warn('Watchdog: ' + nombre + ' tardo ' + ms + 'ms');
+        return res;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+
     toastMsg(msg, type = 'ok', accionTxt = '', accionFn = null) {
       clearTimeout(this.toast.timer);
       this.toast = { show: true, msg, type, accionTxt, accionFn, timer: null };
@@ -2799,6 +2837,18 @@ export default {
       if (this.pullDist >= 70) this.onPullRefresh();
       this._pulling = false;
       setTimeout(() => { this.pullDist = 0; }, 300);
+    },
+
+    async salirSafeMode() {
+      this.confirm = {
+        activo: true,
+        titulo: 'Salir de modo seguro',
+        msg: 'Se reintentara arrancar normalmente. Si falla de nuevo, vuelve a modo seguro.',
+        onOk: async () => {
+          try { await P(db.config, { key: 'safeModeCounter', value: 0 }); } catch (e) {}
+          location.reload();
+        }
+      };
     },
 
     toggleModoCompacto() {
@@ -3142,7 +3192,7 @@ export default {
         }
         const venta = { id: genId('v'), fecha: new Date().toISOString(), items, total: tot, ganancia: gan, anulada: false };
 
-        await db.transaction('rw', db.ventas, db.lotes, async () => {
+        await this.conWatchdog('venta', db.transaction('rw', db.ventas, db.lotes, async () => {
           await P(db.ventas, venta);
           const lotesActualizados = [];
           for (const u of todos) {
@@ -3155,7 +3205,7 @@ export default {
           if (lotesActualizados.length > 0) {
             await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
           }
-        });
+        }));
 
         await this.recargar(['ventas', 'lotes']);
         await this.recrearAsientoVenta(venta);
@@ -5026,15 +5076,91 @@ export default {
       this.importFile = null;
     },
 
-    async importarData(d) {
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
-      await db.transaction('rw', tables.concat(['config']), async () => {
-        for (const t of tables) {
-          await db.table(t).clear();
-          if (Array.isArray(d[t])) await db.table(t).bulkPut(clean(d[t]));
+    validarEsquema(d) {
+      const errores = [];
+      const avisos = [];
+      // Debe ser objeto
+      if (!d || typeof d !== 'object') {
+        return { ok: false, errores: ['El archivo no es un objeto valido'] };
+      }
+      // Debe tener al menos productos o ventas
+      if (!d.productos && !d.ventas) {
+        errores.push('Falta productos y ventas (no parece un respaldo)');
+      }
+      // Arrays deben ser arrays
+      const tablas = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos','auditorias'];
+      tablas.forEach(t => {
+        if (d[t] !== undefined && !Array.isArray(d[t])) {
+          errores.push('"' + t + '" no es un array');
         }
-        if (d.cfg) await P(db.config, { key: 'cfg', value: d.cfg });
       });
+      // Cada item debe tener id
+      tablas.forEach(t => {
+        if (!Array.isArray(d[t])) return;
+        const sinId = d[t].filter(x => !x || typeof x !== 'object' || !x.id);
+        if (sinId.length > 0) {
+          errores.push('"' + t + '": ' + sinId.length + ' item(s) sin id');
+        }
+      });
+      // Ventas deben tener items array
+      if (Array.isArray(d.ventas)) {
+        const ventasMalas = d.ventas.filter(v => v && v.items && !Array.isArray(v.items));
+        if (ventasMalas.length > 0) errores.push(ventasMalas.length + ' venta(s) con items invalidos');
+      }
+      // Lotes deben tener cantidadInicial
+      if (Array.isArray(d.lotes)) {
+        const lotesMalos = d.lotes.filter(l => l && (l.cantidadInicial === undefined || l.costo === undefined));
+        if (lotesMalos.length > 0) avisos.push(lotesMalos.length + ' lote(s) sin cantidadInicial/costo');
+      }
+      // Tamaño razonable
+      const json = JSON.stringify(d);
+      if (json.length > 50 * 1024 * 1024) {
+        errores.push('Archivo demasiado grande (>50MB)');
+      }
+      // Version
+      if (d.version && d.version < 6) avisos.push('Respaldo de version antigua (v' + d.version + ')');
+      return { ok: errores.length === 0, errores, avisos };
+    },
+
+    async importarData(d) {
+      // Validar primero
+      const v = this.validarEsquema(d);
+      if (!v.ok) {
+        throw new Error('Datos invalidos:\n· ' + v.errores.join('\n· '));
+      }
+      if (v.avisos && v.avisos.length) {
+        console.warn('Import con avisos:', v.avisos);
+      }
+
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
+      // Snapshot antes por si falla
+      const respaldo = {};
+      try {
+        for (const t of tables) respaldo[t] = await db.table(t).toArray();
+      } catch (e) { console.warn('No pude tomar snapshot', e); }
+
+      try {
+        await db.transaction('rw', tables.concat(['config']), async () => {
+          for (const t of tables) {
+            await db.table(t).clear();
+            if (Array.isArray(d[t])) await db.table(t).bulkPut(clean(d[t]));
+          }
+          if (d.cfg) await P(db.config, { key: 'cfg', value: d.cfg });
+        });
+      } catch (err) {
+        // Rollback manual desde snapshot
+        try {
+          await db.transaction('rw', tables, async () => {
+            for (const t of tables) {
+              await db.table(t).clear();
+              if (respaldo[t] && respaldo[t].length) await db.table(t).bulkPut(respaldo[t]);
+            }
+          });
+          throw new Error('Fallo la importacion (rollback aplicado): ' + err.message);
+        } catch (rb) {
+          throw new Error('Fallo la importacion Y el rollback: ' + err.message);
+        }
+      }
       if (d.cfg) this.cfg = Object.assign({}, this.cfg, d.cfg);
       await this.recargarTodo();
     },
@@ -5660,7 +5786,36 @@ export default {
     // ===== INICIALIZACIÓN =====
     async inicializar() {
       const _t0 = performance.now();
+      // Deteccion multi-pestana
       try {
+        this._tabId = genId('tab');
+        if (typeof BroadcastChannel !== 'undefined') {
+          this._bc = new BroadcastChannel('tienda-pro');
+          this._bc.onmessage = (e) => {
+            if (e.data && e.data.tipo === 'hello' && e.data.tabId !== this._tabId) {
+              // Otra pestaña existe, avisar
+              this._otraPestana = true;
+              this._bc.postMessage({ tipo: 'existe', tabId: this._tabId });
+            }
+          };
+          this._bc.postMessage({ tipo: 'hello', tabId: this._tabId });
+        }
+      } catch (e) {}
+
+      try {
+        // SAFE MODE: contar intentos fallidos
+        let intentos = 0;
+        try {
+          const sm = await db.config.get('safeModeCounter');
+          intentos = (sm && sm.value) ? sm.value : 0;
+        } catch (e) {}
+        if (intentos >= 3) {
+          this.safeMode = true;
+          console.warn('SAFE MODE activado (3+ intentos fallidos)');
+        }
+        // Marcar inicio en curso
+        try { await P(db.config, { key: 'safeModeCounter', value: intentos + 1 }); } catch (e) {}
+
         const c = await db.config.get('cfg');
         if (c) this.cfg = Object.assign({}, this.cfg, c.value);
         else await this.guardarCfg();
@@ -5758,8 +5913,8 @@ export default {
           } catch (e) { console.error('auto asientos', e); }
         }
 
-        // Telegram: usar token default o guardado
-        if (!this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
+        // Telegram: usar token default o guardado (no en safe mode)
+        if (!this.safeMode && !this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
         if (this.cfg.tgChatId) this.tgEstado = 'conectado';
         else {
           this.tgEstado = 'esperando-start';
@@ -5773,6 +5928,8 @@ export default {
         console.error(e);
         this.toastMsg('Error al cargar datos', 'bad');
       } finally {
+        // Si todo fue bien, resetear contador
+        try { await P(db.config, { key: 'safeModeCounter', value: 0 }); } catch (e) {}
         this.cargando = false;
         this.splashVisible = false;
         const _ms = (performance.now() - _t0).toFixed(1);
@@ -5788,14 +5945,14 @@ export default {
         } catch (e) {}
         // Actualizar cola pendiente
         await this.tgActualizarCola();
-        // Si no hay chat de Telegram, empezar a buscar
-        if (!this.cfg.tgChatId && TOKEN_DEFAULT) this.iniciarTgPoll();
+        // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
+        if (!this.safeMode && !this.cfg.tgChatId && TOKEN_DEFAULT) this.iniciarTgPoll();
         // Procesar cola cuando recupera conexion
         window.addEventListener('online', () => {
           setTimeout(() => this.tgProcesarCola(), 1000);
         });
-        // Auto-backup a Telegram si esta activo
-        if (this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
+        // Auto-backup a Telegram si esta activo (no en safe mode)
+        if (!this.safeMode && this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
         this.$nextTick(() => {
           if (this.sec === 'dashboard') {
             const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
@@ -5841,6 +5998,7 @@ export default {
   },
 
   beforeUnmount() {
+    if (this._bc) { try { this._bc.close(); } catch (e) {} }
     if (this._notifTimer) clearInterval(this._notifTimer);
     if (this._tgColaTimer) clearInterval(this._tgColaTimer);
     if (this._tgPollTimer) clearInterval(this._tgPollTimer);

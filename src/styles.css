@@ -2011,3 +2011,47 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   padding-top: .7rem;
   border-top: 1px solid var(--brd);
 }
+
+/* ===== SAFE MODE ===== */
+.safe-mode-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 130;
+  background: linear-gradient(135deg, #D97706 0%, #92400E 100%);
+  color: #fff;
+  padding: .6rem .9rem;
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(217,119,6,.4);
+  font-size: .85rem;
+}
+.safe-mode-banner .btn.ghost {
+  border-color: rgba(255,255,255,.5);
+  color: #fff;
+}
+
+/* ===== MULTI-TAB ===== */
+.multi-tab-warn {
+  position: fixed;
+  bottom: 6rem;
+  left: .6rem;
+  right: .6rem;
+  z-index: 125;
+  background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+  color: #fff;
+  padding: .7rem .9rem;
+  border-radius: var(--r-sm);
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(220,38,38,.4);
+  font-size: .82rem;
+  animation: slideDown .3s ease;
+}
+.multi-tab-warn .btn.ghost {
+  border-color: rgba(255,255,255,.5);
+  color: #fff;
+}
