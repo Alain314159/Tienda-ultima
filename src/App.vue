@@ -1782,6 +1782,12 @@
           Elimina permanentemente productos, ventas, compras, gastos, socios, asientos, pasivos, etc. No se puede deshacer.
         </div>
 
+        <div class="set-group">Ayuda</div>
+        <div class="set-row">
+          <span class="lbl"><icon name="zap" :size="18"></icon> Ver tutorial de nuevo</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="repetirTutorial">Repetir</button>
+        </div>
+
         <div class="set-group">Avanzado</div>
         <div class="set-row">
           <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
@@ -1902,6 +1908,15 @@
       @ir="(sec, refId) => { busquedaGlobalAbierta = false; ir(sec, refId); }"
     />
 
+    <!-- ONBOARDING -->
+    <Onboarding
+      :activo="tutorialActivo"
+      :pasos="pasosTutorial"
+      @cerrar="cerrarTutorial"
+      @ir="onTutorialIr"
+      @accion="onTutorialAccion"
+    />
+
     <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
   </div>
@@ -1912,6 +1927,7 @@ import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
 import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups, TOKEN_DEFAULT } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
+import Onboarding from './components/Onboarding.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
@@ -1924,7 +1940,7 @@ import AppToast from './components/AppToast.vue';
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Onboarding },
 
 
   data() {
@@ -1976,6 +1992,7 @@ export default {
         tgCarpetaActiva: false,
         tgCarpetaNombre: '',
         modoCompacto: false,
+        tutorialVisto: false,
         mostrarSplash: true
       },
 
@@ -2038,6 +2055,7 @@ export default {
       busquedaGlobalAbierta: false,
       splashVisible: true,
       safeMode: false,
+      tutorialActivo: false,
       _tabId: null,
       tgEstado: 'sin-config',
       tgBackups: [],
@@ -2933,6 +2951,154 @@ export default {
       this.cfg.anomaliasDescartadas = [];
       this.guardarCfg();
       this.toastMsg('Anomalias restauradas');
+    },
+
+    // ===== TUTORIAL =====
+    pasosTutorial() {
+      const nombre = this.cfg.nombre || 'tu tienda';
+      return [
+        {
+          titulo: 'Bienvenido a Tienda Pro',
+          icono: 'store',
+          texto: 'Te voy a mostrar <b>todo lo que puedes hacer</b> en menos de 2 minutos. Es rapido y puedes saltarlo cuando quieras.',
+          bullets: [
+            'Ventas, compras e inventario',
+            'Caja, contabilidad y socios',
+            'Backup automatico en Telegram',
+            'Reportes y auditorias'
+          ]
+        },
+        {
+          titulo: 'Inicio - Tu centro de mando',
+          icono: 'home',
+          sec: 'dashboard',
+          target: '.balance.azul',
+          texto: 'Aqui ves <b>el dinero en caja, ventas del dia, ganancia y todo de un vistazo</b>. Los consejos de Tienda Pro te avisan que hacer.'
+        },
+        {
+          titulo: 'Bara inferior - Navegacion',
+          icono: 'menu',
+          target: '.nav',
+          texto: 'Desde abajo llegas a todas partes. Toca cada boton para ver:',
+          bullets: [
+            '<b>Inicio</b> - resumen y consejos',
+            '<b>Ventas</b> - cobrar y ver historial',
+            '<b>Compras</b> - mercancia que entra',
+            '<b>Inventario</b> - que tienes y cuanto vale',
+            '<b>Mas</b> - todo lo demas'
+          ]
+        },
+        {
+          titulo: 'Empieza por aqui: tus datos',
+          icono: 'store',
+          sec: 'socios',
+          target: 'section:not([style*="display: none"]) .card-title',
+          texto: 'Antes de vender, configura lo basico. Toca <b>Ajustes</b> (arriba) y pon:',
+          bullets: [
+            '<b>Nombre de la tienda</b> - como quieres que aparezca',
+            '<b>Capital inicial</b> - el dinero con el que empiezas',
+            '<b>PIN</b> - para proteger operaciones sensibles'
+          ]
+        },
+        {
+          titulo: 'Crea tus productos',
+          icono: 'tag',
+          sec: 'productos',
+          target: 'section:not([style*="display: none"]) input[placeholder="Nombre del producto"]',
+          texto: 'Todo empieza con los productos. Toca <b>Mas → Productos</b> y agrega cada producto con su precio de venta. Puedes agregar <b>precios por cantidad</b> y <b>empaques</b> (sacos, cajas).'
+        },
+        {
+          titulo: 'Registra tus compras',
+          icono: 'bag',
+          sec: 'compras',
+          target: 'nav button, .card:first-child',
+          texto: 'Cuando compres mercancia, registrala aqui. La app calcula el <b>costo promedio</b> y crea los lotes automaticamente. Si compraste el mismo producto a precios distintos, cada lote respeta su costo.'
+        },
+        {
+          titulo: 'Haz tu primera venta',
+          icono: 'cart',
+          sec: 'ventas',
+          target: 'section:not([style*="display: none"]) .search input',
+          texto: 'Busca el producto, pon la cantidad, ajusta el precio si hace falta y toca <b>Cobrar Venta</b>. La app calcula la ganancia real usando FIFO (respeta cada lote).'
+        },
+        {
+          titulo: 'Tus gastos del dia',
+          icono: 'dollar',
+          sec: 'gastos',
+          target: 'section:not([style*="display: none"]) .card-title',
+          texto: 'Luz, agua, alquiler, transporte... cada gasto afecta tu ganancia neta. Se descuenta automaticamente de la caja si marcas "Sale de caja".'
+        },
+        {
+          titulo: 'Contabilidad completa',
+          icono: 'chart',
+          sec: 'contabilidad',
+          target: 'section:not([style*="display: none"]) .balance',
+          texto: 'Todo lo que paso en tu negocio queda registrado. <b>Resumen arriba, detalles abajo</b>. Puedes exportar todo a PDF para contabilidad.'
+        },
+        {
+          titulo: 'Socios y reparto',
+          icono: 'users',
+          sec: 'socios',
+          target: 'section:not([style*="display: none"]) .balance',
+          texto: 'Si tienes socios, agregalos con su <b>% de participacion</b>. Al cerrar el mes, la app divide la ganancia automaticamente.'
+        },
+        {
+          titulo: 'Auditoria fisica',
+          icono: 'check',
+          sec: 'auditoria',
+          target: 'section:not([style*="display: none"]) .balance, section:not([style*="display: none"]) .card',
+          texto: 'Cada cierto tiempo, cuenta el dinero y los productos fisicos. La app te dice si <b>cuadra, sobra o falta</b>. Los ajustes se registran solos.'
+        },
+        {
+          titulo: 'Backup en Telegram',
+          icono: 'lock',
+          accion: 'abrir-ajustes',
+          target: '.modal-box',
+          texto: 'Tu informacion se respalda automaticamente en <b>Telegram</b> cada 24h. Los respaldos quedan cifrados y disponibles desde cualquier dispositivo.'
+        },
+        {
+          titulo: 'Listo para empezar',
+          icono: 'diamond',
+          sec: 'dashboard',
+          target: '.nav',
+          texto: 'Eso es todo. Ya puedes usar <b>' + nombre + '</b> como un profesional.',
+          bullets: [
+            'Agrega productos primero',
+            'Registra compras y ventas',
+            'Haz una auditoria cada mes',
+            'Revisa los consejos en Inicio'
+          ]
+        }
+      ];
+    },
+
+    iniciarTutorial() {
+      this.tutorialActivo = true;
+    },
+
+    cerrarTutorial() {
+      this.tutorialActivo = false;
+      this.cfg.tutorialVisto = true;
+      this.guardarCfg();
+      this.toastMsg('Tutorial completado');
+    },
+
+    repetirTutorial() {
+      this.ajustesAbierto = false;
+      setTimeout(() => this.iniciarTutorial(), 300);
+    },
+
+    onTutorialAccion(accion) {
+      if (accion === 'abrir-ajustes') {
+        this.ajustesAbierto = true;
+        this.$nextTick(() => {
+          // El Onboarding refrescara el target
+        });
+      }
+    },
+
+    onTutorialIr(sec) {
+      this.ir(sec);
     },
 
     toggleContab(seccion) {
@@ -5946,6 +6112,10 @@ export default {
           } catch (e) { console.error('auto asientos', e); }
         }
 
+        // Tutorial en primera apertura
+        if (!this.cfg.tutorialVisto && !this.safeMode) {
+          setTimeout(() => { this.tutorialActivo = true; }, 800);
+        }
         // Telegram: usar token default o guardado (no en safe mode)
         if (!this.safeMode && !this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
         if (this.cfg.tgChatId) this.tgEstado = 'conectado';
