@@ -1727,3 +1727,47 @@ input::placeholder, textarea::placeholder {
 .import-row:last-child { border-bottom: none; }
 .import-row.import-bad span:last-child { color: var(--bad); }
 .import-row.import-ok span:last-child { color: var(--ok); }
+
+/* ===== INSIGHTS ===== */
+.insights-card {
+  background: linear-gradient(135deg, rgba(124,58,237,.04) 0%, rgba(124,58,237,.01) 100%);
+  border: 1px solid rgba(124,58,237,.15);
+}
+.insight-row {
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  padding: .65rem 0;
+  border-bottom: 1px solid var(--brd);
+  cursor: pointer;
+  transition: background var(--tr);
+}
+.insight-row:last-child { border-bottom: none; }
+.insight-row:active { background: var(--bg); }
+.insight-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: .6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.insight-ok .insight-icon { background: rgba(22,163,74,.12); }
+.insight-warn .insight-icon { background: rgba(217,119,6,.12); }
+.insight-bad .insight-icon { background: rgba(220,38,38,.12); }
+.insight-info .insight-icon { background: rgba(124,58,237,.12); }
+.insight-body { flex: 1; min-width: 0; }
+.insight-title {
+  font-weight: 700;
+  font-size: .85rem;
+  line-height: 1.3;
+  margin-bottom: .15rem;
+}
+.insight-detail {
+  font-size: .72rem;
+  color: var(--mut);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

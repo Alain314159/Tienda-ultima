@@ -8,6 +8,9 @@
     <header class="header no-print">
       <h1><icon name="store" :size="20" color="#fff"></icon> {{ cfg.nombre || 'Tienda Pro' }}</h1>
       <div class="hacts">
+        <button class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
+          <icon name="search" :size="18" color="#fff"></icon>
+        </button>
         <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
           <icon :name="cfg.tema === 'dark' ? 'sun' : 'moon'" :size="18" color="#fff"></icon>
           <span>{{ cfg.tema === 'dark' ? 'Claro' : 'Oscuro' }}</span>
@@ -81,6 +84,26 @@
             <button class="quick-btn" @click="ir('caja')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
             <button class="quick-btn" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
             <button class="quick-btn" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
+          </div>
+        </div>
+
+        <div class="card insights-card" v-if="insights.length">
+          <div class="card-title">
+            <icon name="zap" :size="18" :color="'#7C3AED'"></icon>
+            Consejos de Tienda Pro
+          </div>
+          <div v-for="(ins, i) in insights" :key="i"
+            class="insight-row"
+            :class="'insight-' + ins.tipo"
+            @click="ir(ins.sec)">
+            <div class="insight-icon">
+              <icon :name="ins.icono" :size="16" :color="ins.tipo === 'bad' ? '#DC2626' : ins.tipo === 'warn' ? '#D97706' : ins.tipo === 'ok' ? '#16A34A' : '#7C3AED'"></icon>
+            </div>
+            <div class="insight-body">
+              <div class="insight-title">{{ ins.titulo }}</div>
+              <div class="insight-detail">{{ ins.detalle }}</div>
+            </div>
+            <icon name="chevron" :size="14" :color="mutColor" style="transform:rotate(-90deg);flex-shrink:0"></icon>
           </div>
         </div>
 
@@ -1562,7 +1585,10 @@
         </div>
 
         <div class="set-group">Datos</div>
-        <button class="btn pri" @click="exportar"><icon name="download" :size="16" color="#fff"></icon> Exportar respaldo</button>
+        <button class="btn pri" @click="exportar"><icon name="download" :size="16" color="#fff"></icon> Exportar respaldo (JSON)</button>
+        <button class="btn pri" @click="exportarCifrado" style="background:linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%)">
+          <icon name="lock" :size="16" color="#fff"></icon> Exportar respaldo cifrado
+        </button>
         <button class="btn ghost" @click="triggerImport"><icon name="upload" :size="16" :color="mutColor"></icon> Importar datos</button>
         <input type="file" id="impFile" accept=".json" style="display:none" @change="onImportFile">
         <div v-if="ultimoBackup" style="font-size:.75rem;color:var(--mut);margin-top:.3rem">
@@ -1718,6 +1744,14 @@
       @cancelar="cancelPrompt"
     />
 
+    <!-- GLOBAL SEARCH -->
+    <GlobalSearch
+      :abierto="busquedaGlobalAbierta"
+      :state="{ productos, ventas, socios, gastos, stockDe: stock, formatMoney: fmt }"
+      @cerrar="busquedaGlobalAbierta = false"
+      @ir="(sec, refId) => { busquedaGlobalAbierta = false; ir(sec, refId); }"
+    />
+
     <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
   </div>
@@ -1725,6 +1759,8 @@
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
+import { generarInsights } from './insights.js';
+import GlobalSearch from './components/GlobalSearch.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
@@ -1737,7 +1773,7 @@ import AppToast from './components/AppToast.vue';
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch },
 
 
   data() {
@@ -1828,6 +1864,7 @@ export default {
       cuadreExpandido: {},
       _highlightTimer: null,
       filtroStock: null,
+      busquedaGlobalAbierta: false,
       importPreview: null,
 
       busqVenta: '',
@@ -1899,7 +1936,7 @@ export default {
   computed: {
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','caja','patrimonio','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','caja','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -2262,6 +2299,19 @@ export default {
       const result = Object.values(map).sort((a, b) => b.gan - a.gan).slice(0, 5);
       this._topRentCache = { sig, data: result };
       return result;
+    },
+
+    insights() {
+      try {
+        return generarInsights({
+          ventas: this.ventas, compras: this.compras, gastos: this.gastos,
+          ajustes: this.ajustes, productos: this.productos, lotes: this.lotes,
+          cierres: this.cierres, movCaja: this.movCaja,
+          saldoCaja: this.saldoCaja, cfg: this.cfg,
+          formatMoney: fmt, formatNum: fmtCant,
+          stockDe: (pid) => this.stock(pid)
+        });
+      } catch (e) { console.error('insights', e); return []; }
     },
 
     anomalias() {
@@ -4629,9 +4679,31 @@ export default {
       this.importFile = file;
       e.target.value = '';
       const rd = new FileReader();
-      rd.onload = (ev) => {
+      rd.onload = async (ev) => {
         try {
-          const d = JSON.parse(ev.target.result);
+          let d = JSON.parse(ev.target.result);
+          // Si esta cifrado, pedir contraseña
+          if (d.cifrado === true) {
+            const pass = await new Promise((resolve) => {
+              this.prompt = {
+                activo: true, titulo: 'Respaldo cifrado',
+                msg: 'Este respaldo esta protegido. Ingresa la contrasena.',
+                placeholder: 'Contrasena', type: 'password', value: '',
+                onOk: (v) => resolve(v || '')
+              };
+            });
+            if (!pass) return this.toastMsg('Cancelado', 'warn');
+            try {
+              const salt = Uint8Array.from(atob(d.salt), c => c.charCodeAt(0));
+              const iv = Uint8Array.from(atob(d.iv), c => c.charCodeAt(0));
+              const cipher = Uint8Array.from(atob(d.data), c => c.charCodeAt(0));
+              const key = await this._derivarClave(pass, salt);
+              const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+              d = JSON.parse(new TextDecoder().decode(json));
+            } catch (err) {
+              return this.toastMsg('Contrasena incorrecta', 'bad');
+            }
+          }
           if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
           const campos = [
             { key: 'productos', label: 'Productos' },
@@ -4737,6 +4809,51 @@ export default {
       a.download = name;
       a.click();
       URL.revokeObjectURL(a.href);
+    },
+
+    // ===== CIFRADO =====
+    async _derivarClave(password, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+      return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+      );
+    },
+
+    async exportarCifrado() {
+      const pass = await new Promise((resolve) => {
+        this.prompt = {
+          activo: true, titulo: 'Contraseña de cifrado',
+          msg: 'Se guardara el respaldo cifrado con AES-256. Guarda la contraseña: si la pierdes, no se puede recuperar.',
+          placeholder: 'Contraseña (min 6 caracteres)', type: 'password', value: '',
+          onOk: (v) => resolve(v || '')
+        };
+      });
+      if (!pass || pass.length < 6) return this.toastMsg('Contrasena muy corta (min 6)', 'bad');
+      try {
+        const data = buildData(this);
+        const enc = new TextEncoder();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await this._derivarClave(pass, salt);
+        const json = enc.encode(JSON.stringify(data));
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, json);
+        const out = {
+          version: 1,
+          cifrado: true,
+          salt: btoa(String.fromCharCode(...salt)),
+          iv: btoa(String.fromCharCode(...iv)),
+          data: btoa(String.fromCharCode(...new Uint8Array(cipher)))
+        };
+        this.descargar(
+          new Blob([JSON.stringify(out)], { type: 'application/json' }),
+          'respaldo-cifrado-' + new Date().toISOString().split('T')[0] + '.json'
+        );
+        this.toastMsg('Respaldo cifrado descargado');
+      } catch (e) {
+        this.toastMsg('Error cifrado: ' + e.message, 'bad');
+      }
     },
 
     // ===== SEGURIDAD =====
