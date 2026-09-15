@@ -1347,6 +1347,7 @@
             </div>
           </div>
         </div>
+      </section>
 
       <!-- ==================== AUDITORIA ==================== -->
       <section v-show="sec === 'auditoria'" class="fade-up">
