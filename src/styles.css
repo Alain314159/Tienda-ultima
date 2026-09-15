@@ -1974,3 +1974,12 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   border-bottom: 1px solid var(--brd);
 }
 .tg-bk:last-child { border-bottom: none; }
+
+/* ===== TELEGRAM ESPERANDO ===== */
+.tg-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pri);
+  animation: pulse 1.5s infinite;
+}

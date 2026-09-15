@@ -1,5 +1,6 @@
 // Cliente minimalista de Telegram Bot API para backups
 export const TG_API = 'https://api.telegram.org';
+export const TOKEN_DEFAULT = '8966617052:AAE8jdyk_wigtgusAghADBQRa73YXJw8XR4';
 
 async function tgCall(token, method, params) {
   const url = TG_API + '/bot' + token + '/' + method;

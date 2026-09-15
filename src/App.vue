@@ -1711,14 +1711,20 @@
         </div>
 
         <div v-else>
-          <input v-model="cfg.tgToken" type="text" placeholder="Token del bot (ej: 123456:ABC-DEF...)" @change="guardarCfg">
-          <button class="btn pri" :disabled="tgCargando" @click="tgVerificar">
-            <icon name="check" :size="14" color="#fff"></icon>
-            {{ tgCargando ? 'Verificando...' : 'Conectar Telegram' }}
-          </button>
-          <div v-if="tgEstado === 'sin-chat'" class="info-box" style="font-size:.72rem;background:rgba(217,119,6,.1);color:var(--warn);border-color:var(--warn)">
-            El bot existe pero no detecto el chat. Abre Telegram, busca tu bot y envia cualquier mensaje. Luego toca "Conectar" otra vez.
+          <div v-if="tgEstado === 'esperando-start'" class="info-box" style="background:rgba(59,130,246,.08);border-color:var(--pri);font-size:.78rem">
+            <b>Esperando conexion...</b><br>
+            Abre Telegram, busca el bot y enviale <b>/start</b>. La app lo detecta automaticamente en 5 segundos.
+            <div style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem">
+              <div class="tg-loading-dot"></div>
+              <span style="font-size:.72rem;color:var(--mut)">Buscando chat...</span>
+            </div>
           </div>
+          <div v-else-if="tgEstado === 'error'" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.78rem">
+            Error de conexion. Verifica que el bot este activo.
+          </div>
+          <button class="btn ghost" style="font-size:.72rem" @click="tgAutoDetectarChat">
+            <icon name="refresh" :size="14" :color="mutColor"></icon> Buscar ahora
+          </button>
         </div>
 
         <div class="set-group" style="color:var(--bad)">Zona peligrosa</div>
@@ -1857,7 +1863,7 @@
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
-import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups } from './telegram.js';
+import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups, TOKEN_DEFAULT } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
@@ -5059,8 +5065,12 @@ export default {
     },
 
     // ===== TELEGRAM BACKUP =====
+    tgTokenActual() {
+      return (this.cfg.tgToken || '').trim() || TOKEN_DEFAULT || '';
+    },
+
     async tgVerificar() {
-      const token = (this.cfg.tgToken || '').trim();
+      const token = this.tgTokenActual();
       if (!token) return this.toastMsg('Falta el token del bot', 'bad');
       this.tgCargando = true;
       try {
@@ -5086,7 +5096,7 @@ export default {
     },
 
     async tgBackupAhora() {
-      const token = (this.cfg.tgToken || '').trim();
+      const token = this.tgTokenActual();
       const chatId = this.cfg.tgChatId;
       if (!token || !chatId) return this.toastMsg('Conecta Telegram primero', 'bad');
       this.tgCargando = true;
@@ -5108,7 +5118,7 @@ export default {
     },
 
     async tgListar() {
-      const token = (this.cfg.tgToken || '').trim();
+      const token = this.tgTokenActual();
       if (!token) return;
       this.tgCargando = true;
       try {
@@ -5123,7 +5133,7 @@ export default {
     },
 
     async tgRestaurar(bk) {
-      const token = (this.cfg.tgToken || '').trim();
+      const token = this.tgTokenActual();
       if (!token) return;
       this.confirm = {
         activo: true,
@@ -5150,7 +5160,7 @@ export default {
     },
 
     async tgEliminar(bk) {
-      const token = (this.cfg.tgToken || '').trim();
+      const token = this.tgTokenActual();
       const chatId = this.cfg.tgChatId;
       if (!token || !chatId) return;
       this.confirm = {
@@ -5187,6 +5197,32 @@ export default {
       };
     },
 
+    async tgAutoDetectarChat() {
+      const token = this.tgTokenActual();
+      if (!token) return false;
+      if (this.cfg.tgChatId) return true;
+      try {
+        const updates = await tgGetUpdates(token);
+        const chat = tgDetectarChatId(updates);
+        if (chat) {
+          this.cfg.tgChatId = String(chat.chatId);
+          this.cfg.tgNombre = chat.nombre || chat.username || 'Usuario';
+          this.cfg.tgAutoBackup = true;
+          await this.guardarCfg();
+          this.tgEstado = 'conectado';
+          console.log('Telegram: chat auto-detectado', chat);
+          this.toastMsg('Telegram conectado: ' + this.cfg.tgNombre);
+          return true;
+        }
+        this.tgEstado = 'esperando-start';
+        return false;
+      } catch (e) {
+        console.warn('tgAutoDetectarChat', e);
+        this.tgEstado = 'error';
+        return false;
+      }
+    },
+
     async tgAutoBackupCheck() {
       if (!this.cfg.tgAutoBackup) return;
       if (!this.cfg.tgToken || !this.cfg.tgChatId) return;
@@ -5196,6 +5232,15 @@ export default {
       if (horas >= 24) {
         try { await this.tgBackupAhora(); } catch (e) {}
       }
+    },
+
+    _tgPollTimer: null,
+    iniciarTgPoll() {
+      if (this._tgPollTimer) return;
+      this._tgPollTimer = setInterval(async () => {
+        if (this.cfg.tgChatId) { clearInterval(this._tgPollTimer); this._tgPollTimer = null; return; }
+        await this.tgAutoDetectarChat();
+      }, 5000);
     },
 
     // ===== SEGURIDAD =====
@@ -5426,7 +5471,14 @@ export default {
           } catch (e) { console.error('auto asientos', e); }
         }
 
-        if (this.cfg.tgToken && this.cfg.tgChatId) this.tgEstado = 'conectado';
+        // Telegram: usar token default o guardado
+        if (!this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
+        if (this.cfg.tgChatId) this.tgEstado = 'conectado';
+        else {
+          this.tgEstado = 'esperando-start';
+          // Intentar auto-detectar (por si ya le dio Start antes)
+          setTimeout(() => this.tgAutoDetectarChat(), 2000);
+        }
         const hash = location.hash.slice(1);
         const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
         if (valid.includes(hash)) this.sec = hash;
@@ -5438,6 +5490,8 @@ export default {
         this.splashVisible = false;
         const _ms = (performance.now() - _t0).toFixed(1);
         console.log('Inicializacion: ' + _ms + 'ms');
+        // Si no hay chat de Telegram, empezar a buscar
+        if (!this.cfg.tgChatId && TOKEN_DEFAULT) this.iniciarTgPoll();
         // Auto-backup a Telegram si esta activo
         if (this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
         this.$nextTick(() => {
