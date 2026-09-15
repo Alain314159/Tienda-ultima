@@ -1,13 +1,12 @@
 import { createApp } from 'vue';
-import { createPinia } from 'pinia';
 import App from './App.vue';
+import AppIcon from './components/AppIcon.vue';
 import './styles.css';
 import { registerSW } from 'virtual:pwa-register';
 
 const app = createApp(App);
-const pinia = createPinia();
 
-app.use(pinia);
+app.component('icon', AppIcon);
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue Error:', err, info);
@@ -15,6 +14,7 @@ app.config.errorHandler = (err, instance, info) => {
 
 app.mount('#app');
 
+// Registrar Service Worker (PWA)
 if ('serviceWorker' in navigator) {
   registerSW({
     immediate: true,
