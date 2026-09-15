@@ -1,11 +1,10 @@
 <template>
-  <div v-if="activo" class="onb-overlay" @click="overlayClick">
-    <!-- Spotlight en el elemento a resaltar -->
-    <div v-if="pasoActual && pasoActual.target && targetRect" class="onb-spotlight"
-      :style="spotlightStyle"></div>
+  <div v-if="activo" class="onb-overlay">
+    <!-- Spotlight -->
+    <div v-if="targetRect" class="onb-spotlight" :style="spotlightStyle"></div>
 
-    <!-- Card del tutorial -->
-    <div class="onb-card" :class="cardPosition" :style="cardStyle" @click.stop>
+    <!-- Card -->
+    <div class="onb-card" :style="cardStyle" @click.stop>
       <div class="onb-header">
         <div class="onb-progress">
           <div class="onb-progress-bar" :style="{ width: progressPct + '%' }"></div>
@@ -14,7 +13,7 @@
       </div>
 
       <div class="onb-icon">
-        <icon :name="pasoActual.icono || 'zap'" :size="28" :color="'#fff'"></icon>
+        <icon :name="pasoActual.icono || 'zap'" :size="26" :color="'#fff'"></icon>
       </div>
 
       <div class="onb-title">{{ pasoActual.titulo }}</div>
@@ -35,7 +34,7 @@
       </div>
 
       <div class="onb-step-label">
-        Paso {{ paso + 1 }} de {{ pasos.length }}
+        PASO {{ paso + 1 }} DE {{ pasos.length }}
       </div>
     </div>
   </div>
@@ -48,12 +47,12 @@ export default {
     activo: { type: Boolean, default: false },
     pasos: { type: Array, required: true }
   },
-  emits: ['cerrar', 'ir', 'accion'],
+  emits: ['cerrar', 'ir'],
   data() {
     return {
       paso: 0,
       targetRect: null,
-      _resizeTimer: null
+      _tick: 0
     };
   },
   computed: {
@@ -61,15 +60,9 @@ export default {
     esPrimero() { return this.paso === 0; },
     esUltimo() { return this.paso === this.pasos.length - 1; },
     progressPct() { return ((this.paso + 1) / this.pasos.length) * 100; },
-    cardPosition() {
-      if (!this.targetRect) return 'onb-center';
-      const screenH = window.innerHeight;
-      const midY = this.targetRect.top + this.targetRect.height / 2;
-      return midY > screenH / 2 ? 'onb-top' : 'onb-bottom';
-    },
     spotlightStyle() {
-      if (!this.targetRect) return {};
-      const pad = 8;
+      if (!this.targetRect) return { display: 'none' };
+      const pad = 6;
       return {
         top: (this.targetRect.top - pad) + 'px',
         left: (this.targetRect.left - pad) + 'px',
@@ -78,72 +71,97 @@ export default {
       };
     },
     cardStyle() {
-      if (!this.targetRect) return {};
       const screenH = window.innerHeight;
-      const midY = this.targetRect.top + this.targetRect.height / 2;
-      if (midY > screenH / 2) {
-        return { bottom: (screenH - this.targetRect.top + 20) + 'px' };
+      const screenW = window.innerWidth;
+      const cardW = Math.min(420, screenW - 24);
+      const base = {
+        width: cardW + 'px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        maxHeight: '75vh'
+      };
+      if (!this.targetRect) {
+        return Object.assign({}, base, { top: '50%', marginTop: '-200px' });
       }
-      return { top: (this.targetRect.bottom + 20) + 'px' };
+      const targetMidY = this.targetRect.top + this.targetRect.height / 2;
+      const margin = 16;
+      if (targetMidY < screenH / 2) {
+        // Target arriba -> card abajo
+        const top = Math.min(this.targetRect.bottom + margin, screenH - 200);
+        return Object.assign({}, base, { top: top + 'px' });
+      } else {
+        // Target abajo -> card arriba
+        const bottom = Math.max(screenH - this.targetRect.top + margin, 100);
+        return Object.assign({}, base, { bottom: bottom + 'px', top: 'auto' });
+      }
     }
   },
   watch: {
     activo(v) {
-      if (v) { this.paso = 0; this.actualizarTarget(); }
+      if (v) { this.paso = 0; this.$nextTick(() => this.actualizarTarget()); }
     },
-    paso() { this.actualizarTarget(); }
+    paso() { this.$nextTick(() => this.actualizarTarget()); }
   },
   methods: {
-    overlayClick() {
-      // No cerrar al click afuera para evitar saltarse pasos
-    },
     siguiente() {
       if (this.esUltimo) return this.cerrar();
+      const p = this.pasoActual;
+      // Navegar primero, luego avanzar
+      if (p.irAntes && p.irAntes.length) {
+        p.irAntes.forEach(sec => this.$emit('ir', sec));
+      }
       this.paso++;
-      this.$nextTick(() => {
-        this.ejecutarAccionPaso();
-      });
+      const sig = this.pasos[this.paso];
+      // Navegar a la seccion del siguiente paso
+      if (sig && sig.sec) this.$emit('ir', sig.sec);
     },
     anterior() {
-      if (this.paso > 0) {
-        this.paso--;
-        this.$nextTick(() => this.ejecutarAccionPaso());
-      }
-    },
-    ejecutarAccionPaso() {
-      const p = this.pasoActual;
-      if (p.sec) this.$emit('ir', p.sec);
-      if (p.accion) this.$emit('accion', p.accion);
-      setTimeout(() => this.actualizarTarget(), 400);
+      if (this.paso <= 0) return;
+      this.paso--;
+      const ant = this.pasos[this.paso];
+      if (ant && ant.sec) this.$emit('ir', ant.sec);
     },
     actualizarTarget() {
       const p = this.pasoActual;
-      if (!p || !p.target) { this.targetRect = null; return; }
-      try {
+      if (!p || !p.target) {
+        this.targetRect = null;
+        return;
+      }
+      let intentos = 0;
+      const buscar = () => {
+        intentos++;
         const el = document.querySelector(p.target);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTimeout(() => {
-            const rect = el.getBoundingClientRect();
-            this.targetRect = { top: rect.top, left: rect.left, width: rect.width, height: rect.height, bottom: rect.bottom };
-          }, 350);
-        } else {
-          this.targetRect = null;
+          const rect = el.getBoundingClientRect();
+          if (rect.height > 0 && rect.width > 0) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+              const r2 = el.getBoundingClientRect();
+              this.targetRect = {
+                top: r2.top, left: r2.left,
+                width: r2.width, height: r2.height, bottom: r2.bottom
+              };
+            }, 350);
+            return;
+          }
         }
-      } catch (e) { this.targetRect = null; }
+        if (intentos < 8) setTimeout(buscar, 150);
+        else this.targetRect = null;
+      };
+      buscar();
     },
-    saltar() {
-      this.cerrar();
-    },
-    cerrar() {
-      this.$emit('cerrar');
-    }
+    saltar() { this.cerrar(); },
+    cerrar() { this.$emit('cerrar'); }
   },
   mounted() {
-    window.addEventListener('resize', () => {
-      clearTimeout(this._resizeTimer);
-      this._resizeTimer = setTimeout(() => this.actualizarTarget(), 200);
-    });
+    this._onResize = () => {
+      clearTimeout(this._rt);
+      this._rt = setTimeout(() => this.actualizarTarget(), 200);
+    };
+    window.addEventListener('resize', this._onResize);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this._onResize);
   }
 };
 </script>
