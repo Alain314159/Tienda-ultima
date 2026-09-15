@@ -1574,3 +1574,39 @@ input::placeholder, textarea::placeholder {
 .hist-grupo.hist-cerrado .hist-head {
   background: rgba(100,116,139,.08);
 }
+
+/* ===== PRECIOS ESCALONADOS ===== */
+.escalones-box {
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: var(--r-sm);
+  padding: .7rem .8rem;
+  margin-bottom: .6rem;
+}
+.escalones-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--txt-2);
+  margin-bottom: .4rem;
+}
+.escalon-row {
+  display: grid;
+  grid-template-columns: auto 70px auto 90px 36px;
+  gap: .4rem;
+  align-items: center;
+  margin-bottom: .35rem;
+}
+.escalon-row input {
+  margin: 0;
+  padding: .45rem .5rem;
+  font-size: .85rem;
+  text-align: center;
+}
+.escalon-lbl {
+  font-size: .72rem;
+  color: var(--mut);
+  font-weight: 600;
+}

@@ -146,8 +146,9 @@
                 <input class="price-input" v-model="it.precio" type="text" inputmode="decimal" @blur="validarPrecio(it)">
               </div>
               <div class="det" style="font-size:.72rem;color:var(--mut);margin-top:.3rem">
-                {{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} {{ it.unidad || '' }} =
+                {{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} =
                 <b style="color:var(--pri)">{{ fmt(subTotalItem(it)) }}</b>
+                <span v-if="it._precioAuto" style="color:var(--ok);font-weight:700;margin-left:.3rem">· precio por cantidad</span>
               </div>
             </div>
             <div class="total-box">
@@ -318,8 +319,27 @@
           <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto</div>
           <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto">
           <div class="grid2">
-            <input v-model="prodForm.precio" type="number" inputmode="decimal" step="0.01" placeholder="Precio venta">
+            <input v-model="prodForm.precio" type="number" inputmode="decimal" step="0.01" placeholder="Precio base venta">
             <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín.">
+          </div>
+
+          <div class="escalones-box">
+            <div class="escalones-header">
+              <span>Precios por cantidad (opcional)</span>
+              <button class="link-btn" @click.prevent="agregarEscalon()">+ Agregar</button>
+            </div>
+            <div v-if="!prodForm.preciosEscalonados || !prodForm.preciosEscalonados.length" class="det" style="font-size:.72rem;color:var(--mut);padding:.4rem 0">
+              Sin escalones. Se usa el precio base para cualquier cantidad.
+            </div>
+            <div v-for="(e, i) in prodForm.preciosEscalonados" :key="i" class="escalon-row">
+              <span class="escalon-lbl">Desde</span>
+              <input v-model="e.min" type="number" inputmode="numeric" step="1" placeholder="Cant.">
+              <span class="escalon-lbl">a</span>
+              <input v-model="e.precio" type="number" inputmode="decimal" step="0.01" placeholder="Precio">
+              <button class="icon-btn bad" @click.prevent="quitarEscalon(i)" aria-label="Quitar">
+                <icon name="x" :size="14" color="#dc2626"></icon>
+              </button>
+            </div>
           </div>
           <button class="btn pri" @click="guardarProducto()">
             <icon name="check" :size="16" color="#fff"></icon>
@@ -1687,7 +1707,7 @@ export default {
       focusCompra: false,
       compraForm: { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', unidad: '' },
 
-      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5' },
+      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5', preciosEscalonados: [] },
       busqProd: '',
       mostrarArchivados: false,
 
@@ -2482,7 +2502,8 @@ export default {
         if (n(ex.cant) < s) ex.cant = String(n(ex.cant) + 1);
         else return this.toastMsg('Stock máximo', 'warn');
       } else {
-        this.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(p.precio), cant: '1', unidad: p.unidad || '' });
+        const precioInicial = this.precioParaCantidad(p.id, 1);
+        this.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(precioInicial), cant: '1' });
       }
       this.busqVenta = '';
       this.focusVenta = false;
@@ -2494,12 +2515,20 @@ export default {
 
     cambiarCant(it, dir) {
       let val = n(it.cant) + dir;
-      if (it.unidad && ['kg', 'lb', 'gr', 'litro', 'm'].includes(it.unidad)) {
-        val = n(it.cant) + (dir * 0.5);
-      }
       if (val > this.stock(it.productoId)) return this.toastMsg('Stock máximo alcanzado', 'warn');
       if (val < 0) val = 0;
       it.cant = String(val);
+      this.recalcularPrecio(it);
+    },
+
+    recalcularPrecio(it) {
+      const prod = this.productos.find(x => x.id === it.productoId);
+      if (!prod || !prod.preciosEscalonados || !prod.preciosEscalonados.length) return;
+      const nuevo = this.precioParaCantidad(it.productoId, n(it.cant));
+      if (n(it.precio) !== nuevo) {
+        it.precio = String(nuevo);
+        it._precioAuto = true;
+      }
     },
 
     validarCant(it) {
@@ -2510,11 +2539,27 @@ export default {
       }
       if (val < 0) val = 0;
       it.cant = String(val);
+      this.recalcularPrecio(it);
     },
 
-    validarPrecio(it) { it.precio = String(n(it.precio)); },
+    validarPrecio(it) {
+      it.precio = String(n(it.precio));
+      it._precioManual = true;
+    },
 
     subTotalItem(it) { return m(n(it.precio) * n(it.cant)); },
+
+    precioParaCantidad(prodId, cant) {
+      const p = this.productos.find(x => x.id === prodId);
+      if (!p) return 0;
+      const escalones = (p.preciosEscalonados || []).slice().sort((a, b) => a.min - b.min);
+      let precio = n(p.precio);
+      for (const e of escalones) {
+        if (cant >= n(e.min)) precio = n(e.precio);
+        else break;
+      }
+      return precio;
+    },
 
     iniciarCobro() {
       const inv = this.carrito.filter(it => n(it.cant) <= 0);
@@ -2725,7 +2770,16 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5) };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [] };
+    },
+
+    agregarEscalon() {
+      if (!this.prodForm.preciosEscalonados) this.prodForm.preciosEscalonados = [];
+      this.prodForm.preciosEscalonados.push({ min: '', precio: '' });
+    },
+
+    quitarEscalon(i) {
+      this.prodForm.preciosEscalonados.splice(i, 1);
     },
 
     async guardarProducto() {
@@ -2737,12 +2791,19 @@ export default {
       if (precio <= 0) return this.toastMsg('Precio debe ser > 0', 'bad');
       const dup = this.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
       if (dup) return this.toastMsg('Ya existe ese nombre', 'bad');
+
+      // Validar y normalizar escalones
+      const escalones = (p.preciosEscalonados || [])
+        .filter(e => n(e.min) > 0 && n(e.precio) > 0)
+        .map(e => ({ min: n(e.min), precio: n(e.precio) }))
+        .sort((a, b) => a.min - b.min);
+
       if (p.editId) {
         const o = this.productos.find(x => x.id === p.editId);
-        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min }));
+        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones }));
         this.toastMsg('Producto actualizado');
       } else {
-        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false });
+        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones });
         this.toastMsg('Producto agregado');
       }
       this.resetProd();
@@ -2752,7 +2813,11 @@ export default {
     editarProducto(id) {
       const p = this.productos.find(x => x.id === id);
       if (!p) return;
-      this.prodForm = { editId: id, nombre: p.nombre, precio: String(p.precio), stockMin: String(p.stockMinimo || 5) };
+      this.prodForm = {
+        editId: id, nombre: p.nombre, precio: String(p.precio),
+        stockMin: String(p.stockMinimo || 5),
+        preciosEscalonados: (p.preciosEscalonados || []).map(e => ({ min: String(e.min), precio: String(e.precio) }))
+      };
       window.scrollTo(0, 0);
     },
 
@@ -3578,16 +3643,25 @@ export default {
     },
 
     // ===== NOTIFICACIONES =====
-    enviarNotif(titulo, cuerpo) {
+    async enviarNotif(titulo, cuerpo) {
       try {
         if (!('Notification' in window)) return;
         if (Notification.permission !== 'granted') return;
-        new Notification(titulo, {
+        const opts = {
           body: cuerpo,
           icon: '/Tienda-ultima/icons/icon-192.png',
           badge: '/Tienda-ultima/icons/icon-192.png',
-          tag: 'tienda-' + Date.now()
-        });
+          tag: 'tienda-' + Date.now(),
+          vibrate: [200, 100, 200]
+        };
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg && reg.showNotification) {
+            await reg.showNotification(titulo, opts);
+            return;
+          }
+        }
+        new Notification(titulo, opts);
       } catch (e) { console.error('enviarNotif', e); }
     },
 
