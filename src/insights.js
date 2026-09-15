@@ -173,6 +173,63 @@ export function generarInsights(state) {
     });
   }
 
+  // 11. Racha de dias con ventas
+  const ultimos7 = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ahora);
+    d.setDate(ahora.getDate() - i);
+    const key = d.toDateString();
+    const vendio = ventas.some(v => !v.anulada && new Date(v.fecha).toDateString() === key);
+    ultimos7.push(vendio);
+  }
+  const racha = ultimos7.filter(Boolean).length;
+  if (racha >= 5) {
+    out.push({
+      tipo: 'ok', icono: 'diamond',
+      titulo: 'Racha de ' + racha + ' dias con ventas',
+      detalle: 'Sigue asi',
+      sec: 'dashboard'
+    });
+  } else if (racha <= 1 && productos.length > 3) {
+    out.push({
+      tipo: 'warn', icono: 'trend',
+      titulo: 'Pocas ventas en los ultimos 7 dias',
+      detalle: 'Solo ' + racha + ' dia(s) con movimiento',
+      sec: 'ventas'
+    });
+  }
+
+  // 12. Concentracion de ingresos
+  const ganPorProd2 = {};
+  ventasMes.forEach(v => v.items.forEach(it => {
+    ganPorProd2[it.productoId] = (ganPorProd2[it.productoId] || 0) + (it.ganancia || 0);
+  }));
+  const totalGan = Object.values(ganPorProd2).reduce((s, x) => s + x, 0);
+  const topGan = Math.max(...Object.values(ganPorProd2), 0);
+  if (totalGan > 0 && (topGan / totalGan) > 0.5) {
+    out.push({
+      tipo: 'info', icono: 'diamond',
+      titulo: 'Mucha dependencia de un producto',
+      detalle: 'El top genera ' + ((topGan / totalGan) * 100).toFixed(0) + '% de la ganancia del mes',
+      sec: 'productos'
+    });
+  }
+
+  // 14. Proyeccion del mes
+  if (totalMes > 0) {
+    const diaDelMes = ahora.getDate();
+    const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+    if (diaDelMes >= 5) {
+      const proyeccion = (totalMes / diaDelMes) * diasEnMes;
+      out.push({
+        tipo: 'info', icono: 'trend',
+        titulo: 'Proyeccion fin de mes: ' + formatMoney(proyeccion),
+        detalle: 'Basado en el promedio diario actual',
+        sec: 'reportes'
+      });
+    }
+  }
+
   // Ordenar por tipo
   const orden = { bad: 0, warn: 1, ok: 2, info: 3 };
   return out.sort((a, b) => orden[a.tipo] - orden[b.tipo]).slice(0, 6);

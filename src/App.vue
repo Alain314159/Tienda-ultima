@@ -730,11 +730,12 @@
             <input v-model="rep.fechaInicio" type="date" @input="rep.isoInicio = null; rep.isoFin = null; rep.periodoActivo = null">
             <input v-model="rep.fechaFin" type="date" @input="rep.isoInicio = null; rep.isoFin = null; rep.periodoActivo = null">
           </div>
-          <div class="grid2" style="margin-bottom:.5rem">
-            <button class="btn" :class="rep.periodoActivo === 'hoy' ? 'pri' : 'ghost'" style="margin-bottom:0;font-size:.72rem"
-              @click="setHoy()">Hoy</button>
-            <button class="btn" :class="rep.periodoActivo === 'mes' ? 'pri' : 'ghost'" style="margin-bottom:0;font-size:.72rem"
-              @click="setMesActual()">Este mes</button>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.35rem;margin-bottom:.5rem">
+            <button class="btn" :class="rep.periodoActivo === 'hoy' ? 'pri' : 'ghost'" style="margin:0;padding:.5rem .2rem;font-size:.65rem" @click="setHoy()">Hoy</button>
+            <button class="btn" :class="rep.periodoActivo === 'semana' ? 'pri' : 'ghost'" style="margin:0;padding:.5rem .2rem;font-size:.65rem" @click="setSemana()">7d</button>
+            <button class="btn" :class="rep.periodoActivo === 'mes' ? 'pri' : 'ghost'" style="margin:0;padding:.5rem .2rem;font-size:.65rem" @click="setMesActual()">Mes</button>
+            <button class="btn" :class="rep.periodoActivo === 'mes-ant' ? 'pri' : 'ghost'" style="margin:0;padding:.5rem .2rem;font-size:.65rem" @click="setMesAnterior()">Mes ant</button>
+            <button class="btn" :class="rep.periodoActivo === 'anio' ? 'pri' : 'ghost'" style="margin:0;padding:.5rem .2rem;font-size:.65rem" @click="setAnio()">Año</button>
           </div>
           <button class="btn" :class="rep.periodoActivo === 'actual' ? 'pri' : 'ghost'" style="margin-bottom:.5rem;font-size:.72rem" @click="setPeriodoActual()">
             Periodo actual (desde {{ fmtFecha(cfg.periodoInicio) }})
@@ -3455,6 +3456,38 @@ export default {
     },
 
     // ===== CUADRE / REPORTES (NUEVO) =====
+    setSemana() {
+      const now = new Date();
+      const ini = new Date(now);
+      ini.setDate(now.getDate() - 7);
+      this.rep.fechaInicio = ini.toISOString().split('T')[0];
+      this.rep.fechaFin = now.toISOString().split('T')[0];
+      this.rep.isoInicio = ini.toISOString();
+      this.rep.isoFin = now.toISOString();
+      this.rep.periodoActivo = 'semana';
+    },
+
+    setMesAnterior() {
+      const now = new Date();
+      const ini = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const fin = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      this.rep.fechaInicio = ini.toISOString().split('T')[0];
+      this.rep.fechaFin = fin.toISOString().split('T')[0];
+      this.rep.isoInicio = ini.toISOString();
+      this.rep.isoFin = fin.toISOString();
+      this.rep.periodoActivo = 'mes-ant';
+    },
+
+    setAnio() {
+      const now = new Date();
+      const ini = new Date(now.getFullYear(), 0, 1);
+      this.rep.fechaInicio = ini.toISOString().split('T')[0];
+      this.rep.fechaFin = now.toISOString().split('T')[0];
+      this.rep.isoInicio = ini.toISOString();
+      this.rep.isoFin = now.toISOString();
+      this.rep.periodoActivo = 'anio';
+    },
+
     setHoy() {
       this.rep.fechaInicio = this.rep.fechaFin = new Date().toISOString().split('T')[0];
       this.rep.isoInicio = null;
