@@ -1610,3 +1610,37 @@ input::placeholder, textarea::placeholder {
   color: var(--mut);
   font-weight: 600;
 }
+
+/* ===== EMPAQUES ===== */
+.empaque-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 36px;
+  gap: .4rem;
+  align-items: center;
+  margin-bottom: .35rem;
+}
+.empaque-row input {
+  margin: 0;
+  padding: .45rem .55rem;
+  font-size: .85rem;
+}
+
+.compra-resumen {
+  background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(59,130,246,.03) 100%);
+  border: 1px solid rgba(59,130,246,.2);
+  border-radius: var(--r-sm);
+  padding: .5rem .7rem;
+  margin: .4rem 0;
+}
+.compra-resumen .row {
+  border: none !important;
+  padding: .15rem 0;
+  font-size: .82rem;
+}
+.compra-resumen .row.total {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--pri);
+  border-top: 1px solid var(--brd) !important;
+  padding-top: .3rem !important;
+}

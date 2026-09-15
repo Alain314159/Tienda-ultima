@@ -239,13 +239,43 @@
           </div>
           <div v-if="compraForm.productoId">
             <div class="row" style="border:none;padding:.2rem 0"><span>Producto</span><b>{{ compraForm.nombre }}</b></div>
-            <div class="grid2">
-              <input v-model="compraForm.cantidad" type="number" inputmode="decimal" step="0.001" placeholder="Cantidad">
-              <input v-model="compraForm.costo" type="number" inputmode="decimal" step="0.01" placeholder="Costo unit.">
+
+            <div v-if="empaquesCompraActual.length" style="margin-bottom:.55rem">
+              <label style="font-size:.75rem;color:var(--mut);font-weight:700;display:block;margin-bottom:.3rem">Empaque</label>
+              <select v-model="compraForm.empaqueSel">
+                <option value="">Por unidad (sin empaque)</option>
+                <option v-for="e in empaquesCompraActual" :key="e.nombre" :value="e.nombre">{{ e.nombre }} ({{ e.unidades }} und)</option>
+              </select>
             </div>
-            <div v-if="n(compraForm.cantidad) > 0 && n(compraForm.costo) >= 0"
-              class="det neg" style="font-weight:800;font-size:.9rem;margin:.3rem 0">
-              Total: {{ fmt(n(compraForm.cantidad) * n(compraForm.costo)) }}
+
+            <div class="grid2">
+              <input v-model="compraForm.cantidad" type="number" inputmode="decimal" step="0.001"
+                :placeholder="compraForm.empaqueSel ? 'Cant. empaques' : 'Cantidad'">
+              <input v-model="compraForm.costo" type="number" inputmode="decimal" step="0.01"
+                :placeholder="compraForm.costoPorEmpaque ? 'Costo por empaque' : 'Costo por unidad'">
+            </div>
+
+            <div v-if="compraForm.empaqueSel" class="set-row" style="margin-bottom:.4rem">
+              <span class="lbl" style="font-size:.78rem">El costo ingresado es por empaque completo</span>
+              <label class="switch">
+                <input type="checkbox" v-model="compraForm.costoPorEmpaque">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div v-if="n(compraForm.cantidad) > 0 && n(compraForm.costo) >= 0" class="compra-resumen">
+              <div v-if="compraForm.empaqueSel" class="row" style="border:none;padding:.2rem 0">
+                <span>{{ compraForm.cantidad }} {{ compraForm.empaqueSel }}{{ n(compraForm.cantidad) > 1 ? 's' : '' }}</span>
+                <b>= {{ fmtCant(compraCantidadFinal()) }} und</b>
+              </div>
+              <div class="row" style="border:none;padding:.2rem 0">
+                <span>Costo por unidad base</span>
+                <b>{{ fmt(compraCostoUnitarioFinal()) }}</b>
+              </div>
+              <div class="row total" style="border:none;padding:.3rem 0">
+                <span>TOTAL</span>
+                <b>{{ fmt(m(compraCantidadFinal() * compraCostoUnitarioFinal())) }}</b>
+              </div>
             </div>
             <button class="btn pri" @click="guardarCompra()">
               <icon name="bag" :size="16" color="#fff"></icon>
@@ -341,6 +371,26 @@
               </button>
             </div>
           </div>
+
+          <div class="escalones-box">
+            <div class="escalones-header">
+              <span>Empaques (opcional)</span>
+              <button class="link-btn" @click.prevent="agregarEmpaque()">+ Agregar</button>
+            </div>
+            <div class="info-box" style="margin:.3rem 0 .5rem;font-size:.7rem">
+              Ej: "Saco" de 40 unidades. Se usara al comprar y para mostrar el stock.
+            </div>
+            <div v-if="!prodForm.empaques || !prodForm.empaques.length" class="det" style="font-size:.72rem;color:var(--mut);padding:.2rem 0">
+              Sin empaques definidos.
+            </div>
+            <div v-for="(e, i) in prodForm.empaques" :key="i" class="empaque-row">
+              <input v-model="e.nombre" type="text" placeholder="Nombre (saco, caja)">
+              <input v-model="e.unidades" type="number" inputmode="numeric" step="1" placeholder="Unidades">
+              <button class="icon-btn bad" @click.prevent="quitarEmpaque(i)" aria-label="Quitar">
+                <icon name="x" :size="14" color="#dc2626"></icon>
+              </button>
+            </div>
+          </div>
           <button class="btn pri" @click="guardarProducto()">
             <icon name="check" :size="16" color="#fff"></icon>
             {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
@@ -367,7 +417,7 @@
                 </div>
                 <div class="stock-line">
                   <span class="badge" :class="badgeStock(p)">{{ txtBadge(p) }}</span>
-                  <span class="stock-num">Stock: {{ fmtCant(stock(p.id)) }}</span>
+                  <span class="stock-num">Stock: {{ formatStock(p.id, stock(p.id)) }}</span>
                   <span style="color:var(--mut);font-size:.72rem">{{ fmt(p.precio) }}</span>
                   <span v-if="lotesDeProducto(p.id).length" class="chev" :class="{ open: prodExpandido[p.id] }">
                     <icon name="chevron" :size="14" :color="mutColor"></icon>
@@ -454,7 +504,7 @@
             <div class="inv-head" @click="invExpandido[g.id] = !invExpandido[g.id]">
               <div>
                 <div class="nm">{{ g.nombre }}</div>
-                <div class="det">Stock {{ fmtCant(g.stockTotal) }} {{ g.unidad || '' }} · {{ fmt(g.valorTotal) }}</div>
+                <div class="det">Stock {{ formatStock(g.id, g.stockTotal) }} · {{ fmt(g.valorTotal) }}</div>
               </div>
               <icon name="chevron" :size="18" :color="mutColor"
                 :style="invExpandido[g.id] ? 'transform:rotate(180deg)' : ''"></icon>
@@ -1705,9 +1755,9 @@ export default {
 
       busqCompra: '',
       focusCompra: false,
-      compraForm: { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', unidad: '' },
+      compraForm: { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', empaqueSel: '', costoPorEmpaque: false },
 
-      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5', preciosEscalonados: [] },
+      prodForm: { editId: '', nombre: '', precio: '', stockMin: '5', preciosEscalonados: [], empaques: [] },
       busqProd: '',
       mostrarArchivados: false,
 
@@ -2549,6 +2599,27 @@ export default {
 
     subTotalItem(it) { return m(n(it.precio) * n(it.cant)); },
 
+    // Formato de stock usando empaques
+    formatStock(prodId, cant) {
+      const p = this.productos.find(x => x.id === prodId);
+      if (!p || !p.empaques || !p.empaques.length) return fmtCant(cant);
+      const emps = p.empaques.slice().sort((a, b) => b.unidades - a.unidades);
+      let rest = Math.floor(Math.abs(cant));
+      const partes = [];
+      for (const e of emps) {
+        const u = Math.floor(e.unidades);
+        if (u <= 0) continue;
+        const cantEmp = Math.floor(rest / u);
+        if (cantEmp > 0) {
+          partes.push(cantEmp + ' ' + e.nombre + (cantEmp > 1 ? 's' : ''));
+          rest -= cantEmp * u;
+        }
+      }
+      if (rest > 0) partes.push(rest + ' und');
+      if (partes.length === 0) return '0';
+      return partes.join(' + ');
+    },
+
     precioParaCantidad(prodId, cant) {
       const p = this.productos.find(x => x.id === prodId);
       if (!p) return 0;
@@ -2668,13 +2739,39 @@ export default {
 
     // ===== COMPRAS =====
     selCompra(p) {
-      this.compraForm = { editId: '', productoId: p.id, nombre: p.nombre, cantidad: '', costo: '', unidad: p.unidad || '' };
+      this.compraForm = { editId: '', productoId: p.id, nombre: p.nombre, cantidad: '', costo: '', empaqueSel: '', costoPorEmpaque: false };
       this.busqCompra = '';
       this.focusCompra = false;
     },
 
     resetCompra() {
-      this.compraForm = { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', unidad: '' };
+      this.compraForm = { editId: '', productoId: '', nombre: '', cantidad: '', costo: '', empaqueSel: '', costoPorEmpaque: false };
+    },
+
+    // Empaques del producto actual en compra
+    empaquesCompraActual() {
+      const p = this.productos.find(x => x.id === this.compraForm.productoId);
+      return (p && p.empaques) || [];
+    },
+
+    // Multiplicador segun empaque seleccionado
+    multiplicadorEmpaque() {
+      if (!this.compraForm.empaqueSel) return 1;
+      const emp = this.empaquesCompraActual.find(e => e.nombre === this.compraForm.empaqueSel);
+      return emp ? n(emp.unidades) : 1;
+    },
+
+    // Cantidad final (en unidades base) y costo unitario final
+    compraCantidadFinal() {
+      const mult = this.multiplicadorEmpaque();
+      return n(this.compraForm.cantidad) * mult;
+    },
+
+    compraCostoUnitarioFinal() {
+      const costo = n(this.compraForm.costo);
+      if (!this.compraForm.costoPorEmpaque) return costo;
+      const mult = this.multiplicadorEmpaque();
+      return mult > 0 ? m(costo / mult) : costo;
     },
 
     loteSinVentas(cid) {
@@ -2711,11 +2808,17 @@ export default {
 
     async guardarCompra() {
       const f = this.compraForm;
-      const cant = n(f.cantidad), costo = n(f.costo);
+      const cantIngresada = n(f.cantidad), costoIngresado = n(f.costo);
       if (!f.productoId) return this.toastMsg('Selecciona producto', 'bad');
-      if (cant <= 0) return this.toastMsg('Cantidad debe ser > 0', 'bad');
-      if (costo < 0) return this.toastMsg('Costo inválido', 'bad');
+      if (cantIngresada <= 0) return this.toastMsg('Cantidad debe ser > 0', 'bad');
+      if (costoIngresado < 0) return this.toastMsg('Costo inválido', 'bad');
+
+      // Convertir a unidades base
+      const mult = this.multiplicadorEmpaque();
+      const cant = m(cantIngresada * mult);
+      const costo = f.costoPorEmpaque ? (mult > 0 ? m(costoIngresado / mult) : costoIngresado) : costoIngresado;
       const total = m(cant * costo);
+      const empaqueInfo = f.empaqueSel ? { nombre: f.empaqueSel, unidades: mult, cantidad: cantIngresada } : null;
       const ejecutar = async () => {
         try {
           if (f.editId) {
@@ -2736,14 +2839,14 @@ export default {
             const compra = {
               id: genId('c'), fecha: new Date().toISOString(),
               productoId: f.productoId, productoNombre: f.nombre,
-              productoUnidad: f.unidad, cantidad: cant, costo,
-              total, anulada: false, unidad: f.unidad
+              cantidad: cant, costo, total, anulada: false,
+              empaqueInfo
             };
             const lote = {
               id: genId('l'), compraId: compra.id,
               productoId: f.productoId, productoNombre: f.nombre,
-              productoUnidad: f.unidad, cantidadInicial: cant,
-              cantidadVendida: 0, costo, fecha: compra.fecha
+              cantidadInicial: cant, cantidadVendida: 0,
+              costo, fecha: compra.fecha, empaqueInfo
             };
             await db.transaction('rw', db.compras, db.lotes, async () => {
               await P(db.compras, compra);
@@ -2770,7 +2873,7 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [] };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [] };
     },
 
     agregarEscalon() {
@@ -2780,6 +2883,15 @@ export default {
 
     quitarEscalon(i) {
       this.prodForm.preciosEscalonados.splice(i, 1);
+    },
+
+    agregarEmpaque() {
+      if (!this.prodForm.empaques) this.prodForm.empaques = [];
+      this.prodForm.empaques.push({ nombre: '', unidades: '' });
+    },
+
+    quitarEmpaque(i) {
+      this.prodForm.empaques.splice(i, 1);
     },
 
     async guardarProducto() {
@@ -2798,12 +2910,16 @@ export default {
         .map(e => ({ min: n(e.min), precio: n(e.precio) }))
         .sort((a, b) => a.min - b.min);
 
+      const empaques = (p.empaques || [])
+        .filter(e => (e.nombre || '').trim() && n(e.unidades) > 0)
+        .map(e => ({ nombre: e.nombre.trim(), unidades: Math.floor(n(e.unidades)) }));
+
       if (p.editId) {
         const o = this.productos.find(x => x.id === p.editId);
-        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones }));
+        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques }));
         this.toastMsg('Producto actualizado');
       } else {
-        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones });
+        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones, empaques });
         this.toastMsg('Producto agregado');
       }
       this.resetProd();
@@ -2816,7 +2932,8 @@ export default {
       this.prodForm = {
         editId: id, nombre: p.nombre, precio: String(p.precio),
         stockMin: String(p.stockMinimo || 5),
-        preciosEscalonados: (p.preciosEscalonados || []).map(e => ({ min: String(e.min), precio: String(e.precio) }))
+        preciosEscalonados: (p.preciosEscalonados || []).map(e => ({ min: String(e.min), precio: String(e.precio) })),
+        empaques: (p.empaques || []).map(e => ({ nombre: e.nombre, unidades: String(e.unidades) }))
       };
       window.scrollTo(0, 0);
     },
