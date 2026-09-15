@@ -1126,8 +1126,8 @@
       <button :class="{ activo: sec === 'compras' }" @click="ir('compras')">
         <icon name="bag" :size="22" :color="sec === 'compras' ? '#2196F3' : '#6b7280'"></icon><span>Compras</span>
       </button>
-      <button :class="{ activo: sec === 'caja' }" @click="ir('caja')">
-        <icon name="wallet" :size="22" :color="sec === 'caja' ? '#2196F3' : '#6b7280'"></icon><span>Caja</span>
+      <button :class="{ activo: sec === 'inventario' }" @click="ir('inventario')">
+        <icon name="package" :size="22" :color="sec === 'inventario' ? '#2196F3' : '#6b7280'"></icon><span>Inventario</span>
       </button>
       <button :class="{ activo: masActivo }" @click="masAbierto = !masAbierto">
         <icon name="menu" :size="22" :color="masActivo ? '#2196F3' : '#6b7280'"></icon><span>Más</span>
@@ -1141,8 +1141,7 @@
       <div class="sheet-group">Operaciones</div>
       <div class="sheet-grid">
         <button class="sheet-btn" :class="{ activo: sec === 'productos' }" @click="ir('productos')"><icon name="tag" :size="22"></icon>Productos</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'inventario' }" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
-        <button class="sheet-btn" :class="{ activo: sec === 'compras' }" @click="ir('compras')"><icon name="bag" :size="22"></icon>Compras</button>
+        <button class="sheet-btn" :class="{ activo: sec === 'caja' }" @click="ir('caja')"><icon name="wallet" :size="22"></icon>Caja</button>
         <button class="sheet-btn" :class="{ activo: sec === 'gastos' }" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Gastos</button>
       </div>
 
@@ -1552,7 +1551,7 @@ export default {
   computed: {
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','inventario','patrimonio','reportes','socios','gastos','contabilidad'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','caja','patrimonio','reportes','socios','gastos','contabilidad'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
