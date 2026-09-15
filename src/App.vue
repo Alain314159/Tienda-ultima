@@ -120,7 +120,7 @@
         <div class="card">
           <div class="card-title"><icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta</div>
           <div class="search">
-            <input v-model="busqVenta" type="text" placeholder="Buscar producto por nombre o código..."
+            <input :value="busqVenta" @input="setBusq('busqVenta', $event.target.value)" type="text" placeholder="Buscar producto por nombre o código..."
               autocomplete="off" @focus="focusVenta = true" @click="focusVenta = true" @keyup.enter="agregarPrimero">
           </div>
           <div v-if="focusVenta" class="drop-static">
@@ -178,7 +178,7 @@
 
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Historial de Ventas</div>
-          <div class="search"><input v-model="busqHist" type="text" placeholder="Buscar en historial..."></div>
+          <div class="search"><input :value="busqHist" @input="setBusq('busqHist', $event.target.value)" type="text" placeholder="Buscar en historial..."></div>
           <div v-if="ventasFiltradas.length === 0" class="empty">Sin ventas</div>
 
           <div v-if="ventasPorPeriodo.actual.length" class="hist-grupo">
@@ -230,7 +230,7 @@
           <div class="card-title"><icon name="bag" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Registrar Compra</div>
           <div v-if="!compraForm.productoId">
             <div class="search">
-              <input v-model="busqCompra" type="text" placeholder="Buscar producto..."
+              <input :value="busqCompra" @input="setBusq('busqCompra', $event.target.value)" type="text" placeholder="Buscar producto..."
                 autocomplete="off" @focus="focusCompra = true" @click="focusCompra = true">
             </div>
             <div v-if="focusCompra" class="drop-static">
@@ -408,7 +408,7 @@
 
         <div class="card">
           <div class="card-title"><icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> Productos</div>
-          <div class="search"><input v-model="busqProd" type="text" placeholder="Buscar..."></div>
+          <div class="search"><input :value="busqProd" @input="setBusq('busqProd', $event.target.value)" type="text" placeholder="Buscar..."></div>
           <div style="text-align:right;margin-bottom:.4rem">
             <button class="btn ghost" style="width:auto;display:inline-block;padding:.3rem .7rem;font-size:.72rem"
               @click="mostrarArchivados = !mostrarArchivados">
@@ -1786,8 +1786,7 @@
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 // Chart.js se carga dinamicamente en renderChart()
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF se carga dinamicamente al exportar PDF
 
 // SVG paths para el componente icon
 const PATHS = {
@@ -1986,6 +1985,11 @@ export default {
       _chart: null,
       _notifTimer: null,
       _fifoCache: {},
+      _stockMapCache: null,
+      _anomaliasCache: null,
+      _topRentCache: null,
+      _invAgrCache: null,
+      _busqTimers: {},
       umbralesAbierto: false,
       notifAvanzadoAbierto: false,
       porPagina: 20,
@@ -2030,6 +2034,8 @@ export default {
     },
 
     stockMap() {
+      const cached = this._stockMapCache;
+      if (cached && cached._vLotes === this.lotes && cached._vProds === this.productos) return cached.data;
       const map = {};
       this.productos.forEach(p => { map[p.id] = 0; });
       this.lotes.forEach(l => {
@@ -2037,6 +2043,7 @@ export default {
           map[l.productoId] += (n(l.cantidadInicial) - n(l.cantidadVendida));
         }
       });
+      this._stockMapCache = { _vLotes: this.lotes, _vProds: this.productos, data: map };
       return map;
     },
 
@@ -2156,7 +2163,9 @@ export default {
     },
 
     invAgrupado() {
-      return this.prodsActivos.map(p => {
+      const sig = this.prodsActivos.length + '|' + this.lotes.length + '|' + this.lotes[0]?.id + '|' + this.lotes[this.lotes.length-1]?.id;
+      if (this._invAgrCache && this._invAgrCache.sig === sig) return this._invAgrCache.data;
+      const result = this.prodsActivos.map(p => {
         const lotes = this.lotesDeProducto(p.id);
         return {
           id: p.id,
@@ -2168,6 +2177,8 @@ export default {
         };
       }).filter(g => g.stockTotal > 0 || g.lotes.length > 0)
         .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      this._invAgrCache = { sig, data: result };
+      return result;
     },
 
     ventasPorPeriodo() {
@@ -2346,6 +2357,8 @@ export default {
     distribucionesOrdenadas() { return this.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
 
     topRentables() {
+      const sig = this.ventas.length + '|' + this.ventas[0]?.id;
+      if (this._topRentCache && this._topRentCache.sig === sig) return this._topRentCache.data;
       const now = new Date();
       const iniMes = new Date(now.getFullYear(), now.getMonth(), 1);
       const map = {};
@@ -2355,10 +2368,21 @@ export default {
           map[it.productoId].gan += n(it.ganancia);
         });
       });
-      return Object.values(map).sort((a, b) => b.gan - a.gan).slice(0, 5);
+      const result = Object.values(map).sort((a, b) => b.gan - a.gan).slice(0, 5);
+      this._topRentCache = { sig, data: result };
+      return result;
     },
 
     anomalias() {
+      const sig = [
+        this.ventas.length, this.compras.length, this.ajustes.length, this.lotes.length,
+        this.gastos.length, this.movCaja.length, this.cierres.length, this.pasivos.length,
+        this.asientos.length, this.productos.length, this.saldoCaja, this.gananciaNetaPeriodo,
+        JSON.stringify(this.cfg.anomaliasDescartadas || [])
+      ].join('|');
+      const cached = this._anomaliasCache;
+      if (cached && cached.sig === sig) return cached.data;
+
       const out = [];
       const ahora = new Date();
       const hace7d = new Date(ahora.getTime() - 7 * 86400000);
@@ -2531,7 +2555,9 @@ export default {
       });
 
       const orden = { alta: 0, media: 1, baja: 2 };
-      return out.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+      const result = out.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+      this._anomaliasCache = { sig, data: result };
+      return result;
     },
 
     anomaliasCriticas() {
@@ -2657,6 +2683,15 @@ export default {
 
     limpiarFiltroStock() {
       this.filtroStock = null;
+    },
+
+    setBusq(campo, valor) {
+      if (this._busqTimers[campo]) clearTimeout(this._busqTimers[campo]);
+      const target = campo;
+      const v = valor;
+      this._busqTimers[campo] = setTimeout(() => {
+        this[target] = v;
+      }, 150);
     },
 
     ir(s, refId) {
@@ -3653,9 +3688,12 @@ export default {
       };
     },
 
-    generarPDFCuadre() {
+    async generarPDFCuadre() {
       const r = this.rep.resultado;
       if (!r) return;
+      this.toastMsg('Generando PDF...');
+      const { jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
 
       const doc = new jsPDF();
       const PW = doc.internal.pageSize.getWidth();
@@ -4850,6 +4888,10 @@ export default {
         auditorias: () => db.auditorias.toArray()
       };
       for (const w of what) this[w] = await map[w]();
+      this._stockMapCache = null;
+      this._anomaliasCache = null;
+      this._topRentCache = null;
+      this._invAgrCache = null;
     },
 
     async recargarTodo() {
@@ -4861,6 +4903,10 @@ export default {
       });
       tables.forEach((k, i) => this[tables[i]] = r[i]);
       this.invalidarFifoCache();
+      this._stockMapCache = null;
+      this._anomaliasCache = null;
+      this._topRentCache = null;
+      this._invAgrCache = null;
       const ms = (performance.now() - t).toFixed(1);
       if (ms > 100) console.log('recargarTodo: ' + ms + 'ms');
     },
@@ -5038,7 +5084,12 @@ export default {
         this.cargando = false;
         const _ms = (performance.now() - _t0).toFixed(1);
         console.log('Inicializacion: ' + _ms + 'ms');
-        this.$nextTick(() => { if (this.sec === 'dashboard') requestAnimationFrame(() => this.renderChart()); });
+        this.$nextTick(() => {
+          if (this.sec === 'dashboard') {
+            const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
+            idle(() => this.renderChart());
+          }
+        });
       }
     }
   },
@@ -5070,8 +5121,10 @@ export default {
     window.addEventListener('offline', () => this.online = false);
     window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
     window.addEventListener('resize', () => { if (this.sec === 'dashboard') this.renderChart(); });
-    this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000);
-    setTimeout(() => this.chequearNotificaciones(), 3000);
+    // Notificaciones: usar requestIdleCallback si esta disponible
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
+    idle(() => { this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000); });
+    idle(() => this.chequearNotificaciones());
   },
 
   beforeUnmount() {
