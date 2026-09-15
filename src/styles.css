@@ -1942,3 +1942,35 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .pull-spinner.spin {
   animation: spin 0.7s linear infinite;
 }
+
+/* ===== TELEGRAM BACKUP ===== */
+.tg-conectado {
+  background: rgba(34,197,94,.06);
+  border: 1px solid rgba(34,197,94,.2);
+  border-radius: var(--r-sm);
+  padding: .7rem;
+  margin-bottom: .7rem;
+}
+.tg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,.2);
+  animation: pulse 2s infinite;
+}
+.tg-lista {
+  margin-top: .8rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--brd);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.tg-bk {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--brd);
+}
+.tg-bk:last-child { border-bottom: none; }

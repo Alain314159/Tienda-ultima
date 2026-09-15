@@ -1662,6 +1662,65 @@
           Muestra un panel de denominaciones (10, 20, 50...) para contar el efectivo al cobrar.
         </div>
 
+        <div class="set-group">Backup en Telegram</div>
+        <div class="info-box" style="font-size:.72rem">
+          Guarda tus respaldos en Telegram (ilimitado, gratis). Crea un bot con <b>@BotFather</b>, pega el token abajo, abrelo en Telegram y envia <b>/start</b>.
+        </div>
+        <div v-if="tgEstado === 'conectado'" class="tg-conectado">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+            <div class="tg-dot"></div>
+            <span style="font-size:.8rem"><b>Conectado:</b> {{ cfg.tgNombre || cfg.tgChatId }}</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--mut);margin-bottom:.5rem">
+            Ultimo backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
+          </div>
+          <div class="set-row">
+            <span class="lbl" style="font-size:.78rem">Backup automatico (cada 24h)</span>
+            <label class="switch">
+              <input type="checkbox" v-model="cfg.tgAutoBackup" @change="guardarCfg">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="grid2" style="margin-top:.5rem">
+            <button class="btn pri" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgBackupAhora">
+              <icon name="upload" :size="14" color="#fff"></icon> Backup ahora
+            </button>
+            <button class="btn ghost" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgListar">
+              <icon name="refresh" :size="14" :color="mutColor"></icon> Ver backups
+            </button>
+          </div>
+          <button class="btn ghost" style="margin-top:.5rem;font-size:.72rem" @click="tgDesconectar">
+            Desconectar Telegram
+          </button>
+
+          <div v-if="tgBackups.length" class="tg-lista">
+            <div style="font-size:.75rem;font-weight:800;margin-bottom:.4rem;color:var(--pri)">Backups disponibles</div>
+            <div v-for="bk in tgBackups.slice(0, 10)" :key="bk.messageId" class="tg-bk">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.78rem;font-weight:700">{{ fmtFH(bk.fecha) }}</div>
+                <div style="font-size:.68rem;color:var(--mut)">{{ (bk.fileSize/1024).toFixed(1) }} KB</div>
+              </div>
+              <button class="icon-btn ok" @click="tgRestaurar(bk)" aria-label="Restaurar">
+                <icon name="download" :size="14" color="#16a34a"></icon>
+              </button>
+              <button class="icon-btn bad" @click="tgEliminar(bk)" aria-label="Eliminar">
+                <icon name="trash" :size="14" color="#dc2626"></icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else>
+          <input v-model="cfg.tgToken" type="text" placeholder="Token del bot (ej: 123456:ABC-DEF...)" @change="guardarCfg">
+          <button class="btn pri" :disabled="tgCargando" @click="tgVerificar">
+            <icon name="check" :size="14" color="#fff"></icon>
+            {{ tgCargando ? 'Verificando...' : 'Conectar Telegram' }}
+          </button>
+          <div v-if="tgEstado === 'sin-chat'" class="info-box" style="font-size:.72rem;background:rgba(217,119,6,.1);color:var(--warn);border-color:var(--warn)">
+            El bot existe pero no detecto el chat. Abre Telegram, busca tu bot y envia cualquier mensaje. Luego toca "Conectar" otra vez.
+          </div>
+        </div>
+
         <div class="set-group" style="color:var(--bad)">Zona peligrosa</div>
         <button class="btn bad" @click="borrarTodo()">
           <icon name="trash" :size="16" color="#fff"></icon> Borrar TODOS los datos
@@ -1798,6 +1857,7 @@
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
+import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
@@ -1853,6 +1913,11 @@ export default {
         stockMinDefault: 5,
         anomaliasDescartadas: [],
         calcBilletesActiva: false,
+        tgToken: '',
+        tgChatId: '',
+        tgNombre: '',
+        tgAutoBackup: false,
+        tgUltimoBackup: null,
         modoCompacto: false,
         mostrarSplash: true
       },
@@ -1906,6 +1971,9 @@ export default {
       filtroStock: null,
       busquedaGlobalAbierta: false,
       splashVisible: true,
+      tgEstado: 'sin-config',
+      tgBackups: [],
+      tgCargando: false,
       _pullStartY: 0,
       _pulling: false,
       pullDist: 0,
@@ -4990,6 +5058,146 @@ export default {
       }
     },
 
+    // ===== TELEGRAM BACKUP =====
+    async tgVerificar() {
+      const token = (this.cfg.tgToken || '').trim();
+      if (!token) return this.toastMsg('Falta el token del bot', 'bad');
+      this.tgCargando = true;
+      try {
+        const me = await tgGetMe(token);
+        const updates = await tgGetUpdates(token);
+        const chat = tgDetectarChatId(updates);
+        if (!chat) {
+          this.tgEstado = 'sin-chat';
+          this.toastMsg('Bot OK (@' + me.username + '). Abre Telegram, busca el bot y envia /start', 'warn');
+          return;
+        }
+        this.cfg.tgChatId = String(chat.chatId);
+        this.cfg.tgNombre = chat.nombre || chat.username || 'Usuario';
+        await this.guardarCfg();
+        this.tgEstado = 'conectado';
+        this.toastMsg('Conectado a Telegram: ' + this.cfg.tgNombre);
+      } catch (e) {
+        this.tgEstado = 'error';
+        this.toastMsg('Error: ' + e.message, 'bad');
+      } finally {
+        this.tgCargando = false;
+      }
+    },
+
+    async tgBackupAhora() {
+      const token = (this.cfg.tgToken || '').trim();
+      const chatId = this.cfg.tgChatId;
+      if (!token || !chatId) return this.toastMsg('Conecta Telegram primero', 'bad');
+      this.tgCargando = true;
+      try {
+        const data = buildData(this);
+        const fecha = new Date().toISOString();
+        const fileName = 'tienda-backup-' + fecha.split('T')[0] + '-' + Date.now().toString(36) + '.json';
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const resumen = data.productos.length + ' prod · ' + data.ventas.length + ' ventas · ' + data.compras.length + ' compras';
+        await tgSendDocument(token, chatId, blob, fileName, 'Backup Tienda Pro · ' + resumen);
+        this.cfg.tgUltimoBackup = fecha;
+        await this.guardarCfg();
+        this.toastMsg('Backup subido: ' + (blob.size / 1024).toFixed(1) + ' KB');
+      } catch (e) {
+        this.toastMsg('Error: ' + e.message, 'bad');
+      } finally {
+        this.tgCargando = false;
+      }
+    },
+
+    async tgListar() {
+      const token = (this.cfg.tgToken || '').trim();
+      if (!token) return;
+      this.tgCargando = true;
+      try {
+        const updates = await tgGetUpdates(token);
+        this.tgBackups = tgExtraerBackups(updates);
+        this.toastMsg(this.tgBackups.length + ' backup(s) encontrado(s)');
+      } catch (e) {
+        this.toastMsg('Error: ' + e.message, 'bad');
+      } finally {
+        this.tgCargando = false;
+      }
+    },
+
+    async tgRestaurar(bk) {
+      const token = (this.cfg.tgToken || '').trim();
+      if (!token) return;
+      this.confirm = {
+        activo: true,
+        titulo: 'Restaurar backup',
+        msg: 'Restaurar el backup del ' + fmtFH(bk.fecha) + ' (' + (bk.fileSize / 1024).toFixed(1) + ' KB)?\n\nLos datos actuales seran REEMPLAZADOS.',
+        onOk: async () => {
+          this.tgCargando = true;
+          try {
+            const file = await tgGetFile(token, bk.fileId);
+            const url = tgFileUrl(token, file.file_path);
+            const r = await fetch(url);
+            const txt = await r.text();
+            const d = JSON.parse(txt);
+            if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
+            await this.importarData(d);
+            this.toastMsg('Backup restaurado (' + fmtFH(bk.fecha) + ')');
+          } catch (e) {
+            this.toastMsg('Error: ' + e.message, 'bad');
+          } finally {
+            this.tgCargando = false;
+          }
+        }
+      };
+    },
+
+    async tgEliminar(bk) {
+      const token = (this.cfg.tgToken || '').trim();
+      const chatId = this.cfg.tgChatId;
+      if (!token || !chatId) return;
+      this.confirm = {
+        activo: true,
+        titulo: 'Eliminar backup',
+        msg: 'Eliminar el backup del ' + fmtFH(bk.fecha) + ' de Telegram?',
+        onOk: async () => {
+          try {
+            await tgDeleteMessage(token, chatId, bk.messageId);
+            this.tgBackups = this.tgBackups.filter(x => x.messageId !== bk.messageId);
+            this.toastMsg('Backup eliminado');
+          } catch (e) {
+            this.toastMsg('Error: ' + e.message, 'bad');
+          }
+        }
+      };
+    },
+
+    tgDesconectar() {
+      this.confirm = {
+        activo: true,
+        titulo: 'Desconectar Telegram',
+        msg: 'Se borrara el token y el chat_id guardados. Los backups en Telegram no se tocan.',
+        onOk: async () => {
+          this.cfg.tgToken = '';
+          this.cfg.tgChatId = '';
+          this.cfg.tgNombre = '';
+          this.cfg.tgAutoBackup = false;
+          await this.guardarCfg();
+          this.tgEstado = 'sin-config';
+          this.tgBackups = [];
+          this.toastMsg('Desconectado');
+        }
+      };
+    },
+
+    async tgAutoBackupCheck() {
+      if (!this.cfg.tgAutoBackup) return;
+      if (!this.cfg.tgToken || !this.cfg.tgChatId) return;
+      const ult = this.cfg.tgUltimoBackup ? new Date(this.cfg.tgUltimoBackup).getTime() : 0;
+      const ahora = Date.now();
+      const horas = (ahora - ult) / 3600000;
+      if (horas >= 24) {
+        try { await this.tgBackupAhora(); } catch (e) {}
+      }
+    },
+
     // ===== SEGURIDAD =====
     pedirPin(cb) {
       if (!this.cfg.pinActivo) { cb(); return; }
@@ -5218,6 +5426,7 @@ export default {
           } catch (e) { console.error('auto asientos', e); }
         }
 
+        if (this.cfg.tgToken && this.cfg.tgChatId) this.tgEstado = 'conectado';
         const hash = location.hash.slice(1);
         const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'caja', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
         if (valid.includes(hash)) this.sec = hash;
@@ -5229,6 +5438,8 @@ export default {
         this.splashVisible = false;
         const _ms = (performance.now() - _t0).toFixed(1);
         console.log('Inicializacion: ' + _ms + 'ms');
+        // Auto-backup a Telegram si esta activo
+        if (this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
         this.$nextTick(() => {
           if (this.sec === 'dashboard') {
             const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
