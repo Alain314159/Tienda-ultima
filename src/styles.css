@@ -1447,16 +1447,6 @@ input::placeholder, textarea::placeholder {
 }
 
 /* ===== BOTONES DE PERIODO ACTIVO ===== */
-.btn.pri { position: relative; }
-.btn.pri::after {
-  content: '✓';
-  position: absolute;
-  right: .5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: .8rem;
-  opacity: .8;
-}
 .btn.pri[style*="width:auto"]::after { display: none; }
 
 /* ===== CALCULADORA DE BILLETES ===== */

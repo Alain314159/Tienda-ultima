@@ -202,15 +202,19 @@
                   <icon name="x" :size="14" color="#fff"></icon>
                 </button>
               </div>
-              <div class="qty-row">
-                <label>Cant</label>
-                <div class="qty-input">
-                  <button @click="cambiarCant(it, -1)">−</button>
-                  <input v-model="it.cant" type="text" inputmode="decimal" @blur="validarCant(it)">
-                  <button @click="cambiarCant(it, 1)">+</button>
+              <div class="cart-controls">
+                <div class="cart-field">
+                  <label>Cantidad</label>
+                  <div class="qty-input">
+                    <button type="button" @click="cambiarCant(it, -1)">−</button>
+                    <input :value="it.cant" type="text" inputmode="decimal" @input="actualizarCantidadInput(it, $event.target.value)" @blur="validarCant(it)">
+                    <button type="button" @click="cambiarCant(it, 1)">+</button>
+                  </div>
                 </div>
-                <label>Precio</label>
-                <input class="price-input" v-model="it.precio" type="text" inputmode="decimal" @blur="validarPrecio(it)">
+                <div class="cart-field">
+                  <label>Precio</label>
+                  <input class="price-input" :value="it.precio" type="text" inputmode="decimal" @input="it.precio = $event.target.value" @blur="validarPrecio(it)">
+                </div>
               </div>
               <div class="det" style="font-size:.72rem;color:var(--mut);margin-top:.3rem">
                 {{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} =
@@ -636,25 +640,12 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><icon name="check" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Arqueo de Caja</div>
-          <div class="info-box" style="margin-bottom:.6rem">
-            Cuenta el dinero físico y escribe lo que tienes.
-            Si es MENOR que el sistema = faltante; si es MAYOR = sobrante.
+          <div class="card-title"><icon name="check" :size="18" :color="sec === 'caja' ? '#2196F3' : mutColor"></icon> Arqueo de caja</div>
+          <div class="info-box" style="margin-bottom:.6rem;font-size:.75rem">
+            El arqueo ahora se hace dentro de <b>Auditoria</b> junto con el conteo de inventario, para que todo quede en un solo registro.
           </div>
-          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.4rem">
-            El sistema dice: <b style="color:var(--txt)">{{ fmt(saldoCaja) }}</b>
-          </div>
-          <input v-model="arqueoForm.monto" type="number" inputmode="decimal" step="0.01"
-            placeholder="Tú cuentas..." @input="calcArqueo">
-          <input v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)">
-          <div v-if="arqueoForm.monto !== ''" class="arqueo-prev" :class="arqueoPreview.class">
-            Tú cuentas: {{ fmt(arqueoPreview.fisico) }} · Diferencia:
-            <span v-if="Math.abs(arqueoPreview.diff) < 0.01">Cuadre perfecto ✓</span>
-            <span v-else-if="arqueoPreview.diff > 0" class="pos">SOBRANTE +{{ fmt(arqueoPreview.diff) }}</span>
-            <span v-else class="neg">FALTANTE -{{ fmt(arqueoPreview.diff) }}</span>
-          </div>
-          <button class="btn pri" @click="registrarArqueo()">
-            <icon name="check" :size="16" color="#fff"></icon> Registrar Arqueo
+          <button class="btn pri" @click="ir('auditoria')">
+            <icon name="check" :size="16" color="#fff"></icon> Ir a Auditoria
           </button>
         </div>
 
@@ -966,6 +957,13 @@
           </button>
         </div>
 
+        <div class="card" style="background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2)">
+          <div style="font-size:.78rem;color:var(--txt-2);line-height:1.55">
+            <b>Diferencia:</b> "Repartir" divide la ganancia entre socios por su %.
+            "Retirar" saca dinero para ti sin repartir. "Aportar" mete dinero extra.
+          </div>
+        </div>
+
         <div class="grid2">
           <button class="btn bad" @click="retiroAbierto = true">
             <icon name="dollar" :size="16" color="#fff"></icon> Retirar Ganancia
@@ -1205,9 +1203,11 @@
           <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PATRIMONIO</span><span>{{ fmt(capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
           <div v-if="aportesTotal > 0" class="row" style="padding-left:1rem;font-size:.78rem"><span>Aportes</span><span>{{ fmt(aportesTotal) }}</span></div>
-          <div v-for="s in sociosActivos" :key="'ap_' + s.id" v-if="totalAportesSocio(s.id) > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
-            <span>· {{ s.nombre }}</span><span>{{ fmt(totalAportesSocio(s.id)) }}</span>
-          </div>
+          <template v-for="s in sociosActivos" :key="'ap_' + s.id">
+            <div v-if="totalAportesSocio(s.id) > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
+              <span>· {{ s.nombre }}</span><span>{{ fmt(totalAportesSocio(s.id)) }}</span>
+            </div>
+          </template>
           <div v-if="aportesSinSocioTotal > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
             <span>· Sin asignar</span><span>{{ fmt(aportesSinSocioTotal) }}</span>
           </div>
@@ -1572,7 +1572,7 @@
         <div class="set-row">
           <span class="lbl"><icon name="list" :size="18"></icon> Modo compacto</span>
           <label class="switch">
-            <input type="checkbox" v-model="cfg.modoCompacto" @change="toggleModoCompacto">
+            <input type="checkbox" v-model="cfg.modoCompacto" @change="aplicarModoCompacto">
             <span class="slider"></span>
           </label>
         </div>
@@ -2851,8 +2851,7 @@ export default {
       };
     },
 
-    toggleModoCompacto() {
-      this.cfg.modoCompacto = !this.cfg.modoCompacto;
+    aplicarModoCompacto() {
       this.guardarCfg();
       try { document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0'); } catch (e) {}
     },
@@ -2867,6 +2866,11 @@ export default {
     irAStock(filtro) {
       this.filtroStock = filtro;
       this.ir('productos');
+      this.$nextTick(() => {
+        setTimeout(() => {
+          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+        }, 100);
+      });
     },
 
     limpiarFiltroStock() {
@@ -3058,9 +3062,15 @@ export default {
 
     cambiarCant(it, dir) {
       let val = n(it.cant) + dir;
-      if (val > this.stock(it.productoId)) return this.toastMsg('Stock máximo alcanzado', 'warn');
+      if (val > this.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', 'warn');
       if (val < 0) val = 0;
       it.cant = String(val);
+      this.recalcularPrecio(it);
+      this.$forceUpdate();
+    },
+
+    actualizarCantidadInput(it, valor) {
+      it.cant = String(valor);
       this.recalcularPrecio(it);
     },
 
@@ -3083,6 +3093,7 @@ export default {
       if (val < 0) val = 0;
       it.cant = String(val);
       this.recalcularPrecio(it);
+      this.$forceUpdate();
     },
 
     validarPrecio(it) {
@@ -5823,7 +5834,8 @@ export default {
           document.documentElement.setAttribute('data-theme', this.cfg.tema);
           document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0');
         } catch (e) {}
-        this.capInicialStr = String(this.cfg.capitalInicial || '');
+        // No prellenar el campo de capital inicial
+        this.capInicialStr = '';
         await this.recargarTodo();
         const b = await db.config.get('backupAuto');
         if (b) this.ultimoBackup = b;
