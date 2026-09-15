@@ -2045,3 +2045,114 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   border-color: rgba(255,255,255,.5);
   color: #fff;
 }
+
+/* ===== CARRITO: LAYOUT FINAL ===== */
+.cart-controls {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: .55rem;
+  margin-top: .55rem;
+  align-items: end;
+}
+.cart-field {
+  display: flex;
+  flex-direction: column;
+  gap: .28rem;
+}
+.cart-field label {
+  font-size: .65rem;
+  color: var(--mut);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding-left: .1rem;
+}
+.cart-field .qty-input {
+  width: 100%;
+  display: flex;
+  height: 2.6rem;
+  border: 1.5px solid var(--brd);
+  border-radius: .65rem;
+  overflow: hidden;
+  background: var(--card);
+}
+.cart-field .qty-input button {
+  background: var(--bg);
+  border: none;
+  width: 2.2rem;
+  height: 100%;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--pri);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--tr);
+  flex-shrink: 0;
+}
+.cart-field .qty-input button:active { background: var(--bg-2); }
+.cart-field .qty-input input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  border: none;
+  border-radius: 0;
+  padding: .3rem .2rem;
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 800;
+  text-align: center;
+  background: transparent;
+  color: var(--txt);
+  outline: none;
+}
+.cart-field .price-input {
+  width: 100%;
+  height: 2.6rem;
+  padding: .55rem .7rem;
+  font-weight: 800;
+  border: 1.5px solid var(--brd);
+  border-radius: .65rem;
+  background: var(--card);
+  color: var(--txt);
+  text-align: center;
+  font-size: .95rem;
+  margin: 0;
+  outline: none;
+}
+.cart-field .price-input:focus,
+.cart-field .qty-input:focus-within {
+  border-color: var(--pri);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.14);
+}
+
+/* ===== LINEA TOTAL DEL ITEM ===== */
+.cart-total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .45rem;
+  font-size: .74rem;
+  color: var(--mut);
+  flex-wrap: wrap;
+}
+.cart-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: .15rem .5rem;
+  border-radius: 99px;
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.cart-tag.tag-unit {
+  background: rgba(100,116,139,.15);
+  color: var(--mut);
+}
+.cart-tag.tag-esc {
+  background: rgba(22,163,74,.15);
+  color: var(--ok-d);
+}

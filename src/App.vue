@@ -216,10 +216,11 @@
                   <input class="price-input" :value="it.precio" type="text" inputmode="decimal" @input="it.precio = $event.target.value" @blur="validarPrecio(it)">
                 </div>
               </div>
-              <div class="det" style="font-size:.72rem;color:var(--mut);margin-top:.3rem">
-                {{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} =
-                <b style="color:var(--pri)">{{ fmt(subTotalItem(it)) }}</b>
-                <span v-if="it._precioAuto" style="color:var(--ok);font-weight:700;margin-left:.3rem">· precio por cantidad</span>
+              <div class="cart-total-line">
+                <span>{{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} = <b style="color:var(--pri)">{{ fmt(subTotalItem(it)) }}</b></span>
+                <span class="cart-tag" :class="esPrecioEscalon(it) ? 'tag-esc' : 'tag-unit'" v-if="tieneEscalones(it.productoId)">
+                  {{ esPrecioEscalon(it) ? 'Por cantidad' : 'Por unidad' }}
+                </span>
               </div>
             </div>
             <div class="total-box">
@@ -3072,6 +3073,19 @@ export default {
     actualizarCantidadInput(it, valor) {
       it.cant = String(valor);
       this.recalcularPrecio(it);
+    },
+
+    tieneEscalones(pid) {
+      const p = this.productos.find(x => x.id === pid);
+      return !!(p && p.preciosEscalonados && p.preciosEscalonados.length);
+    },
+
+    esPrecioEscalon(it) {
+      const p = this.productos.find(x => x.id === it.productoId);
+      if (!p || !p.preciosEscalonados || !p.preciosEscalonados.length) return false;
+      const base = n(p.precio);
+      const actual = n(it.precio);
+      return Math.abs(actual - base) > 0.001;
     },
 
     recalcularPrecio(it) {
