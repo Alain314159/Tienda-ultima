@@ -1671,9 +1671,16 @@
             <div class="tg-dot"></div>
             <span style="font-size:.8rem"><b>Conectado:</b> {{ cfg.tgNombre || cfg.tgChatId }}</span>
           </div>
-          <div style="font-size:.72rem;color:var(--mut);margin-bottom:.5rem">
+          <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
             Ultimo backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
+            <span v-if="tgColaPendiente > 0" style="color:var(--warn);font-weight:700"> · {{ tgColaPendiente }} en cola</span>
           </div>
+
+          <div v-if="tgProgreso" class="tg-progreso">
+            <div class="tg-spinner"></div>
+            <span>{{ tgProgreso }}</span>
+          </div>
+
           <div class="set-row">
             <span class="lbl" style="font-size:.78rem">Backup automatico (cada 24h)</span>
             <label class="switch">
@@ -1681,7 +1688,31 @@
               <span class="slider"></span>
             </label>
           </div>
-          <div class="grid2" style="margin-top:.5rem">
+
+          <div class="set-row">
+            <span class="lbl" style="font-size:.78rem">Mantener ultimos</span>
+            <input v-model.number="cfg.tgMantenerN" type="number" min="1" max="100" style="width:4rem;margin:0;padding:.3rem .5rem;text-align:center" @change="guardarCfg">
+          </div>
+
+          <div class="tg-seccion">
+            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">Guardar en carpeta del telefono</div>
+            <div v-if="cfg.tgCarpetaActiva" style="font-size:.72rem;color:var(--ok);margin-bottom:.4rem">
+              <b>Carpeta:</b> {{ cfg.tgCarpetaNombre }}
+            </div>
+            <div v-else style="font-size:.72rem;color:var(--mut);margin-bottom:.4rem">
+              Sin carpeta configurada. Se guardara solo en Telegram.
+            </div>
+            <div class="grid2">
+              <button class="btn ghost" style="margin:0;font-size:.72rem;padding:.5rem" @click="elegirCarpeta">
+                <icon name="download" :size="12" :color="mutColor"></icon> {{ cfg.tgCarpetaActiva ? 'Cambiar' : 'Elegir carpeta' }}
+              </button>
+              <button v-if="cfg.tgCarpetaActiva" class="btn ghost" style="margin:0;font-size:.72rem;padding:.5rem" @click="quitarCarpeta">
+                Quitar
+              </button>
+            </div>
+          </div>
+
+          <div class="grid2" style="margin-top:.6rem">
             <button class="btn pri" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgBackupAhora">
               <icon name="upload" :size="14" color="#fff"></icon> Backup ahora
             </button>
@@ -1689,6 +1720,9 @@
               <icon name="refresh" :size="14" :color="mutColor"></icon> Ver backups
             </button>
           </div>
+          <button v-if="tgColaPendiente > 0" class="btn warn" style="margin-top:.5rem;font-size:.72rem" @click="tgProcesarCola">
+            Procesar {{ tgColaPendiente }} en cola
+          </button>
           <button class="btn ghost" style="margin-top:.5rem;font-size:.72rem" @click="tgDesconectar">
             Desconectar Telegram
           </button>
@@ -1924,6 +1958,10 @@ export default {
         tgNombre: '',
         tgAutoBackup: false,
         tgUltimoBackup: null,
+        tgUltimoHash: '',
+        tgMantenerN: 10,
+        tgCarpetaActiva: false,
+        tgCarpetaNombre: '',
         modoCompacto: false,
         mostrarSplash: true
       },
@@ -1980,6 +2018,9 @@ export default {
       tgEstado: 'sin-config',
       tgBackups: [],
       tgCargando: false,
+      tgProgreso: '',
+      tgColaPendiente: 0,
+      _carpetaHandle: null,
       _pullStartY: 0,
       _pulling: false,
       pullDist: 0,
@@ -5096,24 +5137,80 @@ export default {
     },
 
     async tgBackupAhora() {
+      const data = buildData(this);
+      try {
+        await this.tgEnviarDatos(data, 'manual', true);
+      } catch (e) {
+        await this.tgEncolar(data, 'manual');
+        this.toastMsg('Sin conexion. Backup en cola.', 'warn');
+      }
+    },
+
+    async tgEnviarDatos(data, motivo, mostrarToast) {
       const token = this.tgTokenActual();
       const chatId = this.cfg.tgChatId;
-      if (!token || !chatId) return this.toastMsg('Conecta Telegram primero', 'bad');
+      if (!token || !chatId) throw new Error('Sin conexion a Telegram');
+
       this.tgCargando = true;
+      this.tgProgreso = 'Preparando...';
       try {
-        const data = buildData(this);
+        // 1. Serializar
+        const json = JSON.stringify(data);
+        const hash = await this.hashContenido(json);
+
+        // 2. Si es auto y el hash no cambio, saltar
+        if (motivo === 'auto' && this.cfg.tgUltimoHash === hash) {
+          this.tgProgreso = 'Sin cambios';
+          return { ok: true, saltado: true };
+        }
+
+        // 3. Comprimir
+        this.tgProgreso = 'Comprimiendo...';
+        const blobSinComprimir = new Blob([json], { type: 'application/json' });
+        const gz = await this.comprimirGzip(blobSinComprimir);
+
+        // 4. Nombre
         const fecha = new Date().toISOString();
-        const fileName = 'tienda-backup-' + fecha.split('T')[0] + '-' + Date.now().toString(36) + '.json';
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        const resumen = data.productos.length + ' prod · ' + data.ventas.length + ' ventas · ' + data.compras.length + ' compras';
-        await tgSendDocument(token, chatId, blob, fileName, 'Backup Tienda Pro · ' + resumen);
+        const fileName = 'tienda-backup-' + fecha.split('T')[0] + '-' + Date.now().toString(36) + '.json.gz';
+
+        // 5. Resumen para caption
+        const resumen = data.productos.length + ' prod · ' + data.ventas.length + ' ventas · ' +
+                        data.compras.length + ' compras · ' + (blobSinComprimir.size / 1024).toFixed(1) + ' KB';
+
+        // 6. Enviar a Telegram
+        this.tgProgreso = 'Subiendo a Telegram...';
+        await tgSendDocument(token, chatId, gz, fileName, 'Backup · ' + resumen);
+
+        // 7. Guardar en carpeta del teléfono (si esta configurada)
+        if (this.cfg.tgCarpetaActiva) {
+          this.tgProgreso = 'Guardando en carpeta...';
+          const nombreLocal = 'tienda-backup-' + fecha.split('T')[0] + '.json.gz';
+          const okCarpeta = await this.guardarEnCarpeta(nombreLocal, gz);
+          if (!okCarpeta && mostrarToast) {
+            this.toastMsg('Telegram OK, pero fallo guardar en carpeta', 'warn');
+          }
+        }
+
+        // 8. Actualizar cfg
         this.cfg.tgUltimoBackup = fecha;
+        this.cfg.tgUltimoHash = hash;
         await this.guardarCfg();
-        this.toastMsg('Backup subido: ' + (blob.size / 1024).toFixed(1) + ' KB');
-      } catch (e) {
-        this.toastMsg('Error: ' + e.message, 'bad');
+
+        // 9. Rotación: borrar backups viejos si hay más de N
+        this.tgProgreso = 'Rotando...';
+        try {
+          await this.tgListar();
+          await this.tgRotarViejos();
+        } catch (e) {}
+
+        this.tgProgreso = '';
+        if (mostrarToast) {
+          this.toastMsg('Backup OK · ' + (gz.size / 1024).toFixed(1) + ' KB comprimido');
+        }
+        return { ok: true, size: gz.size };
       } finally {
         this.tgCargando = false;
+        this.tgProgreso = '';
       }
     },
 
@@ -5141,11 +5238,22 @@ export default {
         msg: 'Restaurar el backup del ' + fmtFH(bk.fecha) + ' (' + (bk.fileSize / 1024).toFixed(1) + ' KB)?\n\nLos datos actuales seran REEMPLAZADOS.',
         onOk: async () => {
           this.tgCargando = true;
+          this.tgProgreso = 'Descargando...';
           try {
             const file = await tgGetFile(token, bk.fileId);
             const url = tgFileUrl(token, file.file_path);
             const r = await fetch(url);
-            const txt = await r.text();
+            const blob = await r.blob();
+            let txt;
+            // Si termina en .gz, descomprimir
+            if (bk.fileName.endsWith('.gz')) {
+              this.tgProgreso = 'Descomprimiendo...';
+              const descomprimido = await this.descomprimirGzip(blob);
+              txt = await descomprimido.text();
+            } else {
+              txt = await blob.text();
+            }
+            this.tgProgreso = 'Importando...';
             const d = JSON.parse(txt);
             if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
             await this.importarData(d);
@@ -5154,6 +5262,7 @@ export default {
             this.toastMsg('Error: ' + e.message, 'bad');
           } finally {
             this.tgCargando = false;
+            this.tgProgreso = '';
           }
         }
       };
@@ -5224,14 +5333,28 @@ export default {
     },
 
     async tgAutoBackupCheck() {
+      // 1. Procesar cola pendiente primero
+      try { await this.tgProcesarCola(); } catch (e) {}
+      // 2. Auto-backup si esta activo
       if (!this.cfg.tgAutoBackup) return;
-      if (!this.cfg.tgToken || !this.cfg.tgChatId) return;
+      if (!this.cfg.tgChatId) return;
       const ult = this.cfg.tgUltimoBackup ? new Date(this.cfg.tgUltimoBackup).getTime() : 0;
-      const ahora = Date.now();
-      const horas = (ahora - ult) / 3600000;
+      const horas = (Date.now() - ult) / 3600000;
       if (horas >= 24) {
-        try { await this.tgBackupAhora(); } catch (e) {}
+        const data = buildData(this);
+        try {
+          await this.tgEnviarDatos(data, 'auto', false);
+        } catch (e) {
+          // Si falla, encolar
+          await this.tgEncolar(data, 'auto');
+        }
       }
+    },
+
+    async tgEncolarAhora() {
+      const data = buildData(this);
+      await this.tgEncolar(data, 'manual-offline');
+      this.toastMsg('Backup guardado en cola (se enviara al recuperar conexion)');
     },
 
     _tgPollTimer: null,
@@ -5241,6 +5364,170 @@ export default {
         if (this.cfg.tgChatId) { clearInterval(this._tgPollTimer); this._tgPollTimer = null; return; }
         await this.tgAutoDetectarChat();
       }, 5000);
+    },
+
+    // ===== HELPER: compresión gzip =====
+    async comprimirGzip(blob) {
+      if (typeof CompressionStream === 'undefined') return blob;
+      try {
+        const cs = new CompressionStream('gzip');
+        const stream = blob.stream().pipeThrough(cs);
+        return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/gzip' });
+      } catch (e) { return blob; }
+    },
+
+    async descomprimirGzip(blob) {
+      if (typeof DecompressionStream === 'undefined') return blob;
+      try {
+        const ds = new DecompressionStream('gzip');
+        const stream = blob.stream().pipeThrough(ds);
+        return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/json' });
+      } catch (e) { return blob; }
+    },
+
+    async hashContenido(texto) {
+      try {
+        const enc = new TextEncoder().encode(texto);
+        const buf = await crypto.subtle.digest('SHA-256', enc);
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+      } catch (e) { return String(texto.length); }
+    },
+
+    // ===== COLA DE BACKUPS =====
+    async tgEncolar(datos, motivo) {
+      const id = genId('tq');
+      await P(db.tgQueue, {
+        id,
+        ts: new Date().toISOString(),
+        estado: 'pendiente',
+        intentos: 0,
+        motivo: motivo || 'auto',
+        datos
+      });
+      await this.tgActualizarCola();
+      return id;
+    },
+
+    async tgActualizarCola() {
+      try {
+        const items = await db.tgQueue.toArray();
+        this.tgColaPendiente = items.filter(x => x.estado === 'pendiente' || x.estado === 'error').length;
+      } catch (e) { this.tgColaPendiente = 0; }
+    },
+
+    async tgProcesarCola() {
+      if (this.tgProcesandoCola) return;
+      if (!this.cfg.tgChatId) return;
+      this.tgProcesandoCola = true;
+      try {
+        const items = await db.tgQueue.filter(x => x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)).toArray();
+        for (const item of items) {
+          if (item.intentos >= 5) {
+            await P(db.tgQueue, Object.assign({}, item, { estado: 'fallido' }));
+            continue;
+          }
+          try {
+            await P(db.tgQueue, Object.assign({}, item, { estado: 'enviando' }));
+            await this.tgEnviarDatos(item.datos, item.motivo, false);
+            await db.tgQueue.delete(item.id);
+          } catch (e) {
+            await P(db.tgQueue, Object.assign({}, item, {
+              estado: 'error',
+              intentos: (item.intentos || 0) + 1,
+              ultimoError: e.message
+            }));
+          }
+        }
+        await this.tgActualizarCola();
+      } finally {
+        this.tgProcesandoCola = false;
+      }
+    },
+
+    // ===== ROTACIÓN =====
+    async tgRotarViejos() {
+      const mantener = n(this.cfg.tgMantenerN) || 10;
+      if (this.tgBackups.length <= mantener) return 0;
+      const sobrantes = this.tgBackups.slice(mantener);
+      const token = this.tgTokenActual();
+      const chatId = this.cfg.tgChatId;
+      let borrados = 0;
+      for (const bk of sobrantes) {
+        try {
+          await tgDeleteMessage(token, chatId, bk.messageId);
+          borrados++;
+        } catch (e) {}
+      }
+      if (borrados > 0) {
+        this.tgBackups = this.tgBackups.slice(0, mantener);
+        console.log('Telegram: ' + borrados + ' backups viejos eliminados');
+      }
+      return borrados;
+    },
+
+    // ===== GUARDAR EN CARPETA DEL TELÉFONO =====
+    async elegirCarpeta() {
+      if (typeof window.showDirectoryPicker !== 'function') {
+        this.toastMsg('Tu navegador no soporta elegir carpeta. Se usara Descargas.', 'warn');
+        this.cfg.tgCarpetaActiva = false;
+        return;
+      }
+      try {
+        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        // Guardar handle en IndexedDB
+        await P(db.config, { key: 'carpetaHandle', value: await this.serializarHandle(handle), nombre: handle.name });
+        this._carpetaHandle = handle;
+        this.cfg.tgCarpetaActiva = true;
+        this.cfg.tgCarpetaNombre = handle.name;
+        await this.guardarCfg();
+        this.toastMsg('Carpeta: ' + handle.name);
+      } catch (e) {
+        if (e.name !== 'AbortError') this.toastMsg('Error: ' + e.message, 'bad');
+      }
+    },
+
+    async serializarHandle(handle) {
+      // No se puede serializar directo, pero IndexedDB lo soporta nativamente
+      return handle;
+    },
+
+    async guardarEnCarpeta(fileName, contenidoBlob) {
+      // 1. Verificar handle guardado
+      if (!this._carpetaHandle) {
+        try {
+          const rec = await db.config.get('carpetaHandle');
+          if (rec && rec.value) this._carpetaHandle = rec.value;
+        } catch (e) {}
+      }
+      if (!this._carpetaHandle) return false;
+      // 2. Verificar permiso
+      try {
+        const perm = await this._carpetaHandle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+          const req = await this._carpetaHandle.requestPermission({ mode: 'readwrite' });
+          if (req !== 'granted') return false;
+        }
+      } catch (e) { return false; }
+      // 3. Escribir archivo
+      try {
+        const fh = await this._carpetaHandle.getFileHandle(fileName, { create: true });
+        const w = await fh.createWritable();
+        await w.write(contenidoBlob);
+        await w.close();
+        return true;
+      } catch (e) {
+        console.error('guardarEnCarpeta', e);
+        return false;
+      }
+    },
+
+    async quitarCarpeta() {
+      this._carpetaHandle = null;
+      this.cfg.tgCarpetaActiva = false;
+      this.cfg.tgCarpetaNombre = '';
+      try { await db.config.delete('carpetaHandle'); } catch (e) {}
+      await this.guardarCfg();
+      this.toastMsg('Carpeta desconectada');
     },
 
     // ===== SEGURIDAD =====
@@ -5490,8 +5777,23 @@ export default {
         this.splashVisible = false;
         const _ms = (performance.now() - _t0).toFixed(1);
         console.log('Inicializacion: ' + _ms + 'ms');
+        // Cargar handle de carpeta si existe
+        try {
+          const rec = await db.config.get('carpetaHandle');
+          if (rec && rec.value) {
+            this._carpetaHandle = rec.value;
+            this.cfg.tgCarpetaActiva = true;
+            this.cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
+          }
+        } catch (e) {}
+        // Actualizar cola pendiente
+        await this.tgActualizarCola();
         // Si no hay chat de Telegram, empezar a buscar
         if (!this.cfg.tgChatId && TOKEN_DEFAULT) this.iniciarTgPoll();
+        // Procesar cola cuando recupera conexion
+        window.addEventListener('online', () => {
+          setTimeout(() => this.tgProcesarCola(), 1000);
+        });
         // Auto-backup a Telegram si esta activo
         if (this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
         this.$nextTick(() => {
@@ -5534,11 +5836,14 @@ export default {
     // Notificaciones: usar requestIdleCallback si esta disponible
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
     idle(() => { this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000); });
+    idle(() => { this._tgColaTimer = setInterval(() => this.tgProcesarCola(), 5 * 60 * 1000); });
     idle(() => this.chequearNotificaciones());
   },
 
   beforeUnmount() {
     if (this._notifTimer) clearInterval(this._notifTimer);
+    if (this._tgColaTimer) clearInterval(this._tgColaTimer);
+    if (this._tgPollTimer) clearInterval(this._tgPollTimer);
   }
 };
 
