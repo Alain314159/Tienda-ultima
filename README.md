@@ -97,8 +97,6 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **Chart.js** — gráficos interactivos
 - **jsPDF + autoTable** — generación de PDF
 - **vite-plugin-pwa** — soporte PWA con Service Worker
-- **date-fns** — formateo de fechas
-- **lucide** — iconografía SVG
 
 Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
 

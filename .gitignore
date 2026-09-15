@@ -9,3 +9,4 @@ fix-*.js
 *.bak
 .env
 .env.local
+package.json.bak
