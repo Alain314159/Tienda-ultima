@@ -96,6 +96,27 @@ db.version(5).stores({
   config: 'key'
 });
 
+// Version 6: indices compuestos para consultas rapidas
+db.version(6).stores({
+  productos: 'id, nombre, archivado, [archivado+nombre]',
+  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+  ventas: 'id, fecha, anulada, [anulada+fecha]',
+  compras: 'id, productoId, fecha, [productoId+fecha]',
+  ajustes: 'id, productoId, fecha, [productoId+fecha]',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo, [tipo+fecha]',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha, socioId',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria, [categoria+fecha]',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  auditorias: 'id, fechaInicio, estado',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -152,7 +173,7 @@ export function fmtFH(iso) {
 // Exportar datos completos
 export function buildData(state) {
   return clean({
-    version: 7,
+    version: 8,
     fecha: new Date().toISOString(),
     cfg: state.cfg,
     productos: state.productos,
