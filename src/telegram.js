@@ -52,7 +52,7 @@ export function tgDetectarChatId(updates) {
   for (let i = updates.length - 1; i >= 0; i--) {
     const u = updates[i];
     const m = u.message || u.edited_message || u.channel_post;
-    if (m && m.chat && m.chat.id) {
+    if (m && m.chat && m.chat.id && m.chat.type === 'private') {
       return {
         chatId: m.chat.id,
         nombre: (m.chat.first_name || '') + ' ' + (m.chat.last_name || ''),

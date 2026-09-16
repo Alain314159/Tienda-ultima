@@ -182,7 +182,14 @@ export function generarInsights(state) {
     const vendio = ventas.some(v => !v.anulada && new Date(v.fecha).toDateString() === key);
     ultimos7.push(vendio);
   }
-  const racha = ultimos7.filter(Boolean).length;
+  // Racha REAL = dias consecutivos desde hoy hacia atras
+  let racha = 0;
+  for (let i = 0; i < 7; i++) {
+    if (!ultimos7[i]) break;
+    racha++;
+  }
+  // Total de dias con ventas (no consecutivos)
+  const diasConVentas = ultimos7.filter(Boolean).length;
   if (racha >= 5) {
     out.push({
       tipo: 'ok', icono: 'diamond',
@@ -190,11 +197,11 @@ export function generarInsights(state) {
       detalle: 'Sigue asi',
       sec: 'dashboard'
     });
-  } else if (racha <= 1 && productos.length > 3) {
+  } else if (diasConVentas <= 1 && productos.length > 3) {
     out.push({
       tipo: 'warn', icono: 'trend',
       titulo: 'Pocas ventas en los ultimos 7 dias',
-      detalle: 'Solo ' + racha + ' dia(s) con movimiento',
+      detalle: 'Solo ' + diasConVentas + ' dia(s) con movimiento',
       sec: 'ventas'
     });
   }

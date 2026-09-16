@@ -308,8 +308,8 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     console.log('\n❌ EXCEPCION: ' + e.message);
     errores.push('excepcion: ' + e.message);
     try {
-      await page.screenshot({ path: '/data/data/com.termux/files/home/functional-error.png', fullPage: true });
-      console.log('  📷 Screenshot: ~/functional-error.png');
+      await page.screenshot({ path: 'functional-error.png', fullPage: true });
+      console.log('  📷 Screenshot: ./functional-error.png');
     } catch (_) {}
     process.exit(1);
   } finally {

@@ -149,8 +149,8 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     errors.push({ tipo: 'flujo-roto', texto: e.message });
     console.log('\n❌ FLUJO INTERRUMPIDO: ' + e.message);
     try {
-      await page.screenshot({ path: '/data/data/com.termux/files/home/smoke-error.png', fullPage: true });
-      console.log('  📷 Screenshot: ~/smoke-error.png');
+      await page.screenshot({ path: 'smoke-error.png', fullPage: true });
+      console.log('  📷 Screenshot: ./smoke-error.png');
     } catch (_) {}
   } finally {
     await browser.close();

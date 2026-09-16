@@ -1951,6 +1951,7 @@ export default {
       hayUpdate: false,
       _swWaiting: null,
       _aplicando: false,
+      _cerrando: false,
       cargando: true,
       sec: 'dashboard',
       masAbierto: false,
@@ -3832,11 +3833,15 @@ export default {
     },
 
     cerrarPeriodo() {
+      if (this._cerrando) return this.toastMsg('Cierre en proceso...', TOAST.WARN);
       this.pedirPin(() => {
         this.confirm = {
           activo: true, titulo: 'Cerrar período',
           msg: '¿Cerrar el período actual? Los contadores del inicio se reinician y la ganancia se acumula. Esta acción no se puede deshacer.',
           onOk: async () => {
+            if (this._cerrando) return;
+            this._cerrando = true;
+            try {
             const i = new Date(this.cfg.periodoInicio);
             const f = new Date();
             const ventasRango = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
@@ -3910,6 +3915,9 @@ export default {
             await this.guardarCfg();
             await this.recargar(['cierres', 'asientos']);
             this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
+            } finally {
+              this._cerrando = false;
+            }
           }
         };
       });
@@ -3949,9 +3957,12 @@ export default {
     },
 
     setHoy() {
-      this.rep.fechaInicio = this.rep.fechaFin = new Date().toISOString().split('T')[0];
-      this.rep.isoInicio = null;
-      this.rep.isoFin = null;
+      const now = new Date();
+      const inicio = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const fin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      this.rep.fechaInicio = this.rep.fechaFin = now.toISOString().split('T')[0];
+      this.rep.isoInicio = inicio.toISOString();
+      this.rep.isoFin = fin.toISOString();
       this.rep.periodoActivo = 'hoy';
     },
 
