@@ -969,25 +969,14 @@
             <input v-model="gastoForm.fecha" type="date">
             <select v-model="gastoForm.categoria">
               <option value="">Categoria...</option>
-              <option value="Luz">Luz</option>
-              <option value="Agua">Agua</option>
-              <option value="Alquiler">Alquiler</option>
-              <option value="Internet">Internet</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Publicidad">Publicidad</option>
-              <option value="Mantenimiento">Mantenimiento</option>
-              <option value="Limpieza">Limpieza</option>
-              <option value="Otros">Otros</option>
+              <option v-for="c in CATEGORIAS_GASTO" :key="c" :value="c">{{ c }}</option>
             </select>
           </div>
           <input v-model="gastoForm.concepto" type="text" placeholder="Concepto (ej: Recibo de luz agosto)">
           <div class="grid2">
             <input v-model="gastoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto">
             <select v-model="gastoForm.metodoPago">
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="otro">Otro</option>
+              <option v-for="m in METODOS_PAGO" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
           </div>
           <input v-model="gastoForm.nota" type="text" placeholder="Nota (opcional)">
@@ -1937,6 +1926,7 @@
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
+import { TOAST, TIPO_ASIENTO, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups, TOKEN_DEFAULT } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import Onboarding from './components/Onboarding.vue';
@@ -2065,6 +2055,8 @@ export default {
         pasivos: false
       },
       busquedaGlobalAbierta: false,
+      CATEGORIAS_GASTO,
+      METODOS_PAGO,
       splashVisible: true,
       safeMode: false,
       tutorialActivo: false,
@@ -3229,11 +3221,11 @@ export default {
 
     agregarCarrito(p) {
       const s = this.stock(p.id);
-      if (s <= 0) return this.toastMsg('Sin stock', 'bad');
+      if (s <= 0) return this.toastMsg('Sin stock', TOAST.BAD);
       const ex = this.carrito.find(i => i.productoId === p.id);
       if (ex) {
         if (n(ex.cant) < s) ex.cant = String(n(ex.cant) + 1);
-        else return this.toastMsg('Stock máximo', 'warn');
+        else return this.toastMsg('Stock máximo', TOAST.WARN);
       } else {
         const precioInicial = this.precioParaCantidad(p.id, 1);
         this.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(precioInicial), cant: '1' });
@@ -3248,7 +3240,7 @@ export default {
 
     cambiarCant(it, dir) {
       let val = n(it.cant) + dir;
-      if (val > this.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', 'warn');
+      if (val > this.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', TOAST.WARN);
       if (val < 0) val = 0;
       it.cant = String(val);
       this.recalcularPrecio(it);
@@ -3287,7 +3279,7 @@ export default {
       let val = n(it.cant);
       if (val > this.stock(it.productoId)) {
         val = this.stock(it.productoId);
-        this.toastMsg('Cantidad ajustada al stock disponible', 'warn');
+        this.toastMsg('Cantidad ajustada al stock disponible', TOAST.WARN);
       }
       if (val < 0) val = 0;
       it.cant = String(val);
@@ -3337,7 +3329,7 @@ export default {
 
     iniciarCobro() {
       const inv = this.carrito.filter(it => n(it.cant) <= 0);
-      if (inv.length) return this.toastMsg('Todas las cantidades deben ser > 0', 'bad');
+      if (inv.length) return this.toastMsg('Todas las cantidades deben ser > 0', TOAST.BAD);
 
       // Detectar ventas con perdida
       const conPerdida = [];
@@ -3423,9 +3415,9 @@ export default {
         this.carrito = [];
         localStorage.removeItem('carritoPro');
         this.cobroModal.activo = false;
-        this.toastMsg('Venta exitosa: ' + fmt(tot));
+        this.toastMsg(`Venta exitosa: ${fmt(tot)}`);
       } catch (e) {
-        this.toastMsg(e.message, 'bad');
+        this.toastMsg(e.message, TOAST.BAD);
       } finally {
         this.procesandoVenta = false;
       }
@@ -3441,7 +3433,7 @@ export default {
           onOk: async () => {
             try {
               await db.transaction('rw', db.ventas, db.lotes, async () => {
-                await P(db.ventas, Object.assign({}, v, { anulada: true, fechaAnulacion: new Date().toISOString() }));
+                await P(db.ventas, { ...v, anulada: true, fechaAnulacion: new Date().toISOString() });
                 const lotesActualizados = [];
                 for (const it of v.items) {
                   if (!it.lotesUsados) continue;
@@ -3458,10 +3450,10 @@ export default {
                 }
               });
               await this.recargar(['ventas', 'lotes']);
-              await this.recrearAsientoVenta(Object.assign({}, v, { anulada: true }));
+              await this.recrearAsientoVenta({ ...v, anulada: true });
               await this.recargar(['asientos']);
               this.toastMsg('Venta anulada');
-            } catch (e) { this.toastMsg(e.message, 'bad'); }
+            } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
         };
       });
@@ -3539,9 +3531,9 @@ export default {
     async guardarCompra() {
       const f = this.compraForm;
       const cantIngresada = n(f.cantidad), costoIngresado = n(f.costo);
-      if (!f.productoId) return this.toastMsg('Selecciona producto', 'bad');
-      if (cantIngresada <= 0) return this.toastMsg('Cantidad debe ser > 0', 'bad');
-      if (costoIngresado < 0) return this.toastMsg('Costo inválido', 'bad');
+      if (!f.productoId) return this.toastMsg('Selecciona producto', TOAST.BAD);
+      if (cantIngresada <= 0) return this.toastMsg('Cantidad debe ser > 0', TOAST.BAD);
+      if (costoIngresado < 0) return this.toastMsg('Costo inválido', TOAST.BAD);
 
       // Convertir a unidades base
       const mult = this.multiplicadorEmpaque();
@@ -3553,14 +3545,14 @@ export default {
         try {
           if (f.editId) {
             const l = this.lotes.find(x => x.compraId === f.editId);
-            if (l && n(l.cantidadVendida) > 0) return this.toastMsg('Lote con ventas: no editable', 'bad');
+            if (l && n(l.cantidadVendida) > 0) return this.toastMsg('Lote con ventas: no editable', TOAST.BAD);
             const c = this.compras.find(x => x.id === f.editId);
             await db.transaction('rw', db.compras, db.lotes, async () => {
-              await P(db.compras, Object.assign({}, c, {
+              await P(db.compras, { ...c,
                 productoId: f.productoId, productoNombre: f.nombre,
                 productoUnidad: f.unidad, cantidad: cant, costo, total, unidad: f.unidad
               }));
-              if (l) await P(db.lotes, Object.assign({}, l, {
+              if (l) await P(db.lotes, { ...l,
                 productoId: f.productoId, productoNombre: f.nombre,
                 productoUnidad: f.unidad, cantidadInicial: cant, costo
               }));
@@ -3589,8 +3581,8 @@ export default {
             : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
           if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar(['asientos']); }
           this.resetCompra();
-          this.toastMsg('Compra ' + fmt(total));
-        } catch (e) { this.toastMsg(e.message, 'bad'); }
+          this.toastMsg(`Compra ${fmt(total)}`);
+        } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
       };
       if (!f.editId && total > this.saldoCaja) {
         this.confirm = {
@@ -3629,10 +3621,10 @@ export default {
       const nombre = (p.nombre || '').trim();
       const precio = n(p.precio);
       const min = n(p.stockMin);
-      if (!nombre) return this.toastMsg('Nombre obligatorio', 'bad');
-      if (precio <= 0) return this.toastMsg('Precio debe ser > 0', 'bad');
+      if (!nombre) return this.toastMsg('Nombre obligatorio', TOAST.BAD);
+      if (precio <= 0) return this.toastMsg('Precio debe ser > 0', TOAST.BAD);
       const dup = this.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
-      if (dup) return this.toastMsg('Ya existe ese nombre', 'bad');
+      if (dup) return this.toastMsg('Ya existe ese nombre', TOAST.BAD);
 
       // Validar y normalizar escalones
       const escalones = (p.preciosEscalonados || [])
@@ -3647,7 +3639,7 @@ export default {
 
       if (p.editId) {
         const o = this.productos.find(x => x.id === p.editId);
-        await P(db.productos, Object.assign({}, o, { nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques, nota }));
+        await P(db.productos, { ...o, nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques, nota });
         this.toastMsg('Producto actualizado');
       } else {
         await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones, empaques, nota });
@@ -3672,12 +3664,12 @@ export default {
 
     archivarProducto(id) {
       const p = this.productos.find(x => x.id === id);
-      if (this.stock(id) > 0) return this.toastMsg('No archivar con stock > 0', 'bad');
+      if (this.stock(id) > 0) return this.toastMsg('No archivar con stock > 0', TOAST.BAD);
       this.confirm = {
         activo: true, titulo: 'Archivar producto',
         msg: '¿Archivar "' + p.nombre + '"?',
         onOk: async () => {
-          await P(db.productos, Object.assign({}, p, { archivado: true }));
+          await P(db.productos, { ...p, archivado: true });
           await this.recargar(['productos']);
           this.toastMsg('Archivado');
         }
@@ -3686,7 +3678,7 @@ export default {
 
     async restaurarProducto(id) {
       const p = this.productos.find(x => x.id === id);
-      await P(db.productos, Object.assign({}, p, { archivado: false }));
+      await P(db.productos, { ...p, archivado: false });
       await this.recargar(['productos']);
       this.toastMsg('Restaurado');
     },
@@ -3695,14 +3687,14 @@ export default {
     async registrarAjuste() {
       const f = this.ajusteForm;
       const cant = n(f.cantidad);
-      if (!f.productoId) return this.toastMsg('Selecciona producto', 'bad');
-      if (cant === 0) return this.toastMsg('Cantidad no puede ser 0', 'bad');
-      if (!f.motivo) return this.toastMsg('Selecciona motivo', 'bad');
+      if (!f.productoId) return this.toastMsg('Selecciona producto', TOAST.BAD);
+      if (cant === 0) return this.toastMsg('Cantidad no puede ser 0', TOAST.BAD);
+      if (!f.motivo) return this.toastMsg('Selecciona motivo', TOAST.BAD);
       const prod = this.productos.find(p => p.id === f.productoId);
-      if (cant < 0 && Math.abs(cant) > this.stock(f.productoId)) return this.toastMsg('Solo hay ' + this.stock(f.productoId), 'bad');
+      if (cant < 0 && Math.abs(cant) > this.stock(f.productoId)) return this.toastMsg('Solo hay ' + this.stock(f.productoId), TOAST.BAD);
       if (cant < 0) {
         const res = this.calcFIFO(f.productoId, Math.abs(cant));
-        if (res.error) return this.toastMsg(res.error, 'bad');
+        if (res.error) return this.toastMsg(res.error, TOAST.BAD);
         const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: f.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: f.motivo, costoPerdida: res.costoTotal, lotesUsados: res.usados };
         await db.transaction('rw', db.ajustes, db.lotes, async () => {
           await P(db.ajustes, aj);
@@ -3722,14 +3714,14 @@ export default {
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
       } else {
         const cs = n(f.costoSobrante);
-        if (cs < 0) return this.toastMsg('Costo inválido', 'bad');
+        if (cs < 0) return this.toastMsg('Costo inválido', TOAST.BAD);
         const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: f.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: f.motivo, costoPerdida: 0 };
         const lote = { id: genId('l'), compraId: 'aj-' + aj.id, productoId: f.productoId, productoNombre: prod.nombre, productoUnidad: prod.unidad || '', cantidadInicial: cant, cantidadVendida: 0, costo: cs, fecha: aj.fecha };
         await db.transaction('rw', db.ajustes, db.lotes, db.asientos, async () => {
           await P(db.ajustes, aj);
           await P(db.lotes, lote);
           if (cs > 0) {
-            const asSob = this.crearAsientoObj(aj.fecha, 'Sobrante inventario ' + prod.nombre, this.CUENTAS.INVENTARIO, this.CUENTAS.SOBRANTES_INV, m(cant * cs), 'ajuste', aj.id);
+            const asSob = this.crearAsientoObj(aj.fecha, 'Sobrante inventario ' + prod.nombre, this.CUENTAS.INVENTARIO, this.CUENTAS.SOBRANTES_INV, m(cant * cs), TIPO_ASIENTO.AJUSTE, aj.id);
             await P(db.asientos, asSob);
           }
         });
@@ -3752,7 +3744,7 @@ export default {
 
     async registrarArqueo() {
       const monto = n(this.arqueoForm.monto);
-      if (monto < 0 || this.arqueoForm.monto === '') return this.toastMsg('Monto inválido', 'bad');
+      if (monto < 0 || this.arqueoForm.monto === '') return this.toastMsg('Monto inválido', TOAST.BAD);
       const diff = m(monto - this.saldoCaja);
       const arq = { id: genId('aq'), fecha: new Date().toISOString(), montoFisico: monto, saldoSistema: this.saldoCaja, diferencia: diff, nota: this.arqueoForm.nota };
       if (Math.abs(diff) > 0.01) {
@@ -3789,23 +3781,23 @@ export default {
         await db.transaction('rw', db.asientos, db.config, async () => {
           await P(db.config, { key: 'cfg', value: this.cfg });
           if (diff > 0) {
-            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAJA, C.CAPITAL, diff, 'capital', 'cap_' + Date.now()));
+            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAJA, C.CAPITAL, diff, TIPO_ASIENTO.CAPITAL, 'cap_' + Date.now()));
           } else {
-            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAPITAL, C.CAJA, Math.abs(diff), 'capital', 'cap_' + Date.now()));
+            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAPITAL, C.CAJA, Math.abs(diff), TIPO_ASIENTO.CAPITAL, 'cap_' + Date.now()));
           }
         });
         await this.recargar(['asientos']);
       } catch (e) { console.error('guardarCapInicial', e); }
       this.capInicialStr = '';
-      this.toastMsg('Capital inicial: ' + fmt(val));
+      this.toastMsg(`Capital inicial: ${fmt(val)}`);
     },
 
     registrarRetiro() {
       const monto = n(this.retiroForm.monto);
       const c = (this.retiroForm.concepto || '').trim();
-      if (monto <= 0) return this.toastMsg('Monto inválido', 'bad');
-      if (!c) return this.toastMsg('Concepto obligatorio', 'bad');
-      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Máximo ' + fmt(this.gananciaDisponible), 'bad');
+      if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
+      if (!c) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
+      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Máximo ' + fmt(this.gananciaDisponible), TOAST.BAD);
       this.pedirPin(async () => {
         await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
         await this.recargar(['retiros']);
@@ -3819,7 +3811,7 @@ export default {
 
     async registrarAporte() {
       const monto = n(this.aporteForm.monto);
-      if (monto <= 0) return this.toastMsg('Monto inválido', 'bad');
+      if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
       await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
       const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
@@ -3880,26 +3872,26 @@ export default {
 
               // 1. Cerrar Ventas
               if (totVentas > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Ventas', C.VENTAS, C.RESULTADO, totVentas, 'cierre', c.id));
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Ventas', C.VENTAS, C.RESULTADO, totVentas, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 2. Cerrar Costo de ventas
               if (cogs > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Costo ventas', C.RESULTADO, C.COSTO_VENTAS, cogs, 'cierre', c.id));
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Costo ventas', C.RESULTADO, C.COSTO_VENTAS, cogs, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 3. Cerrar Gastos
               if (totGastos > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Gastos', C.RESULTADO, C.GASTOS, totGastos, 'cierre', c.id));
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Gastos', C.RESULTADO, C.GASTOS, totGastos, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 4. Cerrar Mermas
               if (totMermas > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Mermas', C.RESULTADO, C.MERMAS, totMermas, 'cierre', c.id));
+                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Mermas', C.RESULTADO, C.MERMAS, totMermas, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 5. Transferir resultado a Ganancias acumuladas
               if (Math.abs(neta) > 0.01) {
                 if (neta > 0) {
-                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Resultado a Ganancias', C.RESULTADO, C.GANANCIAS_ACUM, neta, 'cierre', c.id));
+                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Resultado a Ganancias', C.RESULTADO, C.GANANCIAS_ACUM, neta, TIPO_ASIENTO.CIERRE, c.id));
                 } else {
-                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Perdida a Ganancias', C.GANANCIAS_ACUM, C.RESULTADO, Math.abs(neta), 'cierre', c.id));
+                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Perdida a Ganancias', C.GANANCIAS_ACUM, C.RESULTADO, Math.abs(neta), TIPO_ASIENTO.CIERRE, c.id));
                 }
               }
 
@@ -3907,7 +3899,7 @@ export default {
             });
             await this.guardarCfg();
             await this.recargar(['cierres', 'asientos']);
-            this.toastMsg('Período cerrado · Resultado ' + fmt(neta));
+            this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
           }
         };
       });
@@ -3982,11 +3974,11 @@ export default {
     },
 
     generarReporte() {
-      if (!this.rep.fechaInicio || !this.rep.fechaFin) return this.toastMsg('Selecciona fechas', 'bad');
+      if (!this.rep.fechaInicio || !this.rep.fechaFin) return this.toastMsg('Selecciona fechas', TOAST.BAD);
       const i = this.rep.isoInicio ? new Date(this.rep.isoInicio) : new Date(this.rep.fechaInicio);
       const f = this.rep.isoFin ? new Date(this.rep.isoFin) : new Date(this.rep.fechaFin);
       if (!this.rep.isoFin) f.setHours(23, 59, 59, 999);
-      if (i > f) return this.toastMsg('Fecha inicio > fin', 'bad');
+      if (i > f) return this.toastMsg('Fecha inicio > fin', TOAST.BAD);
 
       const vp = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
       const cp = this.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
@@ -4350,9 +4342,9 @@ export default {
     },
     asignarAportesViejos() {
       const sid = this.migrarSocioId;
-      if (!sid) return this.toastMsg('Elige un socio primero', 'bad');
+      if (!sid) return this.toastMsg('Elige un socio primero', TOAST.BAD);
       const sinAsignar = this.aportesSinSocio;
-      if (!sinAsignar.length) return this.toastMsg('No hay aportes sin asignar', 'warn');
+      if (!sinAsignar.length) return this.toastMsg('No hay aportes sin asignar', TOAST.WARN);
       const socio = this.socios.find(x => x.id === sid);
       if (!socio) return;
       const total = this.aportesSinSocioTotal;
@@ -4362,12 +4354,12 @@ export default {
         msg: 'Asignar ' + sinAsignar.length + ' aporte(s) por ' + fmt(total) + ' a ' + socio.nombre + '?',
         onOk: async () => {
           try {
-            const actualizados = sinAsignar.map(x => Object.assign({}, x, { socioId: sid }));
+            const actualizados = sinAsignar.map(x => { ...x, socioId: sid });
             await db.capital.bulkPut(actualizados.map(x => clean(x)));
             await this.recargar(['capital']);
             this.migrarSocioId = '';
-            this.toastMsg('Asignados ' + actualizados.length + ' aportes');
-          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+            this.toastMsg(`Asignados ${actualizados.length} aportes`);
+          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
         }
       };
     },
@@ -4382,14 +4374,14 @@ export default {
       const nombre = (f.nombre || '').trim();
       const pct = n(f.porcentaje);
       const aporte = n(f.aporte);
-      if (!nombre) return this.toastMsg('Nombre obligatorio', 'bad');
-      if (pct < 0 || pct > 100) return this.toastMsg('Porcentaje entre 0 y 100', 'bad');
-      if (aporte < 0) return this.toastMsg('Aporte invalido', 'bad');
+      if (!nombre) return this.toastMsg('Nombre obligatorio', TOAST.BAD);
+      if (pct < 0 || pct > 100) return this.toastMsg('Porcentaje entre 0 y 100', TOAST.BAD);
+      if (aporte < 0) return this.toastMsg('Aporte invalido', TOAST.BAD);
       const dup = this.socios.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== f.editId);
-      if (dup) return this.toastMsg('Ya existe ese socio', 'bad');
+      if (dup) return this.toastMsg('Ya existe ese socio', TOAST.BAD);
       if (f.editId) {
         const o = this.socios.find(x => x.id === f.editId);
-        await P(db.socios, Object.assign({}, o, { nombre, porcentaje: pct, aporte }));
+        await P(db.socios, { ...o, nombre, porcentaje: pct, aporte });
         this.toastMsg('Socio actualizado');
       } else {
         await P(db.socios, { id: genId('so'), nombre, porcentaje: pct, aporte, fecha: new Date().toISOString(), activo: true });
@@ -4420,10 +4412,10 @@ export default {
     repartirGanancia() {
       const monto = n(this.repartoForm.monto);
       const concepto = (this.repartoForm.concepto || '').trim() || 'Reparto de ganancia';
-      if (monto <= 0) return this.toastMsg('Monto invalido', 'bad');
-      if (!this.sociosActivos.length) return this.toastMsg('Sin socios activos', 'bad');
-      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Maximo ' + fmt(this.gananciaDisponible), 'bad');
-      if (Math.abs(this.sumaPorcentajes - 100) > 0.01) return this.toastMsg('Los porcentajes deben sumar 100% (actual: ' + this.sumaPorcentajes + '%)', 'bad');
+      if (monto <= 0) return this.toastMsg('Monto invalido', TOAST.BAD);
+      if (!this.sociosActivos.length) return this.toastMsg('Sin socios activos', TOAST.BAD);
+      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Maximo ' + fmt(this.gananciaDisponible), TOAST.BAD);
+      if (Math.abs(this.sumaPorcentajes - 100) > 0.01) return this.toastMsg('Los porcentajes deben sumar 100% (actual: ' + this.sumaPorcentajes + '%)', TOAST.BAD);
       this.pedirPin(async () => {
         try {
           const dists = this.sociosActivos.map(s => ({
@@ -4448,8 +4440,8 @@ export default {
           });
           await this.recargar(['distribuciones', 'retiros']);
           this.repartoForm = { monto: '', concepto: '' };
-          this.toastMsg('Repartido ' + fmt(monto));
-        } catch (e) { this.toastMsg(e.message, 'bad'); }
+          this.toastMsg(`Repartido ${fmt(monto)}`);
+        } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
       });
     },
 
@@ -4463,9 +4455,9 @@ export default {
       const acreedor = (f.acreedor || '').trim();
       const concepto = (f.concepto || '').trim();
       const monto = n(f.monto);
-      if (!acreedor) return this.toastMsg('Acreedor obligatorio', 'bad');
-      if (!concepto) return this.toastMsg('Concepto obligatorio', 'bad');
-      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', 'bad');
+      if (!acreedor) return this.toastMsg('Acreedor obligatorio', TOAST.BAD);
+      if (!concepto) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
+      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', TOAST.BAD);
 
       const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
       const vencISO = f.vencimiento ? new Date(f.vencimiento + 'T12:00:00').toISOString() : null;
@@ -4473,11 +4465,11 @@ export default {
       if (f.editId) {
         const o = this.pasivos.find(x => x.id === f.editId);
         if (!o) return;
-        await P(db.pasivos, Object.assign({}, o, { acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '' }));
+        await P(db.pasivos, { ...o, acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '' });
         this.toastMsg('Pasivo actualizado');
       } else {
         await P(db.pasivos, { id: genId('pv'), acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '', pagado: false });
-        this.toastMsg('Pasivo registrado: ' + fmt(monto));
+        this.toastMsg(`Pasivo registrado: ${fmt(monto)}`);
       }
       this.resetPasivo();
       await this.recargar(['pasivos']);
@@ -4523,7 +4515,7 @@ export default {
             const ahora = new Date().toISOString();
             const movId = genId('mc');
             await db.transaction('rw', db.pasivos, db.movCaja, db.asientos, async () => {
-              await P(db.pasivos, Object.assign({}, p, { pagado: true, fechaPago: ahora, movPagoId: movId }));
+              await P(db.pasivos, { ...p, pagado: true, fechaPago: ahora, movPagoId: movId });
               await P(db.movCaja, {
                 id: movId,
                 fecha: ahora,
@@ -4532,12 +4524,12 @@ export default {
                 concepto: 'Pago deuda: ' + p.acreedor + ' - ' + p.concepto,
                 nota: p.nota || ''
               });
-              const as = this.crearAsientoObj(ahora, 'Pago deuda ' + p.acreedor, this.CUENTAS.PASIVOS, this.CUENTAS.CAJA, n(p.monto), 'pago_pasivo', p.id);
+              const as = this.crearAsientoObj(ahora, 'Pago deuda ' + p.acreedor, this.CUENTAS.PASIVOS, this.CUENTAS.CAJA, n(p.monto), TIPO_ASIENTO.PAGO_PASIVO, p.id);
               await P(db.asientos, as);
             });
             await this.recargar(['pasivos', 'movCaja', 'asientos']);
-            this.toastMsg('Deuda pagada: ' + fmt(p.monto));
-          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+            this.toastMsg(`Deuda pagada: ${fmt(p.monto)}`);
+          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
         }
       };
     },
@@ -4556,7 +4548,7 @@ export default {
             type: 'text',
             value: '',
             onOk: async (v) => {
-              if (v !== 'BORRAR') return this.toastMsg('Cancelado', 'warn');
+              if (v !== 'BORRAR') return this.toastMsg('Cancelado', TOAST.WARN);
               try {
                 const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos'];
                 await db.transaction('rw', tables.concat(['config']), async () => {
@@ -4565,7 +4557,7 @@ export default {
                 });
                 this.toastMsg('Todos los datos eliminados');
                 setTimeout(() => location.reload(), 1200);
-              } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+              } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
             }
           };
         }
@@ -4628,7 +4620,7 @@ export default {
 
     async pedirPermisoNotif() {
       if (!('Notification' in window)) {
-        this.toastMsg('Este dispositivo no soporta notificaciones', 'warn');
+        this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.WARN);
         return;
       }
       if (Notification.permission === 'granted') {
@@ -4645,9 +4637,9 @@ export default {
           this.enviarNotif('Tienda Pro', 'Notificaciones activadas');
           this.toastMsg('Notificaciones activadas');
         } else {
-          this.toastMsg('Permiso denegado', 'bad');
+          this.toastMsg('Permiso denegado', TOAST.BAD);
         }
-      } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+      } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
     },
 
     async desactivarNotif() {
@@ -4658,17 +4650,17 @@ export default {
 
     async probarNotif() {
       if (!('Notification' in window)) {
-        return this.toastMsg('Este dispositivo no soporta notificaciones', 'bad');
+        return this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.BAD);
       }
       if (Notification.permission !== 'granted') {
-        return this.toastMsg('Primero activa las notificaciones', 'warn');
+        return this.toastMsg('Primero activa las notificaciones', TOAST.WARN);
       }
       const r = await this.enviarNotif('Tienda Pro', 'Esta es una notificacion de prueba');
       if (r && r.ok) {
         this.toastMsg('Notificacion enviada (' + r.via + ')');
       } else {
         const m = r ? (r.motivo || 'desconocido') : 'error';
-        this.toastMsg('Fallo: ' + m + ' - revisa permisos del navegador', 'bad');
+        this.toastMsg('Fallo: ' + m + ' - revisa permisos del navegador', TOAST.BAD);
       }
     },
 
@@ -4760,7 +4752,7 @@ export default {
 
     auditSiguientePaso() {
       if (this.auditForm.paso === 1) {
-        if (this.auditForm.cajaContada === '') return this.toastMsg('Escribe el monto contado', 'bad');
+        if (this.auditForm.cajaContada === '') return this.toastMsg('Escribe el monto contado', TOAST.BAD);
         this.auditForm.paso = 2;
       } else if (this.auditForm.paso === 2) {
         this.auditForm.paso = 3;
@@ -4826,10 +4818,10 @@ export default {
               const movId = genId('mc');
               if (difCaja > 0) {
                 movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'ingreso', monto: difCaja, concepto: 'Sobrante de auditoria', nota: this.auditForm.cajaNota || '' });
-                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante caja', C.CAJA, C.SOBRANTES, difCaja, 'auditoria', auditId));
+                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante caja', C.CAJA, C.SOBRANTES, difCaja, TIPO_ASIENTO.AUDITORIA, auditId));
               } else {
                 movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'egreso', monto: Math.abs(difCaja), concepto: 'Faltante de auditoria', nota: this.auditForm.cajaNota || '' });
-                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante caja', C.FALTANTES, C.CAJA, Math.abs(difCaja), 'auditoria', auditId));
+                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante caja', C.FALTANTES, C.CAJA, Math.abs(difCaja), TIPO_ASIENTO.AUDITORIA, auditId));
               }
             }
 
@@ -4851,7 +4843,7 @@ export default {
                     lotesUsados: res.usados,
                     auditoriaId: auditId
                   });
-                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante ' + item.nombre, C.MERMAS, C.INVENTARIO, res.costoTotal, 'auditoria', auditId));
+                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante ' + item.nombre, C.MERMAS, C.INVENTARIO, res.costoTotal, TIPO_ASIENTO.AUDITORIA, auditId));
                   // Aplicar al lote
                   for (const u of res.usados) {
                     const l = this.lotes.find(x => x.id === u.loteId);
@@ -4876,7 +4868,7 @@ export default {
                   costo: cs, fecha: ahora
                 }));
                 if (cs > 0) {
-                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante ' + item.nombre, C.INVENTARIO, C.SOBRANTES_INV, m(item.dif * cs), 'auditoria', auditId));
+                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante ' + item.nombre, C.INVENTARIO, C.SOBRANTES_INV, m(item.dif * cs), TIPO_ASIENTO.AUDITORIA, auditId));
                 }
               }
             }
@@ -4900,8 +4892,8 @@ export default {
             await this.recargar(['auditorias', 'ajustes', 'movCaja', 'asientos', 'lotes']);
             this.auditActiva = null;
             this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
-            this.toastMsg('Auditoria cerrada · Dif ' + fmt(totalDif));
-          } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+            this.toastMsg(`Auditoria cerrada · Dif ${fmt(totalDif)}`);
+          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
         }
       };
     },
@@ -4938,10 +4930,10 @@ export default {
       await this.borrarAsientosDe('venta', v.id);
       await this.borrarAsientosDe('costo', v.id);
       if (v.anulada) return;
-      const asientos = [this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), 'venta', v.id)];
+      const asientos = [this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id)];
       const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
       if (cogs > 0) {
-        asientos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, 'costo', v.id));
+        asientos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
       }
       await db.asientos.bulkPut(asientos.map(a => clean(a)));
     },
@@ -4950,7 +4942,7 @@ export default {
       const C = this.CUENTAS;
       await this.borrarAsientosDe('compra', c.id);
       if (c.anulada) return;
-      const as = this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), 'compra', c.id);
+      const as = this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id);
       await P(db.asientos, as);
     },
 
@@ -4958,7 +4950,7 @@ export default {
       const C = this.CUENTAS;
       await this.borrarAsientosDe('gasto', g.id);
       if (g.saleDeCaja === false) return;
-      const as = this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), 'gasto', g.id);
+      const as = this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id);
       await P(db.asientos, as);
     },
 
@@ -4966,21 +4958,21 @@ export default {
       const C = this.CUENTAS;
       await this.borrarAsientosDe('merma', a.id);
       if (n(a.cantidad) >= 0) return;
-      const as = this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), 'merma', a.id);
+      const as = this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id);
       await P(db.asientos, as);
     },
 
     async recrearAsientoRetiro(r) {
       const C = this.CUENTAS;
       await this.borrarAsientosDe('retiro', r.id);
-      const as = this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), 'retiro', r.id);
+      const as = this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id);
       await P(db.asientos, as);
     },
 
     async recrearAsientoAporte(k) {
       const C = this.CUENTAS;
       await this.borrarAsientosDe('aporte', k.id);
-      const as = this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), 'aporte', k.id);
+      const as = this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id);
       await P(db.asientos, as);
     },
 
@@ -4991,9 +4983,9 @@ export default {
       if (Math.abs(diff) < 0.01) return;
       let as;
       if (diff > 0) {
-        as = this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, 'arqueo', a.id);
+        as = this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id);
       } else {
-        as = this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), 'arqueo', a.id);
+        as = this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id);
       }
       await P(db.asientos, as);
     },
@@ -5009,41 +5001,41 @@ export default {
             const nuevos = [];
 
             this.ventas.filter(v => !v.anulada).forEach(v => {
-              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), 'venta', v.id));
+              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
               const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
               if (cogs > 0) {
-                nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, 'costo', v.id));
+                nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
               }
             });
 
             this.compras.filter(c => !c.anulada).forEach(c => {
-              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), 'compra', c.id));
+              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
             });
 
             this.gastos.forEach(g => {
               if (g.saleDeCaja === false) return;
-              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), 'gasto', g.id));
+              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
             });
 
             this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
-              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), 'merma', a.id));
+              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
             });
 
             this.retiros.forEach(r => {
-              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), 'retiro', r.id));
+              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
             });
 
             this.capital.forEach(k => {
-              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), 'aporte', k.id));
+              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
             });
 
             this.arqueos.forEach(a => {
               const diff = n(a.diferencia);
               if (Math.abs(diff) < 0.01) return;
               if (diff > 0) {
-                nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, 'arqueo', a.id));
+                nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
               } else {
-                nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), 'arqueo', a.id));
+                nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
               }
             });
 
@@ -5051,9 +5043,9 @@ export default {
               await db.asientos.bulkPut(nuevos.map(x => clean(x)));
             }
             await this.recargar(['asientos']);
-            this.toastMsg('Asientos regenerados: ' + nuevos.length);
+            this.toastMsg(`Asientos regenerados: ${nuevos.length}`);
           } catch (e) {
-            this.toastMsg('Error: ' + e.message, 'bad');
+            this.toastMsg('Error: ' + e.message, TOAST.BAD);
           }
         }
       };
@@ -5070,9 +5062,9 @@ export default {
       const concepto = (f.concepto || '').trim();
       const monto = n(f.monto);
       const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
-      if (!categoria) return this.toastMsg('Categoria obligatoria', 'bad');
-      if (!concepto) return this.toastMsg('Concepto obligatorio', 'bad');
-      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', 'bad');
+      if (!categoria) return this.toastMsg('Categoria obligatoria', TOAST.BAD);
+      if (!concepto) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
+      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', TOAST.BAD);
 
       if (f.editId) {
         const o = this.gastos.find(x => x.id === f.editId);
@@ -5101,7 +5093,7 @@ export default {
           }
           await P(db.gastos, { id, fecha: fechaISO, categoria, concepto, monto, nota: f.nota || '', metodoPago: f.metodoPago, saleDeCaja: !!f.saleDeCaja, movId });
         });
-        this.toastMsg('Gasto registrado: ' + fmt(monto));
+        this.toastMsg(`Gasto registrado: ${fmt(monto)}`);
       }
       this.resetGasto();
       await this.recargar(['gastos', 'movCaja']);
@@ -5150,7 +5142,7 @@ export default {
         .filter(p => !p.archivado)
         .map(p => p.nombre + ': ' + fmtCant(this.stock(p.id)));
 
-      if (lineas.length === 0) return this.toastMsg('No hay productos', 'warn');
+      if (lineas.length === 0) return this.toastMsg('No hay productos', TOAST.WARN);
 
       const texto = (this.cfg.nombre || 'Tienda Pro') + '\nExistencia al ' + fmtFecha(new Date().toISOString()) + '\n\n' + lineas.join('\n');
 
@@ -5163,7 +5155,7 @@ export default {
           await navigator.clipboard.writeText(texto);
           this.toastMsg('Copiado al portapapeles');
         } catch (e) {
-          this.toastMsg('No se pudo compartir', 'warn');
+          this.toastMsg('No se pudo compartir', TOAST.WARN);
         }
       }
     },
@@ -5237,7 +5229,7 @@ export default {
 
     async compartirPrecios() {
       const texto = this.generarTextoPrecios();
-      if (!texto) return this.toastMsg('No hay productos para compartir', 'warn');
+      if (!texto) return this.toastMsg('No hay productos para compartir', TOAST.WARN);
 
       // Preview antes de compartir
       this.confirm = {
@@ -5260,7 +5252,7 @@ export default {
                 await navigator.clipboard.writeText(texto);
                 this.toastMsg('Copiado al portapapeles');
               } catch (e2) {
-                this.toastMsg('No se pudo compartir', 'bad');
+                this.toastMsg('No se pudo compartir', TOAST.BAD);
               }
             }
           }
@@ -5270,12 +5262,12 @@ export default {
 
     async copiarPrecios() {
       const texto = this.generarTextoPrecios();
-      if (!texto) return this.toastMsg('No hay productos para copiar', 'warn');
+      if (!texto) return this.toastMsg('No hay productos para copiar', TOAST.WARN);
       try {
         await navigator.clipboard.writeText(texto);
         this.toastMsg('Lista copiada al portapapeles');
       } catch (e) {
-        this.toastMsg('No se pudo copiar', 'bad');
+        this.toastMsg('No se pudo copiar', TOAST.BAD);
       }
     },
 
@@ -5312,7 +5304,7 @@ export default {
                 onOk: (v) => resolve(v || '')
               };
             });
-            if (!pass) return this.toastMsg('Cancelado', 'warn');
+            if (!pass) return this.toastMsg('Cancelado', TOAST.WARN);
             try {
               const salt = Uint8Array.from(atob(d.salt), c => c.charCodeAt(0));
               const iv = Uint8Array.from(atob(d.iv), c => c.charCodeAt(0));
@@ -5321,7 +5313,7 @@ export default {
               const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
               d = JSON.parse(new TextDecoder().decode(json));
             } catch (err) {
-              return this.toastMsg('Contrasena incorrecta', 'bad');
+              return this.toastMsg('Contrasena incorrecta', TOAST.BAD);
             }
           }
           if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
@@ -5370,7 +5362,7 @@ export default {
             msg: adv,
             onOk: () => this.ejecutarImport()
           };
-        } catch (err) { this.toastMsg('Error: ' + err.message, 'bad'); }
+        } catch (err) { this.toastMsg('Error: ' + err.message, TOAST.BAD); }
       };
       rd.readAsText(file);
     },
@@ -5387,7 +5379,7 @@ export default {
           this.importPreview = null;
           this.ajustesAbierto = false;
           this.toastMsg('Datos importados');
-        } catch (e) { this.toastMsg('Error: ' + e.message, 'bad'); }
+        } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
       };
       rd.readAsText(file);
     },
@@ -5453,7 +5445,7 @@ export default {
         console.warn('Import con avisos:', v.avisos);
       }
 
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', TIPO_ASIENTO.CAPITAL, 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
       // Snapshot antes por si falla
       const respaldo = {};
       try {
@@ -5482,7 +5474,7 @@ export default {
           throw new Error('Fallo la importacion Y el rollback: ' + err.message);
         }
       }
-      if (d.cfg) this.cfg = Object.assign({}, this.cfg, d.cfg);
+      if (d.cfg) this.cfg = { ...this.cfg, ...d.cfg };
       await this.recargarTodo();
     },
 
@@ -5526,7 +5518,7 @@ export default {
           onOk: (v) => resolve(v || '')
         };
       });
-      if (!pass || pass.length < 6) return this.toastMsg('Contrasena muy corta (min 6)', 'bad');
+      if (!pass || pass.length < 6) return this.toastMsg('Contrasena muy corta (min 6)', TOAST.BAD);
       try {
         const data = buildData(this);
         const enc = new TextEncoder();
@@ -5548,7 +5540,7 @@ export default {
         );
         this.toastMsg('Respaldo cifrado descargado');
       } catch (e) {
-        this.toastMsg('Error cifrado: ' + e.message, 'bad');
+        this.toastMsg('Error cifrado: ' + e.message, TOAST.BAD);
       }
     },
 
@@ -5559,7 +5551,7 @@ export default {
 
     async tgVerificar() {
       const token = this.tgTokenActual();
-      if (!token) return this.toastMsg('Falta el token del bot', 'bad');
+      if (!token) return this.toastMsg('Falta el token del bot', TOAST.BAD);
       this.tgCargando = true;
       try {
         const me = await tgGetMe(token);
@@ -5567,7 +5559,7 @@ export default {
         const chat = tgDetectarChatId(updates);
         if (!chat) {
           this.tgEstado = 'sin-chat';
-          this.toastMsg('Bot OK (@' + me.username + '). Abre Telegram, busca el bot y envia /start', 'warn');
+          this.toastMsg('Bot OK (@' + me.username + '). Abre Telegram, busca el bot y envia /start', TOAST.WARN);
           return;
         }
         this.cfg.tgChatId = String(chat.chatId);
@@ -5577,7 +5569,7 @@ export default {
         this.toastMsg('Conectado a Telegram: ' + this.cfg.tgNombre);
       } catch (e) {
         this.tgEstado = 'error';
-        this.toastMsg('Error: ' + e.message, 'bad');
+        this.toastMsg('Error: ' + e.message, TOAST.BAD);
       } finally {
         this.tgCargando = false;
       }
@@ -5589,7 +5581,7 @@ export default {
         await this.tgEnviarDatos(data, 'manual', true);
       } catch (e) {
         await this.tgEncolar(data, 'manual');
-        this.toastMsg('Sin conexion. Backup en cola.', 'warn');
+        this.toastMsg('Sin conexion. Backup en cola.', TOAST.WARN);
       }
     },
 
@@ -5634,7 +5626,7 @@ export default {
           const nombreLocal = 'tienda-backup-' + fecha.split('T')[0] + '.json.gz';
           const okCarpeta = await this.guardarEnCarpeta(nombreLocal, gz);
           if (!okCarpeta && mostrarToast) {
-            this.toastMsg('Telegram OK, pero fallo guardar en carpeta', 'warn');
+            this.toastMsg('Telegram OK, pero fallo guardar en carpeta', TOAST.WARN);
           }
         }
 
@@ -5670,7 +5662,7 @@ export default {
         this.tgBackups = tgExtraerBackups(updates);
         this.toastMsg(this.tgBackups.length + ' backup(s) encontrado(s)');
       } catch (e) {
-        this.toastMsg('Error: ' + e.message, 'bad');
+        this.toastMsg('Error: ' + e.message, TOAST.BAD);
       } finally {
         this.tgCargando = false;
       }
@@ -5706,7 +5698,7 @@ export default {
             await this.importarData(d);
             this.toastMsg('Backup restaurado (' + fmtFH(bk.fecha) + ')');
           } catch (e) {
-            this.toastMsg('Error: ' + e.message, 'bad');
+            this.toastMsg('Error: ' + e.message, TOAST.BAD);
           } finally {
             this.tgCargando = false;
             this.tgProgreso = '';
@@ -5729,7 +5721,7 @@ export default {
             this.tgBackups = this.tgBackups.filter(x => x.messageId !== bk.messageId);
             this.toastMsg('Backup eliminado');
           } catch (e) {
-            this.toastMsg('Error: ' + e.message, 'bad');
+            this.toastMsg('Error: ' + e.message, TOAST.BAD);
           }
         }
       };
@@ -5870,15 +5862,15 @@ export default {
         const items = await db.tgQueue.filter(x => x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)).toArray();
         for (const item of items) {
           if (item.intentos >= 5) {
-            await P(db.tgQueue, Object.assign({}, item, { estado: 'fallido' }));
+            await P(db.tgQueue, { ...item, estado: 'fallido' });
             continue;
           }
           try {
-            await P(db.tgQueue, Object.assign({}, item, { estado: 'enviando' }));
+            await P(db.tgQueue, { ...item, estado: 'enviando' });
             await this.tgEnviarDatos(item.datos, item.motivo, false);
             await db.tgQueue.delete(item.id);
           } catch (e) {
-            await P(db.tgQueue, Object.assign({}, item, {
+            await P(db.tgQueue, { ...item,
               estado: 'error',
               intentos: (item.intentos || 0) + 1,
               ultimoError: e.message
@@ -5915,7 +5907,7 @@ export default {
     // ===== GUARDAR EN CARPETA DEL TELÉFONO =====
     async elegirCarpeta() {
       if (typeof window.showDirectoryPicker !== 'function') {
-        this.toastMsg('Tu navegador no soporta elegir carpeta. Se usara Descargas.', 'warn');
+        this.toastMsg('Tu navegador no soporta elegir carpeta. Se usara Descargas.', TOAST.WARN);
         this.cfg.tgCarpetaActiva = false;
         return;
       }
@@ -5929,7 +5921,7 @@ export default {
         await this.guardarCfg();
         this.toastMsg('Carpeta: ' + handle.name);
       } catch (e) {
-        if (e.name !== 'AbortError') this.toastMsg('Error: ' + e.message, 'bad');
+        if (e.name !== 'AbortError') this.toastMsg('Error: ' + e.message, TOAST.BAD);
       }
     },
 
@@ -5983,7 +5975,7 @@ export default {
       this.prompt = {
         activo: true, titulo: 'PIN de seguridad', msg: 'Ingresa tu PIN',
         placeholder: '••••', type: 'password', value: '',
-        onOk: v => { if (v === this.cfg.pin) cb(); else this.toastMsg('PIN incorrecto', 'bad'); }
+        onOk: v => { if (v === this.cfg.pin) cb(); else this.toastMsg('PIN incorrecto', TOAST.BAD); }
       };
     },
 
@@ -6138,7 +6130,7 @@ export default {
         try { await P(db.config, { key: 'safeModeCounter', value: intentos + 1 }); } catch (e) {}
 
         const c = await db.config.get('cfg');
-        if (c) this.cfg = Object.assign({}, this.cfg, c.value);
+        if (c) this.cfg = { ...this.cfg, ...c.value };
         else await this.guardarCfg();
         try {
           document.documentElement.setAttribute('data-theme', this.cfg.tema);
@@ -6202,31 +6194,31 @@ export default {
             const C = this.CUENTAS;
             const nuevos = [];
             this.ventas.filter(v => !v.anulada).forEach(v => {
-              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), 'venta', v.id));
+              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
               const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
-              if (cogs > 0) nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, 'costo', v.id));
+              if (cogs > 0) nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
             });
             this.compras.filter(c => !c.anulada).forEach(c => {
-              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), 'compra', c.id));
+              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
             });
             this.gastos.forEach(g => {
               if (g.saleDeCaja === false) return;
-              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), 'gasto', g.id));
+              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
             });
             this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
-              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), 'merma', a.id));
+              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
             });
             this.retiros.forEach(r => {
-              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), 'retiro', r.id));
+              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
             });
             this.capital.forEach(k => {
-              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), 'aporte', k.id));
+              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
             });
             this.arqueos.forEach(a => {
               const diff = n(a.diferencia);
               if (Math.abs(diff) < 0.01) return;
-              if (diff > 0) nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, 'arqueo', a.id));
-              else nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), 'arqueo', a.id));
+              if (diff > 0) nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
+              else nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
             });
             if (nuevos.length > 0) {
               await db.asientos.bulkPut(nuevos.map(x => clean(x)));
@@ -6249,7 +6241,7 @@ export default {
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
-        this.toastMsg('Error al cargar datos', 'bad');
+        this.toastMsg('Error al cargar datos', TOAST.BAD);
       } finally {
         // Si todo fue bien, resetear contador
         try { await P(db.config, { key: 'safeModeCounter', value: 0 }); } catch (e) {}
