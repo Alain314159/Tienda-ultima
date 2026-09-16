@@ -75,6 +75,12 @@ db.version(4).stores({
   config: 'key'
 });
 
+
+
+
+
+
+
 // Version 5: auditorias fisicas
 db.version(5).stores({
   productos: 'id, nombre, archivado',
@@ -90,6 +96,27 @@ db.version(5).stores({
   socios: 'id, nombre, aporte, porcentaje, fecha, activo',
   distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
   gastos: 'id, fecha, categoria',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  auditorias: 'id, fechaInicio, estado',
+  config: 'key'
+});
+
+// Version 6: indices compuestos para consultas rapidas
+db.version(6).stores({
+  productos: 'id, nombre, archivado, [archivado+nombre]',
+  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+  ventas: 'id, fecha, anulada, [anulada+fecha]',
+  compras: 'id, productoId, fecha, [productoId+fecha]',
+  ajustes: 'id, productoId, fecha, [productoId+fecha]',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo, [tipo+fecha]',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha, socioId',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria, [categoria+fecha]',
   asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
   auditorias: 'id, fechaInicio, estado',
@@ -115,27 +142,6 @@ db.version(7).stores({
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
   auditorias: 'id, fechaInicio, estado',
   tgQueue: 'id, estado, ts',
-  config: 'key'
-});
-
-// Version 6: indices compuestos para consultas rapidas
-db.version(6).stores({
-  productos: 'id, nombre, archivado, [archivado+nombre]',
-  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-  ventas: 'id, fecha, anulada, [anulada+fecha]',
-  compras: 'id, productoId, fecha, [productoId+fecha]',
-  ajustes: 'id, productoId, fecha, [productoId+fecha]',
-  arqueos: 'id, fecha',
-  movCaja: 'id, fecha, tipo, [tipo+fecha]',
-  cierres: 'id, fechaCierre',
-  capital: 'id, fecha, socioId',
-  retiros: 'id, fecha',
-  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-  gastos: 'id, fecha, categoria, [categoria+fecha]',
-  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-  auditorias: 'id, fechaInicio, estado',
   config: 'key'
 });
 

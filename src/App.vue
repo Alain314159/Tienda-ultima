@@ -117,7 +117,7 @@
             <button class="quick-btn" @click="ir('ventas')"><icon name="cart" :size="22"></icon>Nueva Venta</button>
             <button class="quick-btn" @click="ir('compras')"><icon name="bag" :size="22"></icon>Registrar Compra</button>
             <button class="quick-btn" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Registrar Gasto</button>
-            <button class="quick-btn" @click="ir('contabilidad')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
+            <button class="quick-btn" @click="ir('auditoria')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
             <button class="quick-btn" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
             <button class="quick-btn" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
           </div>
