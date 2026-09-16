@@ -4375,7 +4375,7 @@ export default {
         msg: 'Asignar ' + sinAsignar.length + ' aporte(s) por ' + fmt(total) + ' a ' + socio.nombre + '?',
         onOk: async () => {
           try {
-            const actualizados = sinAsignar.map(x => { ...x, socioId: sid });
+            const actualizados = sinAsignar.map(x => ({ ...x, socioId: sid }));
             await db.capital.bulkPut(actualizados.map(x => clean(x)));
             await this.recargar(['capital']);
             this.migrarSocioId = '';
