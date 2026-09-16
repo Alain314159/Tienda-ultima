@@ -1992,6 +1992,7 @@ export default {
         tgUltimoBackup: null,
         tgUltimoHash: '',
         tgMantenerN: 10,
+        productosAvisados: [],
         tgCarpetaActiva: false,
         tgCarpetaNombre: '',
         modoCompacto: false,
@@ -3423,6 +3424,7 @@ export default {
         await this.recargar(['ventas', 'lotes']);
         await this.recrearAsientoVenta(venta);
         await this.recargar(['asientos']);
+        await this.chequearAgotados();
         this.carrito = [];
         localStorage.removeItem('carritoPro');
         this.cobroModal.activo = false;
@@ -3468,6 +3470,86 @@ export default {
           }
         };
       });
+    },
+
+    // ===== ALERTAS DE PRODUCTOS AGOTADOS =====
+    async chequearAgotados() {
+      try {
+        const avisados = new Set(this.cfg.productosAvisados || []);
+        const nuevosAgotados = [];
+        const recuperados = [];
+
+        this.prodsActivos.forEach(p => {
+          const stockActual = this.stock(p.id);
+          const yaAvisado = avisados.has(p.id);
+
+          if (stockActual <= 0 && !yaAvisado) {
+            avisados.add(p.id);
+            nuevosAgotados.push(p);
+          } else if (stockActual > 0 && yaAvisado) {
+            avisados.delete(p.id);
+            recuperados.push(p);
+          }
+        });
+
+        if (nuevosAgotados.length === 0 && recuperados.length === 0) return;
+
+        // Guardar estado
+        this.cfg.productosAvisados = Array.from(avisados);
+        await this.guardarCfg();
+
+        // Notificar cada agotado nuevo
+        for (const p of nuevosAgotados) {
+          await this.notificarAgotado(p);
+        }
+
+        // Aviso suave si volvio a haber stock
+        if (recuperados.length > 0) {
+          this.toastMsg('✅ ' + recuperados.length + ' producto(s) volvieron al stock', TOAST.OK);
+        }
+      } catch (e) { console.error('chequearAgotados', e); }
+    },
+
+    async notificarAgotado(prod) {
+      const nombre = prod.nombre;
+      const stockMin = n(prod.stockMinimo);
+
+      // 1. Notificacion del sistema
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          await this.enviarNotif('⚠ Producto agotado', nombre + ' — quedó en 0');
+        }
+      } catch (e) {}
+
+      // 2. Vibracion
+      vib([200, 100, 200]);
+
+      // 3. Toast con accion "Avisar al grupo"
+      const texto = '⚠️ *AGOTADO:* ' + nombre + '\n\n' +
+                    'Ya no tenemos disponible este producto. Vuelve pronto.';
+      const urlWA = 'https://wa.me/?text=' + encodeURIComponent(texto);
+
+      this.toastMsg('⚠ ' + nombre + ' se agotó', TOAST.WARN, 'Avisar al grupo', () => {
+        window.open(urlWA, '_blank');
+      });
+
+      // 4. Mensaje al bot de Telegram (aviso personal a ti)
+      try {
+        const token = this.tgTokenActual();
+        const chatId = this.cfg.tgChatId;
+        if (token && chatId) {
+          const textoTelegram = '⚠️ *AGOTADO*\n\n' + nombre + '\n\nAvisa al grupo cuando puedas.';
+          await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: textoTelegram,
+              parse_mode: 'Markdown'
+            })
+          });
+        }
+      } catch (e) { console.error('notificarAgotado telegram', e); }
     },
 
     // ===== COMPRAS =====
@@ -5204,60 +5286,45 @@ export default {
       if (prods.length === 0) return null;
 
       const lineas = [];
-      lineas.push('🏪 *' + nombre + '*');
-      lineas.push('📅 ' + fecha);
-      lineas.push('');
-      lineas.push('━━━━━━━━━━━━━━━');
-      lineas.push('🛒 *LISTA DE PRECIOS*');
-      lineas.push('━━━━━━━━━━━━━━━');
+      lineas.push('🛒 *' + nombre.toUpperCase() + '*');
+      lineas.push('_Lista de precios · ' + fecha + '_');
       lineas.push('');
 
       prods.forEach(p => {
-        // Nombre del producto
-        lineas.push('📦 *' + p.nombre + '*');
-
-        // Precio base
         const precioBase = n(p.precio);
-        lineas.push('   💵 ' + fmt(precioBase) + ' c/u');
 
-        // Escalones de precio (si tiene)
+        // Linea 1: nombre en negrita
+        lineas.push('✔️ *' + p.nombre + '*');
+
+        // Linea 2: precio base
+        const partes = ['$' + fmt(precioBase).replace('$', '') + ' c/u'];
+
+        // Escalones
         if (p.preciosEscalonados && p.preciosEscalonados.length) {
           const esc = p.preciosEscalonados.slice().sort((a, b) => a.min - b.min);
           esc.forEach(e => {
-            lineas.push('   📊 Desde ' + e.min + ': ' + fmt(e.precio) + ' c/u');
+            partes.push('Mín. ' + e.min + ': ' + fmt(e.precio));
           });
         }
 
-        // Empaques (si tiene)
+        lineas.push('   ' + partes.join(' · '));
+
+        // Linea 3 (opcional): empaques
         if (p.empaques && p.empaques.length) {
           p.empaques.forEach(e => {
             const total = m(precioBase * e.unidades);
-            lineas.push('   📦 ' + e.nombre + ' (' + e.unidades + ' und): ' + fmt(total));
+            lineas.push('   📦 ' + e.nombre + ' x' + e.unidades + ': ' + fmt(total));
           });
         }
 
         lineas.push('');
       });
 
-      lineas.push('━━━━━━━━━━━━━━━');
-      lineas.push('');
-      lineas.push('📍 *Nos encontramos en:*');
-      lineas.push('');
-      lineas.push('Calle 27, # 41, entre Manuel Angulo y Adel Calderón. Reparto 26 de Julio.');
-      lineas.push('');
-      lineas.push('*Punto de referencia:* Carretera Central, Servicentro La Curva, entrando por el hotelito de las ferromosas, cruza la línea y en la 2da cuadra doble a mano izquierda, a mano derecha la 5ta casa, preguntar por Yuliet.');
-      lineas.push('');
-      lineas.push('📞 *Contactarnos:*');
-      lineas.push('');
-      lineas.push('📱 58154333');
-      lineas.push('📱 56763562');
-      lineas.push('📱 51438680');
-      lineas.push('📱 50102979');
-      lineas.push('');
+      lineas.push('📍 Calle 27 #41, entre Manuel Angulo y Adel Calderón. Rpto 26 de Julio.');
+      lineas.push('📞 58154333 · 56763562 · 51438680 · 50102979');
       lineas.push('☎️ 24429628');
       lineas.push('');
-      lineas.push('━━━━━━━━━━━━━━━');
-      lineas.push('💬 *Únete a nuestro grupo de WhatsApp:*');
+      lineas.push('💬 *Únete a nuestro grupo:*');
       lineas.push('https://chat.whatsapp.com/I9U92wF5PmV7XGsvqbsfQm');
 
       return lineas.join('\n');
