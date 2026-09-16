@@ -3559,11 +3559,11 @@ export default {
             if (l && n(l.cantidadVendida) > 0) return this.toastMsg('Lote con ventas: no editable', TOAST.BAD);
             const c = this.compras.find(x => x.id === f.editId);
             await db.transaction('rw', db.compras, db.lotes, async () => {
-              await P(db.compras, { ...c,
+              await P(db.compras, Object.assign({}, c, {
                 productoId: f.productoId, productoNombre: f.nombre,
                 productoUnidad: f.unidad, cantidad: cant, costo, total, unidad: f.unidad
               }));
-              if (l) await P(db.lotes, { ...l,
+              if (l) await P(db.lotes, Object.assign({}, l, {
                 productoId: f.productoId, productoNombre: f.nombre,
                 productoUnidad: f.unidad, cantidadInicial: cant, costo
               }));
@@ -5906,7 +5906,7 @@ export default {
             await this.tgEnviarDatos(item.datos, item.motivo, false);
             await db.tgQueue.delete(item.id);
           } catch (e) {
-            await P(db.tgQueue, { ...item,
+            await P(db.tgQueue, Object.assign({}, item, {
               estado: 'error',
               intentos: (item.intentos || 0) + 1,
               ultimoError: e.message
