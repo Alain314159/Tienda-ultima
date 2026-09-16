@@ -148,7 +148,21 @@ db.version(7).stores({
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
-// Helpers numéricos
+// ============================================================
+// HELPERS NUMERICOS
+// ============================================================
+//
+// n(): Parsea a numero, devuelve 0 si falla
+//
+// m(): Redondea a 4 decimales para almacenar dinero internamente.
+//      Usamos 4 decimales (no 2) porque:
+//      - Costos unitarios por kg/gramo requieren precision
+//      - El redondeo a 2 en cada operacion acumula errores de centavos
+//      - Se muestra al usuario con fmt() a 2 decimales
+//      - Number.EPSILON corrige errores de punto flotante (0.1+0.2 !== 0.3)
+//
+// q(): Redondea a 4 decimales para cantidades (kg, gr, litros)
+//
 export const n = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
 export const m = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
 export const q = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;

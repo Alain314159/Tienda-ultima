@@ -3191,6 +3191,16 @@ export default {
       return !!h.abiertos[id];
     },
 
+    // Compara dos fechas ignorando hora (mismo dia)
+    esMismoDia(fecha1, fecha2) {
+      if (!fecha1 || !fecha2) return false;
+      const d1 = new Date(fecha1);
+      const d2 = new Date(fecha2);
+      return d1.getFullYear() === d2.getFullYear()
+          && d1.getMonth() === d2.getMonth()
+          && d1.getDate() === d2.getDate();
+    },
+
     // ===== VENTAS =====
     calcFIFO(pid, cant) {
       const key = pid + '|' + q(cant);
@@ -4907,13 +4917,28 @@ export default {
     },
 
     crearAsientoObj(fecha, descripcion, cuentaDebe, cuentaHaber, monto, refTipo, refId) {
+      // Validaciones de integridad contable
+      const montoNum = n(monto);
+      if (montoNum < 0) {
+        throw new Error('Asiento con monto negativo: ' + descripcion);
+      }
+      if (montoNum === 0) {
+        throw new Error('Asiento con monto cero: ' + descripcion);
+      }
+      if (cuentaDebe === cuentaHaber) {
+        throw new Error('Debe y Haber son la misma cuenta: ' + descripcion);
+      }
+      if (!cuentaDebe || !cuentaHaber) {
+        throw new Error('Cuenta Debe o Haber vacia: ' + descripcion);
+      }
+
       return {
         id: genId('as'),
         fecha,
         descripcion,
         cuentaDebe,
         cuentaHaber,
-        monto: m(monto),
+        monto: m(montoNum),
         refTipo,
         refId
       };
