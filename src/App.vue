@@ -546,7 +546,8 @@
           </div>
         </div>
 
-
+                <div class="card">
+          <div class="card-title"><icon name="alert" :size="18" :color="sec === 'inventario' ? '#2196F3' : '#d97706'"></icon> Merma / Ajuste</div>
           <select v-model="ajusteForm.productoId">
             <option value="">Seleccionar producto...</option>
             <option v-for="p in prodsActivos" :key="p.id" :value="p.id">
@@ -609,8 +610,6 @@
       </section>
 
       <!-- ==================== CAJA ==================== -->
-
-
 
 
       <!-- ==================== REPORTES (CON CUADRE NUEVO) ==================== -->
@@ -1059,30 +1058,9 @@
           </div>
         </div>
 
-        <!-- AVISO: desgloses mas abajo -->
-        <div class="info-box" style="text-align:center;font-size:.75rem;margin-bottom:.85rem">
-          ↓ Desgloses detallados ↓
-        </div>
+        
 
-
-            <icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
-            Balance de situacion
-            <span class="chev" :class="{ open: contabExpandido.situacion }" style="margin-left:auto">
-              <icon name="chevron" :size="16" :color="mutColor"></icon>
-            </span>
-          </div>
-          <div v-if="contabExpandido.situacion">
-          <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row"><span>Pasivos</span><b>{{ fmt(pasivosTotalReal) }}</b></div>
-          <div class="row total"><span>= ACTIVO NETO</span><span>{{ fmt(activosTotal - pasivosTotalReal) }}</span></div>
-          <div class="row" style="margin-top:.5rem"><span>Capital</span><span class="pos">{{ fmt(capitalTotal) }}</span></div>
-          <div class="row"><span>Ganancias acumuladas</span><span class="pos">{{ fmt(gananciasAcumuladas) }}</span></div>
-          <div class="row"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
-          <div class="row total"><span>= PATRIMONIO</span><span>{{ fmt(patrimonioTotal - retirosTotal + 0) }}</span></div>
-          </div>
-        </div>
+        
 
         <div class="card contab-card">
           <div class="card-title contab-toggle" @click="toggleContab('resultados')">
@@ -1139,7 +1117,7 @@
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
           <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
-          <div class="row" :class="Math.abs(activosTotal - (pasivosTotal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'pos' : 'neg'">
+          <div class="row" :class="Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'pos' : 'neg'">
             <span>Cuadre contable</span>
             <b>{{ Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) }}</b>
           </div>
@@ -1185,7 +1163,10 @@
           </button>
         </div>
 
- ({{ pasivosActivos.length }})</div>
+        
+
+        <div class="card">
+          <div class="card-title"><icon name="credit-card" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Cuentas por pagar ({{ pasivosActivos.length }})</div>
           <div class="row total">
             <span>Deuda activa</span>
             <span class="neg">{{ fmt(pasivosTotalReal) }}</span>
@@ -2516,7 +2497,6 @@ export default {
           formatMoney: fmt, formatNum: fmtCant,
           stockDe: (pid) => this.stock(pid)
         });
-        // Si ya hay chips de alerta de stock visibles arriba, evitar duplicar
         const hayAlertasStock = this.productosAgotados.length > 0 || this.productosBajoStock.length > 0;
         return hayAlertasStock
           ? list.filter(ins => !(ins.titulo || '').includes('Revisa inventario'))
