@@ -5115,6 +5115,56 @@ export default {
       await P(db.asientos, as);
     },
 
+    // ========================================================
+    // FUENTE UNICA DE VERDAD para construir asientos desde cero.
+    // Usado por regenerarAsientos() y por inicializar().
+    // ========================================================
+    generarTodosLosAsientos() {
+      const C = this.CUENTAS;
+      const nuevos = [];
+
+      this.ventas.filter(v => !v.anulada).forEach(v => {
+        nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
+        const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
+        if (cogs > 0) {
+          nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
+        }
+      });
+
+      this.compras.filter(c => !c.anulada).forEach(c => {
+        nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
+      });
+
+      this.gastos.forEach(g => {
+        if (g.saleDeCaja === false) return;
+        nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
+      });
+
+      this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
+        nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
+      });
+
+      this.retiros.forEach(r => {
+        nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
+      });
+
+      this.capital.forEach(k => {
+        nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
+      });
+
+      this.arqueos.forEach(a => {
+        const diff = n(a.diferencia);
+        if (Math.abs(diff) < 0.01) return;
+        if (diff > 0) {
+          nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
+        } else {
+          nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
+        }
+      });
+
+      return nuevos;
+    },
+
     regenerarAsientos() {
       this.confirm = {
         activo: true, titulo: 'Regenerar asientos',
@@ -5122,48 +5172,7 @@ export default {
         onOk: async () => {
           try {
             await db.asientos.clear();
-            const C = this.CUENTAS;
-            const nuevos = [];
-
-            this.ventas.filter(v => !v.anulada).forEach(v => {
-              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
-              const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
-              if (cogs > 0) {
-                nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
-              }
-            });
-
-            this.compras.filter(c => !c.anulada).forEach(c => {
-              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
-            });
-
-            this.gastos.forEach(g => {
-              if (g.saleDeCaja === false) return;
-              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
-            });
-
-            this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
-              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
-            });
-
-            this.retiros.forEach(r => {
-              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
-            });
-
-            this.capital.forEach(k => {
-              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
-            });
-
-            this.arqueos.forEach(a => {
-              const diff = n(a.diferencia);
-              if (Math.abs(diff) < 0.01) return;
-              if (diff > 0) {
-                nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
-              } else {
-                nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
-              }
-            });
-
+            const nuevos = this.generarTodosLosAsientos();
             if (nuevos.length > 0) {
               await db.asientos.bulkPut(nuevos.map(x => clean(x)));
             }
@@ -6322,35 +6331,7 @@ export default {
 
         if (this.asientos.length === 0 && (this.ventas.length > 0 || this.compras.length > 0 || this.gastos.length > 0)) {
           try {
-            const C = this.CUENTAS;
-            const nuevos = [];
-            this.ventas.filter(v => !v.anulada).forEach(v => {
-              nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
-              const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
-              if (cogs > 0) nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
-            });
-            this.compras.filter(c => !c.anulada).forEach(c => {
-              nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
-            });
-            this.gastos.forEach(g => {
-              if (g.saleDeCaja === false) return;
-              nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
-            });
-            this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
-              nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
-            });
-            this.retiros.forEach(r => {
-              nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
-            });
-            this.capital.forEach(k => {
-              nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
-            });
-            this.arqueos.forEach(a => {
-              const diff = n(a.diferencia);
-              if (Math.abs(diff) < 0.01) return;
-              if (diff > 0) nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
-              else nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
-            });
+            const nuevos = this.generarTodosLosAsientos();
             if (nuevos.length > 0) {
               await db.asientos.bulkPut(nuevos.map(x => clean(x)));
               await this.recargar(['asientos']);
