@@ -1927,7 +1927,7 @@ import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, build
 import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
 import { TOAST, TIPO_ASIENTO, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
-import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups, TOKEN_DEFAULT } from './telegram.js';
+import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import Onboarding from './components/Onboarding.vue';
 import SheetMas from './components/SheetMas.vue';
@@ -5656,16 +5656,17 @@ export default {
 
     // ===== TELEGRAM BACKUP =====
     tgTokenActual() {
-      return (this.cfg.tgToken || '').trim() || TOKEN_DEFAULT || '';
+      // Ya no hay token local. Todo pasa por el Worker (proxy).
+      return this.cfg.tgChatId ? 'proxy' : '';
     },
 
     async tgVerificar() {
       const token = this.tgTokenActual();
-      if (!token) return this.toastMsg('Falta el token del bot', TOAST.BAD);
+      if (!token) return this.toastMsg('Backend no configurado (revisa TG_PROXY_URL)', TOAST.BAD);
       this.tgCargando = true;
       try {
-        const me = await tgGetMe(token);
-        const updates = await tgGetUpdates(token);
+        const me = await tgGetMe();
+        const updates = await tgGetUpdates();
         const chat = tgDetectarChatId(updates);
         if (!chat) {
           this.tgEstado = 'sin-chat';
@@ -5728,7 +5729,7 @@ export default {
 
         // 6. Enviar a Telegram
         this.tgProgreso = 'Subiendo a Telegram...';
-        await tgSendDocument(token, chatId, gz, fileName, 'Backup · ' + resumen);
+        await tgSendDocument(chatId, gz, fileName, 'Backup · ' + resumen);
 
         // 7. Guardar en carpeta del teléfono (si esta configurada)
         if (this.cfg.tgCarpetaActiva) {
@@ -5768,7 +5769,7 @@ export default {
       if (!token) return;
       this.tgCargando = true;
       try {
-        const updates = await tgGetUpdates(token);
+        const updates = await tgGetUpdates();
         this.tgBackups = tgExtraerBackups(updates);
         this.toastMsg(this.tgBackups.length + ' backup(s) encontrado(s)');
       } catch (e) {
@@ -5789,8 +5790,8 @@ export default {
           this.tgCargando = true;
           this.tgProgreso = 'Descargando...';
           try {
-            const file = await tgGetFile(token, bk.fileId);
-            const url = tgFileUrl(token, file.file_path);
+            const file = await tgGetFile(bk.fileId);
+            const url = tgFileUrl(file.file_path);
             const r = await fetch(url);
             const blob = await r.blob();
             let txt;
@@ -5827,7 +5828,7 @@ export default {
         msg: 'Eliminar el backup del ' + fmtFH(bk.fecha) + ' de Telegram?',
         onOk: async () => {
           try {
-            await tgDeleteMessage(token, chatId, bk.messageId);
+            await tgDeleteMessage(chatId, bk.messageId);
             this.tgBackups = this.tgBackups.filter(x => x.messageId !== bk.messageId);
             this.toastMsg('Backup eliminado');
           } catch (e) {
@@ -5860,7 +5861,7 @@ export default {
       if (!token) return false;
       if (this.cfg.tgChatId) return true;
       try {
-        const updates = await tgGetUpdates(token);
+        const updates = await tgGetUpdates();
         const chat = tgDetectarChatId(updates);
         if (chat) {
           this.cfg.tgChatId = String(chat.chatId);
@@ -6003,7 +6004,7 @@ export default {
       let borrados = 0;
       for (const bk of sobrantes) {
         try {
-          await tgDeleteMessage(token, chatId, bk.messageId);
+          await tgDeleteMessage(chatId, bk.messageId);
           borrados++;
         } catch (e) {}
       }
@@ -6359,7 +6360,7 @@ export default {
 
         // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
         // Telegram: usar token default o guardado (no en safe mode)
-        if (!this.safeMode && !this.cfg.tgToken && TOKEN_DEFAULT) this.cfg.tgToken = TOKEN_DEFAULT;
+        
         if (this.cfg.tgChatId) this.tgEstado = 'conectado';
         else {
           this.tgEstado = 'esperando-start';
@@ -6391,7 +6392,7 @@ export default {
         // Actualizar cola pendiente
         await this.tgActualizarCola();
         // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
-        if (!this.safeMode && !this.cfg.tgChatId && TOKEN_DEFAULT) this.iniciarTgPoll();
+        if (!this.safeMode && !this.cfg.tgChatId) this.iniciarTgPoll();
         // Procesar cola cuando recupera conexion
         window.addEventListener('online', () => {
           setTimeout(() => this.tgProcesarCola(), 1000);
