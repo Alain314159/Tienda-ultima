@@ -10,31 +10,46 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
+        id: '/Tienda-ultima/',
         name: 'Tienda Pro',
         short_name: 'Tienda Pro',
-        description: 'Gestión de tienda con datos locales',
+        description: 'Gestion de tienda con datos locales, contabilidad y respaldo en Telegram',
+        lang: 'es',
+        dir: 'ltr',
         theme_color: '#2196F3',
         background_color: '#f3f4f6',
         display: 'standalone',
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
         orientation: 'portrait',
         scope: '/Tienda-ultima/',
         start_url: '/Tienda-ultima/',
+        categories: ['business', 'productivity', 'finance'],
         icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ],
+        shortcuts: [
           {
-            src: 'icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
+            name: 'Nueva Venta',
+            short_name: 'Venta',
+            description: 'Registrar una venta',
+            url: '/Tienda-ultima/#ventas',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
           },
           {
-            src: 'icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
+            name: 'Registrar Compra',
+            short_name: 'Compra',
+            description: 'Registrar entrada de mercancia',
+            url: '/Tienda-ultima/#compras',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
           },
           {
-            src: 'icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
+            name: 'Arqueo de Caja',
+            short_name: 'Arqueo',
+            description: 'Auditoria fisica de caja e inventario',
+            url: '/Tienda-ultima/#auditoria',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
           }
         ]
       },
@@ -50,9 +65,7 @@ export default defineConfig({
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365
               },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+              cacheableResponse: { statuses: [0, 200] }
             }
           }
         ]

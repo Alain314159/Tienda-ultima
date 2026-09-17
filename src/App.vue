@@ -115,11 +115,11 @@
           <div class="card-title"><icon name="zap" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Accesos rápidos</div>
           <div class="quick-grid">
             <button class="quick-btn" @click="ir('ventas')"><icon name="cart" :size="22"></icon>Nueva Venta</button>
-            <button class="quick-btn" @click="ir('compras')"><icon name="bag" :size="22"></icon>Registrar Compra</button>
             <button class="quick-btn" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Registrar Gasto</button>
             <button class="quick-btn" @click="ir('auditoria')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
+            <button class="quick-btn" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
+            <button class="quick-btn" @click="ir('reportes')"><icon name="calendar" :size="22"></icon>Cierre Periodo</button>
             <button class="quick-btn" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
-            <button class="quick-btn" @click="ir('inventario')"><icon name="package" :size="22"></icon>Inventario</button>
           </div>
         </div>
 
@@ -539,32 +539,14 @@
           <div class="lbl"><icon name="package" :size="14" color="#fff"></icon> Valor del Inventario</div>
           <div class="val">{{ fmt(valorInventario) }}</div>
           <div class="sub">{{ fmtCant(unidadesTotal, true) }} unidades · {{ lotesActivos.length }} lotes</div>
-        </div>
-
-        <!-- NUEVO: Compartir existencia -->
-        <div class="card" style="padding:.8rem">
-          <button class="btn pri" @click="compartirPrecios()">
-            <icon name="share" :size="16" color="#fff"></icon> Compartir lista de precios
-          </button>
-          <button class="btn ghost" style="margin-top:.5rem" @click="copiarPrecios()">
-            <icon name="file" :size="16" :color="mutColor"></icon> Copiar al portapapeles
-          </button>
-          <div style="font-size:.7rem;color:var(--mut);text-align:center;margin-top:.3rem">
-            Lista bonita con nombres y precios (incluye escalones y empaques) lista para WhatsApp.
+          <div style="margin-top:.75rem;display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap">
+            <button @click="shareSheetAbierto = true" style="background:rgba(255,255,255,.22);border:none;color:#fff;border-radius:99px;padding:.45rem 1rem;font-size:.72rem;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:.35rem;letter-spacing:.02em">
+              <icon name="share" :size="12" color="#fff"></icon> Compartir lista
+            </button>
           </div>
         </div>
 
-        <div class="card" style="padding:.8rem">
-          <button class="btn ghost" @click="compartirExistencia()">
-            <icon name="package" :size="16" :color="mutColor"></icon> Compartir existencia
-          </button>
-          <div style="font-size:.7rem;color:var(--mut);text-align:center;margin-top:.3rem">
-            Envía la lista de productos y stock por WhatsApp, Telegram, etc.
-          </div>
-        </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="alert" :size="18" :color="sec === 'inventario' ? '#2196F3' : '#d97706'"></icon> Merma / Ajuste</div>
           <select v-model="ajusteForm.productoId">
             <option value="">Seleccionar producto...</option>
             <option v-for="p in prodsActivos" :key="p.id" :value="p.id">
@@ -629,18 +611,7 @@
       <!-- ==================== CAJA ==================== -->
 
 
-      <!-- ==================== PATRIMONIO ==================== -->
-      <section v-if="sec === 'patrimonio'" class="fade-up">
-        <div class="balance morado">
-          <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Patrimonio Total</div>
-          <div class="val">{{ fmt(patrimonioTotal) }}</div>
-          <div class="sub">Capital {{ fmt(capitalTotal) }} · Gan. acum. {{ fmt(gananciasAcumuladas) }}</div>
-        </div>
 
-        <div class="info-box">
-          El detalle contable completo esta en <b>Contabilidad</b>. La gestion de capital, aportes y retiros esta en <b>Socios</b>.
-        </div>
-      </section>
 
       <!-- ==================== REPORTES (CON CUADRE NUEVO) ==================== -->
       <section v-if="sec === 'reportes'" class="fade-up">
@@ -873,10 +844,12 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Repartir Ganancia</div>
-          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
-            Disponible: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Movimientos de dinero</div>
+          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.7rem">
+            Disponible para retiro: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
           </div>
+
+          <div class="sheet-group" style="margin-top:0">Repartir ganancia entre socios</div>
           <input v-model="repartoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a repartir">
           <input v-model="repartoForm.concepto" type="text" placeholder="Concepto (ej: Reparto mensual)">
           <div v-if="n(repartoForm.monto) > 0 && sociosActivos.length" class="info-box" style="margin-bottom:.5rem">
@@ -888,33 +861,22 @@
           <button class="btn ok" @click="repartirGanancia()">
             <icon name="check" :size="16" color="#fff"></icon> Repartir
           </button>
-        </div>
 
-        <div class="card" style="background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2)">
-          <div style="font-size:.78rem;color:var(--txt-2);line-height:1.55">
-            <b>Diferencia:</b> "Repartir" divide la ganancia entre socios por su %.
-            "Retirar" saca dinero para ti sin repartir. "Aportar" mete dinero extra.
+          <div class="sheet-group" style="margin-top:1rem">Otros movimientos</div>
+          <div class="grid2">
+            <button class="btn bad" style="margin:0" @click="retiroAbierto = true">
+              <icon name="dollar" :size="16" color="#fff"></icon> Retirar
+            </button>
+            <button class="btn ok" style="margin:0" @click="aporteAbierto = true">
+              <icon name="plus" :size="16" color="#fff"></icon> Aportar
+            </button>
           </div>
-        </div>
 
-        <div class="grid2">
-          <button class="btn bad" @click="retiroAbierto = true">
-            <icon name="dollar" :size="16" color="#fff"></icon> Retirar Ganancia
-          </button>
-          <button class="btn ok" @click="aporteAbierto = true">
-            <icon name="plus" :size="16" color="#fff"></icon> Aportar Capital
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Capital Inicial</div>
-          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
-            Actual: <b style="color:var(--txt)">{{ fmt(cfg.capitalInicial || 0) }}</b>
+          <div class="info-box" style="margin-top:.75rem;margin-bottom:0;font-size:.72rem;line-height:1.6">
+            <b>Repartir:</b> divide la ganancia entre socios según su %.<br>
+            <b>Retirar:</b> saca dinero para ti sin repartir.<br>
+            <b>Aportar:</b> mete dinero extra a la tienda.
           </div>
-          <input v-model="capInicialStr" type="number" inputmode="decimal" step="0.01" placeholder="Nuevo capital inicial">
-          <button class="btn pri" @click="guardarCapInicial()">
-            <icon name="check" :size="16" color="#fff"></icon> Guardar Capital Inicial
-          </button>
         </div>
 
         <div v-if="aportesSinSocio.length" class="card" style="border:2px solid var(--warn)">
@@ -1091,6 +1053,10 @@
           <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
           <div class="row"><span>Pasivos (deudas)</span><b :class="pasivosTotalReal > 0 ? 'neg' : ''">{{ fmt(pasivosTotalReal) }}</b></div>
           <div class="row total"><span>= PATRIMONIO NETO</span><span>{{ fmt(activosTotal - pasivosTotalReal) }}</span></div>
+          <div class="row" style="border-top:1px dashed var(--brd);margin-top:.4rem;padding-top:.5rem">
+            <span>Disponible para retiro</span>
+            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
+          </div>
         </div>
 
         <!-- AVISO: desgloses mas abajo -->
@@ -1098,27 +1064,7 @@
           ↓ Desgloses detallados ↓
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Resumen contable</div>
-          <div class="row"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
-          <div class="row"><span>Aportes</span><span class="pos">+{{ fmt(aportesTotal) }}</span></div>
-          <div class="row total"><span>= CAPITAL</span><span>{{ fmt(capitalTotal) }}</span></div>
-          <div class="row" style="margin-top:.5rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
-          <div class="row"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row total"><span>= ACTIVOS</span><span>{{ fmt(saldoCaja + valorInventario) }}</span></div>
-          <div class="row" style="margin-top:.5rem"><span>Ganancia bruta</span><span>{{ fmt(gananciaBrutaPeriodo) }}</span></div>
-          <div class="row"><span>Gastos operativos</span><span class="neg">-{{ fmt(gastosOpPeriodo) }}</span></div>
-          <div class="row total"><span>= Ganancia neta (periodo)</span>
-            <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }}</span>
-          </div>
-          <div class="row hl">
-            <span>DISPONIBLE PARA RETIRO</span>
-            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
-          </div>
-        </div>
 
-        <div class="card contab-card">
-          <div class="card-title contab-toggle" @click="toggleContab('situacion')">
             <icon name="chart" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
             Balance de situacion
             <span class="chev" :class="{ open: contabExpandido.situacion }" style="margin-left:auto">
@@ -1239,29 +1185,7 @@
           </button>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="list" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Historial de cierres</div>
-          <div v-if="cierres.length === 0" class="empty">Sin cierres registrados</div>
-          <div v-for="c in cierresOrdenados" :key="c.id" class="item" style="flex-direction:column;align-items:stretch;gap:.3rem">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
-              <div class="nm">{{ c.periodo }}</div>
-              <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
-            </div>
-            <div class="det" style="font-size:.72rem">
-              Cerrado {{ fmtFecha(c.fechaCierre) }}
-              <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
-            </div>
-            <div v-if="c.cogs !== undefined" style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem;font-size:.7rem;margin-top:.2rem">
-              <div style="color:var(--mut)">Ventas: <b style="color:var(--ok)">{{ fmt(c.totalVentas) }}</b></div>
-              <div style="color:var(--mut)">COGS: <b style="color:var(--bad)">-{{ fmt(c.cogs) }}</b></div>
-              <div style="color:var(--mut)">Gastos: <b style="color:var(--bad)">-{{ fmt(c.gastos) }}</b></div>
-              <div style="color:var(--mut)">Mermas: <b style="color:var(--bad)">-{{ fmt(c.mermas) }}</b></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="credit-card" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Cuentas por pagar ({{ pasivosActivos.length }})</div>
+ ({{ pasivosActivos.length }})</div>
           <div class="row total">
             <span>Deuda activa</span>
             <span class="neg">{{ fmt(pasivosTotalReal) }}</span>
@@ -1558,6 +1482,33 @@
       @ir="ir"
       @abrir-ajustes="masAbierto = false; ajustesAbierto = true"
     />
+
+    <!-- SHARE SHEET -->
+    <div v-if="shareSheetAbierto" class="overlay no-print" @click="shareSheetAbierto = false"></div>
+    <div v-if="shareSheetAbierto" class="sheet no-print">
+      <div class="handle"></div>
+      <div class="sheet-group" style="margin-top:0">Compartir lista</div>
+      <div class="sheet-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <button class="sheet-btn" style="flex-direction:column;text-align:center;gap:.3rem" @click="shareSheetAbierto = false; compartirPrecios()">
+          <icon name="tag" :size="22"></icon>
+          <span style="font-size:.72rem">Precios</span>
+        </button>
+        <button class="sheet-btn" style="flex-direction:column;text-align:center;gap:.3rem" @click="shareSheetAbierto = false; copiarPrecios()">
+          <icon name="file" :size="22"></icon>
+          <span style="font-size:.72rem">Copiar</span>
+        </button>
+        <button class="sheet-btn" style="flex-direction:column;text-align:center;gap:.3rem" @click="shareSheetAbierto = false; compartirExistencia()">
+          <icon name="package" :size="22"></icon>
+          <span style="font-size:.72rem">Existencia</span>
+        </button>
+      </div>
+      <div style="font-size:.72rem;color:var(--mut);text-align:center;margin-top:.85rem;line-height:1.6;padding:0 .5rem">
+        <b>Precios:</b> lista con nombres, precios, escalones y empaques<br>
+        <b>Copiar:</b> lo mismo al portapapeles sin salir de la app<br>
+        <b>Existencia:</b> solo nombres y stock actual
+      </div>
+      <button class="btn ghost" style="margin-top:.85rem" @click="shareSheetAbierto = false">Cerrar</button>
+    </div>
 
     <!-- ==================== SETTINGS MODAL ==================== -->
     <div v-if="ajustesAbierto" class="modal no-print" @click.self="ajustesAbierto = false">
@@ -1984,6 +1935,7 @@ export default {
     return {
       online: navigator.onLine,
       otraPestana: false,
+      shareSheetAbierto: false,
       hayUpdate: false,
       _swWaiting: null,
       _aplicando: false,
@@ -2086,7 +2038,6 @@ export default {
       _highlightTimer: null,
       filtroStock: null,
       contabExpandido: {
-        situacion: false,
         resultados: false,
         balance: false,
         flujo: false,
@@ -2557,7 +2508,7 @@ export default {
 
     insights() {
       try {
-        return generarInsights({
+        const list = generarInsights({
           ventas: this.ventas, compras: this.compras, gastos: this.gastos,
           ajustes: this.ajustes, productos: this.productos, lotes: this.lotes,
           cierres: this.cierres, movCaja: this.movCaja,
@@ -2565,6 +2516,11 @@ export default {
           formatMoney: fmt, formatNum: fmtCant,
           stockDe: (pid) => this.stock(pid)
         });
+        // Si ya hay chips de alerta de stock visibles arriba, evitar duplicar
+        const hayAlertasStock = this.productosAgotados.length > 0 || this.productosBajoStock.length > 0;
+        return hayAlertasStock
+          ? list.filter(ins => !(ins.titulo || '').includes('Revisa inventario'))
+          : list;
       } catch (e) { console.error('insights', e); return []; }
     },
 
@@ -3907,6 +3863,11 @@ export default {
     },
 
     // ===== PATRIMONIO =====
+    setCapitalInicial(val) {
+      this.capInicialStr = String(val || '');
+      this.guardarCapInicial();
+    },
+
     async guardarCapInicial() {
       const val = n(this.capInicialStr);
       const anterior = n(this.cfg.capitalInicial);
@@ -6532,7 +6493,7 @@ export default {
           setTimeout(() => this.tgAutoDetectarChat(), 2000);
         }
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'patrimonio', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
