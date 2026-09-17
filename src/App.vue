@@ -1689,6 +1689,9 @@
             Ultimo backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
             <span v-if="tgColaPendiente > 0" style="color:var(--warn);font-weight:700"> · {{ tgColaPendiente }} en cola</span>
           </div>
+          <div v-if="(cfg.tgFallosConsecutivos || 0) >= 3" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-xs);padding:.5rem .7rem;margin-bottom:.6rem;font-size:.75rem;color:var(--bad-d);font-weight:700">
+            ⚠ {{ cfg.tgFallosConsecutivos }} fallos consecutivos. Revisa la conexion o el token del bot.
+          </div>
 
           <div v-if="tgProgreso" class="tg-progreso">
             <div class="tg-spinner"></div>
@@ -1805,6 +1808,38 @@
         <div style="font-size:.78rem;color:var(--mut)">
           Versión 6.0 · Datos locales<br>
           {{ productos.length }} productos · {{ ventas.length }} ventas · {{ compras.length }} compras
+        </div>
+
+        <div class="set-group">Almacenamiento</div>
+        <div style="background:var(--bg);border-radius:var(--r-sm);padding:.7rem;margin-bottom:.6rem;font-size:.78rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+            <span style="color:var(--mut);font-weight:700">Uso de disco</span>
+            <span :class="'storage-badge ' + storageClase()">
+              {{ fmtBytes(storageInfo.uso) }} / {{ fmtBytes(storageInfo.cuota) }}
+            </span>
+          </div>
+          <div class="storage-bar">
+            <div class="storage-bar-fill" :class="storageClase()" :style="{ width: Math.min(storageInfo.porcentaje, 100) + '%' }"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.35rem">
+            <span style="color:var(--mut);font-size:.72rem">
+              {{ storageInfo.porcentaje }}% usado
+            </span>
+            <span :class="'storage-badge ' + (storagePersistente ? 'ok' : 'warn')">
+              {{ storagePersistente ? '✓ Persistente' : '⚠ Best-effort' }}
+            </span>
+          </div>
+          <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
+            <span v-if="storagePersistente">
+              El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de seguridad.
+            </span>
+            <span v-else>
+              ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
+            </span>
+          </div>
+          <button v-if="!storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
+            <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
+          </button>
         </div>
 
         <button class="btn ghost" style="margin-top:.8rem" @click="ajustesAbierto = false">Cerrar</button>
@@ -1992,6 +2027,8 @@ export default {
         tgAutoBackup: false,
         tgUltimoBackup: null,
         tgUltimoHash: '',
+        tgFallosConsecutivos: 0,
+        ultimaNotifBackupFail: null,
         tgMantenerN: 10,
         productosAvisados: [],
         tgCarpetaActiva: false,
@@ -2118,6 +2155,10 @@ export default {
 
       ultimoBackup: null,
       procesandoVenta: false,
+      storagePersistente: false,
+      storageInfo: { uso: 0, cuota: 0, porcentaje: 0 },
+      preImportDisponible: false,
+      preImportFecha: null,
       importFile: null,
       _chart: null,
       _notifTimer: null,
@@ -4694,6 +4735,65 @@ export default {
       } catch (e) { console.error('toggleEruda', e); }
     },
 
+    // ===== STORAGE PERSISTENCIA =====
+    async pedirPersistenciaStorage() {
+      try {
+        if (!navigator.storage || !navigator.storage.persist) {
+          console.warn('storage.persist no soportado');
+          return false;
+        }
+        const ya = await navigator.storage.persisted();
+        if (ya) {
+          this.storagePersistente = true;
+          console.log('Storage ya es persistente');
+          return true;
+        }
+        // Solo pedir si el usuario ya tiene datos (evita pedirlo en primera visita)
+        if (this.ventas.length + this.compras.length + this.productos.length < 3) {
+          console.log('Poco contenido, se pedira persistencia mas tarde');
+          return false;
+        }
+        const ok = await navigator.storage.persist();
+        this.storagePersistente = ok;
+        if (ok) console.log('✅ Persistencia de storage concedida');
+        else console.warn('⚠ Persistencia denegada por el navegador');
+        return ok;
+      } catch (e) {
+        console.error('pedirPersistenciaStorage', e);
+        return false;
+      }
+    },
+
+    async actualizarInfoStorage() {
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const est = await navigator.storage.estimate();
+          this.storageInfo = {
+            uso: est.usage || 0,
+            cuota: est.quota || 0,
+            porcentaje: est.quota ? Number(((est.usage / est.quota) * 100).toFixed(2)) : 0
+          };
+        }
+        if (navigator.storage && navigator.storage.persisted) {
+          this.storagePersistente = await navigator.storage.persisted();
+        }
+      } catch (e) { console.error('actualizarInfoStorage', e); }
+    },
+
+    fmtBytes(n) {
+      if (!n) return '0 B';
+      const u = ['B', 'KB', 'MB', 'GB'];
+      let i = 0;
+      while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+      return n.toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+    },
+
+    storageClase() {
+      if (this.storageInfo.porcentaje >= 80) return 'bad';
+      if (this.storageInfo.porcentaje >= 50) return 'warn';
+      return 'ok';
+    },
+
     // ===== NOTIFICACIONES =====
     async enviarNotif(titulo, cuerpo) {
       try {
@@ -4820,6 +4920,13 @@ export default {
       if (dias >= n(this.cfg.umbralDiasCierre || 30) && this.cfg.ultimaNotifCierre !== hoy) {
         this.enviarNotif('Cierre pendiente', dias + ' dias sin cerrar periodo');
         this.cfg.ultimaNotifCierre = hoy;
+        cambio = true;
+      }
+
+      // 5. Auto-backup fallando repetidamente
+      if (this.cfg.tgAutoBackup && (this.cfg.tgFallosConsecutivos || 0) >= 3 && this.cfg.ultimaNotifBackupFail !== hoy) {
+        this.enviarNotif('⚠ Backup fallando', 'El backup automatico fallo ' + this.cfg.tgFallosConsecutivos + ' veces. Revisa Telegram.');
+        this.cfg.ultimaNotifBackupFail = hoy;
         cambio = true;
       }
 
@@ -5494,10 +5601,26 @@ export default {
         try {
           const d = JSON.parse(ev.target.result);
           if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
+
+          // Guardar estado actual como red de seguridad
+          try {
+            const estadoActual = buildData(this);
+            await P(db.config, {
+              key: 'preImportBackup',
+              value: estadoActual,
+              fecha: new Date().toISOString()
+            });
+            this.preImportDisponible = true;
+            this.preImportFecha = new Date().toISOString();
+            console.log('✅ Pre-import backup guardado');
+          } catch (e) { console.error('pre-import backup', e); }
+
           await this.importarData(d);
           this.importPreview = null;
           this.ajustesAbierto = false;
-          this.toastMsg('Datos importados');
+          this.toastMsg('Datos importados (puedes deshacer desde Ajustes)', TOAST.OK, 'Deshacer', () => {
+            this.ajustesAbierto = true;
+          });
         } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
       };
       rd.readAsText(file);
@@ -5903,9 +6026,17 @@ export default {
         const data = buildData(this);
         try {
           await this.tgEnviarDatos(data, 'auto', false);
+          // Exito: resetear contador
+          if (this.cfg.tgFallosConsecutivos > 0) {
+            this.cfg.tgFallosConsecutivos = 0;
+            await this.guardarCfg();
+          }
         } catch (e) {
-          // Si falla, encolar
+          // Fallo: incrementar contador
+          this.cfg.tgFallosConsecutivos = (this.cfg.tgFallosConsecutivos || 0) + 1;
+          await this.guardarCfg();
           await this.tgEncolar(data, 'auto');
+          console.warn('Auto-backup fallo (' + this.cfg.tgFallosConsecutivos + ' consecutivos):', e.message);
         }
       }
     },
@@ -6089,6 +6220,55 @@ export default {
       this.toastMsg('Carpeta desconectada');
     },
 
+    // ===== PRE-IMPORT SAFETY NET =====
+    async cargarPreImportInfo() {
+      try {
+        const rec = await db.config.get('preImportBackup');
+        if (rec && rec.value) {
+          this.preImportDisponible = true;
+          this.preImportFecha = rec.fecha || null;
+        } else {
+          this.preImportDisponible = false;
+          this.preImportFecha = null;
+        }
+      } catch (e) { console.error('cargarPreImportInfo', e); }
+    },
+
+    restaurarPreImport() {
+      this.confirm = {
+        activo: true,
+        titulo: 'Deshacer ultimo import',
+        msg: 'Se restaurara el estado anterior al ultimo import de ' +
+             (this.preImportFecha ? fmtFH(this.preImportFecha) : 'fecha desconocida') +
+             '. Los datos actuales seran reemplazados.',
+        onOk: async () => {
+          try {
+            const rec = await db.config.get('preImportBackup');
+            if (!rec || !rec.value) return this.toastMsg('No hay backup para restaurar', TOAST.WARN);
+            await this.importarData(rec.value);
+            this.ajustesAbierto = false;
+            this.toastMsg('Estado anterior restaurado');
+          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
+        }
+      };
+    },
+
+    olvidarPreImport() {
+      this.confirm = {
+        activo: true,
+        titulo: 'Olvidar backup de seguridad',
+        msg: 'Se eliminara el backup del estado anterior al ultimo import. Esta accion no se puede deshacer.',
+        onOk: async () => {
+          try {
+            await db.config.delete('preImportBackup');
+            this.preImportDisponible = false;
+            this.preImportFecha = null;
+            this.toastMsg('Backup de seguridad eliminado');
+          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
+        }
+      };
+    },
+
     // ===== SEGURIDAD =====
     pedirPin(cb) {
       if (!this.cfg.pinActivo) { cb(); return; }
@@ -6259,6 +6439,9 @@ export default {
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
         await this.recargarTodo();
+        // Pedir persistencia de storage (evita que el navegador borre datos)
+        await this.pedirPersistenciaStorage();
+        await this.actualizarInfoStorage();
         // Restaurar carrito persistido (por si cerro la app a media venta)
         try {
           const savedCarrito = localStorage.getItem('carritoPro');
@@ -6372,6 +6555,8 @@ export default {
         } catch (e) {}
         // Actualizar cola pendiente
         await this.tgActualizarCola();
+        // Ver si hay un backup pre-import pendiente
+        await this.cargarPreImportInfo();
         // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
         if (!this.safeMode && !this.cfg.tgChatId) this.iniciarTgPoll();
         // Procesar cola cuando recupera conexion
