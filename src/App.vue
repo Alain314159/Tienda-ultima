@@ -1,12 +1,12 @@
 <template>
   <div v-cloak :data-theme="cfg.tema">
     <!-- MULTI-TAB WARNING -->
-    <div v-if="_otraPestana" class="multi-tab-warn no-print">
+    <div v-if="otraPestana" class="multi-tab-warn no-print">
       <div style="flex:1">
         <b>⚠ App abierta en otra pestaña</b><br>
         <span style="font-size:.72rem">Tenerla abierta en dos lugares puede causar problemas. Cierra la otra.</span>
       </div>
-      <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="_otraPestana = false">OK</button>
+      <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="otraPestana = false">OK</button>
     </div>
 
     <!-- SAFE MODE BANNER -->
@@ -1948,6 +1948,7 @@ export default {
   data() {
     return {
       online: navigator.onLine,
+      otraPestana: false,
       hayUpdate: false,
       _swWaiting: null,
       _aplicando: false,
@@ -2197,7 +2198,7 @@ export default {
     },
 
     productosAgotados() {
-      return this.prodsActivos.filter(p => this.stock(p.id) === 0);
+      return this.prodsActivos.filter(p => this.stock(p.id) <= 0.001);
     },
 
     ventasPeriodo() {
@@ -2547,7 +2548,7 @@ export default {
       // 1. Caja negativa
       if (this.saldoCaja < -0.01) {
         const nivel = this.saldoCaja < -1000 ? 'alta' : 'media';
-        add({ nivel, icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'caja', clave: 'caja-negativa' });
+        add({ nivel, icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'contabilidad', clave: 'caja-negativa' });
       }
 
       // 2. Ventas bajo costo
@@ -2582,7 +2583,7 @@ export default {
       const faltantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d);
       if (faltantes.length >= n(this.cfg.umbralFaltantesMes || 3)) {
         const total = m(faltantes.reduce((s, f) => s + n(f.monto), 0));
-        add({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'faltantes-' + faltantes.length });
+        add({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'contabilidad', clave: 'faltantes-' + faltantes.length });
       }
 
       // 6. Compras con costo elevado
@@ -2693,7 +2694,7 @@ export default {
       const sobrantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d);
       if (sobrantes.length >= n(this.cfg.umbralSobrantesMes || 3)) {
         const total = m(sobrantes.reduce((s, f) => s + n(f.monto), 0));
-        add({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'caja', clave: 'sobrantes-' + sobrantes.length });
+        add({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'contabilidad', clave: 'sobrantes-' + sobrantes.length });
       }
 
       // 13. Movimientos raros de inventario (subidas sin compra)
@@ -3309,9 +3310,12 @@ export default {
     // Formato de stock usando empaques
     formatStock(prodId, cant) {
       const p = this.productos.find(x => x.id === prodId);
-      if (!p || !p.empaques || !p.empaques.length) return fmtCant(cant);
+      const total = n(cant);
+      // Sin empaques: mostrar la cantidad tal cual (respeta fracciones)
+      if (!p || !p.empaques || !p.empaques.length) return fmtCant(total);
+
       const emps = p.empaques.slice().sort((a, b) => b.unidades - a.unidades);
-      let rest = Math.floor(Math.abs(cant));
+      let rest = Math.floor(Math.abs(total));
       const partes = [];
       for (const e of emps) {
         const u = Math.floor(e.unidades);
@@ -3322,8 +3326,11 @@ export default {
           rest -= cantEmp * u;
         }
       }
-      if (rest > 0) partes.push(rest + ' und');
-      if (partes.length === 0) return '0';
+      // Residual: entero suelto + fraccion (kg, litros, etc.)
+      const fraccion = Math.abs(total) - Math.floor(Math.abs(total));
+      if (rest > 0) partes.push(rest + ' ' + (p.unidad || 'und'));
+      if (fraccion > 0.0001) partes.push(fmtCant(fraccion));
+      if (partes.length === 0) return fmtCant(total);
       return partes.join(' + ');
     },
 
@@ -5548,7 +5555,7 @@ export default {
         console.warn('Import con avisos:', v.avisos);
       }
 
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', TIPO_ASIENTO.CAPITAL, 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
       // Snapshot antes por si falla
       const respaldo = {};
       try {
@@ -6210,7 +6217,7 @@ export default {
           this._bc.onmessage = (e) => {
             if (e.data && e.data.tipo === 'hello' && e.data.tabId !== this._tabId) {
               // Otra pestaña existe, avisar
-              this._otraPestana = true;
+              this.otraPestana = true;
               this._bc.postMessage({ tipo: 'existe', tabId: this._tabId });
             }
           };
@@ -6242,6 +6249,26 @@ export default {
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
         await this.recargarTodo();
+        // Restaurar carrito persistido (por si cerro la app a media venta)
+        try {
+          const savedCarrito = localStorage.getItem('carritoPro');
+          if (savedCarrito) {
+            const parsed = JSON.parse(savedCarrito);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const validos = parsed.filter(it => {
+                if (!it || !it.productoId) return false;
+                const prod = this.productos.find(x => x.id === it.productoId && !x.archivado);
+                return !!prod && this.stock(it.productoId) > 0;
+              });
+              if (validos.length > 0) {
+                this.carrito = validos;
+                this.toastMsg('Carrito restaurado (' + validos.length + ' item(s))');
+              } else {
+                localStorage.removeItem('carritoPro');
+              }
+            }
+          }
+        } catch (e) { console.error('restaurar carrito', e); }
         const b = await db.config.get('backupAuto');
         if (b) this.ultimoBackup = b;
         const ahora = Date.now();
