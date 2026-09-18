@@ -3408,11 +3408,17 @@ export default {
         await this.recargar(['ventas', 'lotes']);
         await this.recrearAsientoVenta(venta);
         await this.recargar(['asientos']);
-        await this.chequearAgotados();
+
+        // Liberar la UI de inmediato (evita "Procesando..." si una
+        // notificacion se queda colgada por red lenta o SW no listo)
         this.carrito = [];
         localStorage.removeItem('carritoPro');
         this.cobroModal.activo = false;
+        this.procesandoVenta = false;
         this.toastMsg(`Venta exitosa: ${fmt(tot)}`);
+
+        // Notificaciones en background: sin await
+        this.chequearAgotados().catch(e => console.warn('chequearAgotados', e));
       } catch (e) {
         this.toastMsg(e.message, TOAST.BAD);
       } finally {
@@ -3482,9 +3488,10 @@ export default {
         this.cfg.productosAvisados = Array.from(avisados);
         await this.guardarCfg();
 
-        // Notificar cada agotado nuevo
+        // Notificar cada agotado nuevo (aislado para no cortar el resto)
         for (const p of nuevosAgotados) {
-          await this.notificarAgotado(p);
+          try { await this.notificarAgotado(p); }
+          catch (e) { console.warn('notificarAgotado fallo', e); }
         }
 
         // Aviso suave si volvio a haber stock
@@ -3496,44 +3503,49 @@ export default {
 
     async notificarAgotado(prod) {
       const nombre = prod.nombre;
-      const stockMin = n(prod.stockMinimo);
 
-      // 1. Notificacion del sistema
+      // 1. Notificacion del sistema (con timeout interno, nunca bloquea)
       try {
         if ('Notification' in window && Notification.permission === 'granted') {
           await this.enviarNotif('⚠ Producto agotado', nombre + ' — quedó en 0');
         }
-      } catch (e) {}
+      } catch (e) { /* ignora */ }
 
       // 2. Vibracion
-      vib([200, 100, 200]);
+      try { vib([200, 100, 200]); } catch (e) {}
 
-      // 3. Toast con accion "Avisar al grupo"
-      const texto = '⚠️ *AGOTADO:* ' + nombre + '\n\n' +
-                    'Ya no tenemos disponible este producto. Vuelve pronto.';
-      const urlWA = 'https://wa.me/?text=' + encodeURIComponent(texto);
+      // 3. Toast con accion
+      try {
+        const texto = '⚠️ *AGOTADO:* ' + nombre + '\n\nYa no tenemos disponible este producto. Vuelve pronto.';
+        const urlWA = 'https://wa.me/?text=' + encodeURIComponent(texto);
+        this.toastMsg('⚠ ' + nombre + ' se agotó', TOAST.WARN, 'Avisar al grupo', () => {
+          window.open(urlWA, '_blank');
+        });
+      } catch (e) {}
 
-      this.toastMsg('⚠ ' + nombre + ' se agotó', TOAST.WARN, 'Avisar al grupo', () => {
-        window.open(urlWA, '_blank');
-      });
-
-      // 4. Mensaje al bot de Telegram (aviso personal a ti)
+      // 4. Aviso al bot de Telegram (timeout de 8s)
       try {
         const token = this.tgTokenActual();
         const chatId = this.cfg.tgChatId;
         if (token && chatId) {
-          const textoTelegram = '⚠️ *AGOTADO*\n\n' + nombre + '\n\nAvisa al grupo cuando puedas.';
-          await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: textoTelegram,
-              parse_mode: 'Markdown'
-            })
-          });
+          const ctrl = new AbortController();
+          const to = setTimeout(() => ctrl.abort(), 8000);
+          try {
+            await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: '⚠️ *AGOTADO*\n\n' + nombre + '\n\nAvisa al grupo cuando puedas.',
+                parse_mode: 'Markdown'
+              }),
+              signal: ctrl.signal
+            });
+          } finally {
+            clearTimeout(to);
+          }
         }
-      } catch (e) { console.error('notificarAgotado telegram', e); }
+      } catch (e) { console.warn('notificarAgotado telegram', e); }
     },
 
     // ===== COMPRAS =====
@@ -4746,17 +4758,21 @@ export default {
           badge: '/Tienda-ultima/icons/icon-192.png',
           tag: 'tienda-' + Date.now()
         };
-        // Intentar con ServiceWorker primero (requerido en Chrome movil)
+        // Timeout global: una notificacion NUNCA debe colgar la app
+        const conTimeout = (promesa, ms) => Promise.race([
+          promesa,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+        ]);
+
         if ('serviceWorker' in navigator) {
           try {
-            const reg = await navigator.serviceWorker.ready;
+            const reg = await conTimeout(navigator.serviceWorker.ready, 3000);
             if (reg && reg.showNotification) {
-              await reg.showNotification(titulo, opts);
+              await conTimeout(reg.showNotification(titulo, opts), 3000);
               return { ok: true, via: 'sw' };
             }
-          } catch (e) { /* sigue con fallback */ }
+          } catch (e) { /* fallback */ }
         }
-        // Fallback a constructor (escritorio)
         try {
           new Notification(titulo, opts);
           return { ok: true, via: 'constructor' };
