@@ -1090,89 +1090,11 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="calendar" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Cierres contables</div>
-          <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
-            Periodo actual: desde {{ fmtFecha(cfg.periodoInicio) }}
-          </div>
-          <div class="row"><span>Ventas acumuladas</span><b>{{ fmt(ventasPeriodo) }}</b></div>
-          <div class="row"><span>Ganancia del periodo</span>
-            <b :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }}</b>
-          </div>
-          <div class="row"><span>Cierres registrados</span><b>{{ cierres.length }}</b></div>
-          <button class="btn warn" style="margin-top:.5rem" @click="ir('reportes')">
-            <icon name="calendar" :size="16" color="#fff"></icon> Ir a cerrar periodo
-          </button>
-        </div>
+        
 
         
 
-        <div class="card">
-          <div class="card-title"><icon name="credit-card" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon> Cuentas por pagar ({{ pasivosActivos.length }})</div>
-          <div class="row total">
-            <span>Deuda activa</span>
-            <span class="neg">{{ fmt(pasivosTotalReal) }}</span>
-          </div>
-          <div v-if="pasivosVencidos.length" class="alert-box" style="margin:.5rem 0">
-            <icon name="alert" :size="14" color="#d97706"></icon>
-            {{ pasivosVencidos.length }} deuda(s) vencida(s)
-          </div>
-
-          <div style="margin-top:.6rem;border-top:1px solid var(--brd);padding-top:.6rem">
-            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">{{ pasivoForm.editId ? 'Editar' : 'Nueva' }} deuda</div>
-            <input v-model="pasivoForm.acreedor" type="text" placeholder="Acreedor (proveedor, banco, persona)">
-            <input v-model="pasivoForm.concepto" type="text" placeholder="Concepto (ej: compra a credito)">
-            <div class="grid2">
-              <input v-model="pasivoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto">
-              <input v-model="pasivoForm.fecha" type="date">
-            </div>
-            <input v-model="pasivoForm.vencimiento" type="date" placeholder="Vencimiento (opcional)">
-            <input v-model="pasivoForm.nota" type="text" placeholder="Nota (opcional)">
-            <button class="btn warn" @click="guardarPasivo()">
-              <icon name="check" :size="16" color="#fff"></icon>
-              {{ pasivoForm.editId ? 'Actualizar' : 'Registrar deuda' }}
-            </button>
-            <button v-if="pasivoForm.editId" class="btn ghost" @click="resetPasivo()">Cancelar</button>
-          </div>
-
-          <div v-if="pasivosActivos.length" style="margin-top:.8rem">
-            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">Deudas activas</div>
-            <div v-for="p in pasivosActivos" :key="p.id" class="item" style="flex-direction:column;align-items:stretch;gap:.3rem">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
-                <div class="nm">{{ p.acreedor }}</div>
-                <b class="neg">{{ fmt(p.monto) }}</b>
-              </div>
-              <div class="det" style="font-size:.72rem">
-                {{ p.concepto }} · {{ fmtFecha(p.fecha) }}
-                <span v-if="p.vencimiento" :style="new Date(p.vencimiento) < new Date() ? 'color:var(--bad);font-weight:700' : ''">
-                  · Vence {{ fmtFecha(p.vencimiento) }}
-                </span>
-              </div>
-              <div class="act-btns" style="justify-content:flex-end">
-                <button class="btn ok" style="width:auto;padding:.3rem .7rem;font-size:.72rem;margin:0" @click="pagarPasivo(p.id)">
-                  <icon name="check" :size="12" color="#fff"></icon> Pagar
-                </button>
-                <button class="icon-btn" @click="editarPasivo(p.id)" aria-label="Editar">
-                  <icon name="edit" :size="14" :color="txtColor"></icon>
-                </button>
-                <button class="icon-btn bad" @click="eliminarPasivo(p.id)" aria-label="Eliminar">
-                  <icon name="trash" :size="14" color="#dc2626"></icon>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="pasivos.filter(p => p.pagado).length" style="margin-top:.8rem">
-            <div style="font-size:.78rem;font-weight:800;color:var(--mut);margin-bottom:.4rem">Pagadas recientemente</div>
-            <div v-for="p in pasivos.filter(x => x.pagado).slice(0, 5)" :key="p.id" class="item" style="opacity:.6">
-              <div class="info">
-                <div class="nm">{{ p.acreedor }}</div>
-                <div class="det">Pagada {{ fmtFecha(p.fechaPago || p.fecha) }}</div>
-              </div>
-              <b>{{ fmt(p.monto) }}</b>
-            </div>
-          </div>
-        </div>
+        
 
         <div class="card contab-card">
           <div class="card-title contab-toggle" @click="toggleContab('libro')">
