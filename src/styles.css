@@ -1782,7 +1782,6 @@ html { -webkit-overflow-scrolling: touch; }
 }
 
 /* ===== ANIMACIONES DE ENTRADA EN LISTAS ===== */
-.item, .drop-item, /* ===== PULL TO REFRESH ===== */
 .pull-indicator {
   position: fixed;
   top: 0;
