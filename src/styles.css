@@ -1145,7 +1145,11 @@ input::placeholder, textarea::placeholder {
   margin-bottom: .5rem;
 }
 
-.prod-wrap { margin-bottom: .4rem; }
+.prod-wrap {
+  margin-bottom: .4rem;
+  position: relative;
+  z-index: 0;
+}
 
 .stock-line {
   display: flex;
@@ -1683,7 +1687,7 @@ input::placeholder, textarea::placeholder {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-.card, .item, .inv-item, .drop-item { contain: layout style; }
+/* contain removido: causaba stacking */
 .balance, .stat { contain: layout paint style; }
 html { -webkit-overflow-scrolling: touch; }
 .val, .stock-num, .audit-dif, .denom-sub { font-variant-numeric: tabular-nums; }
