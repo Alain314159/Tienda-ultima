@@ -2486,3 +2486,13 @@ html { -webkit-overflow-scrolling: touch; }
   transition: opacity var(--tr);
 }
 .rec-x:hover, .rec-x:active { opacity: 1; }
+
+
+/* ===== FLASH AL AGREGAR AL CARRITO ===== */
+@keyframes cartFlash {
+  0% { background: rgba(34,197,94,.35); transform: scale(1.02); box-shadow: 0 0 0 3px rgba(34,197,94,.35); }
+  100% { background: var(--card-2); transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+.cart-item-flash {
+  animation: cartFlash .5s ease-out;
+}

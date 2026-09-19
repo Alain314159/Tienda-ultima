@@ -991,36 +991,10 @@
         </div>
 
         <!-- KPIs PRINCIPALES -->
-        <div class="grid2" style="margin-bottom:.85rem">
-          <div class="stat">
-            <div class="lbl"><icon name="trend" :size="12" :color="mutColor"></icon> Ingresos del periodo</div>
-            <div class="val" style="color:var(--pri)">{{ fmt(ventasPeriodo) }}</div>
-          </div>
-          <div class="stat">
-            <div class="lbl"><icon name="chart" :size="12" :color="mutColor"></icon> COGS del periodo</div>
-            <div class="val neg">{{ fmt(m(ventasPeriodo - gananciaBrutaPeriodo)) }}</div>
-          </div>
-          <div class="stat">
-            <div class="lbl"><icon name="dollar" :size="12" :color="mutColor"></icon> Caja</div>
-            <div class="val" :style="saldoCaja >= 0 ? 'color:var(--ok-d)' : 'color:var(--bad)'">{{ fmt(saldoCaja) }}</div>
-          </div>
-          <div class="stat">
-            <div class="lbl"><icon name="package" :size="12" :color="mutColor"></icon> Inventario</div>
-            <div class="val" style="color:var(--pri)">{{ fmt(valorInventario) }}</div>
-          </div>
-        </div>
+        
 
         <!-- POSICION FINANCIERA -->
-        <div class="card" style="background:linear-gradient(135deg,rgba(59,130,246,.06) 0%,rgba(59,130,246,.02) 100%);border-color:rgba(59,130,246,.15)">
-          <div class="card-title"><icon name="dollar" :size="18" :color="'#3B82F6'"></icon> Posicion financiera</div>
-          <div class="row"><span>Activos (Caja + Inventario)</span><b class="pos">{{ fmt(activosTotal) }}</b></div>
-          <div class="row"><span>Pasivos (deudas)</span><b :class="pasivosTotalReal > 0 ? 'neg' : ''">{{ fmt(pasivosTotalReal) }}</b></div>
-          <div class="row total"><span>= PATRIMONIO NETO</span><span>{{ fmt(activosTotal - pasivosTotalReal) }}</span></div>
-          <div class="row" style="border-top:1px dashed var(--brd);margin-top:.4rem;padding-top:.5rem">
-            <span>Disponible para retiro</span>
-            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
-          </div>
-        </div>
+        
 
         
 
@@ -1081,6 +1055,10 @@
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
           <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
           <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
+          <div class="row" style="border-top:1px dashed var(--brd);margin-top:.4rem;padding-top:.5rem">
+            <span>Disponible para retiro</span>
+            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
+          </div>
           <div class="row" :class="Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'pos' : 'neg'">
             <span>Cuadre contable</span>
             <b>{{ Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) }}</b>
@@ -1460,17 +1438,8 @@
       <div class="modal-box" @click.stop>
         <div class="modal-title"><icon name="settings" :size="20"></icon> Ajustes</div>
 
-        <div class="set-group">Interfaz</div>
-        <div class="set-row">
-          <span class="lbl"><icon name="list" :size="18"></icon> Modo compacto</span>
-          <label class="switch">
-            <input type="checkbox" v-model="cfg.modoCompacto" @change="aplicarModoCompacto">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
-          Reduce el espaciado para ver mas informacion en pantalla.
-        </div>
+        <div class="set-group">Personalizacion</div>
+
 
         <div class="set-row">
           <span class="lbl"><icon name="list" :size="18"></icon> Tamaño de letra</span>
@@ -1502,46 +1471,7 @@
           <input v-model="cfg.pin" type="password" placeholder="PIN (4 dígitos)" maxlength="6" @change="guardarCfg">
         </div>
 
-        <div class="set-group" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" @click="umbralesAbierto = !umbralesAbierto">
-          <span>Alertas y umbrales</span>
-          <icon name="chevron" :size="14" :color="mutColor" :style="umbralesAbierto ? 'transform:rotate(180deg)' : ''"></icon>
-        </div>
-        <div v-if="umbralesAbierto">
-          <div class="set-row">
-            <span class="lbl">Cierre pendiente (dias)</span>
-            <input v-model.number="cfg.umbralDiasCierre" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Mermas por semana</span>
-            <input v-model.number="cfg.umbralMermasSemana" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Faltantes por mes</span>
-            <input v-model.number="cfg.umbralFaltantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Sobrantes por mes</span>
-            <input v-model.number="cfg.umbralSobrantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Dias sin backup</span>
-            <input v-model.number="cfg.umbralBackupDias" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Dias sin movimiento</span>
-            <input v-model.number="cfg.umbralSinMovimientoDias" type="number" min="7" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Descuento maximo (%)</span>
-            <input v-model.number="cfg.umbralDescuentoPct" type="number" min="0" max="100" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-          <div class="set-row">
-            <span class="lbl">Stock minimo default</span>
-            <input v-model.number="cfg.stockMinDefault" type="number" min="0" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
-          </div>
-        </div>
-
-        <div class="set-group">Datos</div>
+        <div class="set-group">Datos y respaldos</div>
         <button class="btn pri" @click="exportar"><icon name="download" :size="16" color="#fff"></icon> Exportar respaldo (JSON)</button>
         <button class="btn pri" @click="exportarCifrado" style="background:linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%)">
           <icon name="lock" :size="16" color="#fff"></icon> Exportar respaldo cifrado
@@ -1717,6 +1647,45 @@
                 <icon name="trash" :size="14" color="#dc2626"></icon>
               </button>
             </div>
+          </div>
+        </div>
+
+        <div class="set-group" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" @click="umbralesAbierto = !umbralesAbierto">
+          <span>Alertas y umbrales</span>
+          <icon name="chevron" :size="14" :color="mutColor" :style="umbralesAbierto ? 'transform:rotate(180deg)' : ''"></icon>
+        </div>
+        <div v-if="umbralesAbierto">
+          <div class="set-row">
+            <span class="lbl">Cierre pendiente (dias)</span>
+            <input v-model.number="cfg.umbralDiasCierre" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Mermas por semana</span>
+            <input v-model.number="cfg.umbralMermasSemana" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Faltantes por mes</span>
+            <input v-model.number="cfg.umbralFaltantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Sobrantes por mes</span>
+            <input v-model.number="cfg.umbralSobrantesMes" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Dias sin backup</span>
+            <input v-model.number="cfg.umbralBackupDias" type="number" min="1" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Dias sin movimiento</span>
+            <input v-model.number="cfg.umbralSinMovimientoDias" type="number" min="7" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Descuento maximo (%)</span>
+            <input v-model.number="cfg.umbralDescuentoPct" type="number" min="0" max="100" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
+          </div>
+          <div class="set-row">
+            <span class="lbl">Stock minimo default</span>
+            <input v-model.number="cfg.stockMinDefault" type="number" min="0" style="width:5rem;margin:0;padding:.3rem .5rem" @change="guardarCfg">
           </div>
         </div>
 
@@ -2767,11 +2736,6 @@ export default {
       this.guardarCfg();
     },
 
-    aplicarModoCompacto() {
-      this.guardarCfg();
-      try { document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0'); } catch (e) {}
-    },
-
     mostrarTipAleatorio() {
       const vistos = new Set(this.cfg.tipsVistos || []);
       const disponibles = TIPS_UTILES.filter(t => !vistos.has(t.id));
@@ -3185,6 +3149,14 @@ export default {
       }
       this.busqVenta = '';
       this.focusVenta = false;
+      this.$nextTick(() => {
+        const items = document.querySelectorAll('.cart-item');
+        const last = items[items.length - 1];
+        if (last) {
+          last.classList.add('cart-item-flash');
+          setTimeout(() => last.classList.remove('cart-item-flash'), 500);
+        }
+      });
     },
 
     agregarPrimero() {
@@ -6478,9 +6450,17 @@ export default {
         else await this.guardarCfg();
         try {
           document.documentElement.setAttribute('data-theme', this.cfg.tema);
-          document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0');
         } catch (e) {}
         this.aplicarEscalaFont();
+        // Limpiar items viejos de la cola de backups
+        try {
+          const hace7d = new Date(Date.now() - 7 * 86400000).toISOString();
+          const viejos = await db.tgQueue.filter(x => x.ts < hace7d).toArray();
+          if (viejos.length > 0) {
+            await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+            console.log('Limpiados ' + viejos.length + ' items viejos de tgQueue');
+          }
+        } catch (e) { console.error('limpiar tgQueue', e); }
         setTimeout(() => this.mostrarTipAleatorio(), 2500);
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
