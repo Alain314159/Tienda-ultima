@@ -102,27 +102,6 @@
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
-        <div class="card">
-          <div class="card-title"><icon name="diamond" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Top rentables del mes</div>
-          <div v-if="topRentables.length === 0" class="empty">Sin ventas este mes</div>
-          <div v-for="(p, i) in topRentables" :key="p.id" class="row">
-            <span>{{ i + 1 }}. {{ p.nombre }}</span>
-            <span class="pos">{{ fmt(p.gan) }}</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><icon name="zap" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Accesos rápidos</div>
-          <div class="quick-grid">
-            <button class="quick-btn" @click="ir('ventas')"><icon name="cart" :size="22"></icon>Nueva Venta</button>
-            <button class="quick-btn" @click="ir('gastos')"><icon name="dollar" :size="22"></icon>Registrar Gasto</button>
-            <button class="quick-btn" @click="ir('auditoria')"><icon name="wallet" :size="22"></icon>Arqueo de Caja</button>
-            <button class="quick-btn" @click="ir('socios')"><icon name="users" :size="22"></icon>Socios</button>
-            <button class="quick-btn" @click="ir('reportes')"><icon name="calendar" :size="22"></icon>Cierre Periodo</button>
-            <button class="quick-btn" @click="ir('contabilidad')"><icon name="chart" :size="22"></icon>Contabilidad</button>
-          </div>
-        </div>
-
         <div class="card insights-card" v-if="insights.length">
           <div class="card-title">
             <icon name="zap" :size="18" :color="'#7C3AED'"></icon>
