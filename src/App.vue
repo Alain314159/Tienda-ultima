@@ -1609,72 +1609,123 @@
         </div>
 
         <div class="set-group">Backup en Telegram</div>
-        <div class="info-box" style="font-size:.72rem">
-          Guarda tus respaldos en Telegram (ilimitado, gratis). Crea un bot con <b>@BotFather</b>, pega el token abajo, abrelo en Telegram y envia <b>/start</b>.
+
+        <div v-if="!cfg.tgChatId">
+          <div class="info-box" style="font-size:.75rem">
+            Abre Telegram, busca <b>@mibot_backup_bot</b> y envíale <b>/start</b>. La app lo detecta automáticamente.
+          </div>
+          <div v-if="tgEstado === 'esperando-start' || tgEstado === 'sin-config'" class="info-box" style="background:rgba(59,130,246,.08);border-color:var(--pri);font-size:.78rem">
+            <b>Esperando conexión...</b>
+            <div style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem">
+              <div class="tg-loading-dot"></div>
+              <span style="font-size:.72rem;color:var(--mut)">Buscando chat...</span>
+            </div>
+          </div>
+          <div v-else-if="tgEstado === 'error'" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.78rem">
+            Error de conexión. Verifica que el bot esté activo.
+          </div>
+          <button class="btn ghost" style="font-size:.72rem" @click="tgAutoDetectarChat">
+            <icon name="refresh" :size="14" :color="mutColor"></icon> Buscar ahora
+          </button>
         </div>
-        <div v-if="tgEstado === 'conectado'" class="tg-conectado">
-          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-            <div class="tg-dot"></div>
-            <span style="font-size:.8rem"><b>Conectado:</b> {{ cfg.tgNombre || cfg.tgChatId }}</span>
-          </div>
-          <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
-            Ultimo backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
-            <span v-if="tgColaPendiente > 0" style="color:var(--warn);font-weight:700"> · {{ tgColaPendiente }} en cola</span>
-          </div>
-          <div v-if="(cfg.tgFallosConsecutivos || 0) >= 3" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-xs);padding:.5rem .7rem;margin-bottom:.6rem;font-size:.75rem;color:var(--bad-d);font-weight:700">
-            ⚠ {{ cfg.tgFallosConsecutivos }} fallos consecutivos. Revisa la conexion o el token del bot.
-          </div>
 
-          <div v-if="tgProgreso" class="tg-progreso">
-            <div class="tg-spinner"></div>
-            <span>{{ tgProgreso }}</span>
-          </div>
-
-          <div class="set-row">
-            <span class="lbl" style="font-size:.78rem">Backup automatico (cada 24h)</span>
-            <label class="switch">
-              <input type="checkbox" v-model="cfg.tgAutoBackup" @change="guardarCfg">
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="set-row">
-            <span class="lbl" style="font-size:.78rem">Mantener ultimos</span>
-            <input v-model.number="cfg.tgMantenerN" type="number" min="1" max="100" style="width:4rem;margin:0;padding:.3rem .5rem;text-align:center" @change="guardarCfg">
-          </div>
-
-          <div class="tg-seccion">
-            <div style="font-size:.78rem;font-weight:800;color:var(--pri);margin-bottom:.4rem">Guardar en carpeta del telefono</div>
-            <div v-if="cfg.tgCarpetaActiva" style="font-size:.72rem;color:var(--ok);margin-bottom:.4rem">
-              <b>Carpeta:</b> {{ cfg.tgCarpetaNombre }}
+        <div v-else-if="!cfg.tiendaConfigurada">
+          <div class="tg-conectado" style="background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2)">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+              <div class="tg-dot" style="background:#3B82F6"></div>
+              <span style="font-size:.8rem"><b>Chat conectado:</b> {{ cfg.tgNombre }}</span>
             </div>
-            <div v-else style="font-size:.72rem;color:var(--mut);margin-bottom:.4rem">
-              Sin carpeta configurada. Se guardara solo en Telegram.
-            </div>
-            <div class="grid2">
-              <button class="btn ghost" style="margin:0;font-size:.72rem;padding:.5rem" @click="elegirCarpeta">
-                <icon name="download" :size="12" :color="mutColor"></icon> {{ cfg.tgCarpetaActiva ? 'Cambiar' : 'Elegir carpeta' }}
-              </button>
-              <button v-if="cfg.tgCarpetaActiva" class="btn ghost" style="margin:0;font-size:.72rem;padding:.5rem" @click="quitarCarpeta">
-                Quitar
-              </button>
+            <div style="font-size:.72rem;color:var(--mut);line-height:1.6">
+              Falta asignarle un nombre único a esta tienda. Con el nombre y una contraseña podrás guardar backups identificados y recuperarlos desde cualquier dispositivo.
             </div>
           </div>
 
-          <div class="grid2" style="margin-top:.6rem">
-            <button class="btn pri" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgBackupAhora">
-              <icon name="upload" :size="14" color="#fff"></icon> Backup ahora
-            </button>
-            <button class="btn ghost" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgListar">
-              <icon name="refresh" :size="14" :color="mutColor"></icon> Ver backups
+          <div style="font-size:.78rem;font-weight:800;margin:.7rem 0 .4rem">Registrar nueva tienda</div>
+          <input v-model="mtForm.nombre" type="text" placeholder="Nombre único (ej: tienda-central)" maxlength="40" style="font-size:14px">
+          <div v-if="mtCheck.estado === 'ok'" class="info-box" style="background:rgba(34,197,94,.1);color:var(--ok-d);border-color:var(--ok);font-size:.72rem">
+            ✓ Nombre disponible
+          </div>
+          <div v-else-if="mtCheck.estado === 'ocupado' || mtCheck.estado === 'error'" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.72rem">
+            ✗ {{ mtCheck.motivo || 'Nombre no disponible' }}
+          </div>
+          <button class="btn ghost" style="font-size:.72rem;padding:.5rem" @click="verificarNombreTienda" :disabled="mtCheck.verificando || mtForm.nombre.length < 3">
+            {{ mtCheck.verificando ? 'Verificando...' : 'Verificar disponibilidad' }}
+          </button>
+
+          <div style="font-size:.78rem;font-weight:800;margin:1rem 0 .4rem">Contraseña de respaldo</div>
+          <input v-model="mtForm.password" type="password" placeholder="Mínimo 6 caracteres" style="font-size:14px">
+          <input v-model="mtForm.password2" type="password" placeholder="Repetir contraseña" style="font-size:14px">
+          <div v-if="mtForm.password && mtForm.password.length < 6" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.72rem">
+            La contraseña es muy corta
+          </div>
+          <div v-else-if="mtForm.password && mtForm.password2 && mtForm.password !== mtForm.password2" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.72rem">
+            Las contraseñas no coinciden
+          </div>
+
+          <div class="info-box" style="background:rgba(245,158,11,.1);color:var(--warn-d);border-color:var(--warn);font-size:.72rem;margin-top:.4rem">
+            ⚠ <b>Guarda esta contraseña.</b> Si pierdes el celular, la necesitarás para recuperar tus backups.
+          </div>
+
+          <button class="btn pri" style="margin-top:.5rem" :disabled="!puedoRegistrar" @click="registrarTienda">
+            {{ mtProcesando ? 'Registrando...' : 'Registrar Tienda' }}
+          </button>
+
+          <div style="font-size:.72rem;color:var(--mut);text-align:center;margin-top:.8rem">
+            ¿Ya tienes un nombre registrado?
+            <button class="link-btn" @click="mtForm.modo = mtForm.modo === 'login' ? 'register' : 'login'">
+              {{ mtForm.modo === 'login' ? 'Registrar nueva' : 'Iniciar sesión' }}
             </button>
           </div>
-          <button v-if="tgColaPendiente > 0" class="btn warn" style="margin-top:.5rem;font-size:.72rem" @click="tgProcesarCola">
-            Procesar {{ tgColaPendiente }} en cola
-          </button>
-          <button class="btn ghost" style="margin-top:.5rem;font-size:.72rem" @click="tgDesconectar">
-            Desconectar Telegram
-          </button>
+
+          <div v-if="mtForm.modo === 'login'" style="margin-top:.8rem;padding-top:.8rem;border-top:1px dashed var(--brd)">
+            <div style="font-size:.78rem;font-weight:800;margin-bottom:.4rem">Iniciar sesión</div>
+            <input v-model="mtForm.loginNombre" type="text" placeholder="Nombre de tienda" style="font-size:14px">
+            <input v-model="mtForm.loginPassword" type="password" placeholder="Contraseña" style="font-size:14px">
+            <button class="btn ok" @click="loginTienda" :disabled="!mtForm.loginNombre || !mtForm.loginPassword || mtProcesando">
+              {{ mtProcesando ? 'Entrando...' : 'Entrar' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-else>
+          <div class="tg-conectado">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+              <div class="tg-dot"></div>
+              <span style="font-size:.8rem"><b>Tienda:</b> {{ cfg.nombreTienda }}</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
+              Chat: {{ cfg.tgNombre }} · Último backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
+              <span v-if="tgColaPendiente > 0" style="color:var(--warn);font-weight:700"> · {{ tgColaPendiente }} en cola</span>
+            </div>
+
+            <div v-if="tgProgreso" class="tg-progreso">
+              <div class="tg-spinner"></div>
+              <span>{{ tgProgreso }}</span>
+            </div>
+
+            <div class="set-row">
+              <span class="lbl" style="font-size:.78rem">Backup automático (cada 24h)</span>
+              <label class="switch">
+                <input type="checkbox" v-model="cfg.tgAutoBackup" @change="guardarCfg">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="grid2" style="margin-top:.6rem">
+              <button class="btn pri" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgBackupAhora">
+                <icon name="upload" :size="14" color="#fff"></icon> Backup ahora
+              </button>
+              <button class="btn ghost" style="margin:0;font-size:.75rem;padding:.6rem" :disabled="tgCargando" @click="tgListar">
+                <icon name="refresh" :size="14" :color="mutColor"></icon> Ver backups
+              </button>
+            </div>
+            <button v-if="tgColaPendiente > 0" class="btn warn" style="margin-top:.5rem;font-size:.72rem" @click="tgProcesarCola">
+              Procesar {{ tgColaPendiente }} en cola
+            </button>
+            <button class="btn ghost" style="margin-top:.5rem;font-size:.72rem" @click="tgDesconectar">
+              Desconectar Telegram
+            </button>
+          </div>
 
           <div v-if="tgBackups.length" class="tg-lista">
             <div style="font-size:.75rem;font-weight:800;margin-bottom:.4rem;color:var(--pri)">Backups disponibles</div>
@@ -1691,23 +1742,6 @@
               </button>
             </div>
           </div>
-        </div>
-
-        <div v-else>
-          <div v-if="tgEstado === 'esperando-start'" class="info-box" style="background:rgba(59,130,246,.08);border-color:var(--pri);font-size:.78rem">
-            <b>Esperando conexion...</b><br>
-            Abre Telegram, busca el bot y enviale <b>/start</b>. La app lo detecta automaticamente en 5 segundos.
-            <div style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem">
-              <div class="tg-loading-dot"></div>
-              <span style="font-size:.72rem;color:var(--mut)">Buscando chat...</span>
-            </div>
-          </div>
-          <div v-else-if="tgEstado === 'error'" class="info-box" style="background:rgba(239,68,68,.1);color:var(--bad);border-color:var(--bad);font-size:.78rem">
-            Error de conexion. Verifica que el bot este activo.
-          </div>
-          <button class="btn ghost" style="font-size:.72rem" @click="tgAutoDetectarChat">
-            <icon name="refresh" :size="14" :color="mutColor"></icon> Buscar ahora
-          </button>
         </div>
 
         <div class="set-group" style="color:var(--bad)">Zona peligrosa</div>
@@ -1894,7 +1928,7 @@ import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, build
 import BottomNav from './components/BottomNav.vue';
 import { generarInsights } from './insights.js';
 import { TOAST, TIPO_ASIENTO, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
-import { tgGetMe, tgGetUpdates, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId, tgExtraerBackups } from './telegram.js';
+import { tgCheckName, tgRegister, tgLogin, tgStatus, tgGetMe, tgGetUpdates, tgListBackups, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import Onboarding from './components/Onboarding.vue';
 import SheetMas from './components/SheetMas.vue';
@@ -1956,6 +1990,8 @@ export default {
         calcBilletesActiva: false,
         tgToken: '',
         tgChatId: '',
+        nombreTienda: '',
+        tiendaConfigurada: false,
         tgNombre: '',
         tgAutoBackup: false,
         tgUltimoBackup: null,
@@ -2087,6 +2123,9 @@ export default {
 
       ultimoBackup: null,
       procesandoVenta: false,
+      mtForm: { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' },
+      mtCheck: { estado: 'idle', motivo: '', verificando: false },
+      mtProcesando: false,
       storagePersistente: false,
       storageInfo: { uso: 0, cuota: 0, porcentaje: 0 },
       preImportDisponible: false,
@@ -2118,6 +2157,14 @@ export default {
   computed: {
     soportaNotif() {
       return typeof window !== 'undefined' && 'Notification' in window;
+    },
+
+    puedoRegistrar() {
+      return this.mtForm.nombre.length >= 3
+        && this.mtCheck.estado === 'ok'
+        && this.mtForm.password.length >= 6
+        && this.mtForm.password === this.mtForm.password2
+        && !this.mtProcesando;
     },
 
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
@@ -4688,6 +4735,121 @@ export default {
       } catch (e) { console.error('toggleEruda', e); }
     },
 
+    // ===== CONFIGURACION DE TIENDA =====
+    async verificarNombreTienda() {
+      const nombre = (this.mtForm.nombre || '').toLowerCase().trim();
+      if (!nombre) return;
+      this.mtCheck = { estado: 'verificando', motivo: '', verificando: true };
+      try {
+        const r = await this._tg.tgVerificarNombre(nombre);
+        if (r.disponible) {
+          this.mtCheck = { estado: 'ok', motivo: '', verificando: false };
+        } else {
+          this.mtCheck = { estado: 'ocupado', motivo: r.motivo || 'Nombre ya en uso', verificando: false };
+        }
+      } catch (e) {
+        this.mtCheck = { estado: 'error', motivo: e.message, verificando: false };
+      }
+    },
+
+    async registrarTienda() {
+      if (!this.puedoRegistrar) return;
+      this.mtProcesando = true;
+      try {
+        await this._tg.tgRegistrarTienda(this.mtForm.nombre.toLowerCase().trim(), this.mtForm.password);
+        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
+        this.mtCheck = { estado: 'idle', motivo: '', verificando: false };
+        this.toastMsg('Tienda registrada correctamente');
+        await this.tgListar();
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+      } finally {
+        this.mtProcesando = false;
+      }
+    },
+
+    async loginTienda() {
+      if (!this.mtForm.loginNombre || !this.mtForm.loginPassword) return;
+      this.mtProcesando = true;
+      try {
+        await this._tg.tgLoginTienda(this.mtForm.loginNombre.toLowerCase().trim(), this.mtForm.loginPassword);
+        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
+        this.toastMsg('Sesión iniciada');
+        await this.tgListar();
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+      } finally {
+        this.mtProcesando = false;
+      }
+    },
+
+    // ===== CONFIGURACION DE TIENDA =====
+    async verificarNombreTienda() {
+      const nombre = (this.mtForm.nombre || '').toLowerCase().trim();
+      if (!nombre || nombre.length < 3) return;
+      this.mtCheck = { estado: 'verificando', motivo: '', verificando: true };
+      try {
+        const r = await tgCheckName(nombre);
+        if (r.disponible) this.mtCheck = { estado: 'ok', motivo: '', verificando: false };
+        else this.mtCheck = { estado: 'ocupado', motivo: r.motivo || 'Nombre ya en uso', verificando: false };
+      } catch (e) {
+        this.mtCheck = { estado: 'error', motivo: e.message, verificando: false };
+      }
+    },
+
+    async registrarTienda() {
+      if (!this.puedoRegistrar) return;
+      if (!this.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
+      this.mtProcesando = true;
+      try {
+        const r = await tgRegister(this.mtForm.nombre.toLowerCase().trim(), this.mtForm.password, this.cfg.tgChatId);
+        this.cfg.nombreTienda = r.nombre;
+        this.cfg.tiendaConfigurada = true;
+        this.cfg.tgAutoBackup = true;
+        await this.guardarCfg();
+        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
+        this.mtCheck = { estado: 'idle', motivo: '', verificando: false };
+        this.toastMsg('Tienda registrada correctamente');
+        await this.tgListar();
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+      } finally {
+        this.mtProcesando = false;
+      }
+    },
+
+    async loginTienda() {
+      if (!this.mtForm.loginNombre || !this.mtForm.loginPassword) return;
+      if (!this.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
+      this.mtProcesando = true;
+      try {
+        const r = await tgLogin(this.mtForm.loginNombre.toLowerCase().trim(), this.mtForm.loginPassword, this.cfg.tgChatId);
+        this.cfg.nombreTienda = r.nombre;
+        this.cfg.tiendaConfigurada = true;
+        this.cfg.tgAutoBackup = true;
+        await this.guardarCfg();
+        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
+        this.toastMsg('Sesion iniciada');
+        await this.tgListar();
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+      } finally {
+        this.mtProcesando = false;
+      }
+    },
+
+    async tgCargarEstadoTienda() {
+      if (!this.cfg.tgChatId) return;
+      try {
+        const r = await tgStatus(this.cfg.tgChatId);
+        if (r.nombre) {
+          this.cfg.nombreTienda = r.nombre;
+          this.cfg.tiendaConfigurada = true;
+          await this.guardarCfg();
+        }
+      } catch (e) { /* silencioso */ }
+    },
+
     // ===== STORAGE PERSISTENCIA =====
     async pedirPersistenciaStorage() {
       try {
@@ -5776,6 +5938,9 @@ export default {
     },
 
     async tgBackupAhora() {
+      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) {
+        return this.toastMsg('Configura un nombre de tienda antes de hacer backups', TOAST.BAD);
+      }
       const data = buildData(this);
       try {
         await this.tgEnviarDatos(data, 'manual', true);
@@ -5818,7 +5983,7 @@ export default {
 
         // 6. Enviar a Telegram
         this.tgProgreso = 'Subiendo a Telegram...';
-        await tgSendDocument(chatId, gz, fileName, 'Backup · ' + resumen);
+        await tgSendDocument(chatId, this.cfg.nombreTienda, gz, 'Backup · ' + resumen);
 
         // 7. Guardar en carpeta del teléfono (si esta configurada)
         if (this.cfg.tgCarpetaActiva) {
@@ -5856,10 +6021,12 @@ export default {
     async tgListar() {
       const token = this.tgTokenActual();
       if (!token) return;
+      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) {
+        return this.toastMsg('Configura un nombre de tienda primero', TOAST.WARN);
+      }
       this.tgCargando = true;
       try {
-        const updates = await tgGetUpdates();
-        this.tgBackups = tgExtraerBackups(updates);
+        this.tgBackups = await tgListBackups(this.cfg.tgChatId, this.cfg.nombreTienda);
         this.toastMsg(this.tgBackups.length + ' backup(s) encontrado(s)');
       } catch (e) {
         this.toastMsg('Error: ' + e.message, TOAST.BAD);
@@ -5937,6 +6104,8 @@ export default {
           this.cfg.tgChatId = '';
           this.cfg.tgNombre = '';
           this.cfg.tgAutoBackup = false;
+          this.cfg.nombreTienda = '';
+          this.cfg.tiendaConfigurada = false;
           await this.guardarCfg();
           this.tgEstado = 'sin-config';
           this.tgBackups = [];
@@ -5958,6 +6127,7 @@ export default {
           this.cfg.tgAutoBackup = true;
           await this.guardarCfg();
           this.tgEstado = 'conectado';
+          try { await this.tgCargarEstadoTienda(); } catch (e) {}
           console.log('Telegram: chat auto-detectado', chat);
           this.toastMsg('Telegram conectado: ' + this.cfg.tgNombre);
           return true;
@@ -5977,6 +6147,7 @@ export default {
       // 2. Auto-backup si esta activo
       if (!this.cfg.tgAutoBackup) return;
       if (!this.cfg.tgChatId) return;
+      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) return;
       const ult = this.cfg.tgUltimoBackup ? new Date(this.cfg.tgUltimoBackup).getTime() : 0;
       const horas = (Date.now() - ult) / 3600000;
       if (horas >= 24) {
