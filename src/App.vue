@@ -1328,6 +1328,33 @@
       @abrir-ajustes="masAbierto = false; ajustesAbierto = true"
     />
 
+    <!-- AVISO DE CONFIGURACION -->
+    <div v-if="mostrarAvisoTienda" class="modal no-print" @click.self="recordarAvisoTienda">
+      <div class="modal-box aviso-tienda" @click.stop>
+        <div class="aviso-icono">
+          <icon name="upload" :size="26" color="#fff"></icon>
+        </div>
+        <div class="aviso-titulo">Configura tu respaldo</div>
+        <div class="aviso-texto">
+          Asignale un <b>nombre unico</b> a tu tienda para activar el
+          backup automatico en Telegram. Asi no pierdes tus datos
+          si se rompe o cambias el telefono.
+        </div>
+        <div class="aviso-pasos">
+          <div class="aviso-paso"><span class="aviso-num">1</span> Abre Telegram y busca <b>@mibot_backup_bot</b></div>
+          <div class="aviso-paso"><span class="aviso-num">2</span> Enviale <b>/start</b></div>
+          <div class="aviso-paso"><span class="aviso-num">3</span> Aqui en Ajustes elige un nombre y una contrasena</div>
+        </div>
+        <button class="btn pri" @click="abrirAjustesDesdeAviso">
+          <icon name="settings" :size="16" color="#fff"></icon> Configurar ahora
+        </button>
+        <button class="btn ghost" @click="recordarAvisoTienda">Recordarme despues</button>
+        <button class="btn ghost" style="font-size:.78rem;opacity:.7" @click="cerrarAvisoTienda">
+          No volver a mostrar
+        </button>
+      </div>
+    </div>
+
     <!-- SHARE SHEET -->
     <div v-if="shareSheetAbierto" class="overlay no-print" @click="shareSheetAbierto = false"></div>
     <div v-if="shareSheetAbierto" class="sheet no-print">
@@ -1843,6 +1870,7 @@ export default {
     return {
       online: navigator.onLine,
       tipActual: null,
+      mostrarAvisoTienda: false,
       tipTimer: null,
       otraPestana: false,
       shareSheetAbierto: false,
@@ -1900,6 +1928,7 @@ export default {
         modoCompacto: false,
         fontScale: 1,
         tipsVistos: [],
+        avisoTiendaDescartado: false,
         tutorialVisto: false,
         mostrarSplash: true
       },
@@ -2658,6 +2687,23 @@ export default {
       this.guardarCfg();
     },
 
+    // ===== AVISO DE CONFIGURACION INICIAL =====
+    abrirAjustesDesdeAviso() {
+      this.mostrarAvisoTienda = false;
+      this.ajustesAbierto = true;
+    },
+
+    cerrarAvisoTienda() {
+      this.mostrarAvisoTienda = false;
+      this.cfg.avisoTiendaDescartado = true;
+      this.guardarCfg();
+    },
+
+    recordarAvisoTienda() {
+      this.mostrarAvisoTienda = false;
+    },
+
+    // ===== TIPS =====
     mostrarTipAleatorio() {
       const vistos = new Set(this.cfg.tipsVistos || []);
       const disponibles = TIPS_UTILES.filter(t => !vistos.has(t.id));
@@ -2702,6 +2748,24 @@ export default {
           this.toastMsg('Consejos reiniciados');
         }
       };
+    },
+
+    _actualizarScrollLock() {
+      const hayModal = this.ajustesAbierto || this.masAbierto
+        || this.cobroModal.activo || this.confirm.activo
+        || this.prompt.activo || this.retiroAbierto
+        || this.aporteAbierto;
+      try {
+        if (hayModal) {
+          document.body.style.overflow = 'hidden';
+          document.body.style.position = 'fixed';
+          document.body.style.width = '100%';
+        } else {
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
+        }
+      } catch (e) {}
     },
 
     colorNivel(nivel) {
@@ -6384,6 +6448,10 @@ export default {
           }
         } catch (e) { console.error('limpiar tgQueue', e); }
         setTimeout(() => this.mostrarTipAleatorio(), 2500);
+        // Aviso de configuracion inicial
+        if (!this.cfg.tiendaConfigurada && !this.cfg.avisoTiendaDescartado) {
+          setTimeout(() => { this.mostrarAvisoTienda = true; }, 800);
+        }
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
         await this.recargarTodo();
@@ -6533,6 +6601,12 @@ export default {
         try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
       },
       deep: true
+    },
+    ajustesAbierto(v) {
+      this.$nextTick(() => this._actualizarScrollLock());
+    },
+    masAbierto(v) {
+      this.$nextTick(() => this._actualizarScrollLock());
     },
     'cfg.fontScale'(v) {
       try {
