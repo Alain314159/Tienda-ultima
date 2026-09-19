@@ -2420,53 +2420,52 @@ html { -webkit-overflow-scrolling: touch; }
 .tip-cerrar:active { transform: scale(.9); }
 
 
-/* ===== RECOMENDACIONES ===== */
+
+
+/* ===== RECOMENDACIONES (diseno limpio) ===== */
 .rec-card {
-  background: linear-gradient(135deg, rgba(217,119,6,.04) 0%, rgba(217,119,6,.01) 100%);
-  border: 1px solid rgba(217,119,6,.18);
+  background: var(--card);
+}
+.rec-card .card-title {
+  margin-bottom: .6rem;
 }
 .rec-row {
   display: flex;
-  gap: .6rem;
+  gap: .55rem;
   align-items: center;
-  padding: .7rem 0;
+  padding: .55rem 0;
   border-bottom: 1px solid var(--brd);
   cursor: pointer;
   transition: background var(--tr);
-  position: relative;
 }
 .rec-row:last-of-type { border-bottom: none; }
 .rec-row:active { background: var(--bg); }
 
 .rec-icon {
-  width: 2rem;
-  height: 2rem;
-  border-radius: .6rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: .5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.rec-urgente .rec-icon { background: rgba(220,38,38,.15); }
-.rec-atencion .rec-icon { background: rgba(217,119,6,.15); }
-.rec-oportunidad .rec-icon { background: rgba(22,163,74,.15); }
-.rec-info .rec-icon { background: rgba(59,130,246,.15); }
-
-.rec-urgente { border-left: 3px solid #DC2626; padding-left: .5rem; }
-.rec-atencion { border-left: 3px solid #D97706; padding-left: .5rem; }
-.rec-oportunidad { border-left: 3px solid #16A34A; padding-left: .5rem; }
-.rec-info { border-left: 3px solid #3B82F6; padding-left: .5rem; }
+.rec-urgente .rec-icon { background: rgba(220,38,38,.12); }
+.rec-atencion .rec-icon { background: rgba(217,119,6,.12); }
+.rec-oportunidad .rec-icon { background: rgba(22,163,74,.12); }
+.rec-info .rec-icon { background: rgba(59,130,246,.12); }
 
 .rec-body { flex: 1; min-width: 0; }
 .rec-title {
   font-weight: 700;
-  font-size: .85rem;
+  font-size: .82rem;
   line-height: 1.3;
-  margin-bottom: .15rem;
+  margin-bottom: .1rem;
   letter-spacing: -0.01em;
+  color: var(--txt);
 }
 .rec-detail {
-  font-size: .72rem;
+  font-size: .7rem;
   color: var(--mut);
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -2475,18 +2474,15 @@ html { -webkit-overflow-scrolling: touch; }
 .rec-x {
   background: transparent;
   border: none;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  opacity: .35;
-  transition: opacity var(--tr), background var(--tr);
+  opacity: .3;
+  transition: opacity var(--tr);
 }
-.rec-x:hover, .rec-x:active {
-  opacity: 1;
-  background: var(--bg);
-}
+.rec-x:hover, .rec-x:active { opacity: 1; }
