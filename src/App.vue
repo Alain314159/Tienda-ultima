@@ -2567,7 +2567,7 @@ export default {
         });
         const descartadas = this.cfg.anomaliasDescartadas || [];
         const filtradas = list.filter(r => !descartadas.includes(r.clave));
-        const result = filtradas.slice(0, 10);
+        const result = filtradas.slice(0, 8);
         this._recCache = { sig, data: result };
         return result;
       } catch (e) { console.error('recomendaciones', e); return []; }
