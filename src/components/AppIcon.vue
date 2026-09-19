@@ -1,8 +1,8 @@
 <template>
-  <svg :width="s" :height="s" viewBox="0 0 24 24" fill="none"
+  <svg viewBox="0 0 24 24" fill="none"
     :stroke="color" stroke-width="2"
     stroke-linecap="round" stroke-linejoin="round"
-    style="flex-shrink:0;vertical-align:middle;display:inline-block;"
+    :style="{ width: sRem, height: sRem, flexShrink: 0, verticalAlign: 'middle', display: 'inline-block' }"
     v-html="path"></svg>
 </template>
 
@@ -17,7 +17,10 @@ export default {
     color: { type: String, default: '#2196F3' }
   },
   computed: {
-    s() { return parseInt(this.size) || 22; },
+    sRem() {
+      const n = parseInt(this.size) || 22;
+      return (n / 15) + 'rem';
+    },
     path() { return PATHS[this.name] || ''; }
   }
 };

@@ -58,6 +58,12 @@
       </div>
     </header>
 
+    <div v-if="tipActual" class="tip-banner no-print" @click="clickTip">
+      <div class="tip-icono"><icon :name="tipActual.icono" :size="16" color="#fff"></icon></div>
+      <div class="tip-texto">{{ tipActual.texto }}</div>
+      <button class="tip-cerrar" @click.stop="cerrarTip" aria-label="Cerrar">×</button>
+    </div>
+
     <main @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
       <!-- ==================== DASHBOARD ==================== -->
       <section v-if="sec === 'dashboard'" class="fade-up">
@@ -102,49 +108,28 @@
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
-        <div class="card insights-card" v-if="insights.length">
+        <div class="card rec-card" v-if="recomendaciones.length">
           <div class="card-title">
-            <icon name="zap" :size="18" :color="'#7C3AED'"></icon>
-            Consejos de Tienda Pro
+            <icon name="zap" :size="18" :color="'#D97706'"></icon>
+            Recomendaciones
+            <span v-if="recomendacionesUrgentes > 0" class="badge out" style="margin-left:auto">{{ recomendacionesUrgentes }} urgente(s)</span>
           </div>
-          <div v-for="(ins, i) in insights" :key="i"
-            class="insight-row"
-            :class="'insight-' + ins.tipo"
-            @click="ir(ins.sec)">
-            <div class="insight-icon">
-              <icon :name="ins.icono" :size="16" :color="ins.tipo === 'bad' ? '#DC2626' : ins.tipo === 'warn' ? '#D97706' : ins.tipo === 'ok' ? '#16A34A' : '#7C3AED'"></icon>
+          <div v-for="(rec, i) in recomendaciones" :key="i"
+            class="rec-row"
+            :class="'rec-' + rec.nivel"
+            @click="ir(rec.sec, rec.refId)">
+            <div class="rec-icon">
+              <icon :name="rec.icono" :size="16" :color="colorNivel(rec.nivel)"></icon>
             </div>
-            <div class="insight-body">
-              <div class="insight-title">{{ ins.titulo }}</div>
-              <div class="insight-detail">{{ ins.detalle }}</div>
+            <div class="rec-body">
+              <div class="rec-title">{{ rec.titulo }}</div>
+              <div class="rec-detail">{{ rec.detalle }}</div>
             </div>
-            <icon name="chevron" :size="14" :color="mutColor" style="transform:rotate(-90deg);flex-shrink:0"></icon>
-          </div>
-        </div>
-
-        <div class="card" v-if="anomalias.length">
-          <div class="card-title">
-            <icon name="alert" :size="18" :color="anomaliasCriticas > 0 ? '#dc2626' : '#d97706'"></icon>
-            Anomalias ({{ anomalias.length }})
-            <span v-if="anomaliasCriticas > 0" class="badge out" style="margin-left:auto">{{ anomaliasCriticas }} criticas</span>
-          </div>
-          <div v-for="(a, i) in anomalias.slice(0, 5)" :key="i" class="item anomalia-item">
-            <div class="info" style="cursor:pointer" @click="ir(a.sec, a.refId)">
-              <div class="nm">
-                <span class="badge" :class="a.nivel === 'alta' ? 'out' : (a.nivel === 'media' ? 'low' : 'arch')" style="margin-right:.3rem">{{ a.nivel.toUpperCase() }}</span>
-                {{ a.titulo }}
-              </div>
-              <div class="det">{{ a.detalle }}</div>
-            </div>
-            <button class="icon-btn" @click.stop="descartarAnomalia(a.clave)" aria-label="Descartar" title="Descartar">
-              <icon name="x" :size="14" :color="mutColor"></icon>
+            <button v-if="rec.clave" class="rec-x" @click.stop="descartarAnomalia(rec.clave)" aria-label="Descartar">
+              <icon name="x" :size="12" :color="mutColor"></icon>
             </button>
           </div>
-          <div v-if="anomalias.length > 5" class="det" style="text-align:center;margin-top:.4rem;font-size:.72rem;color:var(--mut)">
-            + {{ anomalias.length - 5 }} mas
-          </div>
           <div style="display:flex;justify-content:center;gap:1rem;margin-top:.5rem;flex-wrap:wrap">
-            <button v-if="anomalias.length > 1" class="link-btn" @click="descartarTodasAnomalias">Descartar todas</button>
             <button v-if="cfg.anomaliasDescartadas && cfg.anomaliasDescartadas.length" class="link-btn" @click="restaurarAnomalias">
               Restaurar {{ cfg.anomaliasDescartadas.length }} descartada(s)
             </button>
@@ -1748,6 +1733,10 @@
           <span class="lbl"><icon name="zap" :size="18"></icon> Ver tutorial</span>
           <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="repetirTutorial">Abrir</button>
         </div>
+        <div class="set-row">
+          <span class="lbl"><icon name="refresh" :size="18"></icon> Reiniciar consejos</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="reiniciarTips">Reiniciar</button>
+        </div>
 
         <div class="set-group">Avanzado</div>
         <div class="set-row">
@@ -1917,7 +1906,7 @@
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
-import { generarInsights } from './insights.js';
+import { generarRecomendaciones } from './insights.js';
 import { TOAST, TIPO_ASIENTO, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import { tgCheckName, tgRegister, tgLogin, tgStatus, tgGetMe, tgGetUpdates, tgListBackups, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
@@ -1926,6 +1915,28 @@ import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
+// Consejos utiles que se muestran al arrancar la app
+const TIPS_UTILES = [
+  { id: 'tamano-letra', icono: 'list', texto: 'Sabias que puedes aumentar el tamano de las letras hasta 2x? Ajustes > Interfaz > Tamano de letra.', sec: 'ajustes' },
+  { id: 'modo-oscuro', icono: 'moon', texto: 'Cambia entre tema claro y oscuro con el icono de sol/luna en la barra superior.', sec: null },
+  { id: 'modo-compacto', icono: 'list', texto: 'El modo compacto muestra mas informacion en pantalla. Ajustes > Interfaz.', sec: 'ajustes' },
+  { id: 'pin', icono: 'lock', texto: 'Protege las operaciones sensibles con un PIN. Ajustes > Seguridad.', sec: 'ajustes' },
+  { id: 'backup-tg', icono: 'upload', texto: 'Activa el backup automatico en Telegram para no perder datos. Ajustes > Backup en Telegram.', sec: 'ajustes' },
+  { id: 'compartir-precios', icono: 'share', texto: 'Comparte tu lista de precios por WhatsApp. Inventario > Compartir lista.', sec: 'inventario' },
+  { id: 'escalones', icono: 'trend', texto: 'Define precios por cantidad: al vender 10 o mas se aplica automaticamente. Al crear un producto.', sec: 'productos' },
+  { id: 'empaques', icono: 'package', texto: 'Configura empaques (saco, caja) para mostrar el stock como "2 sacos + 5 kg". Al crear un producto.', sec: 'productos' },
+  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Mas > Auditoria.', sec: 'auditoria' },
+  { id: 'cierre', icono: 'calendar', texto: 'Cierra el periodo al final del mes para acumular la ganancia. Reportes > Cerrar Periodo.', sec: 'reportes' },
+  { id: 'busqueda', icono: 'search', texto: 'Usa la lupa arriba para buscar productos, ventas o socios en toda la app.', sec: null },
+  { id: 'gastos', icono: 'dollar', texto: 'Registra gastos (luz, alquiler, transporte) para ver tu ganancia neta real.', sec: 'gastos' },
+  { id: 'socios', icono: 'users', texto: 'Con socios, la app reparte la ganancia automaticamente por su porcentaje. Mas > Socios.', sec: 'socios' },
+  { id: 'pasivos', icono: 'credit-card', texto: 'Registra deudas con proveedores. La app te avisa cuando vencen. Mas > Contabilidad.', sec: 'contabilidad' },
+  { id: 'anomalias', icono: 'alert', texto: 'La app detecta problemas automaticamente: ventas bajo costo, stock negativo, faltantes. Los veras en Inicio.', sec: null },
+  { id: 'mas', icono: 'menu', texto: 'Desde el boton "Mas" abajo accedes a Contabilidad, Auditoria, Socios y Reportes.', sec: null },
+  { id: 'exportar', icono: 'download', texto: 'Exporta un respaldo JSON para migrar de dispositivo o tener copia extra. Ajustes > Datos.', sec: 'ajustes' },
+  { id: 'merma', icono: 'alert', texto: 'Registra mermas (vencidos, danados) para saber tu perdida real. Inventario > Merma / Ajuste.', sec: 'inventario' }
+];
+
 // Chart.js se carga dinamicamente en renderChart()
 // jsPDF se carga dinamicamente al exportar PDF
 
@@ -1940,6 +1951,8 @@ export default {
   data() {
     return {
       online: navigator.onLine,
+      tipActual: null,
+      tipTimer: null,
       otraPestana: false,
       shareSheetAbierto: false,
       hayUpdate: false,
@@ -1995,6 +2008,7 @@ export default {
         tgCarpetaNombre: '',
         modoCompacto: false,
         fontScale: 1,
+        tipsVistos: [],
         tutorialVisto: false,
         mostrarSplash: true
       },
@@ -2127,6 +2141,7 @@ export default {
       _notifTimer: null,
       _fifoCache: {},
       _stockMapCache: null,
+      _recCache: null,
       _anomaliasCache: null,
       _topRentCache: null,
       _invAgrCache: null,
@@ -2526,212 +2541,44 @@ export default {
       return result;
     },
 
-    insights() {
+    recomendaciones() {
+      const sig = [
+        this.ventas.length, this.compras.length, this.ajustes.length,
+        this.lotes.length, this.gastos.length, this.movCaja.length,
+        this.cierres.length, this.pasivos.length, this.asientos.length,
+        this.productos.length, this.saldoCaja, this.gananciaNetaPeriodo,
+        JSON.stringify(this.cfg.anomaliasDescartadas || []),
+        this.cfg.umbralDescuentoPct, this.cfg.umbralDiasCierre
+      ].join('|');
+      const cached = this._recCache;
+      if (cached && cached.sig === sig) return cached.data;
+
       try {
-        const list = generarInsights({
+        const list = generarRecomendaciones({
           ventas: this.ventas, compras: this.compras, gastos: this.gastos,
           ajustes: this.ajustes, productos: this.productos, lotes: this.lotes,
           cierres: this.cierres, movCaja: this.movCaja,
           saldoCaja: this.saldoCaja, cfg: this.cfg,
           formatMoney: fmt, formatNum: fmtCant,
-          stockDe: (pid) => this.stock(pid)
+          stockDe: (pid) => this.stock(pid),
+          balanzaPorCuenta: this.balanzaPorCuenta,
+          asientos: this.asientos,
+          pasivos: this.pasivos
         });
-        const hayAlertasStock = this.productosAgotados.length > 0 || this.productosBajoStock.length > 0;
-        return hayAlertasStock
-          ? list.filter(ins => !(ins.titulo || '').includes('Revisa inventario'))
-          : list;
-      } catch (e) { console.error('insights', e); return []; }
+        const descartadas = this.cfg.anomaliasDescartadas || [];
+        const filtradas = list.filter(r => !descartadas.includes(r.clave));
+        const result = filtradas.slice(0, 10);
+        this._recCache = { sig, data: result };
+        return result;
+      } catch (e) { console.error('recomendaciones', e); return []; }
     },
 
-    anomalias() {
-      const sig = [
-        this.ventas.length, this.compras.length, this.ajustes.length, this.lotes.length,
-        this.gastos.length, this.movCaja.length, this.cierres.length, this.pasivos.length,
-        this.asientos.length, this.productos.length, this.saldoCaja, this.gananciaNetaPeriodo,
-        JSON.stringify(this.cfg.anomaliasDescartadas || [])
-      ].join('|');
-      const cached = this._anomaliasCache;
-      if (cached && cached.sig === sig) return cached.data;
-
-      const out = [];
-      const ahora = new Date();
-      const hace7d = new Date(ahora.getTime() - 7 * 86400000);
-      const hace30d = new Date(ahora.getTime() - 30 * 86400000);
-      const umbralSinMov = new Date(ahora.getTime() - n(this.cfg.umbralSinMovimientoDias || 60) * 86400000);
-      const descartadas = this.cfg.anomaliasDescartadas || [];
-      const add = (obj) => { if (!descartadas.includes(obj.clave)) out.push(obj); };
-
-      // 1. Caja negativa
-      if (this.saldoCaja < -0.01) {
-        const nivel = this.saldoCaja < -1000 ? 'alta' : 'media';
-        add({ nivel, icono: 'alert', titulo: 'Caja en negativo', detalle: fmt(this.saldoCaja), sec: 'contabilidad', clave: 'caja-negativa' });
-      }
-
-      // 2. Ventas bajo costo
-      const ventasBajoCosto = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d)
-        .flatMap(v => v.items.filter(it => n(it.ganancia) < -0.01).map(it => ({ venta: v, item: it })));
-      if (ventasBajoCosto.length > 0) {
-        const totalPerdido = m(ventasBajoCosto.reduce((s, x) => s + n(x.item.ganancia), 0));
-        add({ nivel: 'alta', icono: 'trend', titulo: ventasBajoCosto.length + ' venta(s) bajo costo', detalle: 'Perdida: ' + fmt(totalPerdido), sec: 'ventas', clave: 'ventas-bajo-costo-' + ventasBajoCosto.length });
-      }
-
-      // 3. Stock negativo
-      const stockNeg = this.productos.filter(p => !p.archivado && this.stock(p.id) < -0.001);
-      if (stockNeg.length > 0) {
-        stockNeg.forEach(p => {
-          add({ nivel: 'alta', icono: 'package', titulo: p.nombre + ': stock negativo', detalle: 'Stock actual: ' + fmtCant(this.stock(p.id)), sec: 'productos', refId: p.id, clave: 'stock-neg-' + p.id });
-        });
-      }
-
-      // 4. Mermas frecuentes
-      const mermasSemana = {};
-      this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= hace7d).forEach(a => {
-        mermasSemana[a.productoId] = (mermasSemana[a.productoId] || 0) + 1;
-      });
-      Object.keys(mermasSemana).forEach(pid => {
-        if (mermasSemana[pid] >= n(this.cfg.umbralMermasSemana || 3)) {
-          const p = this.productos.find(x => x.id === pid);
-          add({ nivel: 'media', icono: 'alert', titulo: (p ? p.nombre : 'Producto') + ': mermas frecuentes', detalle: mermasSemana[pid] + ' mermas en 7 dias', sec: 'productos', refId: pid, clave: 'mermas-frec-' + pid });
-        }
-      });
-
-      // 5. Faltantes repetidos
-      const faltantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d);
-      if (faltantes.length >= n(this.cfg.umbralFaltantesMes || 3)) {
-        const total = m(faltantes.reduce((s, f) => s + n(f.monto), 0));
-        add({ nivel: 'media', icono: 'wallet', titulo: faltantes.length + ' faltantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'contabilidad', clave: 'faltantes-' + faltantes.length });
-      }
-
-      // 6. Compras con costo elevado
-      this.productos.filter(p => !p.archivado).forEach(p => {
-        const comprasProd = this.compras.filter(c => c.productoId === p.id && !c.anulada).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-        if (comprasProd.length < 3) return;
-        const ult = n(comprasProd[0].costo);
-        const ultFecha = new Date(comprasProd[0].fecha);
-        if (ultFecha < hace30d) return;
-        const previas = comprasProd.slice(1, 6);
-        const prom = previas.reduce((s, c) => s + n(c.costo), 0) / previas.length;
-        if (prom > 0.01 && ult > prom * 1.3) {
-          add({ nivel: 'baja', icono: 'bag', titulo: p.nombre + ': compra ' + ((ult/prom - 1) * 100).toFixed(0) + '% mas caro', detalle: fmt(ult) + ' vs ' + fmt(prom) + ' promedio', sec: 'compras', refId: comprasProd[0].id, clave: 'compra-cara-' + comprasProd[0].id });
-        }
-      });
-
-      // 7. Ventas anuladas recientes
-      const anuladas30 = this.ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d);
-      if (anuladas30.length >= 5) {
-        add({ nivel: 'baja', icono: 'x', titulo: anuladas30.length + ' ventas anuladas en 30 dias', detalle: 'Revisar historial', sec: 'ventas', clave: 'anuladas-' + anuladas30.length });
-      }
-
-      // 8. Productos sin movimiento con stock
-      const sinMov = this.productos.filter(p => {
-        if (p.archivado) return false;
-        const stock = this.stock(p.id);
-        if (stock <= 0) return false;
-        const fechaCompra = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
-        if (fechaCompra && fechaCompra > umbralSinMov) return false;
-        const ventasRecientes = this.ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id));
-        return !ventasRecientes;
-      });
-      sinMov.forEach(p => {
-        add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': sin movimiento', detalle: 'Stock ' + fmtCant(this.stock(p.id)) + ', sin ventas en ' + (this.cfg.umbralSinMovimientoDias || 60) + ' dias', sec: 'productos', refId: p.id, clave: 'sin-mov-' + p.id });
-      });
-
-      // 9. Cierre pendiente
-      const ultimoCierre = this.cierres.length > 0 ? Math.max(...this.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.cfg.periodoInicio).getTime();
-      const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
-      if (diasSinCierre >= n(this.cfg.umbralDiasCierre || 30)) {
-        add({ nivel: 'media', icono: 'calendar', titulo: 'Cierre pendiente', detalle: diasSinCierre + ' dias sin cerrar periodo', sec: 'reportes', clave: 'cierre-pendiente' });
-      }
-
-      // N2. Ganancia del periodo negativa o muy baja
-      if (this.ventasPeriodo > 100 && this.gananciaNetaPeriodo < 0) {
-        add({ nivel: 'alta', icono: 'trend', titulo: 'Ganancia neta negativa', detalle: 'Periodo actual: ' + fmt(this.gananciaNetaPeriodo), sec: 'contabilidad', clave: 'ganancia-neg-periodo' });
-      } else if (this.ventasPeriodo > 100 && this.margenPeriodo < 3) {
-        add({ nivel: 'media', icono: 'trend', titulo: 'Margen neto muy bajo', detalle: 'Margen: ' + this.margenPeriodo + '%', sec: 'contabilidad', clave: 'margen-bajo-periodo' });
-      }
-
-      // N3. Mermas por valor alto
-      const mermasValorAlto = m(this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= hace30d).reduce((s, a) => s + n(a.costoPerdida), 0));
-      if (mermasValorAlto > 0 && this.ventasPeriodo > 0) {
-        const pctMermas = (mermasValorAlto / this.ventasPeriodo) * 100;
-        if (pctMermas > 5) {
-          add({ nivel: 'media', icono: 'alert', titulo: 'Mermas elevadas', detalle: fmt(mermasValorAlto) + ' (' + pctMermas.toFixed(1) + '% de ventas)', sec: 'inventario', clave: 'mermas-valor-alto' });
-        }
-      }
-
-      // N4. Descuadre contable
-      const cuadreDebe = this.balanzaPorCuenta.reduce((s, b) => s + b.debe, 0);
-      const cuadreHaber = this.balanzaPorCuenta.reduce((s, b) => s + b.haber, 0);
-      if (Math.abs(cuadreDebe - cuadreHaber) > 0.01 && this.asientos.length > 0) {
-        add({ nivel: 'alta', icono: 'alert', titulo: 'Descuadre en libro diario', detalle: 'Debe: ' + fmt(cuadreDebe) + ' · Haber: ' + fmt(cuadreHaber), sec: 'contabilidad', clave: 'descuadre-libro' });
-      }
-
-      // N5. Productos con muchas ventas anuladas
-      const anuladasPorProd = {};
-      this.ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d).forEach(v => {
-        v.items.forEach(it => {
-          anuladasPorProd[it.productoId] = (anuladasPorProd[it.productoId] || 0) + 1;
-        });
-      });
-      Object.keys(anuladasPorProd).forEach(pid => {
-        if (anuladasPorProd[pid] >= 3) {
-          const p = this.productos.find(x => x.id === pid);
-          add({ nivel: 'baja', icono: 'x', titulo: (p ? p.nombre : 'Producto') + ': ventas anuladas frecuentes', detalle: anuladasPorProd[pid] + ' anulaciones en 30 dias', sec: 'ventas', clave: 'anuladas-prod-' + pid });
-        }
-      });
-
-      // 10. Backup viejos
-      if (this.ultimoBackup && this.ultimoBackup.fecha) {
-        const diasSinBackup = Math.floor((ahora.getTime() - new Date(this.ultimoBackup.fecha).getTime()) / 86400000);
-        if (diasSinBackup >= n(this.cfg.umbralBackupDias || 7)) {
-          add({ nivel: 'baja', icono: 'download', titulo: 'Backup antiguo', detalle: diasSinBackup + ' dias desde el ultimo backup', sec: 'ajustes', clave: 'backup-viejo' });
-        }
-      }
-
-      // 11. Descuentos altos (venta muy por debajo del precio de lista)
-      const umbralDesc = n(this.cfg.umbralDescuentoPct || 20);
-      if (umbralDesc > 0) {
-        const descAltos = [];
-        this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d).forEach(v => {
-          v.items.forEach(it => {
-            const prod = this.productos.find(p => p.id === it.productoId);
-            if (!prod || !prod.precio || n(prod.precio) <= 0) return;
-            if (n(it.precio) <= 0) return;
-            const pctDesc = ((n(prod.precio) - n(it.precio)) / n(prod.precio)) * 100;
-            if (pctDesc >= umbralDesc && n(it.cantidad) > 0) descAltos.push({ venta: v, item: it, pct: pctDesc });
-          });
-        });
-        if (descAltos.length > 0) {
-          add({ nivel: 'media', icono: 'trend', titulo: descAltos.length + ' venta(s) con descuento > ' + umbralDesc + '%', detalle: 'Revisar precios aplicados', sec: 'ventas', clave: 'descuentos-' + descAltos.length });
-        }
-      }
-
-      // 12. Sobrantes repetidos de caja
-      const sobrantes = this.movCaja.filter(mv => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d);
-      if (sobrantes.length >= n(this.cfg.umbralSobrantesMes || 3)) {
-        const total = m(sobrantes.reduce((s, f) => s + n(f.monto), 0));
-        add({ nivel: 'media', icono: 'wallet', titulo: sobrantes.length + ' sobrantes de caja en 30 dias', detalle: 'Total: ' + fmt(total), sec: 'contabilidad', clave: 'sobrantes-' + sobrantes.length });
-      }
-
-      // 13. Movimientos raros de inventario (subidas sin compra)
-      this.productos.filter(p => !p.archivado).forEach(p => {
-        const lotesProd = this.lotes.filter(l => l.productoId === p.id);
-        const comprasProd = this.compras.filter(c => c.productoId === p.id && !c.anulada);
-        // Si hay lotes pero no hay compras, o hay lotes manuales (ajustes con cantidad > 0)
-        const lotesSinCompra = lotesProd.filter(l => !l.compraId || l.compraId.startsWith('aj-'));
-        if (lotesSinCompra.length > 0 && comprasProd.length === 0 && this.stock(p.id) > 3) {
-          add({ nivel: 'baja', icono: 'package', titulo: p.nombre + ': stock sin compra registrada', detalle: lotesSinCompra.length + ' lote(s) por ajuste', sec: 'productos', refId: p.id, clave: 'stock-sin-compra-' + p.id });
-        }
-      });
-
-      const orden = { alta: 0, media: 1, baja: 2 };
-      const result = out.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
-      this._anomaliasCache = { sig, data: result };
-      return result;
+    recomendacionesUrgentes() {
+      return this.recomendaciones.filter(r => r.nivel === 'urgente').length;
     },
 
     anomaliasCriticas() {
-      return this.anomalias.filter(a => a.nivel === 'alta').length;
+      return this.recomendacionesUrgentes;
     },
 
     lotesPorProducto() {
@@ -2923,6 +2770,59 @@ export default {
     aplicarModoCompacto() {
       this.guardarCfg();
       try { document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0'); } catch (e) {}
+    },
+
+    mostrarTipAleatorio() {
+      const vistos = new Set(this.cfg.tipsVistos || []);
+      const disponibles = TIPS_UTILES.filter(t => !vistos.has(t.id));
+      if (disponibles.length === 0) return;
+      const tip = disponibles[Math.floor(Math.random() * disponibles.length)];
+      this.tipActual = tip;
+      if (this.tipTimer) clearTimeout(this.tipTimer);
+      this.tipTimer = setTimeout(() => this.cerrarTip(), 10000);
+    },
+
+    cerrarTip() {
+      if (this.tipTimer) { clearTimeout(this.tipTimer); this.tipTimer = null; }
+      if (this.tipActual) {
+        if (!this.cfg.tipsVistos) this.cfg.tipsVistos = [];
+        if (!this.cfg.tipsVistos.includes(this.tipActual.id)) {
+          this.cfg.tipsVistos.push(this.tipActual.id);
+        }
+        this.guardarCfg();
+      }
+      this.tipActual = null;
+    },
+
+    clickTip() {
+      if (!this.tipActual) return;
+      const tip = this.tipActual;
+      this.cerrarTip();
+      if (tip.sec === 'ajustes') {
+        this.ajustesAbierto = true;
+      } else if (tip.sec) {
+        this.ir(tip.sec);
+      }
+    },
+
+    reiniciarTips() {
+      this.confirm = {
+        activo: true,
+        titulo: 'Reiniciar consejos',
+        msg: 'Se mostraran todos los consejos otra vez. Continuar?',
+        onOk: async () => {
+          this.cfg.tipsVistos = [];
+          await this.guardarCfg();
+          this.toastMsg('Consejos reiniciados');
+        }
+      };
+    },
+
+    colorNivel(nivel) {
+      if (nivel === 'urgente') return '#DC2626';
+      if (nivel === 'atencion') return '#D97706';
+      if (nivel === 'oportunidad') return '#16A34A';
+      return '#3B82F6';
     },
 
     toggleTema() {
@@ -6453,7 +6353,7 @@ export default {
       };
       for (const w of what) this[w] = await map[w]();
       this._stockMapCache = null;
-      this._anomaliasCache = null;
+      this._recCache = null;
       this._topRentCache = null;
       this._invAgrCache = null;
     },
@@ -6468,7 +6368,7 @@ export default {
       tables.forEach((k, i) => this[tables[i]] = r[i]);
       this.invalidarFifoCache();
       this._stockMapCache = null;
-      this._anomaliasCache = null;
+      this._recCache = null;
       this._topRentCache = null;
       this._invAgrCache = null;
       const ms = (performance.now() - t).toFixed(1);
@@ -6581,6 +6481,7 @@ export default {
           document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0');
         } catch (e) {}
         this.aplicarEscalaFont();
+        setTimeout(() => this.mostrarTipAleatorio(), 2500);
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
         await this.recargarTodo();

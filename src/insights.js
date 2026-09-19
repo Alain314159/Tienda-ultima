@@ -1,13 +1,22 @@
-// Motor de reglas inteligentes — analiza datos y devuelve consejos
-export function generarInsights(state) {
+// Motor de Recomendaciones para Tienda Pro
+// Unifica insights + anomalias en una sola lista priorizada.
+
+export function generarRecomendaciones(state) {
   const out = [];
   const {
     ventas, compras, gastos, ajustes, productos, lotes,
     cierres, movCaja, saldoCaja, cfg, formatMoney, formatNum,
-    stockDe, calcMargen
+    stockDe
   } = state;
 
   const ahora = new Date();
+  const hoy = ahora.toISOString().split('T')[0];
+  const hace7d = new Date(ahora.getTime() - 7 * 86400000);
+  const hace30d = new Date(ahora.getTime() - 30 * 86400000);
+  const hace60d = new Date(ahora.getTime() - 60 * 86400000);
+  const hace90d = new Date(ahora.getTime() - 90 * 86400000);
+  const umbralSinMov = new Date(ahora.getTime() - Number(cfg.umbralSinMovimientoDias || 60) * 86400000);
+
   const mesActual = { i: new Date(ahora.getFullYear(), ahora.getMonth(), 1), f: ahora };
   const mesAnterior = {
     i: new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1),
@@ -16,164 +25,260 @@ export function generarInsights(state) {
 
   const ventasMes = ventas.filter(v => !v.anulada && new Date(v.fecha) >= mesActual.i);
   const ventasMesAnt = ventas.filter(v => !v.anulada && new Date(v.fecha) >= mesAnterior.i && new Date(v.fecha) <= mesAnterior.f);
-
   const totalMes = ventasMes.reduce((s, v) => s + (v.total || 0), 0);
   const totalMesAnt = ventasMesAnt.reduce((s, v) => s + (v.total || 0), 0);
   const ganMes = ventasMes.reduce((s, v) => s + (v.ganancia || 0), 0);
   const ganMesAnt = ventasMesAnt.reduce((s, v) => s + (v.ganancia || 0), 0);
 
-  // 1. Tendencia de ventas
-  if (totalMesAnt > 100 && totalMes > 0) {
-    const pct = ((totalMes - totalMesAnt) / totalMesAnt) * 100;
-    if (pct >= 15) {
-      out.push({
-        tipo: 'ok', icono: 'trend',
-        titulo: 'Ventas subieron ' + pct.toFixed(0) + '% este mes',
-        detalle: 'De ' + formatMoney(totalMesAnt) + ' a ' + formatMoney(totalMes),
-        sec: 'reportes'
-      });
-    } else if (pct <= -15) {
-      out.push({
-        tipo: 'warn', icono: 'trend',
-        titulo: 'Ventas bajaron ' + Math.abs(pct).toFixed(0) + '% este mes',
-        detalle: 'De ' + formatMoney(totalMesAnt) + ' a ' + formatMoney(totalMes),
-        sec: 'reportes'
-      });
-    }
-  }
+  const push = (r) => out.push(r);
 
-  // 2. Cambio de margen
-  if (totalMesAnt > 100 && totalMes > 100) {
-    const mActual = (ganMes / totalMes) * 100;
-    const mAnt = (ganMesAnt / totalMesAnt) * 100;
-    const dif = mActual - mAnt;
-    if (Math.abs(dif) >= 3) {
-      out.push({
-        tipo: dif > 0 ? 'ok' : 'warn',
-        icono: 'chart',
-        titulo: dif > 0 ? 'Margen subio a ' + mActual.toFixed(1) + '%' : 'Margen bajo a ' + mActual.toFixed(1) + '%',
-        detalle: 'Antes: ' + mAnt.toFixed(1) + '% · Ahora: ' + mActual.toFixed(1) + '%',
-        sec: 'contabilidad'
-      });
-    }
-  }
+  // ============================================================
+  // ============ URGENTES (peso 80-100) ========================
+  // ============================================================
 
-  // 3. Productos dormidos
-  const hace60d = new Date(ahora.getTime() - 60 * 86400000);
-  const productosDormidos = productos.filter(p => {
-    if (p.archivado) return false;
-    if (stockDe(p.id) <= 0) return false;
-    const ultimaVenta = ventas.filter(v => !v.anulada && v.items.some(it => it.productoId === p.id))
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-    if (!ultimaVenta) return true;
-    return new Date(ultimaVenta.fecha) < hace60d;
-  });
-  if (productosDormidos.length > 0) {
-    out.push({
-      tipo: 'warn', icono: 'package',
-      titulo: productosDormidos.length + ' producto(s) sin movimiento hace 60 dias',
-      detalle: productosDormidos.slice(0, 3).map(p => p.nombre).join(', ') + (productosDormidos.length > 3 ? '...' : ''),
-      sec: 'productos'
-    });
-  }
-
-  // 4. Sugerencia de compra
-  const conStockBajo = productos.filter(p => {
-    if (p.archivado) return false;
-    const s = stockDe(p.id);
-    return s > 0 && s <= (p.stockMinimo || 5);
-  });
-  const agotados = productos.filter(p => !p.archivado && stockDe(p.id) <= 0);
-  if (agotados.length >= 3 || conStockBajo.length >= 5) {
-    out.push({
-      tipo: 'warn', icono: 'bag',
-      titulo: 'Revisa inventario: ' + agotados.length + ' agotados, ' + conStockBajo.length + ' bajos',
-      detalle: 'Considera hacer una compra',
-      sec: 'productos', filtro: 'bajos'
-    });
-  }
-
-  // 5. Caja negativa
+  // Caja negativa
   if (saldoCaja < -0.01) {
-    const hace3d = new Date(ahora.getTime() - 3 * 86400000);
-    const movsNeg = movCaja.filter(m => new Date(m.fecha) >= hace3d);
-    out.push({
-      tipo: 'bad', icono: 'wallet',
+    const nivelPeso = saldoCaja < -1000 ? 95 : 85;
+    push({
+      nivel: 'urgente', peso: nivelPeso, icono: 'wallet',
       titulo: 'Caja en negativo: ' + formatMoney(saldoCaja),
-      detalle: 'Ultimos 3 dias: ' + movsNeg.length + ' movimiento(s)',
-      sec: 'caja'
+      detalle: 'Revisa los ultimos movimientos y arqueos',
+      sec: 'contabilidad', clave: 'caja-negativa'
     });
   }
 
-  // 6. Mejor dia de la semana
-  const porDia = [0, 0, 0, 0, 0, 0, 0];
-  const ventas90 = ventas.filter(v => !v.anulada && new Date(v.fecha) >= new Date(ahora.getTime() - 90 * 86400000));
-  ventas90.forEach(v => { porDia[new Date(v.fecha).getDay()] += (v.total || 0); });
-  const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-  const mejorDia = porDia.indexOf(Math.max(...porDia));
-  if (porDia[mejorDia] > 0 && ventas90.length >= 10) {
-    out.push({
-      tipo: 'info', icono: 'calendar',
-      titulo: 'Tu mejor dia es ' + nombresDias[mejorDia],
-      detalle: 'Ventas acumuladas (90 dias): ' + formatMoney(porDia[mejorDia]),
-      sec: 'reportes'
+  // Stock negativo
+  productos.filter(p => !p.archivado && stockDe(p.id) < -0.001).forEach(p => {
+    push({
+      nivel: 'urgente', peso: 90, icono: 'package',
+      titulo: p.nombre + ': stock negativo',
+      detalle: 'Hay ' + formatNum(stockDe(p.id)) + ' unidades. Revisa ventas o ajusta',
+      sec: 'productos', refId: p.id, clave: 'stock-neg-' + p.id
+    });
+  });
+
+  // Ventas bajo costo
+  const ventasBajoCosto = ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d)
+    .flatMap(v => v.items.filter(it => Number(it.ganancia) < -0.01).map(it => ({ venta: v, item: it })));
+  if (ventasBajoCosto.length > 0) {
+    const perdida = ventasBajoCosto.reduce((s, x) => s + Number(x.item.ganancia), 0);
+    push({
+      nivel: 'urgente', peso: 88, icono: 'trend',
+      titulo: ventasBajoCosto.length + ' venta(s) bajo costo',
+      detalle: 'Perdiste ' + formatMoney(perdida) + ' vendiendo bajo el costo',
+      sec: 'ventas', clave: 'ventas-bajo-costo-' + ventasBajoCosto.length
     });
   }
 
-  // 7. Top producto del mes
-  const ganPorProd = {};
-  ventasMes.forEach(v => v.items.forEach(it => {
-    ganPorProd[it.productoId] = (ganPorProd[it.productoId] || 0) + (it.ganancia || 0);
-  }));
-  const topProd = Object.keys(ganPorProd).sort((a, b) => ganPorProd[b] - ganPorProd[a])[0];
-  if (topProd && ganPorProd[topProd] > 0) {
-    const p = productos.find(x => x.id === topProd);
-    if (p) {
-      out.push({
-        tipo: 'info', icono: 'diamond',
-        titulo: 'Top producto: ' + p.nombre,
-        detalle: 'Genero ' + formatMoney(ganPorProd[topProd]) + ' este mes',
-        sec: 'productos'
+  // Quiebre de stock predicho (producto que se vende mucho y está por agotarse)
+  productos.filter(p => !p.archivado).forEach(p => {
+    const stock = stockDe(p.id);
+    if (stock <= 0) return;
+    const ventasUlt30 = ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d)
+      .flatMap(v => v.items.filter(it => it.productoId === p.id))
+      .reduce((s, it) => s + Number(it.cantidad), 0);
+    const velDiaria = ventasUlt30 / 30;
+    if (velDiaria <= 0) return;
+    const diasRestantes = stock / velDiaria;
+    if (diasRestantes <= 5 && diasRestantes > 0) {
+      push({
+        nivel: 'urgente', peso: 82, icono: 'package',
+        titulo: p.nombre + ' se agota en ' + Math.floor(diasRestantes) + ' dia(s)',
+        detalle: 'Vendes ' + velDiaria.toFixed(2) + '/dia. Stock: ' + formatNum(stock),
+        sec: 'productos', refId: p.id, clave: 'quiebre-' + p.id
+      });
+    }
+  });
+
+  // ============================================================
+  // ============ ATENCION (peso 50-79) =========================
+  // ============================================================
+
+  // Descuadre contable
+  if (state.balanzaPorCuenta) {
+    const debe = state.balanzaPorCuenta.reduce((s, b) => s + (b.debe || 0), 0);
+    const haber = state.balanzaPorCuenta.reduce((s, b) => s + (b.haber || 0), 0);
+    if (Math.abs(debe - haber) > 0.01 && state.asientos && state.asientos.length > 0) {
+      push({
+        nivel: 'atencion', peso: 75, icono: 'alert',
+        titulo: 'Descuadre en libro diario',
+        detalle: 'Debe: ' + formatMoney(debe) + ' · Haber: ' + formatMoney(haber),
+        sec: 'contabilidad', clave: 'descuadre-libro'
       });
     }
   }
 
-  // 8. Dia de la semana sin ventas
-  const hoy = ahora.getDay();
-  const huboVentaHoy = ventas.some(v => !v.anulada && new Date(v.fecha).toDateString() === ahora.toDateString());
-  if (!huboVentaHoy && ahora.getHours() >= 12 && productos.length > 0) {
-    out.push({
-      tipo: 'info', icono: 'cart',
-      titulo: 'Sin ventas registradas hoy',
-      detalle: 'Ya van ' + ahora.getHours() + ' horas del dia',
-      sec: 'ventas'
+  // Cierre pendiente
+  const ultimoCierre = cierres.length > 0
+    ? Math.max(...cierres.map(c => new Date(c.fechaCierre).getTime()))
+    : new Date(cfg.periodoInicio).getTime();
+  const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
+  if (diasSinCierre >= Number(cfg.umbralDiasCierre || 30)) {
+    push({
+      nivel: 'atencion', peso: 70, icono: 'calendar',
+      titulo: 'Cierre pendiente',
+      detalle: diasSinCierre + ' dias sin cerrar el periodo',
+      sec: 'reportes', clave: 'cierre-pendiente'
     });
   }
 
-  // 9. Gastos altos vs ventas
-  const gastosMes = gastos.filter(g => new Date(g.fecha) >= mesActual.i).reduce((s, g) => s + (g.monto || 0), 0);
+  // Mermas altas
+  const mermasMes = ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= mesActual.i)
+    .reduce((s, a) => s + Number(a.costoPerdida || 0), 0);
+  if (mermasMes > 0 && totalMes > 0) {
+    const pct = (mermasMes / totalMes) * 100;
+    if (pct > 5) {
+      push({
+        nivel: 'atencion', peso: 65, icono: 'alert',
+        titulo: 'Mermas altas: ' + formatMoney(mermasMes),
+        detalle: pct.toFixed(1) + '% de las ventas del mes',
+        sec: 'inventario', clave: 'mermas-altas'
+      });
+    }
+  }
+
+  // Faltantes repetidos
+  const faltantes30 = movCaja.filter(mv => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d);
+  if (faltantes30.length >= Number(cfg.umbralFaltantesMes || 3)) {
+    const total = faltantes30.reduce((s, f) => s + Number(f.monto || 0), 0);
+    push({
+      nivel: 'atencion', peso: 62, icono: 'wallet',
+      titulo: faltantes30.length + ' faltantes de caja en 30 dias',
+      detalle: 'Total: ' + formatMoney(total),
+      sec: 'contabilidad', clave: 'faltantes-' + faltantes30.length
+    });
+  }
+
+  // Sobrantes repetidos
+  const sobrantes30 = movCaja.filter(mv => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d);
+  if (sobrantes30.length >= Number(cfg.umbralSobrantesMes || 3)) {
+    const total = sobrantes30.reduce((s, f) => s + Number(f.monto || 0), 0);
+    push({
+      nivel: 'atencion', peso: 60, icono: 'wallet',
+      titulo: sobrantes30.length + ' sobrantes de caja en 30 dias',
+      detalle: 'Total: ' + formatMoney(total),
+      sec: 'contabilidad', clave: 'sobrantes-' + sobrantes30.length
+    });
+  }
+
+  // Productos sin receta (afecta el calculo de ganancia)
+  const sinReceta = productos.filter(p => !p.archivado && (!p.receta || p.receta.length === 0) && stockDe(p.id) >= 0);
+  if (sinReceta.length >= 3) {
+    push({
+      nivel: 'atencion', peso: 55, icono: 'tag',
+      titulo: sinReceta.length + ' productos sin receta',
+      detalle: 'La ganancia es estimada hasta que definas sus costos',
+      sec: 'productos', clave: 'sin-receta-' + sinReceta.length
+    });
+  }
+
+  // Descuentos altos
+  const umbralDesc = Number(cfg.umbralDescuentoPct || 20);
+  if (umbralDesc > 0) {
+    let descAltos = 0;
+    ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace30d).forEach(v => {
+      v.items.forEach(it => {
+        const prod = productos.find(p => p.id === it.productoId);
+        if (!prod || !prod.precio || Number(prod.precio) <= 0) return;
+        if (Number(it.precio) <= 0) return;
+        const pct = ((Number(prod.precio) - Number(it.precio)) / Number(prod.precio)) * 100;
+        if (pct >= umbralDesc && Number(it.cantidad) > 0) descAltos++;
+      });
+    });
+    if (descAltos > 0) {
+      push({
+        nivel: 'atencion', peso: 50, icono: 'trend',
+        titulo: descAltos + ' venta(s) con descuento > ' + umbralDesc + '%',
+        detalle: 'Revisa los precios aplicados',
+        sec: 'ventas', clave: 'descuentos-' + descAltos
+      });
+    }
+  }
+
+  // Gastos altos vs ventas
+  const gastosMes = gastos.filter(g => new Date(g.fecha) >= mesActual.i).reduce((s, g) => s + Number(g.monto || 0), 0);
   if (totalMes > 100 && gastosMes / totalMes > 0.3) {
-    out.push({
-      tipo: 'warn', icono: 'dollar',
+    push({
+      nivel: 'atencion', peso: 48, icono: 'dollar',
       titulo: 'Gastos altos este mes',
       detalle: formatMoney(gastosMes) + ' (' + ((gastosMes / totalMes) * 100).toFixed(0) + '% de las ventas)',
-      sec: 'gastos'
+      sec: 'gastos', clave: 'gastos-altos'
     });
   }
 
-  // 10. Mermas altas
-  const mermasMes = ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= mesActual.i)
-    .reduce((s, a) => s + (a.costoPerdida || 0), 0);
-  if (mermasMes > 0 && totalMes > 0 && (mermasMes / totalMes) > 0.05) {
-    out.push({
-      tipo: 'warn', icono: 'alert',
-      titulo: 'Mermas altas: ' + formatMoney(mermasMes),
-      detalle: ((mermasMes / totalMes) * 100).toFixed(1) + '% de las ventas del mes',
-      sec: 'inventario'
+  // Compras con costo elevado
+  productos.filter(p => !p.archivado).forEach(p => {
+    const comprasProd = compras.filter(c => c.productoId === p.id && !c.anulada).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    if (comprasProd.length < 3) return;
+    const ult = Number(comprasProd[0].costo);
+    const ultFecha = new Date(comprasProd[0].fecha);
+    if (ultFecha < hace30d) return;
+    const previas = comprasProd.slice(1, 6);
+    const prom = previas.reduce((s, c) => s + Number(c.costo), 0) / previas.length;
+    if (prom > 0.01 && ult > prom * 1.3) {
+      push({
+        nivel: 'atencion', peso: 45, icono: 'bag',
+        titulo: p.nombre + ': compra ' + ((ult / prom - 1) * 100).toFixed(0) + '% mas caro',
+        detalle: formatMoney(ult) + ' vs ' + formatMoney(prom) + ' promedio',
+        sec: 'compras', refId: comprasProd[0].id, clave: 'compra-cara-' + comprasProd[0].id
+      });
+    }
+  });
+
+  // Producto que cae (30%+ menos que el mes anterior)
+  const prodGanActual = {};
+  ventasMes.forEach(v => v.items.forEach(it => {
+    prodGanActual[it.productoId] = (prodGanActual[it.productoId] || 0) + Number(it.cantidad);
+  }));
+  const prodGanAnt = {};
+  ventasMesAnt.forEach(v => v.items.forEach(it => {
+    prodGanAnt[it.productoId] = (prodGanAnt[it.productoId] || 0) + Number(it.cantidad);
+  }));
+  Object.keys(prodGanAnt).forEach(pid => {
+    const ant = prodGanAnt[pid] || 0;
+    const act = prodGanActual[pid] || 0;
+    if (ant >= 5 && act > 0 && act < ant * 0.7) {
+      const p = productos.find(x => x.id === pid);
+      if (p) push({
+        nivel: 'atencion', peso: 42, icono: 'trend',
+        titulo: p.nombre + ' bajo ' + ((1 - act / ant) * 100).toFixed(0) + '% sus ventas',
+        detalle: 'Antes ' + formatNum(ant) + ' · Ahora ' + formatNum(act),
+        sec: 'productos', refId: pid, clave: 'prod-cae-' + pid
+      });
+    }
+  });
+
+  // Ventas anuladas frecuentes
+  const anuladas30 = ventas.filter(v => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d);
+  if (anuladas30.length >= 5) {
+    push({
+      nivel: 'atencion', peso: 40, icono: 'x',
+      titulo: anuladas30.length + ' ventas anuladas en 30 dias',
+      detalle: 'Revisa por que se anulan tanto',
+      sec: 'ventas', clave: 'anuladas-' + anuladas30.length
     });
   }
 
-  // 11. Racha de dias con ventas
+  // ============================================================
+  // ============ OPORTUNIDADES (peso 30-49) ====================
+  // ============================================================
+
+  // Producto que crece (30%+ más que el mes anterior)
+  Object.keys(prodGanActual).forEach(pid => {
+    const ant = prodGanAnt[pid] || 0;
+    const act = prodGanActual[pid] || 0;
+    if (ant >= 3 && act > ant * 1.3) {
+      const p = productos.find(x => x.id === pid);
+      if (p) push({
+        nivel: 'oportunidad', peso: 38, icono: 'trend',
+        titulo: p.nombre + ' crece ' + ((act / ant - 1) * 100).toFixed(0) + '%',
+        detalle: 'Antes ' + formatNum(ant) + ' · Ahora ' + formatNum(act) + '. Abastece bien',
+        sec: 'productos', refId: pid, clave: 'prod-crece-' + pid
+      });
+    }
+  });
+
+  // Racha de dias con ventas
   const ultimos7 = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(ahora);
@@ -182,62 +287,293 @@ export function generarInsights(state) {
     const vendio = ventas.some(v => !v.anulada && new Date(v.fecha).toDateString() === key);
     ultimos7.push(vendio);
   }
-  // Racha REAL = dias consecutivos desde hoy hacia atras
   let racha = 0;
-  for (let i = 0; i < 7; i++) {
-    if (!ultimos7[i]) break;
-    racha++;
-  }
-  // Total de dias con ventas (no consecutivos)
-  const diasConVentas = ultimos7.filter(Boolean).length;
+  for (let i = 0; i < 7; i++) { if (!ultimos7[i]) break; racha++; }
   if (racha >= 5) {
-    out.push({
-      tipo: 'ok', icono: 'diamond',
+    push({
+      nivel: 'oportunidad', peso: 35, icono: 'diamond',
       titulo: 'Racha de ' + racha + ' dias con ventas',
-      detalle: 'Sigue asi',
-      sec: 'dashboard'
-    });
-  } else if (diasConVentas <= 1 && productos.length > 3) {
-    out.push({
-      tipo: 'warn', icono: 'trend',
-      titulo: 'Pocas ventas en los ultimos 7 dias',
-      detalle: 'Solo ' + diasConVentas + ' dia(s) con movimiento',
-      sec: 'ventas'
+      detalle: 'Buen ritmo, sigue asi',
+      sec: 'dashboard', clave: 'racha-' + racha
     });
   }
 
-  // 12. Concentracion de ingresos
-  const ganPorProd2 = {};
+  // Ticket promedio sube
+  if (ventasMes.length >= 5 && ventasMesAnt.length >= 5) {
+    const ticketAct = totalMes / ventasMes.length;
+    const ticketAnt = totalMesAnt / ventasMesAnt.length;
+    if (ticketAnt > 0 && ticketAct > ticketAnt * 1.1) {
+      push({
+        nivel: 'oportunidad', peso: 32, icono: 'dollar',
+        titulo: 'Ticket promedio subio a ' + formatMoney(ticketAct),
+        detalle: 'Antes: ' + formatMoney(ticketAnt) + ' · Ahora: ' + formatMoney(ticketAct),
+        sec: 'dashboard', clave: 'ticket-sube'
+      });
+    }
+  }
+
+  // Margen sube
+  if (totalMes > 100 && totalMesAnt > 100) {
+    const mAct = (ganMes / totalMes) * 100;
+    const mAnt = (ganMesAnt / totalMesAnt) * 100;
+    if (mAct - mAnt >= 3) {
+      push({
+        nivel: 'oportunidad', peso: 30, icono: 'chart',
+        titulo: 'Margen subio a ' + mAct.toFixed(1) + '%',
+        detalle: 'Antes: ' + mAnt.toFixed(1) + '% · Ahora: ' + mAct.toFixed(1) + '%',
+        sec: 'contabilidad', clave: 'margen-sube'
+      });
+    } else if (mAnt - mAct >= 3) {
+      push({
+        nivel: 'atencion', peso: 44, icono: 'chart',
+        titulo: 'Margen bajo a ' + mAct.toFixed(1) + '%',
+        detalle: 'Antes: ' + mAnt.toFixed(1) + '% · Ahora: ' + mAct.toFixed(1) + '%',
+        sec: 'contabilidad', clave: 'margen-baja'
+      });
+    }
+  }
+
+  // ============================================================
+  // ============ INFO (peso 0-29) ==============================
+  // ============================================================
+
+  // Tendencia de ventas
+  if (totalMesAnt > 100 && totalMes > 0) {
+    const pct = ((totalMes - totalMesAnt) / totalMesAnt) * 100;
+    if (Math.abs(pct) >= 15) {
+      push({
+        nivel: pct > 0 ? 'oportunidad' : 'info',
+        peso: Math.abs(pct) >= 30 ? 40 : 25,
+        icono: 'trend',
+        titulo: 'Ventas ' + (pct > 0 ? 'subieron' : 'bajaron') + ' ' + Math.abs(pct).toFixed(0) + '%',
+        detalle: 'De ' + formatMoney(totalMesAnt) + ' a ' + formatMoney(totalMes),
+        sec: 'reportes', clave: 'tendencia-ventas'
+      });
+    }
+  }
+
+  // Top producto del mes
+  const ganPorProd = {};
   ventasMes.forEach(v => v.items.forEach(it => {
-    ganPorProd2[it.productoId] = (ganPorProd2[it.productoId] || 0) + (it.ganancia || 0);
+    ganPorProd[it.productoId] = (ganPorProd[it.productoId] || 0) + Number(it.ganancia || 0);
   }));
-  const totalGan = Object.values(ganPorProd2).reduce((s, x) => s + x, 0);
-  const topGan = Math.max(...Object.values(ganPorProd2), 0);
-  if (totalGan > 0 && (topGan / totalGan) > 0.5) {
-    out.push({
-      tipo: 'info', icono: 'diamond',
-      titulo: 'Mucha dependencia de un producto',
-      detalle: 'El top genera ' + ((topGan / totalGan) * 100).toFixed(0) + '% de la ganancia del mes',
-      sec: 'productos'
+  const topProd = Object.keys(ganPorProd).sort((a, b) => ganPorProd[b] - ganPorProd[a])[0];
+  if (topProd && ganPorProd[topProd] > 0) {
+    const p = productos.find(x => x.id === topProd);
+    if (p) push({
+      nivel: 'info', peso: 20, icono: 'diamond',
+      titulo: 'Top producto: ' + p.nombre,
+      detalle: 'Genero ' + formatMoney(ganPorProd[topProd]) + ' este mes',
+      sec: 'productos', refId: topProd, clave: 'top-prod'
     });
   }
 
-  // 14. Proyeccion del mes
+  // Concentracion de ingresos
+  const totalGan = Object.values(ganPorProd).reduce((s, x) => s + x, 0);
+  const topGan = Math.max(...Object.values(ganPorProd), 0);
+  if (totalGan > 0 && (topGan / totalGan) > 0.5 && Object.keys(ganPorProd).length > 1) {
+    push({
+      nivel: 'info', peso: 18, icono: 'diamond',
+      titulo: 'Mucha dependencia de un producto',
+      detalle: 'El top genera ' + ((topGan / totalGan) * 100).toFixed(0) + '% de la ganancia',
+      sec: 'productos', clave: 'concentracion'
+    });
+  }
+
+  // Mejor dia de la semana
+  const porDia = [0, 0, 0, 0, 0, 0, 0];
+  const ventas90 = ventas.filter(v => !v.anulada && new Date(v.fecha) >= hace90d);
+  ventas90.forEach(v => { porDia[new Date(v.fecha).getDay()] += Number(v.total || 0); });
+  const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+  const mejorDia = porDia.indexOf(Math.max(...porDia));
+  if (porDia[mejorDia] > 0 && ventas90.length >= 10) {
+    push({
+      nivel: 'info', peso: 15, icono: 'calendar',
+      titulo: 'Tu mejor dia es ' + nombresDias[mejorDia],
+      detalle: 'Ventas acumuladas (90 dias): ' + formatMoney(porDia[mejorDia]),
+      sec: 'reportes', clave: 'mejor-dia'
+    });
+  }
+
+  // Peor dia de la semana
+  const peorDia = porDia.indexOf(Math.min(...porDia.filter(v => v > 0)));
+  if (peorDia >= 0 && porDia[peorDia] > 0 && porDia[mejorDia] > 0 && porDia[mejorDia] / porDia[peorDia] > 1.5 && ventas90.length >= 10) {
+    push({
+      nivel: 'info', peso: 14, icono: 'calendar',
+      titulo: 'Los ' + nombresDias[peorDia].toLowerCase() + 's bajas ' + (((porDia[mejorDia] - porDia[peorDia]) / porDia[mejorDia]) * 100).toFixed(0) + '%',
+      detalle: 'Considera una promocion ese dia',
+      sec: 'reportes', clave: 'peor-dia'
+    });
+  }
+
+  // Proyeccion fin de mes
   if (totalMes > 0) {
     const diaDelMes = ahora.getDate();
     const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
     if (diaDelMes >= 5) {
       const proyeccion = (totalMes / diaDelMes) * diasEnMes;
-      out.push({
-        tipo: 'info', icono: 'trend',
+      push({
+        nivel: 'info', peso: 12, icono: 'trend',
         titulo: 'Proyeccion fin de mes: ' + formatMoney(proyeccion),
         detalle: 'Basado en el promedio diario actual',
-        sec: 'reportes'
+        sec: 'reportes', clave: 'proyeccion'
       });
     }
   }
 
-  // Ordenar por tipo
-  const orden = { bad: 0, warn: 1, ok: 2, info: 3 };
-  return out.sort((a, b) => orden[a.tipo] - orden[b.tipo]).slice(0, 6);
+  // Capital de trabajo
+  if (gastos.length >= 5 && compras.length >= 3) {
+    const gastosUlt30 = gastos.filter(g => new Date(g.fecha) >= hace30d).reduce((s, g) => s + Number(g.monto || 0), 0);
+    const comprasUlt30 = compras.filter(c => !c.anulada && new Date(c.fecha) >= hace30d).reduce((s, c) => s + Number(c.total || 0), 0);
+    const capitalNecesario = gastosUlt30 + comprasUlt30;
+    if (capitalNecesario > 0) {
+      push({
+        nivel: 'info', peso: 10, icono: 'dollar',
+        titulo: 'Capital de trabajo: ' + formatMoney(capitalNecesario),
+        detalle: 'Lo que necesitas para operar 30 dias al ritmo actual',
+        sec: 'contabilidad', clave: 'capital-trabajo'
+      });
+    }
+  }
+
+  // Productos sin movimiento (con stock, sin ventas hace 60 días)
+  const dormidos = productos.filter(p => {
+    if (p.archivado) return false;
+    if (stockDe(p.id) <= 0) return false;
+    const fechaCompra = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
+    if (fechaCompra && fechaCompra > umbralSinMov) return false;
+    const ventasRecientes = ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id));
+    return !ventasRecientes;
+  });
+  if (dormidos.length > 0) {
+    push({
+      nivel: 'info', peso: 22, icono: 'package',
+      titulo: dormidos.length + ' producto(s) sin movimiento',
+      detalle: dormidos.slice(0, 3).map(p => p.nombre).join(', ') + (dormidos.length > 3 ? '...' : ''),
+      sec: 'productos', clave: 'dormidos-' + dormidos.length
+    });
+  }
+
+  // Sugerencia de compra
+  const conStockBajo = productos.filter(p => {
+    if (p.archivado) return false;
+    const s = stockDe(p.id);
+    return s > 0 && s <= Number(p.stockMinimo || 5);
+  });
+  const agotados = productos.filter(p => !p.archivado && stockDe(p.id) <= 0.001);
+  if (agotados.length >= 3 || conStockBajo.length >= 5) {
+    push({
+      nivel: 'atencion', peso: 46, icono: 'bag',
+      titulo: 'Revisa inventario: ' + agotados.length + ' agotados, ' + conStockBajo.length + ' bajos',
+      detalle: 'Considera hacer una compra',
+      sec: 'productos', clave: 'revisa-inventario'
+    });
+  }
+
+  // ============================================================
+  // ============ CONTEXTO TEMPORAL =============================
+  // ============================================================
+  const contextoTip = contextoDelMomento(ahora, {
+    ventas, totalMes, ganMes, diasSinCierre, formatMoney
+  });
+  if (contextoTip) push(contextoTip);
+
+  // ============================================================
+  // ============ ORDENAR Y DEVOLVER ============================
+  // ============================================================
+  const ordenNivel = { urgente: 0, atencion: 1, oportunidad: 2, info: 3 };
+  return out.sort((a, b) => {
+    // Primero por nivel, luego por peso, luego por titulo
+    const n = ordenNivel[a.nivel] - ordenNivel[b.nivel];
+    if (n !== 0) return n;
+    return (b.peso || 0) - (a.peso || 0);
+  });
+}
+
+// ============================================================
+// ============ CONTEXTO TEMPORAL =============================
+// ============================================================
+function contextoDelMomento(ahora, data) {
+  const dia = ahora.getDay();
+  const hora = ahora.getHours();
+  const diaMes = ahora.getDate();
+  const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+  const { ventas, totalMes, diasSinCierre, formatMoney } = data;
+
+  // Ayer: revisar el resumen
+  if (dia === 1 && hora <= 11) {
+    return {
+      nivel: 'info', peso: 28, icono: 'calendar',
+      titulo: 'Comenzo un nuevo mes',
+      detalle: 'Revisa el resumen del mes pasado en Reportes',
+      sec: 'reportes', clave: 'ctx-nuevo-mes'
+    };
+  }
+
+  // Fin de mes: cerrar período
+  if (diaMes >= diasEnMes - 1 && diasSinCierre >= 25) {
+    return {
+      nivel: 'atencion', peso: 68, icono: 'calendar',
+      titulo: 'Es momento de cerrar el mes',
+      detalle: 'Cierra el periodo para acumular la ganancia',
+      sec: 'reportes', clave: 'ctx-cierre-mes'
+    };
+  }
+
+  // Lunes mañana: nuevo comienzo
+  if (dia === 1 && hora >= 6 && hora <= 12) {
+    const ventasHoy = ventas.filter(v => !v.anulada && new Date(v.fecha).toDateString() === ahora.toDateString()).length;
+    return {
+      nivel: 'info', peso: 18, icono: 'zap',
+      titulo: 'Buena semana' + (ventasHoy > 0 ? ' · ' + ventasHoy + ' venta(s) hoy' : ''),
+      detalle: 'Empieza bien la semana registrando cada movimiento',
+      sec: null, clave: 'ctx-lunes'
+    };
+  }
+
+  // Viernes tarde
+  if (dia === 5 && hora >= 15 && hora <= 20) {
+    return {
+      nivel: 'info', peso: 18, icono: 'trend',
+      titulo: 'Viernes por la tarde',
+      detalle: 'Suele ser buen dia de ventas, ten stock listo',
+      sec: null, clave: 'ctx-viernes'
+    };
+  }
+
+  // Sabado por la manana: hay mas ventas
+  if (dia === 6 && hora >= 9 && hora <= 14) {
+    return {
+      nivel: 'info', peso: 15, icono: 'zap',
+      titulo: 'Sabado por la manana',
+      detalle: 'Dia fuerte, asegurate de tener todo listo',
+      sec: null, clave: 'ctx-sabado'
+    };
+  }
+
+  // Domingo noche: resumen semanal
+  if (dia === 0 && hora >= 18) {
+    return {
+      nivel: 'info', peso: 20, icono: 'calendar',
+      titulo: 'Resumen semanal',
+      detalle: 'Revisa las ventas de la semana en Reportes',
+      sec: 'reportes', clave: 'ctx-domingo'
+    };
+  }
+
+  // Por la noche (22+): resumen del dia
+  if (hora >= 22) {
+    const ventasHoy = ventas.filter(v => !v.anulada && new Date(v.fecha).toDateString() === ahora.toDateString());
+    const totalHoy = ventasHoy.reduce((s, v) => s + Number(v.total || 0), 0);
+    if (ventasHoy.length > 0) {
+      return {
+        nivel: 'info', peso: 16, icono: 'check',
+        titulo: 'Cierre del dia: ' + formatMoney(totalHoy),
+        detalle: ventasHoy.length + ' venta(s) registradas',
+        sec: null, clave: 'ctx-cierre-dia'
+      };
+    }
+  }
+
+  return null;
 }
