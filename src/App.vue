@@ -1508,6 +1508,18 @@
           Reduce el espaciado para ver mas informacion en pantalla.
         </div>
 
+        <div class="set-row">
+          <span class="lbl"><icon name="list" :size="18"></icon> Tamaño de letra</span>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <button class="font-scale-btn" :disabled="cfg.fontScale <= 1" @click="cambiarEscalaFont(-1)">A−</button>
+            <span class="font-scale-val">{{ Number(cfg.fontScale).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') }}×</span>
+            <button class="font-scale-btn" :disabled="cfg.fontScale >= 2" @click="cambiarEscalaFont(1)">A+</button>
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-bottom:.6rem">
+          Aumenta o reduce el tamaño de todas las letras de la app (1× a 2×).
+        </div>
+
         <div class="set-group">Tienda</div>
         <div class="set-row">
           <span class="lbl"><icon name="store" :size="18"></icon> Nombre de tienda</span>
@@ -2003,6 +2015,7 @@ export default {
         tgCarpetaActiva: false,
         tgCarpetaNombre: '',
         modoCompacto: false,
+        fontScale: 1,
         tutorialVisto: false,
         mostrarSplash: true
       },
@@ -2902,6 +2915,30 @@ export default {
           location.reload();
         }
       };
+    },
+
+    aplicarEscalaFont() {
+      const val = Number(this.cfg.fontScale) || 1;
+      try {
+        document.documentElement.style.setProperty('--font-scale', String(val));
+      } catch (e) {}
+    },
+
+    cambiarEscalaFont(delta) {
+      const opciones = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2];
+      let idx = opciones.indexOf(Number(this.cfg.fontScale));
+      if (idx < 0) {
+        // Buscar la más cercana
+        idx = opciones.reduce((best, v, i) =>
+          Math.abs(v - Number(this.cfg.fontScale)) < Math.abs(opciones[best] - Number(this.cfg.fontScale)) ? i : best
+        , 0);
+      }
+      idx += delta;
+      if (idx < 0) idx = 0;
+      if (idx >= opciones.length) idx = opciones.length - 1;
+      this.cfg.fontScale = opciones[idx];
+      this.aplicarEscalaFont();
+      this.guardarCfg();
     },
 
     aplicarModoCompacto() {
@@ -6564,6 +6601,7 @@ export default {
           document.documentElement.setAttribute('data-theme', this.cfg.tema);
           document.documentElement.setAttribute('data-compact', this.cfg.modoCompacto ? '1' : '0');
         } catch (e) {}
+        this.aplicarEscalaFont();
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
         await this.recargarTodo();
@@ -6713,6 +6751,11 @@ export default {
         try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
       },
       deep: true
+    },
+    'cfg.fontScale'(v) {
+      try {
+        document.documentElement.style.setProperty('--font-scale', String(Number(v) || 1));
+      } catch (e) {}
     },
     'cfg.tema'(t) {
       try { document.documentElement.setAttribute('data-theme', t); } catch (e) {}

@@ -5,6 +5,7 @@
 [v-cloak] { display: none !important; }
 
 :root {
+  --font-scale: 1;
   /* Colores principales */
   --pri: #3B82F6;
   --pri-d: #2563EB;
@@ -90,6 +91,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: calc(15px * var(--font-scale));
 }
 
 body {
@@ -99,7 +101,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--txt);
-  font-size: 15px;
+  font-size: 1rem;
   line-height: 1.5;
   letter-spacing: -0.01em;
   overscroll-behavior-y: none;
@@ -342,7 +344,7 @@ input, select, textarea {
   border-radius: var(--r-sm);
   background: var(--card);
   color: var(--txt);
-  font-size: 16px;
+  font-size: 1.0667rem;
   font-family: inherit;
   outline: none;
   transition: border-color var(--tr), box-shadow var(--tr), background var(--tr);
@@ -2399,3 +2401,29 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 [data-theme="dark"] .storage-badge.ok   { color: #4ADE80; }
 [data-theme="dark"] .storage-badge.warn { color: #FBBF24; }
 [data-theme="dark"] .storage-badge.bad  { color: #F87171; }
+
+
+/* ===== ESCALA DE FUENTE ===== */
+.font-scale-btn {
+  background: var(--bg);
+  border: 1.5px solid var(--brd);
+  color: var(--txt);
+  border-radius: .5rem;
+  padding: .35rem .6rem;
+  font-size: .85rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-width: 2.6rem;
+  text-align: center;
+  transition: all .15s;
+}
+.font-scale-btn:active { transform: scale(.95); }
+.font-scale-btn:disabled { opacity: .35; pointer-events: none; }
+.font-scale-val {
+  font-weight: 800;
+  font-size: .82rem;
+  color: var(--pri);
+  min-width: 2.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
