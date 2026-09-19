@@ -1,16 +1,6 @@
 node_modules/
 dist/
-.vite/
-*.local
-*.log
 .DS_Store
-fix-*.mjs
-fix-*.js
+*.log
 *.bak
-.env
-.env.local
-package.json.bak
-
-# Backups locales
-*.backup
-*.bak
+*.bak-*
