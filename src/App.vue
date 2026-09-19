@@ -993,12 +993,12 @@
         <!-- KPIs PRINCIPALES -->
         <div class="grid2" style="margin-bottom:.85rem">
           <div class="stat">
-            <div class="lbl"><icon name="trend" :size="12" :color="mutColor"></icon> Ingresos</div>
-            <div class="val" style="color:var(--pri)">{{ fmt(ventasContadoTotal) }}</div>
+            <div class="lbl"><icon name="trend" :size="12" :color="mutColor"></icon> Ingresos del periodo</div>
+            <div class="val" style="color:var(--pri)">{{ fmt(ventasPeriodo) }}</div>
           </div>
           <div class="stat">
-            <div class="lbl"><icon name="chart" :size="12" :color="mutColor"></icon> COGS</div>
-            <div class="val neg">{{ fmt(m(ventasContadoTotal - gananciaBrutaPeriodo)) }}</div>
+            <div class="lbl"><icon name="chart" :size="12" :color="mutColor"></icon> COGS del periodo</div>
+            <div class="val neg">{{ fmt(m(ventasPeriodo - gananciaBrutaPeriodo)) }}</div>
           </div>
           <div class="stat">
             <div class="lbl"><icon name="dollar" :size="12" :color="mutColor"></icon> Caja</div>
@@ -1035,8 +1035,8 @@
             </span>
           </div>
           <div v-if="contabExpandido.resultados">
-          <div class="row"><span>Ingresos por ventas</span><b class="pos">{{ fmt(ventasContadoTotal) }}</b></div>
-          <div class="row"><span>(-) Costo de lo vendido</span><b class="neg">{{ fmt(-1 * m(ventasContadoTotal - gananciaBrutaPeriodo)) }}</b></div>
+          <div class="row"><span>Ingresos por ventas</span><b class="pos">{{ fmt(ventasPeriodo) }}</b></div>
+          <div class="row"><span>(-) Costo de lo vendido</span><b class="neg">{{ fmt(-1 * m(ventasPeriodo - gananciaBrutaPeriodo)) }}</b></div>
           <div class="row total"><span>= GANANCIA BRUTA</span><span>{{ fmt(gananciaBrutaPeriodo) }} <span style="font-weight:400;font-size:.78rem">({{ margenBrutoPct }}%)</span></span></div>
           <div class="row" style="margin-top:.5rem"><span>(-) Gastos operativos</span><span class="neg">-{{ fmt(gastosOpPeriodo) }}</span></div>
           <div class="row"><span>(-) Mermas</span><span class="neg">-{{ fmt(this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(cfg.periodoInicio)).reduce((s,a) => s + n(a.costoPerdida), 0)) }}</span></div>
@@ -2426,12 +2426,12 @@ export default {
     flujoNeto() { return m(this.flujoEntradas - this.flujoSalidas); },
 
     margenBrutoPct() {
-      const ing = this.ventasContadoTotal;
+      const ing = this.ventasPeriodo;
       return ing > 0 ? ((this.gananciaBrutaPeriodo / ing) * 100).toFixed(2) : '0.00';
     },
 
     margenNetoPct() {
-      const ing = this.ventasContadoTotal;
+      const ing = this.ventasPeriodo;
       return ing > 0 ? ((this.gananciaNetaPeriodo / ing) * 100).toFixed(2) : '0.00';
     },
 

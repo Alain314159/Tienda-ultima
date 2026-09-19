@@ -437,12 +437,38 @@ export function generarRecomendaciones(state) {
   }
 
   // Productos sin movimiento (con stock, sin ventas hace 60 días)
+  // Solo se consideran dormidos si el producto tiene antiguedad suficiente.
+  // Se usa fechaCreacion o, si no existe, la fecha del primer lote.
   const dormidos = productos.filter(p => {
     if (p.archivado) return false;
     if (stockDe(p.id) <= 0) return false;
-    const fechaCompra = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
-    if (fechaCompra && fechaCompra > umbralSinMov) return false;
-    const ventasRecientes = ventas.some(v => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some(it => it.productoId === p.id));
+
+    // Determinar fecha de alta del producto
+    let fechaAlta = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
+    if (!fechaAlta) {
+      const lotesProd = (lotes || []).filter(l => l.productoId === p.id);
+      if (lotesProd.length) {
+        const masAntiguo = lotesProd.reduce((min, l) => {
+          const fL = new Date(l.fecha).getTime();
+          const fMin = new Date(min.fecha).getTime();
+          return fL < fMin ? l : min;
+        });
+        fechaAlta = new Date(masAntiguo.fecha);
+      }
+    }
+
+    // Sin fecha conocida: no lo marcamos (evita falsos positivos)
+    if (!fechaAlta || isNaN(fechaAlta.getTime())) return false;
+
+    // Menos de 60 dias desde su alta: no puede estar dormido
+    if (fechaAlta > umbralSinMov) return false;
+
+    // ¿Hubo ventas en el periodo?
+    const ventasRecientes = ventas.some(v =>
+      !v.anulada &&
+      new Date(v.fecha) >= umbralSinMov &&
+      v.items.some(it => it.productoId === p.id)
+    );
     return !ventasRecientes;
   });
   if (dormidos.length > 0) {
