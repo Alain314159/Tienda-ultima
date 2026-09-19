@@ -2562,3 +2562,18 @@ html { -webkit-overflow-scrolling: touch; }
   flex-shrink: 0;
   margin-top: .05rem;
 }
+
+
+/* ===== QUITAR BORDES LATERALES ===== */
+.hist-grupo {
+  border-left: none !important;
+  border-right: none !important;
+}
+.hist-grupo .item {
+  border-left: none;
+  border-right: none;
+}
+.inv-group {
+  border-left: none;
+  border-right: none;
+}
