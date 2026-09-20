@@ -178,6 +178,7 @@ main {
   padding: .85rem .8rem 6.5rem;
   max-width: 42rem;
   margin: 0 auto;
+  touch-action: pan-y;
 }
 
 .card {

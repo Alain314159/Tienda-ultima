@@ -1833,6 +1833,9 @@ import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
+// Secciones navegables con swipe horizontal
+const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
+
 // Consejos utiles que se muestran al arrancar la app
 const TIPS_UTILES = [
   { id: 'tamano-letra', icono: 'list', texto: 'Sabias que puedes aumentar el tamano de las letras hasta 2x? Ajustes > Interfaz > Tamano de letra.', sec: 'ajustes' },
@@ -2003,6 +2006,10 @@ export default {
       _carpetaHandle: null,
       _pullStartY: 0,
       _pulling: false,
+      _swipeStartX: null,
+      _swipeStartY: null,
+      _swipeStartTime: 0,
+      _swipeActivo: false,
       pullDist: 0,
       refrescando: false,
       importPreview: null,
@@ -2633,22 +2640,91 @@ export default {
     },
 
     onTouchStart(e) {
-      if (window.scrollY > 0) return;
-      this._pullStartY = e.touches[0].clientY;
-      this._pulling = true;
+      const hayModal = this.ajustesAbierto || this.masAbierto || this.cobroModal.activo
+        || this.confirm.activo || this.prompt.activo
+        || this.retiroAbierto || this.aporteAbierto
+        || this.shareSheetAbierto;
+
+      const target = e.target;
+      const esInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+
+      if (hayModal || esInput) {
+        this._swipeStartX = null;
+        return;
+      }
+
+      const t = e.touches[0];
+
+      if (window.scrollY <= 0) {
+        this._pullStartY = t.clientY;
+        this._pulling = true;
+      }
+
+      this._swipeStartX = t.clientX;
+      this._swipeStartY = t.clientY;
+      this._swipeStartTime = Date.now();
+      this._swipeActivo = false;
     },
 
     onTouchMove(e) {
-      if (!this._pulling) return;
-      const dy = e.touches[0].clientY - this._pullStartY;
-      if (dy > 0) this.pullDist = Math.min(dy, 90);
+      const t = e.touches[0];
+
+      if (this._swipeStartX !== null) {
+        const dx = t.clientX - this._swipeStartX;
+        const dy = t.clientY - this._swipeStartY;
+        if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          this._swipeActivo = true;
+          this._pulling = false;
+          this.pullDist = 0;
+        }
+      }
+
+      if (this._pulling && !this._swipeActivo) {
+        const dy = t.clientY - this._pullStartY;
+        if (dy > 0) this.pullDist = Math.min(dy, 90);
+      }
     },
 
-    onTouchEnd() {
-      if (!this._pulling) return;
-      if (this.pullDist >= 70) this.onPullRefresh();
-      this._pulling = false;
-      setTimeout(() => { this.pullDist = 0; }, 300);
+    onTouchEnd(e) {
+      if (this._swipeActivo && this._swipeStartX !== null && e.changedTouches && e.changedTouches.length > 0) {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - this._swipeStartX;
+        const tiempo = Date.now() - this._swipeStartTime;
+        const umbral = 80;
+
+        if (Math.abs(dx) > umbral && tiempo < 1000) {
+          if (dx < 0) this.irSeccionSiguiente();
+          else this.irSeccionAnterior();
+        }
+      }
+
+      if (this._pulling) {
+        if (this.pullDist >= 70) this.onPullRefresh();
+        this._pulling = false;
+        setTimeout(() => { this.pullDist = 0; }, 300);
+      }
+
+      this._swipeStartX = null;
+      this._swipeStartY = null;
+      this._swipeStartTime = 0;
+      this._swipeActivo = false;
+    },
+
+    irSeccionSiguiente() {
+      const idx = SECCIONES_SWIPE.indexOf(this.sec);
+      if (idx < 0 || idx >= SECCIONES_SWIPE.length - 1) return;
+      this.ir(SECCIONES_SWIPE[idx + 1]);
+    },
+
+    irSeccionAnterior() {
+      const idx = SECCIONES_SWIPE.indexOf(this.sec);
+      if (idx <= 0) return;
+      this.ir(SECCIONES_SWIPE[idx - 1]);
     },
 
     async salirSafeMode() {
