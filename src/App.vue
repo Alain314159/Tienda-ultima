@@ -1550,8 +1550,7 @@ export default {
       otraPestana: false,
       shareSheetAbierto: false,
       hayUpdate: false,
-      _swWaiting: null,
-      _aplicando: false,
+            _aplicando: false,
       _cerrando: false,
       cargando: true,
       sec: 'dashboard',
@@ -1621,40 +1620,13 @@ export default {
       socios: [],
       distribuciones: [],
       gastos: [],
-      auditForm: { cajaContada: '', cajaNota: '', paso: 1, conteos: {} },
-      CUENTAS: {
-        CAJA: 'Caja',
-        INVENTARIO: 'Inventario',
-        VENTAS: 'Ventas',
-        COSTO_VENTAS: 'Costo de ventas',
-        GASTOS: 'Gastos operativos',
-        MERMAS: 'Mermas',
-        RETIROS: 'Retiros',
-        CAPITAL: 'Capital',
-        APORTES: 'Aportes',
-        SOBRANTES: 'Sobrantes de arqueo',
-        FALTANTES: 'Faltantes de arqueo',
-        PASIVOS: 'Cuentas por pagar',
-        PAGO_PASIVOS: 'Pago de deudas',
-        RESULTADO: 'Resultado del ejercicio',
-        GANANCIAS_ACUM: 'Ganancias acumuladas',
-        SOBRANTES_INV: 'Sobrantes de inventario'
-      },
-
+            
       prodExpandido: {},
       invExpandido: {},
       cuadreExpandido: {},
       _highlightTimer: null,
       filtroStock: null,
-      contabExpandido: {
-        resultados: false,
-        balance: false,
-        flujo: false,
-        libro: false,
-        cierres: false,
-        pasivos: false
-      },
-      busquedaGlobalAbierta: false,
+            busquedaGlobalAbierta: false,
       CATEGORIAS_GASTO,
       METODOS_PAGO,
       splashVisible: true,
@@ -1691,9 +1663,7 @@ export default {
       mostrarArchivados: false,
 
       ajusteForm: { productoId: '', cantidad: '', motivo: '', costoSobrante: '' },
-      arqueoForm: { monto: '', nota: '' },
-      arqueoPreview: { fisico: 0, diff: 0, class: 'cuadre' },
-
+            
       retiroForm: { monto: '', concepto: '' },
       aporteForm: { monto: '', nota: '', socioId: '' },
       migrarSocioId: '',
@@ -1732,13 +1702,11 @@ export default {
       _fifoCache: {},
       _stockMapCache: null,
       _recCache: null,
-      _anomaliasCache: null,
-      _topRentCache: null,
+            _topRentCache: null,
       _invAgrCache: null,
       _busqTimers: {},
       umbralesAbierto: false,
-      notifAvanzadoAbierto: false,
-      porPagina: 20,
+            porPagina: 20,
       historial: {
         ventas: { pagina: 1, abiertos: {} },
         compras: { pagina: 1, abiertos: {} },
@@ -1951,18 +1919,9 @@ export default {
       return this.agruparHistorial(this.gastosOrdenados, 'fecha');
     },
 
-    cajaPorPeriodo() {
-      return this.agruparHistorial(this.movimientosRecientes, 'fecha');
-    },
-
-    ajustesPorPeriodo() {
-      return this.agruparHistorial(this.ajustesRecientes, 'fecha');
-    },
-
-    distribucionesPorPeriodo() {
-      return this.agruparHistorial(this.distribucionesOrdenadas, 'fecha');
-    },
-
+    
+    
+    
 
     ajustesRecientes() {
       return this.ajustes.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 20);
@@ -1983,28 +1942,14 @@ export default {
 
 
 
-    movimientosRecientes() {
-      return this.movCaja.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 30);
-    },
-
+    
     aportesTotal() { return m(this.capital.reduce((s, x) => s + n(x.monto), 0)); },
     retirosTotal() { return m(this.retiros.reduce((s, x) => s + n(x.monto), 0)); },
     capitalTotal() { return m(n(this.cfg.capitalInicial) + this.aportesTotal); },
 
-    ventasContadoTotal() {
-      return m(this.ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0));
-    },
-
-    comprasTotal() {
-      return m(this.compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0));
-    },
-
-    arqueoNeto() {
-      return m(this.movCaja
-        .filter(mv => mv.concepto && (mv.concepto.includes('Sobrante') || mv.concepto.includes('Faltante')))
-        .reduce((s, mv) => s + (mv.tipo === 'ingreso' ? n(mv.monto) : -n(mv.monto)), 0));
-    },
-
+    
+    
+    
 
     gananciasAcumuladas() {
       return m(this.cierres.reduce((s, c) => s + n(c.ganancia), 0) + this.gananciaNetaPeriodo);
@@ -2031,23 +1976,7 @@ export default {
     totalDistribuido() { return m(this.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
     distribucionesOrdenadas() { return this.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
 
-    topRentables() {
-      const sig = this.ventas.length + '|' + this.ventas[0]?.id;
-      if (this._topRentCache && this._topRentCache.sig === sig) return this._topRentCache.data;
-      const now = new Date();
-      const iniMes = new Date(now.getFullYear(), now.getMonth(), 1);
-      const map = {};
-      this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= iniMes).forEach(v => {
-        v.items.forEach(it => {
-          if (!map[it.productoId]) map[it.productoId] = { id: it.productoId, nombre: it.nombre, gan: 0 };
-          map[it.productoId].gan += n(it.ganancia);
-        });
-      });
-      const result = Object.values(map).sort((a, b) => b.gan - a.gan).slice(0, 5);
-      this._topRentCache = { sig, data: result };
-      return result;
-    },
-
+    
     recomendaciones() {
       const sig = [
         this.ventas.length, this.compras.length, this.ajustes.length,
@@ -2085,26 +2014,8 @@ export default {
       return this.recomendacionesUrgentes;
     },
 
-    lotesPorProducto() {
-      const map = {};
-      this.lotes.forEach(l => {
-        if (!map[l.productoId]) map[l.productoId] = new Set();
-        map[l.productoId].add(n(l.costo));
-      });
-      const out = {};
-      Object.keys(map).forEach(k => { out[k] = map[k].size; });
-      return out;
-    },
-
-    ultimaActividad() {
-      const fechas = [
-        ...this.ventas.map(v => v.fecha),
-        ...this.compras.map(c => c.fecha),
-        ...this.ajustes.map(a => a.fecha)
-      ].filter(f => f).sort().reverse();
-      return fechas.length ? fmtFH(fechas[0]) : 'Sin actividad';
-    }
-  },
+    
+      },
 
   methods: {
     // ===== HELPERS =====
@@ -2432,17 +2343,7 @@ export default {
       }
     },
 
-    descartarTodasAnomalias() {
-      const claves = this.anomalias.map(a => a.clave);
-      if (!claves.length) return;
-      if (!this.cfg.anomaliasDescartadas) this.cfg.anomaliasDescartadas = [];
-      claves.forEach(k => {
-        if (!this.cfg.anomaliasDescartadas.includes(k)) this.cfg.anomaliasDescartadas.push(k);
-      });
-      this.guardarCfg();
-      this.toastMsg(claves.length + ' anomalia(s) descartada(s)');
-    },
-
+    
     descartarAnomalia(clave) {
       if (!this.cfg.anomaliasDescartadas) this.cfg.anomaliasDescartadas = [];
       if (!this.cfg.anomaliasDescartadas.includes(clave)) {
@@ -2661,10 +2562,7 @@ export default {
       this.histPag(key).pagina++;
     },
 
-    histMostrarMenos(key) {
-      this.histPag(key).pagina = 1;
-    },
-
+    
     histToggle(key, id) {
       const h = this.histPag(key);
       h.abiertos[id] = !h.abiertos[id];
@@ -2676,15 +2574,7 @@ export default {
     },
 
     // Compara dos fechas ignorando hora (mismo dia)
-    esMismoDia(fecha1, fecha2) {
-      if (!fecha1 || !fecha2) return false;
-      const d1 = new Date(fecha1);
-      const d2 = new Date(fecha2);
-      return d1.getFullYear() === d2.getFullYear()
-          && d1.getMonth() === d2.getMonth()
-          && d1.getDate() === d2.getDate();
-    },
-
+    
     // ===== VENTAS =====
     calcFIFO(pid, cant) {
       const key = pid + '|' + q(cant);
@@ -3327,61 +3217,11 @@ export default {
     },
 
     // ===== CAJA =====
-    calcArqueo() {
-      const fisico = n(this.arqueoForm.monto);
-      const diff = m(fisico - this.saldoCaja);
-      this.arqueoPreview = {
-        fisico,
-        diff,
-        class: Math.abs(diff) < 0.01 ? 'cuadre' : (diff > 0 ? 'sobrante' : 'faltante')
-      };
-    },
-
-    async registrarArqueo() {
-      const monto = n(this.arqueoForm.monto);
-      if (monto < 0 || this.arqueoForm.monto === '') return this.toastMsg('Monto inválido', TOAST.BAD);
-      const diff = m(monto - this.saldoCaja);
-      const arq = { id: genId('aq'), fecha: new Date().toISOString(), montoFisico: monto, saldoSistema: this.saldoCaja, diferencia: diff, nota: this.arqueoForm.nota };
-      if (Math.abs(diff) > 0.01) {
-        const mov = { id: genId('mc'), fecha: new Date().toISOString(), tipo: diff > 0 ? 'ingreso' : 'egreso', monto: Math.abs(diff), concepto: (diff > 0 ? 'Sobrante' : 'Faltante') + ' de arqueo', nota: this.arqueoForm.nota };
-        await db.transaction('rw', db.arqueos, db.movCaja, async () => {
-          await P(db.arqueos, arq);
-          await P(db.movCaja, mov);
-        });
-        this.toastMsg((diff > 0 ? 'Sobrante ' : 'Faltante ') + fmt(Math.abs(diff)), diff > 0 ? 'warn' : 'bad');
-      } else {
-        await P(db.arqueos, arq);
-        this.toastMsg('Cuadre perfecto');
-      }
-      this.arqueoForm = { monto: '', nota: '' };
-      this.arqueoPreview = { fisico: 0, diff: 0, class: 'cuadre' };
-      await this.recargar(['arqueos', 'movCaja']);
-      const arqGuardado = this.arqueos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (arqGuardado) { await this.recrearAsientoArqueo(arqGuardado); await this.recargar(['asientos']); }
-    },
-
+    
+    
     // ===== PATRIMONIO =====
-    setCapitalInicial(val) {
-      this.capInicialStr = String(val || '');
-      this.guardarCapInicial();
-    },
-
-    async guardarCapInicial() {
-      const val = n(this.capInicialStr);
-      const anterior = n(this.cfg.capitalInicial);
-      const diff = m(val - anterior);
-      if (Math.abs(diff) < 0.01) {
-        this.capInicialStr = '';
-        return this.toastMsg('Sin cambios');
-      }
-      this.cfg.capitalInicial = val;
-      try {
-        await P(db.config, { key: 'cfg', value: this.cfg });
-      } catch (e) { console.error('guardarCapInicial', e); }
-      this.capInicialStr = '';
-      this.toastMsg(`Capital inicial: ${fmt(val)}`);
-    },
-
+    
+    
     registrarRetiro() {
       const monto = n(this.retiroForm.monto);
       const c = (this.retiroForm.concepto || '').trim();
@@ -4747,11 +4587,7 @@ export default {
       rd.readAsText(file);
     },
 
-    cancelarImport() {
-      this.importPreview = null;
-      this.importFile = null;
-    },
-
+    
     validarEsquema(d) {
       const errores = [];
       const avisos = [];
@@ -4913,32 +4749,7 @@ export default {
       return this.cfg.tgChatId ? 'proxy' : '';
     },
 
-    async tgVerificar() {
-      const token = this.tgTokenActual();
-      if (!token) return this.toastMsg('Backend no configurado (revisa TG_PROXY_URL)', TOAST.BAD);
-      this.tgCargando = true;
-      try {
-        const me = await tgGetMe();
-        const updates = await tgGetUpdates();
-        const chat = tgDetectarChatId(updates);
-        if (!chat) {
-          this.tgEstado = 'sin-chat';
-          this.toastMsg('Bot OK (@' + me.username + '). Abre Telegram, busca el bot y envia /start', TOAST.WARN);
-          return;
-        }
-        this.cfg.tgChatId = String(chat.chatId);
-        this.cfg.tgNombre = chat.nombre || chat.username || 'Usuario';
-        await this.guardarCfg();
-        this.tgEstado = 'conectado';
-        this.toastMsg('Conectado a Telegram: ' + this.cfg.tgNombre);
-      } catch (e) {
-        this.tgEstado = 'error';
-        this.toastMsg('Error: ' + e.message, TOAST.BAD);
-      } finally {
-        this.tgCargando = false;
-      }
-    },
-
+    
     async tgBackupAhora() {
       if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) {
         return this.toastMsg('Configura un nombre de tienda antes de hacer backups', TOAST.BAD);
@@ -5171,12 +4982,7 @@ export default {
       }
     },
 
-    async tgEncolarAhora() {
-      const data = buildData(this);
-      await this.tgEncolar(data, 'manual-offline');
-      this.toastMsg('Backup guardado en cola (se enviara al recuperar conexion)');
-    },
-
+    
     _tgPollTimer: null,
     iniciarTgPoll() {
       if (this._tgPollTimer) return;
@@ -5286,31 +5092,8 @@ export default {
     },
 
     // ===== GUARDAR EN CARPETA DEL TELÉFONO =====
-    async elegirCarpeta() {
-      if (typeof window.showDirectoryPicker !== 'function') {
-        this.toastMsg('Tu navegador no soporta elegir carpeta. Se usara Descargas.', TOAST.WARN);
-        this.cfg.tgCarpetaActiva = false;
-        return;
-      }
-      try {
-        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-        // Guardar handle en IndexedDB
-        await P(db.config, { key: 'carpetaHandle', value: await this.serializarHandle(handle), nombre: handle.name });
-        this._carpetaHandle = handle;
-        this.cfg.tgCarpetaActiva = true;
-        this.cfg.tgCarpetaNombre = handle.name;
-        await this.guardarCfg();
-        this.toastMsg('Carpeta: ' + handle.name);
-      } catch (e) {
-        if (e.name !== 'AbortError') this.toastMsg('Error: ' + e.message, TOAST.BAD);
-      }
-    },
-
-    async serializarHandle(handle) {
-      // No se puede serializar directo, pero IndexedDB lo soporta nativamente
-      return handle;
-    },
-
+    
+    
     async guardarEnCarpeta(fileName, contenidoBlob) {
       // 1. Verificar handle guardado
       if (!this._carpetaHandle) {
@@ -5341,15 +5124,7 @@ export default {
       }
     },
 
-    async quitarCarpeta() {
-      this._carpetaHandle = null;
-      this.cfg.tgCarpetaActiva = false;
-      this.cfg.tgCarpetaNombre = '';
-      try { await db.config.delete('carpetaHandle'); } catch (e) {}
-      await this.guardarCfg();
-      this.toastMsg('Carpeta desconectada');
-    },
-
+    
     // ===== PRE-IMPORT SAFETY NET =====
     async cargarPreImportInfo() {
       try {
@@ -5364,41 +5139,8 @@ export default {
       } catch (e) { console.error('cargarPreImportInfo', e); }
     },
 
-    restaurarPreImport() {
-      this.confirm = {
-        activo: true,
-        titulo: 'Deshacer ultimo import',
-        msg: 'Se restaurara el estado anterior al ultimo import de ' +
-             (this.preImportFecha ? fmtFH(this.preImportFecha) : 'fecha desconocida') +
-             '. Los datos actuales seran reemplazados.',
-        onOk: async () => {
-          try {
-            const rec = await db.config.get('preImportBackup');
-            if (!rec || !rec.value) return this.toastMsg('No hay backup para restaurar', TOAST.WARN);
-            await this.importarData(rec.value);
-            this.ajustesAbierto = false;
-            this.toastMsg('Estado anterior restaurado');
-          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
-        }
-      };
-    },
-
-    olvidarPreImport() {
-      this.confirm = {
-        activo: true,
-        titulo: 'Olvidar backup de seguridad',
-        msg: 'Se eliminara el backup del estado anterior al ultimo import. Esta accion no se puede deshacer.',
-        onOk: async () => {
-          try {
-            await db.config.delete('preImportBackup');
-            this.preImportDisponible = false;
-            this.preImportFecha = null;
-            this.toastMsg('Backup de seguridad eliminado');
-          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
-        }
-      };
-    },
-
+    
+    
     // ===== SEGURIDAD =====
     pedirPin(cb) {
       if (!this.cfg.pinActivo) { cb(); return; }
