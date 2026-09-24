@@ -103,18 +103,8 @@
           </div>
         </div>
 
-        <!-- GRAFICO_TOGGLE_V1 -->
         <div class="card" style="margin-top:.8rem">
-          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
-            <span style="display:flex;align-items:center;gap:.55rem">
-              <icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
-              Ventas vs Ganancia
-            </span>
-            <span class="chart-toggle">
-              <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
-              <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
-            </span>
-          </div>
+          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Ventas vs Ganancia (6 meses)</div>
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
@@ -991,12 +981,6 @@
           </div>
         </div>
       </section>
-      <!-- MI_CONTABILIDAD_ELIMINADA -->
-
-
-      <!-- MI_AUDITORIA_ELIMINADA -->
-
-
     </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -1514,7 +1498,7 @@
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import BottomNav from './components/BottomNav.vue';
 import { generarRecomendaciones } from './insights.js';
-import { TOAST, TIPO_ASIENTO, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
+import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import { tgCheckName, tgRegister, tgLogin, tgStatus, tgGetMe, tgGetUpdates, tgListBackups, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
 import Onboarding from './components/Onboarding.vue';
@@ -1535,14 +1519,13 @@ const TIPS_UTILES = [
   { id: 'compartir-precios', icono: 'share', texto: 'Comparte tu lista de precios por WhatsApp. Inventario > Compartir lista.', sec: 'inventario' },
   { id: 'escalones', icono: 'trend', texto: 'Define precios por cantidad: al vender 10 o mas se aplica automaticamente. Al crear un producto.', sec: 'productos' },
   { id: 'empaques', icono: 'package', texto: 'Configura empaques (saco, caja) para mostrar el stock como "2 sacos + 5 kg". Al crear un producto.', sec: 'productos' },
-  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Mas > Auditoria.', sec: },
+  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Esta en la seccion Caja.', sec: 'caja' },
   { id: 'cierre', icono: 'calendar', texto: 'Cierra el periodo al final del mes para acumular la ganancia. Reportes > Cerrar Periodo.', sec: 'reportes' },
   { id: 'busqueda', icono: 'search', texto: 'Usa la lupa arriba para buscar productos, ventas o socios en toda la app.', sec: null },
   { id: 'gastos', icono: 'dollar', texto: 'Registra gastos (luz, alquiler, transporte) para ver tu ganancia neta real.', sec: 'gastos' },
   { id: 'socios', icono: 'users', texto: 'Con socios, la app reparte la ganancia automaticamente por su porcentaje. Mas > Socios.', sec: 'socios' },
-  { id: icono: 'credit-card', texto: 'Registra deudas con proveedores. La app te avisa cuando vencen. Mas > Contabilidad.', sec: },
   { id: 'anomalias', icono: 'alert', texto: 'La app detecta problemas automaticamente: ventas bajo costo, stock negativo, faltantes. Los veras en Inicio.', sec: null },
-  { id: 'mas', icono: 'menu', texto: 'Desde el boton "Mas" abajo accedes a Contabilidad, Auditoria, Socios y Reportes.', sec: null },
+  { id: 'mas', icono: 'menu', texto: 'Desde el boton "Mas" abajo accedes a Productos, Gastos, Socios y Reportes.', sec: null },
   { id: 'exportar', icono: 'download', texto: 'Exporta un respaldo JSON para migrar de dispositivo o tener copia extra. Ajustes > Datos.', sec: 'ajustes' },
   { id: 'merma', icono: 'alert', texto: 'Registra mermas (vencidos, danados) para saber tu perdida real. Inventario > Merma / Ajuste.', sec: 'inventario' }
 ];
@@ -1620,7 +1603,6 @@ export default {
         modoCompacto: false,
         fontScale: 1,
         tipsVistos: [],
-        graficoVista: 'mes',
         avisoTiendaDescartado: false,
         tutorialVisto: false,
         mostrarSplash: true
@@ -1640,7 +1622,24 @@ export default {
       distribuciones: [],
       gastos: [],
       auditForm: { cajaContada: '', cajaNota: '', paso: 1, conteos: {} },
-      pasivoForm: { editId: '', acreedor: '', concepto: '', monto: '', fecha: new Date().toISOString().split('T')[0], vencimiento: '', nota: '' },
+      CUENTAS: {
+        CAJA: 'Caja',
+        INVENTARIO: 'Inventario',
+        VENTAS: 'Ventas',
+        COSTO_VENTAS: 'Costo de ventas',
+        GASTOS: 'Gastos operativos',
+        MERMAS: 'Mermas',
+        RETIROS: 'Retiros',
+        CAPITAL: 'Capital',
+        APORTES: 'Aportes',
+        SOBRANTES: 'Sobrantes de arqueo',
+        FALTANTES: 'Faltantes de arqueo',
+        PASIVOS: 'Cuentas por pagar',
+        PAGO_PASIVOS: 'Pago de deudas',
+        RESULTADO: 'Resultado del ejercicio',
+        GANANCIAS_ACUM: 'Ganancias acumuladas',
+        SOBRANTES_INV: 'Sobrantes de inventario'
+      },
 
       prodExpandido: {},
       invExpandido: {},
@@ -1653,7 +1652,8 @@ export default {
         flujo: false,
         libro: false,
         cierres: false,
-        },
+        pasivos: false
+      },
       busquedaGlobalAbierta: false,
       CATEGORIAS_GASTO,
       METODOS_PAGO,
@@ -1766,7 +1766,7 @@ export default {
 
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos',].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos'].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -2052,7 +2052,7 @@ export default {
       const sig = [
         this.ventas.length, this.compras.length, this.ajustes.length,
         this.lotes.length, this.gastos.length, this.movCaja.length,
-        this.cierres.length, this.pasivos.length, this.asientos.length,
+        this.cierres.length,
         this.productos.length, this.saldoCaja, this.gananciaNetaPeriodo,
         JSON.stringify(this.cfg.anomaliasDescartadas || []),
         this.cfg.umbralDescuentoPct, this.cfg.umbralDiasCierre
@@ -2067,9 +2067,8 @@ export default {
           cierres: this.cierres, movCaja: this.movCaja,
           saldoCaja: this.saldoCaja, cfg: this.cfg,
           formatMoney: fmt, formatNum: fmtCant,
-          stockDe: (pid) => this.stock(pid),
-          balanzaPorCuenta: this.balanzaPorCuenta,
-                });
+          stockDe: (pid) => this.stock(pid)
+        });
         const descartadas = this.cfg.anomaliasDescartadas || [];
         const filtradas = list.filter(r => !descartadas.includes(r.clave));
         const result = filtradas.slice(0, 8);
@@ -2469,9 +2468,9 @@ export default {
           texto: 'Te voy a mostrar <b>todo lo que puedes hacer</b> en menos de 2 minutos. Es rapido y puedes saltarlo cuando quieras.',
           bullets: [
             'Ventas, compras e inventario',
-            'Caja, contabilidad y socios',
+            'Caja, socios y reportes',
             'Backup automatico en Telegram',
-            'Reportes y auditorias'
+            'Reportes y estadisticas'
           ]
         },
         {
@@ -2535,23 +2534,11 @@ export default {
           texto: 'Luz, agua, alquiler, transporte... cada gasto afecta tu ganancia neta. Se descuenta automaticamente de la caja si marcas "Sale de caja".'
         },
         {
-          titulo: 'Contabilidad completa',
-          icono: 'chart',
-          sec: target: 'section:not([style*="display: none"]) .balance',
-          texto: 'Todo lo que paso en tu negocio queda registrado. <b>Resumen arriba, detalles abajo</b>. Puedes exportar todo a PDF para contabilidad.'
-        },
-        {
           titulo: 'Socios y reparto',
           icono: 'users',
           sec: 'socios',
           target: 'section:not([style*="display: none"]) .balance',
           texto: 'Si tienes socios, agregalos con su <b>% de participacion</b>. Al cerrar el mes, la app divide la ganancia automaticamente.'
-        },
-        {
-          titulo: 'Auditoria fisica',
-          icono: 'check',
-          sec: target: 'section:not([style*="display: none"]) .balance, section:not([style*="display: none"]) .card',
-          texto: 'Cada cierto tiempo, cuenta el dinero y los productos fisicos. La app te dice si <b>cuadra, sobra o falta</b>. Los ajustes se registran solos.'
         },
         {
           titulo: 'Backup en Telegram',
@@ -2569,7 +2556,7 @@ export default {
           bullets: [
             'Agrega productos primero',
             'Registra compras y ventas',
-            'Haz una auditoria cada mes',
+            'Revisa los reportes cada mes',
             'Revisa los consejos en Inicio'
           ]
         }
@@ -2605,9 +2592,6 @@ export default {
       this.ir(sec);
     },
 
-    toggleContab(seccion) {
-      this.contabExpandido[seccion] = !this.contabExpandido[seccion];
-    },
 
     toggleCuadreProducto(id) {
       this.cuadreExpandido[id] = !this.cuadreExpandido[id];
@@ -2935,7 +2919,7 @@ export default {
 
         await this.recargar(['ventas', 'lotes']);
         await this.recrearAsientoVenta(venta);
-        await this.recargar([]);
+        await this.recargar(['asientos']);
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
@@ -2982,7 +2966,7 @@ export default {
               });
               await this.recargar(['ventas', 'lotes']);
               await this.recrearAsientoVenta({ ...v, anulada: true });
-              await this.recargar([]);
+              await this.recargar(['asientos']);
               this.toastMsg('Venta anulada');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -3133,13 +3117,11 @@ export default {
         msg: '¿Eliminar compra de ' + c.productoNombre + '?',
         onOk: async () => {
           const l = this.lotes.find(x => x.compraId === id);
-          await db.transaction('rw', db.compras, db.lotes, db.asientos, async () => {
+          await db.transaction('rw', db.compras, db.lotes, async () => {
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
-            const as = this.asientos.filter(a => a.refTipo === 'compra' && a.refId === id);
-            if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
           });
-          await this.recargar(['compras', 'lotes', ]);
+          await this.recargar(['compras', 'lotes', 'asientos']);
           this.toastMsg('Compra eliminada');
         }
       };
@@ -3196,7 +3178,7 @@ export default {
           const compraGuardada = f.editId
             ? this.compras.find(x => x.id === f.editId)
             : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-          if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar([]); }
+          if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar(['asientos']); }
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
@@ -3327,20 +3309,18 @@ export default {
         });
         await this.recargar(['ajustes', 'lotes']);
         const mermaGuardada = this.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (mermaGuardada) { await this.recrearAsientoMerma(mermaGuardada); await this.recargar([]); }
+        if (mermaGuardada) { await this.recrearAsientoMerma(mermaGuardada); await this.recargar(['asientos']); }
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
       } else {
         const cs = n(f.costoSobrante);
         if (cs < 0) return this.toastMsg('Costo inválido', TOAST.BAD);
         const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: f.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: f.motivo, costoPerdida: 0 };
         const lote = { id: genId('l'), compraId: 'aj-' + aj.id, productoId: f.productoId, productoNombre: prod.nombre, productoUnidad: prod.unidad || '', cantidadInicial: cant, cantidadVendida: 0, costo: cs, fecha: aj.fecha };
-        await db.transaction('rw', db.ajustes, db.lotes, db.asientos, async () => {
+        await db.transaction('rw', db.ajustes, db.lotes, async () => {
           await P(db.ajustes, aj);
           await P(db.lotes, lote);
-          if (cs > 0) {
-          }
         });
-        await this.recargar(['ajustes', 'lotes', ]);
+        await this.recargar(['ajustes', 'lotes']);
         this.toastMsg('Sobrante registrado');
       }
       this.ajusteForm = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
@@ -3377,7 +3357,7 @@ export default {
       this.arqueoPreview = { fisico: 0, diff: 0, class: 'cuadre' };
       await this.recargar(['arqueos', 'movCaja']);
       const arqGuardado = this.arqueos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (arqGuardado) { await this.recrearAsientoArqueo(arqGuardado); await this.recargar([]); }
+      if (arqGuardado) { await this.recrearAsientoArqueo(arqGuardado); await this.recargar(['asientos']); }
     },
 
     // ===== PATRIMONIO =====
@@ -3393,16 +3373,10 @@ export default {
       if (Math.abs(diff) < 0.01) {
         this.capInicialStr = '';
         return this.toastMsg('Sin cambios');
-      }      const fecha = new Date().toISOString();
+      }
       this.cfg.capitalInicial = val;
       try {
-        await db.transaction('rw', db.asientos, db.config, async () => {
-          await P(db.config, { key: 'cfg', value: this.cfg });
-          if (diff > 0) {
-          } else {
-          }
-        });
-        await this.recargar([]);
+        await P(db.config, { key: 'cfg', value: this.cfg });
       } catch (e) { console.error('guardarCapInicial', e); }
       this.capInicialStr = '';
       this.toastMsg(`Capital inicial: ${fmt(val)}`);
@@ -3418,7 +3392,7 @@ export default {
         await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
         await this.recargar(['retiros']);
         const rGuardado = this.retiros.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (rGuardado) { await this.recrearAsientoRetiro(rGuardado); await this.recargar([]); }
+        if (rGuardado) { await this.recrearAsientoRetiro(rGuardado); await this.recargar(['asientos']); }
         this.retiroForm = { monto: '', concepto: '' };
         this.retiroAbierto = false;
         this.toastMsg('Retiro registrado');
@@ -3431,7 +3405,7 @@ export default {
       await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
       const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar([]); }
+      if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar(['asientos']); }
       this.aporteForm = { monto: '', nota: '', socioId: '' };
       this.aporteAbierto = false;
       this.toastMsg('Aporte registrado');
@@ -3483,32 +3457,13 @@ export default {
               capitalAlCierre: this.capitalTotal,
               cerrado: true
             };
-            this.cfg.periodoInicio = f.toISOString();            await db.transaction('rw', db.cierres, db.asientos, async () => {
-              await P(db.cierres, c);              const desc = 'Cierre ' + fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString());
+            this.cfg.periodoInicio = f.toISOString();
+            await db.transaction('rw', db.cierres, async () => {
+              await P(db.cierres, c);
 
-              // 1. Cerrar Ventas
-              if (totVentas > 0.01) {
-              }
-              // 2. Cerrar Costo de ventas
-              if (cogs > 0.01) {
-              }
-              // 3. Cerrar Gastos
-              if (totGastos > 0.01) {
-              }
-              // 4. Cerrar Mermas
-              if (totMermas > 0.01) {
-              }
-              // 5. Transferir resultado a Ganancias acumuladas
-              if (Math.abs(neta) > 0.01) {
-                if (neta > 0) {
-                } else {
-                }
-              }
-
-              if (asientos.length) await db.asientos.bulkPut(asientos.map(x => clean(x)));
             });
             await this.guardarCfg();
-            await this.recargar(['cierres', ]);
+            await this.recargar(['cierres', 'asientos']);
             this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
             } finally {
               this._cerrando = false;
@@ -4062,91 +4017,10 @@ export default {
     },
 
     // ===== PASIVOS =====
-    resetPasivo() {
-      this.pasivoForm = { editId: '', acreedor: '', concepto: '', monto: '', fecha: new Date().toISOString().split('T')[0], vencimiento: '', nota: '' };
-    },
 
-    async guardarPasivo() {
-      const f = this.pasivoForm;
-      const acreedor = (f.acreedor || '').trim();
-      const concepto = (f.concepto || '').trim();
-      const monto = n(f.monto);
-      if (!acreedor) return this.toastMsg('Acreedor obligatorio', TOAST.BAD);
-      if (!concepto) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
-      if (monto <= 0) return this.toastMsg('Monto debe ser > 0', TOAST.BAD);
 
-      const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
-      const vencISO = f.vencimiento ? new Date(f.vencimiento + 'T12:00:00').toISOString() : null;
 
-      if (f.editId) {
-        const o = this.pasivos.find(x => x.id === f.editId);
-        if (!o) return;
-        await P(db.pasivos, { ...o, acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '' });
-        this.toastMsg('Pasivo actualizado');
-      } else {
-        await P(db.pasivos, { id: genId('pv'), acreedor, concepto, monto, fecha: fechaISO, vencimiento: vencISO, nota: f.nota || '', pagado: false });
-        this.toastMsg(`Pasivo registrado: ${fmt(monto)}`);
-      }
-      this.resetPasivo();
-      await this.recargar([]);
-    },
 
-    editarPasivo(id) {
-      const p = this.pasivos.find(x => x.id === id);
-      if (!p) return;
-      this.pasivoForm = {
-        editId: p.id,
-        acreedor: p.acreedor || '',
-        concepto: p.concepto || '',
-        monto: String(p.monto || ''),
-        fecha: p.fecha ? p.fecha.split('T')[0] : new Date().toISOString().split('T')[0],
-        vencimiento: p.vencimiento ? p.vencimiento.split('T')[0] : '',
-        nota: p.nota || ''
-      };
-      window.scrollTo(0, 0);
-    },
-
-    eliminarPasivo(id) {
-      const p = this.pasivos.find(x => x.id === id);
-      if (!p) return;
-      this.confirm = {
-        activo: true, titulo: 'Eliminar pasivo',
-        msg: 'Eliminar deuda con "' + p.acreedor + '" por ' + fmt(p.monto) + '?',
-        onOk: async () => {
-          await db.pasivos.delete(id);
-          await this.recargar([]);
-          this.toastMsg('Pasivo eliminado');
-        }
-      };
-    },
-
-    pagarPasivo(id) {
-      const p = this.pasivos.find(x => x.id === id);
-      if (!p || p.pagado) return;
-      this.confirm = {
-        activo: true, titulo: 'Pagar deuda',
-        msg: 'Pagar ' + fmt(p.monto) + ' a "' + p.acreedor + '"? Se registrara un gasto y saldra de caja.',
-        onOk: async () => {
-          try {
-            const ahora = new Date().toISOString();
-            const movId = genId('mc');
-            await db.transaction('rw', db.pasivos, db.movCaja, db.asientos, async () => {
-              await P(db.pasivos, { ...p, pagado: true, fechaPago: ahora, movPagoId: movId });
-              await P(db.movCaja, {
-                id: movId,
-                fecha: ahora,
-                tipo: 'egreso',
-                monto: n(p.monto),
-                concepto: 'Pago deuda: ' + p.acreedor + ' - ' + p.concepto,
-                nota: p.nota || ''
-              });
-            });
-            await this.recargar(['movCaja', ]);
-            this.toastMsg(`Deuda pagada: ${fmt(p.monto)}`);
-          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
-        }
-      };
-    },
 
     borrarTodo() {
       this.confirm = {
@@ -4164,7 +4038,7 @@ export default {
             onOk: async (v) => {
               if (v !== 'BORRAR') return this.toastMsg('Cancelado', TOAST.WARN);
               try {
-                const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
+                const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos'];
                 await db.transaction('rw', tables.concat(['config']), async () => {
                   for (const t of tables) await db.table(t).clear();
                   await db.config.clear();
@@ -4516,13 +4390,6 @@ export default {
     },
 
     // ===== AUDITORIA =====
-    costoPromProducto(pid) {
-      const lotes = this.lotes.filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
-      const tot = lotes.reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)), 0);
-      if (tot <= 0) return 0;
-      const val = lotes.reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0);
-      return m(val / tot);
-    },
 
 
 
@@ -4597,7 +4464,7 @@ export default {
       this.resetGasto();
       await this.recargar(['gastos', 'movCaja']);
       const gs = this.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (gs && (!f.editId || gs.id === f.editId)) { await this.recrearAsientoGasto(gs); await this.recargar([]); }
+      if (gs && (!f.editId || gs.id === f.editId)) { await this.recrearAsientoGasto(gs); await this.recargar(['asientos']); }
     },
 
     editarGasto(id) {
@@ -4623,13 +4490,11 @@ export default {
         activo: true, titulo: 'Eliminar gasto',
         msg: 'Eliminar "' + g.concepto + '" por ' + fmt(g.monto) + '?',
         onOk: async () => {
-          await db.transaction('rw', db.gastos, db.movCaja, db.asientos, async () => {
+          await db.transaction('rw', db.gastos, db.movCaja, async () => {
             await db.gastos.delete(id);
             if (g.movId) await db.movCaja.delete(g.movId);
-            const as = this.asientos.filter(a => a.refTipo === 'gasto' && a.refId === id);
-            if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
           });
-          await this.recargar(['gastos', 'movCaja', ]);
+          await this.recargar(['gastos', 'movCaja', 'asientos']);
           this.toastMsg('Gasto eliminado');
         }
       };
@@ -4808,14 +4673,12 @@ export default {
             { key: 'compras', label: 'Compras' },
             { key: 'gastos', label: 'Gastos' },
             { key: 'socios', label: 'Socios' },
-            { key: label: 'Asientos' },
-            { key: label: 'Pasivos' }
+            { key: 'asientos', label: 'Asientos' },
+            { key: 'pasivos', label: 'Pasivos' }
           ];
           const actuales = {
             productos: this.productos.length, lotes: this.lotes.length, ventas: this.ventas.length,
-            compras: this.compras.length, gastos: this.gastos.length, socios: this.socios.length,
-            asientos: this.asientos.length, pasivos: this.pasivos.length
-          };
+            compras: this.compras.length, gastos: this.gastos.length, socios: this.socios.length};
           const nuevos = {};
           campos.forEach(c => { nuevos[c.key] = (d[c.key] || []).length; });
 
@@ -4901,7 +4764,7 @@ export default {
         errores.push('Falta productos y ventas (no parece un respaldo)');
       }
       // Arrays deben ser arrays
-      const tablas = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
+      const tablas = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos'];
       tablas.forEach(t => {
         if (d[t] !== undefined && !Array.isArray(d[t])) {
           errores.push('"' + t + '" no es un array');
@@ -4945,7 +4808,7 @@ export default {
         console.warn('Import con avisos:', v.avisos);
       }
 
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', ];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos'];
       // Snapshot antes por si falla
       const respaldo = {};
       try {
@@ -5569,8 +5432,8 @@ export default {
         retiros: () => db.retiros.toArray(),
         socios: () => db.socios.toArray(),
         distribuciones: () => db.distribuciones.toArray(),
-        gastos: () => db.gastos.toArray(),
-            };
+        gastos: () => db.gastos.toArray()
+      };
       for (const w of what) this[w] = await map[w]();
       this._stockMapCache = null;
       this._recCache = null;
@@ -5580,7 +5443,7 @@ export default {
 
     async recargarTodo() {
       const t = performance.now();
-      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
+      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos'];
       let r;
       await db.transaction('r', tables.map(tb => db.table(tb)), async () => {
         r = await Promise.all(tables.map(tb => db.table(tb).toArray()));
@@ -5596,62 +5459,32 @@ export default {
     },
 
     // ===== CHART =====
-    setGraficoVista(vista) {
-      if (this.cfg.graficoVista === vista) return;
-      this.cfg.graficoVista = vista;
-      this.guardarCfg();
-      this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
-    },
-
     async renderChart() {
       try {
         const cv = document.getElementById('chartVentas');
         if (!cv) return;
         if (this._chart) { try { this._chart.destroy(); } catch (e) {} this._chart = null; }
         const { default: Chart } = await import('chart.js/auto');
-
-        const vista = this.cfg.graficoVista || 'mes';
-        const data = [];
+        const meses = [];
         const now = new Date();
-
-        if (vista === 'semana') {
-          // Ultimas 8 semanas
-          for (let i = 7; i >= 0; i--) {
-            const fin = new Date(now);
-            fin.setDate(now.getDate() - i * 7);
-            fin.setHours(23, 59, 59, 999);
-            const ini = new Date(fin);
-            ini.setDate(fin.getDate() - 6);
-            ini.setHours(0, 0, 0, 0);
-            const label = ini.getDate() + '/' + (ini.getMonth() + 1);
-            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'semana' });
-          }
-        } else {
-          // Ultimos 6 meses
-          for (let i = 5; i >= 0; i--) {
-            const ini = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
-            const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-            const label = ini.toLocaleDateString('es', { month: 'short' });
-            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'mes' });
-          }
+        for (let i = 5; i >= 0; i--) {
+          const f = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: 0, g: 0 });
         }
-
         this.ventas.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
-          const bucket = data.find(b => f >= b.ini && f <= b.fin);
-          if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
+          const me = meses.find(x => x.m === f.getMonth() && x.y === f.getFullYear());
+          if (me) { me.v += n(v.total); me.g += n(v.ganancia); }
         });
-
         const dark = this.cfg.tema === 'dark';
         const txt = dark ? '#94a3b8' : '#6b7280', grid = dark ? '#334155' : '#e5e7eb';
-
         this._chart = new Chart(cv.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: data.map(m => m.label),
+            labels: meses.map(m => m.label),
             datasets: [
-              { label: 'Ventas', data: data.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
-              { label: 'Ganancia', data: data.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
+              { label: 'Ventas', data: meses.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
+              { label: 'Ganancia', data: meses.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
             ]
           },
           options: {
@@ -5659,292 +5492,11 @@ export default {
             animation: { duration: 500 },
             plugins: {
               legend: { position: 'bottom', labels: { color: txt, boxWidth: 12, font: { size: 10 } } },
-              tooltip: {
-                callbacks: {
-                  title: (items) => {
-                    const b = data[items[0].dataIndex];
-                    if (!b) return '';
-                    if (b.tipo === 'semana') {
-                      return fmtFecha(b.ini.toISOString()) + ' - ' + fmtFecha(b.fin.toISOString());
-                    }
-                    return b.ini.toLocaleDateString('es', { month: 'long', year: 'numeric' });
-                  },
-                  label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw)
-                }
-              }
+              tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } }
             },
             scales: {
               x: { ticks: { color: txt, font: { size: 9 } }, grid: { display: false } },
-              y: { beginAtZero: true, ticks: { color: txt, font: { size: 9 }, callback: v => '
-
-    // ===== BACKUP AUTO =====
-    async backupAuto() {
-      try {
-        const data = buildData(this);
-        await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
-      } catch (e) {}
-    },
-
-    aplicarUpdate() {
-      this._aplicando = true;
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(reg => {
-          if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          setTimeout(() => location.reload(), 500);
-        }).catch(() => location.reload());
-      } else {
-        location.reload();
-      }
-    },
-
-    // ===== INICIALIZACIÓN =====
-    async inicializar() {
-      const _t0 = performance.now();
-      // Deteccion multi-pestana
-      try {
-        this._tabId = genId('tab');
-        if (typeof BroadcastChannel !== 'undefined') {
-          this._bc = new BroadcastChannel('tienda-pro');
-          this._bc.onmessage = (e) => {
-            if (e.data && e.data.tipo === 'hello' && e.data.tabId !== this._tabId) {
-              // Otra pestaña existe, avisar
-              this.otraPestana = true;
-              this._bc.postMessage({ tipo: 'existe', tabId: this._tabId });
-            }
-          };
-          this._bc.postMessage({ tipo: 'hello', tabId: this._tabId });
-        }
-      } catch (e) {}
-
-      try {
-        // SAFE MODE: contar intentos fallidos
-        let intentos = 0;
-        try {
-          const sm = await db.config.get('safeModeCounter');
-          intentos = (sm && sm.value) ? sm.value : 0;
-        } catch (e) {}
-        if (intentos >= 3) {
-          this.safeMode = true;
-          console.warn('SAFE MODE activado (3+ intentos fallidos)');
-        }
-        // Marcar inicio en curso
-        try { await P(db.config, { key: 'safeModeCounter', value: intentos + 1 }); } catch (e) {}
-
-        const c = await db.config.get('cfg');
-        if (c) this.cfg = { ...this.cfg, ...c.value };
-        else await this.guardarCfg();
-        try {
-          document.documentElement.setAttribute('data-theme', this.cfg.tema);
-        } catch (e) {}
-        this.aplicarEscalaFont();
-        // Limpiar items viejos de la cola de backups
-        try {
-          const hace7d = new Date(Date.now() - 7 * 86400000).toISOString();
-          const viejos = await db.tgQueue.filter(x => x.ts < hace7d).toArray();
-          if (viejos.length > 0) {
-            await db.tgQueue.bulkDelete(viejos.map(x => x.id));
-            console.log('Limpiados ' + viejos.length + ' items viejos de tgQueue');
-          }
-        } catch (e) { console.error('limpiar tgQueue', e); }
-        setTimeout(() => this.mostrarTipAleatorio(), 2500);
-        // Aviso de configuracion inicial
-        if (!this.cfg.tiendaConfigurada && !this.cfg.avisoTiendaDescartado) {
-          setTimeout(() => { this.mostrarAvisoTienda = true; }, 800);
-        }
-        // No prellenar el campo de capital inicial
-        this.capInicialStr = '';
-        await this.recargarTodo();
-        // Pedir persistencia de storage (evita que el navegador borre datos)
-        await this.pedirPersistenciaStorage();
-        await this.actualizarInfoStorage();
-        // Restaurar carrito persistido (por si cerro la app a media venta)
-        try {
-          const savedCarrito = localStorage.getItem('carritoPro');
-          if (savedCarrito) {
-            const parsed = JSON.parse(savedCarrito);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const validos = parsed.filter(it => {
-                if (!it || !it.productoId) return false;
-                const prod = this.productos.find(x => x.id === it.productoId && !x.archivado);
-                return !!prod && this.stock(it.productoId) > 0;
-              });
-              if (validos.length > 0) {
-                this.carrito = validos;
-                this.toastMsg('Carrito restaurado (' + validos.length + ' item(s))');
-              } else {
-                localStorage.removeItem('carritoPro');
-              }
-            }
-          }
-        } catch (e) { console.error('restaurar carrito', e); }
-        const b = await db.config.get('backupAuto');
-        if (b) this.ultimoBackup = b;
-        const ahora = Date.now();
-        if (!this.cfg.ultimoBackupAuto || (ahora - this.cfg.ultimoBackupAuto) > 86400000) {
-          await this.backupAuto();
-          this.cfg.ultimoBackupAuto = ahora;
-          await this.guardarCfg();
-          const b2 = await db.config.get('backupAuto');
-          if (b2) this.ultimoBackup = b2;
-        }
-        // B13: migrar gastos viejos de movCaja a la tabla gastos
-        try {
-          const movsGasto = this.movCaja.filter(mv =>
-            mv.tipo === 'egreso' &&
-            mv.concepto &&
-            /gasto/i.test(mv.concepto) &&
-            !mv.concepto.startsWith('Pago deuda:') &&
-            !mv.concepto.startsWith('Gasto:')
-          );
-          const gastosConMov = new Set(this.gastos.filter(g => g.movId).map(g => g.movId));
-          const aMigrar = movsGasto.filter(mv => !gastosConMov.has(mv.id));
-          if (aMigrar.length > 0) {
-            const nuevosGastos = aMigrar.map(mv => {
-              const cat = /luz/i.test(mv.concepto) ? 'Luz' :
-                          /agua/i.test(mv.concepto) ? 'Agua' :
-                          /alquiler|renta/i.test(mv.concepto) ? 'Alquiler' :
-                          /internet|wifi/i.test(mv.concepto) ? 'Internet' :
-                          /transport/i.test(mv.concepto) ? 'Transporte' :
-                          /publicid|anuncio/i.test(mv.concepto) ? 'Publicidad' :
-                          /mantenim|reparac/i.test(mv.concepto) ? 'Mantenimiento' :
-                          /limpiez/i.test(mv.concepto) ? 'Limpieza' : 'Otros';
-              return {
-                id: genId('g'),
-                fecha: mv.fecha,
-                categoria: cat,
-                concepto: mv.concepto,
-                monto: n(mv.monto),
-                nota: mv.nota || '',
-                metodoPago: 'efectivo',
-                saleDeCaja: true,
-                movId: mv.id,
-                migrado: true
-              };
-            });
-            await db.gastos.bulkPut(nuevosGastos.map(x => clean(x)));
-            this.gastos = await db.gastos.toArray();
-            this.toastMsg('Migrados ' + aMigrar.length + ' gasto(s) antiguos');
-          }
-        } catch (e) { console.error('migrar gastos', e); }
-
-        if (this.asientos.length === 0 && (this.ventas.length > 0 || this.compras.length > 0 || this.gastos.length > 0)) {
-          try {
-            const nuevos = this.generarTodosLosAsientos();
-            if (nuevos.length > 0) {
-              await this.recargar([]);
-            }
-          } catch (e) { console.error('auto asientos', e); }
-        }
-
-        // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
-        // Telegram: usar token default o guardado (no en safe mode)
-        
-        if (this.cfg.tgChatId) this.tgEstado = 'conectado';
-        else {
-          this.tgEstado = 'esperando-start';
-          // Intentar auto-detectar (por si ya le dio Start antes)
-          setTimeout(() => this.tgAutoDetectarChat(), 2000);
-        }
-        const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos', ];
-        if (valid.includes(hash)) this.sec = hash;
-      } catch (e) {
-        console.error(e);
-        this.toastMsg('Error al cargar datos', TOAST.BAD);
-      } finally {
-        // Si todo fue bien, resetear contador
-        try { await P(db.config, { key: 'safeModeCounter', value: 0 }); } catch (e) {}
-        this.cargando = false;
-        this.splashVisible = false;
-        const _ms = (performance.now() - _t0).toFixed(1);
-        console.log('Inicializacion: ' + _ms + 'ms');
-        // Cargar handle de carpeta si existe
-        try {
-          const rec = await db.config.get('carpetaHandle');
-          if (rec && rec.value) {
-            this._carpetaHandle = rec.value;
-            this.cfg.tgCarpetaActiva = true;
-            this.cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
-          }
-        } catch (e) {}
-        // Actualizar cola pendiente
-        await this.tgActualizarCola();
-        // Ver si hay un backup pre-import pendiente
-        await this.cargarPreImportInfo();
-        // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
-        if (!this.safeMode && !this.cfg.tgChatId) this.iniciarTgPoll();
-        // Procesar cola cuando recupera conexion
-        window.addEventListener('online', () => {
-          setTimeout(() => this.tgProcesarCola(), 1000);
-        });
-        // Auto-backup a Telegram si esta activo (no en safe mode)
-        if (!this.safeMode && this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
-        this.$nextTick(() => {
-          if (this.sec === 'dashboard') {
-            const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
-            idle(() => this.renderChart());
-          }
-        });
-      }
-    }
-  },
-
-  watch: {
-    lotes: {
-      handler() { this.invalidarFifoCache(); },
-      deep: false
-    },
-    carrito: {
-      handler(val) {
-        try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
-      },
-      deep: true
-    },
-    ajustesAbierto(v) {
-      this.$nextTick(() => this._actualizarScrollLock());
-    },
-    masAbierto(v) {
-      this.$nextTick(() => this._actualizarScrollLock());
-    },
-    'cfg.fontScale'(v) {
-      try {
-        document.documentElement.style.setProperty('--font-scale', String(Number(v) || 1));
-      } catch (e) {}
-    },
-    'cfg.tema'(t) {
-      try { document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-      if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
-    },
-    sec(s) {
-      if (s === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
-    }
-  },
-
-  mounted() {
-    this.inicializar();
-    window.addEventListener('pwa:update', () => { this.hayUpdate = true; });
-    window.addEventListener('online', () => this.online = true);
-    window.addEventListener('offline', () => this.online = false);
-    window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
-    window.addEventListener('resize', () => { if (this.sec === 'dashboard') this.renderChart(); });
-    // Notificaciones: usar requestIdleCallback si esta disponible
-    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
-    idle(() => { this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000); });
-    idle(() => { this._tgColaTimer = setInterval(() => this.tgProcesarCola(), 5 * 60 * 1000); });
-    idle(() => this.chequearNotificaciones());
-  },
-
-  beforeUnmount() {
-    if (this._bc) { try { this._bc.close(); } catch (e) {} }
-    if (this._notifTimer) clearInterval(this._notifTimer);
-    if (this._tgColaTimer) clearInterval(this._tgColaTimer);
-    if (this._tgPollTimer) clearInterval(this._tgPollTimer);
-  }
-};
-
-
-</script>
- + v.toLocaleString() }, grid: { color: grid } }
+              y: { beginAtZero: true, ticks: { color: txt, font: { size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: grid } }
             }
           }
         });
@@ -6101,14 +5653,6 @@ export default {
           }
         } catch (e) { console.error('migrar gastos', e); }
 
-        if (this.asientos.length === 0 && (this.ventas.length > 0 || this.compras.length > 0 || this.gastos.length > 0)) {
-          try {
-            const nuevos = this.generarTodosLosAsientos();
-            if (nuevos.length > 0) {
-              await this.recargar([]);
-            }
-          } catch (e) { console.error('auto asientos', e); }
-        }
 
         // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
         // Telegram: usar token default o guardado (no en safe mode)

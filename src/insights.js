@@ -37,7 +37,7 @@ export function generarRecomendaciones(state) {
       nivel: 'urgente', peso: saldoCaja < -1000 ? 95 : 85, icono: 'wallet',
       titulo: 'Caja en negativo: ' + formatMoney(saldoCaja),
       detalle: 'Revisa los ultimos movimientos y arqueos',
-      sec: 'contabilidad', clave: 'caja-negativa'
+      sec: 'dashboard', clave: 'caja-negativa'
     });
   }
 
@@ -66,18 +66,7 @@ export function generarRecomendaciones(state) {
   // ============ ATENCION (peso 50-79) =========================
   // ============================================================
 
-  if (state.balanzaPorCuenta) {
-    const debe = state.balanzaPorCuenta.reduce((s, b) => s + (b.debe || 0), 0);
-    const haber = state.balanzaPorCuenta.reduce((s, b) => s + (b.haber || 0), 0);
-    if (Math.abs(debe - haber) > 0.01 && state.asientos && state.asientos.length > 0) {
-      push({
-        nivel: 'atencion', peso: 75, icono: 'alert',
-        titulo: 'Descuadre en libro diario',
-        detalle: 'Debe: ' + formatMoney(debe) + ' · Haber: ' + formatMoney(haber),
-        sec: 'contabilidad', clave: 'descuadre-libro'
-      });
-    }
-  }
+
 
   const ultimoCierre = cierres.length > 0
     ? Math.max(...cierres.map(c => new Date(c.fechaCierre).getTime()))
@@ -113,7 +102,7 @@ export function generarRecomendaciones(state) {
       nivel: 'atencion', peso: 62, icono: 'wallet',
       titulo: faltantes30.length + ' faltantes de caja en 30 dias',
       detalle: 'Total: ' + formatMoney(total),
-      sec: 'contabilidad', clave: 'faltantes-' + faltantes30.length
+      sec: 'dashboard', clave: 'faltantes-' + faltantes30.length
     });
   }
 
@@ -124,7 +113,7 @@ export function generarRecomendaciones(state) {
       nivel: 'atencion', peso: 60, icono: 'wallet',
       titulo: sobrantes30.length + ' sobrantes de caja en 30 dias',
       detalle: 'Total: ' + formatMoney(total),
-      sec: 'contabilidad', clave: 'sobrantes-' + sobrantes30.length
+      sec: 'dashboard', clave: 'sobrantes-' + sobrantes30.length
     });
   }
 
