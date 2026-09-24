@@ -15,14 +15,7 @@
       </div>
 
       <div class="sheet-group">Finanzas y reportes</div>
-      <div class="sheet-grid">
-        <button class="sheet-btn" :class="{ activo: sec === 'contabilidad' }" @click="$emit('ir', 'contabilidad')">
-          <icon name="chart" :size="22"></icon>Contabilidad
-        </button>
-        <button class="sheet-btn" :class="{ activo: sec === 'auditoria' }" @click="$emit('ir', 'auditoria')">
-          <icon name="check" :size="22"></icon>Auditoria
-        </button>
-        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
+      <div class="sheet-grid">        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
           <icon name="users" :size="22"></icon>Socios
         </button>
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="$emit('ir', 'reportes')">

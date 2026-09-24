@@ -103,8 +103,18 @@
           </div>
         </div>
 
+        <!-- GRAFICO_TOGGLE_V1 -->
         <div class="card" style="margin-top:.8rem">
-          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Ventas vs Ganancia (6 meses)</div>
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <span style="display:flex;align-items:center;gap:.55rem">
+              <icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
+              Ventas vs Ganancia
+            </span>
+            <span class="chart-toggle">
+              <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
+              <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
+            </span>
+          </div>
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
@@ -981,332 +991,11 @@
           </div>
         </div>
       </section>
-      <!-- ==================== CONTABILIDAD ==================== -->
-      <section v-if="sec === 'contabilidad'" class="fade-up">
-        <!-- RESUMEN PRINCIPAL -->
-        <div class="balance azul">
-          <div class="lbl"><icon name="chart" :size="14" color="#fff"></icon> Resultado del periodo</div>
-          <div class="val" :style="gananciaNetaPeriodo >= 0 ? '' : 'color:#fca5a5'">{{ fmt(gananciaNetaPeriodo) }}</div>
-          <div class="sub">Margen neto: {{ margenNetoPct }}% · Margen bruto: {{ margenBrutoPct }}%</div>
-        </div>
+      <!-- MI_CONTABILIDAD_ELIMINADA -->
 
-        <!-- KPIs PRINCIPALES -->
-        
 
-        <!-- POSICION FINANCIERA -->
-        
+      <!-- MI_AUDITORIA_ELIMINADA -->
 
-        
-
-        
-
-        <div class="card contab-card">
-          <div class="card-title contab-toggle" @click="toggleContab('resultados')">
-            <icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
-            Estado de resultados
-            <span class="chev" :class="{ open: contabExpandido.resultados }" style="margin-left:auto">
-              <icon name="chevron" :size="16" :color="mutColor"></icon>
-            </span>
-          </div>
-          <div v-if="contabExpandido.resultados">
-          <div class="row"><span>Ingresos por ventas</span><b class="pos">{{ fmt(ventasPeriodo) }}</b></div>
-          <div class="row"><span>(-) Costo de lo vendido</span><b class="neg">{{ fmt(-1 * m(ventasPeriodo - gananciaBrutaPeriodo)) }}</b></div>
-          <div class="row total"><span>= GANANCIA BRUTA</span><span>{{ fmt(gananciaBrutaPeriodo) }} <span style="font-weight:400;font-size:.78rem">({{ margenBrutoPct }}%)</span></span></div>
-          <div class="row" style="margin-top:.5rem"><span>(-) Gastos operativos</span><span class="neg">-{{ fmt(gastosOpPeriodo) }}</span></div>
-          <div class="row"><span>(-) Mermas</span><span class="neg">-{{ fmt(this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(cfg.periodoInicio)).reduce((s,a) => s + n(a.costoPerdida), 0)) }}</span></div>
-          <div class="row total"><span>= GANANCIA NETA</span>
-            <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }} <span style="font-weight:400;font-size:.78rem">({{ margenNetoPct }}%)</span></span>
-          </div>
-          </div>
-        </div>
-
-        <div class="card contab-card">
-          <div class="card-title contab-toggle" @click="toggleContab('balance')">
-            <icon name="dollar" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
-            Balance general
-            <span class="chev" :class="{ open: contabExpandido.balance }" style="margin-left:auto">
-              <icon name="chevron" :size="16" :color="mutColor"></icon>
-            </span>
-          </div>
-          <div v-if="contabExpandido.balance">
-          <div class="info-box" style="margin-bottom:.6rem;font-size:.72rem">
-            Activo = Pasivo + Patrimonio
-          </div>
-          <div class="row" style="font-weight:800;color:var(--pri)"><span>ACTIVOS</span><span>{{ fmt(activosTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Caja</span><span>{{ fmt(saldoCaja) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Inventario</span><span>{{ fmt(valorInventario) }}</span></div>
-          <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PASIVOS</span><span class="neg">{{ fmt(pasivosTotalReal) }}</span></div>
-          <div v-if="pasivosActivos.length === 0" class="row" style="padding-left:1rem;font-size:.78rem;color:var(--mut)"><span>Sin deudas activas</span><span>{{ fmt(0) }}</span></div>
-          <div v-for="p in pasivosActivos" :key="p.id" class="row" style="padding-left:1rem;font-size:.78rem">
-            <span>{{ p.acreedor }}{{ p.vencimiento && new Date(p.vencimiento) < new Date() ? ' ⚠ vencido' : '' }}</span>
-            <span class="neg">{{ fmt(p.monto) }}</span>
-          </div>
-          <div class="row" style="font-weight:800;color:var(--pri);margin-top:.5rem"><span>PATRIMONIO</span><span>{{ fmt(capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Capital inicial</span><span>{{ fmt(cfg.capitalInicial || 0) }}</span></div>
-          <div v-if="aportesTotal > 0" class="row" style="padding-left:1rem;font-size:.78rem"><span>Aportes</span><span>{{ fmt(aportesTotal) }}</span></div>
-          <template v-for="s in sociosActivos" :key="'ap_' + s.id">
-            <div v-if="totalAportesSocio(s.id) > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
-              <span>· {{ s.nombre }}</span><span>{{ fmt(totalAportesSocio(s.id)) }}</span>
-            </div>
-          </template>
-          <div v-if="aportesSinSocioTotal > 0" class="row" style="padding-left:2rem;font-size:.72rem;color:var(--mut)">
-            <span>· Sin asignar</span><span>{{ fmt(aportesSinSocioTotal) }}</span>
-          </div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ganancias acumuladas</span><span>{{ fmt(gananciasAcumuladas) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span class="neg">-{{ fmt(retirosTotal) }}</span></div>
-          <div class="row total"><span>= PASIVO + PATRIMONIO</span><span>{{ fmt(pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal) }}</span></div>
-          <div class="row" style="border-top:1px dashed var(--brd);margin-top:.4rem;padding-top:.5rem">
-            <span>Disponible para retiro</span>
-            <b :class="gananciaDisponible >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaDisponible) }}</b>
-          </div>
-          <div class="row" :class="Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'pos' : 'neg'">
-            <span>Cuadre contable</span>
-            <b>{{ Math.abs(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(activosTotal - (pasivosTotalReal + capitalTotal + gananciasAcumuladas - retirosTotal)) }}</b>
-          </div>
-          </div>
-        </div>
-
-        <div class="card contab-card">
-          <div class="card-title contab-toggle" @click="toggleContab('flujo')">
-            <icon name="wallet" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
-            Flujo de caja
-            <span class="chev" :class="{ open: contabExpandido.flujo }" style="margin-left:auto">
-              <icon name="chevron" :size="16" :color="mutColor"></icon>
-            </span>
-          </div>
-          <div v-if="contabExpandido.flujo">
-          <div class="row" style="font-weight:800;color:var(--ok)"><span>ENTRADAS</span><span>+{{ fmt(flujoEntradas) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Ventas al contado</span><span>{{ fmt(ventasContadoTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Aportes de capital</span><span>{{ fmt(aportesTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Sobrantes de arqueo</span><span>{{ fmt(this.movCaja.filter(mv => mv.tipo === 'ingreso' && mv.concepto && mv.concepto.includes('Sobrante')).reduce((s,mv) => s + n(mv.monto), 0)) }}</span></div>
-          <div class="row" style="font-weight:800;color:var(--bad);margin-top:.5rem"><span>SALIDAS</span><span>-{{ fmt(flujoSalidas) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Compras de mercancia</span><span>{{ fmt(comprasTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Gastos operativos</span><span>{{ fmt(gastosTotalAcumulado) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Retiros</span><span>{{ fmt(retirosTotal) }}</span></div>
-          <div class="row" style="padding-left:1rem;font-size:.78rem"><span>Faltantes de arqueo</span><span>{{ fmt(this.movCaja.filter(mv => mv.tipo === 'egreso' && mv.concepto && mv.concepto.includes('Faltante')).reduce((s,mv) => s + n(mv.monto), 0)) }}</span></div>
-          <div class="row total"><span>= FLUJO NETO</span>
-            <span :class="flujoNeto >= 0 ? 'pos' : 'neg'">{{ fmt(flujoNeto) }}</span>
-          </div>
-          </div>
-        </div>
-
-        
-
-        
-
-        
-
-        <div class="card contab-card">
-          <div class="card-title contab-toggle" @click="toggleContab('libro')">
-            <icon name="file" :size="18" :color="sec === 'contabilidad' ? '#2196F3' : mutColor"></icon>
-            Libro diario ({{ asientosFiltrados.length }})
-            <span class="chev" :class="{ open: contabExpandido.libro }" style="margin-left:auto">
-              <icon name="chevron" :size="16" :color="mutColor"></icon>
-            </span>
-          </div>
-          <div v-if="contabExpandido.libro">
-          <div class="grid2" style="margin-bottom:.5rem">
-            <input v-model="filtroAsientoInicio" type="date">
-            <input v-model="filtroAsientoFin" type="date">
-          </div>
-          <div class="grid2" style="margin-bottom:.5rem">
-            <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="filtroAsientoInicio = filtroAsientoFin = new Date().toISOString().split('T')[0]">Hoy</button>
-            <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="setMesAsientos()">Este mes</button>
-          </div>
-          <div class="grid2" style="margin-bottom:.5rem">
-            <select v-model="filtroAsientoCuenta" style="font-size:.75rem">
-              <option value="">Todas las cuentas</option>
-              <option v-for="c in cuentasLista" :key="c" :value="c">{{ c }}</option>
-            </select>
-            <select v-model="filtroAsientoTipo" style="font-size:.75rem">
-              <option value="">Todos los tipos</option>
-              <option value="venta">Ventas</option>
-              <option value="costo">Costo venta</option>
-              <option value="compra">Compras</option>
-              <option value="gasto">Gastos</option>
-              <option value="merma">Mermas</option>
-              <option value="retiro">Retiros</option>
-              <option value="aporte">Aportes</option>
-              <option value="arqueo">Arqueos</option>
-            </select>
-          </div>
-          <button class="btn warn" style="margin-bottom:.5rem;font-size:.72rem" @click="regenerarAsientos()">
-            <icon name="refresh" :size="14" color="#fff"></icon> Regenerar todos los asientos
-          </button>
-
-          <div v-if="asientosFiltrados.length === 0" class="empty">Sin asientos en el rango</div>
-          <div v-else style="overflow-x:auto">
-            <table class="cuadre-table" style="font-size:.7rem">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th style="text-align:left">Descripcion</th>
-                  <th style="text-align:left">Debe</th>
-                  <th style="text-align:left">Haber</th>
-                  <th>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="a in asientosFiltrados" :key="a.id">
-                  <td>{{ fmtFecha(a.fecha) }}</td>
-                  <td style="text-align:left">{{ a.descripcion }}</td>
-                  <td class="pos" style="text-align:left;font-size:.68rem">{{ a.cuentaDebe }}</td>
-                  <td class="neg" style="text-align:left;font-size:.68rem">{{ a.cuentaHaber }}</td>
-                  <td>{{ fmt(a.monto) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-if="balanzaPorCuenta.length" style="margin-top:1rem">
-            <div class="card-title" style="margin-top:0"><icon name="chart" :size="18"></icon> Balanza de comprobacion</div>
-            <div class="row" style="font-weight:800;font-size:.78rem"><span>Cuenta</span><span style="display:flex;gap:1.5rem"><span>Debe</span><span>Haber</span></span></div>
-            <div v-for="b in balanzaPorCuenta" :key="b.cuenta" class="row" style="font-size:.72rem">
-              <span>{{ b.cuenta }}</span>
-              <span style="display:flex;gap:1.5rem"><span class="pos">{{ fmt(b.debe) }}</span><span class="neg">{{ fmt(b.haber) }}</span></span>
-            </div>
-            <div class="row total">
-              <span>TOTALES</span>
-              <span style="display:flex;gap:1.5rem"><span>{{ fmt(totalDebe) }}</span><span>{{ fmt(totalHaber) }}</span></span>
-            </div>
-            <div class="det" style="font-size:.7rem;text-align:center;margin-top:.3rem"
-              :style="Math.abs(totalDebe - totalHaber) < 0.01 ? 'color:var(--ok)' : 'color:var(--bad)'">
-              {{ Math.abs(totalDebe - totalHaber) < 0.01 ? 'OK: Cuadra' : 'DESCUADRE: ' + fmt(Math.abs(totalDebe - totalHaber)) }}
-            </div>
-          </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ==================== AUDITORIA ==================== -->
-      <section v-if="sec === 'auditoria'" class="fade-up">
-        <div v-if="!auditActiva" class="balance morado">
-          <div class="lbl"><icon name="check" :size="14" color="#fff"></icon> Auditoria fisica</div>
-          <div v-if="ultimaAuditoria" class="val" :class="ultimaAuditoria.resumen.totalDif >= 0 ? '' : ''">{{ fmt(ultimaAuditoria.resumen.totalDif) }}</div>
-          <div v-else class="val">Sin auditorias</div>
-          <div v-if="ultimaAuditoria" class="sub">Ultima: hace {{ auditDiasDesde }} dia(s) · {{ ultimaAuditoria.resumen.totalContados || ultimaAuditoria.inventario.items.length }} productos</div>
-          <div v-else class="sub">Nunca has hecho una auditoria</div>
-        </div>
-
-        <!-- SIN AUDITORIA ACTIVA -->
-        <div v-if="!auditActiva">
-          <div class="card">
-            <div class="card-title"><icon name="check" :size="18" :color="sec === 'auditoria' ? '#2196F3' : mutColor"></icon> Iniciar auditoria</div>
-            <div class="info-box" style="margin-bottom:.5rem">
-              Une arqueo de caja + conteo de inventario en un solo flujo. Al cerrar se registran los ajustes automaticamente.
-            </div>
-            <button class="btn pri" @click="iniciarAuditoria()">
-              <icon name="plus" :size="16" color="#fff"></icon> Nueva auditoria
-            </button>
-          </div>
-
-          <div class="card" v-if="auditoriasOrdenadas.length">
-            <div class="card-title"><icon name="list" :size="18" :color="sec === 'auditoria' ? '#2196F3' : mutColor"></icon> Historial</div>
-            <div v-for="a in auditoriasOrdenadas" :key="a.id" class="audit-hist">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <b>{{ fmtFH(a.fechaFin) }}</b>
-                <b :class="a.resumen.totalDif >= 0 ? 'pos' : 'neg'">{{ fmt(a.resumen.totalDif) }}</b>
-              </div>
-              <div class="det" style="font-size:.72rem;color:var(--mut);margin-top:.2rem">
-                Caja: {{ fmt(a.caja.diferencia) }} · Inv: {{ fmt(a.resumen.difInventarioCosto) }} · {{ a.inventario.items.filter(x => x.activo).length }} contados
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AUDITORIA ACTIVA -->
-        <div v-else>
-          <div class="audit-steps">
-            <div class="audit-step" :class="{ activo: auditForm.paso === 1, done: auditForm.paso > 1 }">
-              <span class="audit-step-num">1</span> Caja
-            </div>
-            <div class="audit-step" :class="{ activo: auditForm.paso === 2, done: auditForm.paso > 2 }">
-              <span class="audit-step-num">2</span> Inventario
-            </div>
-            <div class="audit-step" :class="{ activo: auditForm.paso === 3 }">
-              <span class="audit-step-num">3</span> Resumen
-            </div>
-          </div>
-
-          <!-- PASO 1: CAJA -->
-          <div v-if="auditForm.paso === 1" class="card">
-            <div class="card-title"><icon name="wallet" :size="18"></icon> Paso 1 · Arqueo de caja</div>
-            <div class="row"><span>Sistema dice</span><b>{{ fmt(saldoCaja) }}</b></div>
-            <input v-model="auditForm.cajaContada" type="number" inputmode="decimal" step="0.01" placeholder="Monto contado fisicamente">
-            <div v-if="auditForm.cajaContada !== ''" class="arqueo-prev" :class="Math.abs(n(auditForm.cajaContada) - saldoCaja) < 0.01 ? 'cuadre' : (n(auditForm.cajaContada) > saldoCaja ? 'sobrante' : 'faltante')">
-              Diferencia: <b>{{ fmt(n(auditForm.cajaContada) - saldoCaja) }}</b>
-              <span v-if="Math.abs(n(auditForm.cajaContada) - saldoCaja) < 0.01"> (exacto ✓)</span>
-            </div>
-            <input v-model="auditForm.cajaNota" type="text" placeholder="Nota (opcional)">
-            <div class="grid2">
-              <button class="btn ghost" @click="cancelarAuditoria()">Cancelar</button>
-              <button class="btn pri" @click="auditSiguientePaso()">Siguiente →</button>
-            </div>
-          </div>
-
-          <!-- PASO 2: INVENTARIO -->
-          <div v-if="auditForm.paso === 2" class="card">
-            <div class="card-title"><icon name="package" :size="18"></icon> Paso 2 · Conteo de inventario</div>
-            <div class="info-box" style="margin-bottom:.5rem">
-              Deja vacio lo que no cuentes. Solo se ajustaran los productos donde pongas cantidad.
-            </div>
-            <div class="grid2" style="margin-bottom:.5rem">
-              <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="marcarTodoIgual">
-                <icon name="check" :size="12" :color="mutColor"></icon> Todo igual
-              </button>
-              <button class="btn ghost" style="margin-bottom:0;font-size:.72rem" @click="limpiarConteos">
-                <icon name="x" :size="12" :color="mutColor"></icon> Limpiar
-              </button>
-            </div>
-            <div class="audit-lista">
-              <div v-for="item in auditConteoActual" :key="item.productoId" class="audit-item" :class="{ 'audit-con-dif': item.activo && item.dif !== 0 }">
-                <div style="flex:1;min-width:0">
-                  <div class="nm" style="font-size:.85rem;font-weight:700">{{ item.nombre }}</div>
-                  <div class="det" style="font-size:.7rem;color:var(--mut)">Sistema: {{ fmtCant(item.sistema) }}</div>
-                </div>
-                <input type="number" inputmode="decimal" step="0.01" class="audit-input"
-                  :value="auditForm.conteos[item.productoId]?.contado ?? ''"
-                  @input="setAuditConteo(item.productoId, $event.target.value)"
-                  placeholder="contado">
-                <div class="audit-dif" v-if="item.activo" :class="item.dif > 0 ? 'pos' : (item.dif < 0 ? 'neg' : '')">
-                  {{ item.dif > 0 ? '+' : '' }}{{ item.dif }}
-                </div>
-                <div class="audit-dif" v-else style="width:2.5rem"></div>
-              </div>
-            </div>
-            <div class="grid2" style="margin-top:.6rem">
-              <button class="btn ghost" @click="auditPasoAnterior()">← Atras</button>
-              <button class="btn pri" @click="auditSiguientePaso()">Resumen →</button>
-            </div>
-          </div>
-
-          <!-- PASO 3: RESUMEN -->
-          <div v-if="auditForm.paso === 3 && auditResumen" class="card">
-            <div class="card-title"><icon name="chart" :size="18"></icon> Paso 3 · Resumen</div>
-            <div class="row"><span>Caja sistema</span><span>{{ fmt(auditResumen.cajaSistema) }}</span></div>
-            <div class="row"><span>Caja contada</span><span>{{ fmt(auditResumen.cajaContada) }}</span></div>
-            <div class="row"><span>Diferencia caja</span><b :class="auditResumen.difCaja >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.difCaja) }}</b></div>
-            <div class="row" style="margin-top:.4rem"><span>Productos contados</span><span>{{ auditResumen.totalContados }} / {{ auditResumen.totalProductos }}</span></div>
-            <div class="row"><span>Diferencia inventario (costo)</span><b :class="auditResumen.difInventarioCosto >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.difInventarioCosto) }}</b></div>
-            <div class="row total"><span>= DIFERENCIA TOTAL</span><span :class="auditResumen.totalDif >= 0 ? 'pos' : 'neg'">{{ fmt(auditResumen.totalDif) }}</span></div>
-
-            <div v-if="auditResumen.conteo.filter(x => x.dif !== 0).length" style="margin-top:.6rem">
-              <div class="card-title" style="margin-top:0;font-size:.85rem"><icon name="alert" :size="14"></icon> Ajustes a aplicar</div>
-              <div v-for="c in auditResumen.conteo.filter(x => x.dif !== 0)" :key="c.productoId" class="row" style="font-size:.78rem">
-                <span>{{ c.nombre }}</span>
-                <b :class="c.dif > 0 ? 'pos' : 'neg'">{{ c.dif > 0 ? '+' : '' }}{{ c.dif }} und ({{ fmt(c.costoDif) }})</b>
-              </div>
-            </div>
-
-            <div class="grid2" style="margin-top:.6rem">
-              <button class="btn ghost" @click="auditPasoAnterior()">← Atras</button>
-              <button class="btn ok" @click="cerrarAuditoria()">
-                <icon name="check" :size="16" color="#fff"></icon> Cerrar auditoria
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
     </main>
 
@@ -1846,12 +1535,12 @@ const TIPS_UTILES = [
   { id: 'compartir-precios', icono: 'share', texto: 'Comparte tu lista de precios por WhatsApp. Inventario > Compartir lista.', sec: 'inventario' },
   { id: 'escalones', icono: 'trend', texto: 'Define precios por cantidad: al vender 10 o mas se aplica automaticamente. Al crear un producto.', sec: 'productos' },
   { id: 'empaques', icono: 'package', texto: 'Configura empaques (saco, caja) para mostrar el stock como "2 sacos + 5 kg". Al crear un producto.', sec: 'productos' },
-  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Mas > Auditoria.', sec: 'auditoria' },
+  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Mas > Auditoria.', sec: },
   { id: 'cierre', icono: 'calendar', texto: 'Cierra el periodo al final del mes para acumular la ganancia. Reportes > Cerrar Periodo.', sec: 'reportes' },
   { id: 'busqueda', icono: 'search', texto: 'Usa la lupa arriba para buscar productos, ventas o socios en toda la app.', sec: null },
   { id: 'gastos', icono: 'dollar', texto: 'Registra gastos (luz, alquiler, transporte) para ver tu ganancia neta real.', sec: 'gastos' },
   { id: 'socios', icono: 'users', texto: 'Con socios, la app reparte la ganancia automaticamente por su porcentaje. Mas > Socios.', sec: 'socios' },
-  { id: 'pasivos', icono: 'credit-card', texto: 'Registra deudas con proveedores. La app te avisa cuando vencen. Mas > Contabilidad.', sec: 'contabilidad' },
+  { id: icono: 'credit-card', texto: 'Registra deudas con proveedores. La app te avisa cuando vencen. Mas > Contabilidad.', sec: },
   { id: 'anomalias', icono: 'alert', texto: 'La app detecta problemas automaticamente: ventas bajo costo, stock negativo, faltantes. Los veras en Inicio.', sec: null },
   { id: 'mas', icono: 'menu', texto: 'Desde el boton "Mas" abajo accedes a Contabilidad, Auditoria, Socios y Reportes.', sec: null },
   { id: 'exportar', icono: 'download', texto: 'Exporta un respaldo JSON para migrar de dispositivo o tener copia extra. Ajustes > Datos.', sec: 'ajustes' },
@@ -1931,6 +1620,7 @@ export default {
         modoCompacto: false,
         fontScale: 1,
         tipsVistos: [],
+        graficoVista: 'mes',
         avisoTiendaDescartado: false,
         tutorialVisto: false,
         mostrarSplash: true
@@ -1949,34 +1639,8 @@ export default {
       socios: [],
       distribuciones: [],
       gastos: [],
-      asientos: [],
-      pasivos: [],
-      auditorias: [],
-      auditActiva: null,
       auditForm: { cajaContada: '', cajaNota: '', paso: 1, conteos: {} },
-      filtroAsientoInicio: new Date().toISOString().split('T')[0],
-      filtroAsientoFin: new Date().toISOString().split('T')[0],
-      filtroAsientoCuenta: '',
-      filtroAsientoTipo: '',
       pasivoForm: { editId: '', acreedor: '', concepto: '', monto: '', fecha: new Date().toISOString().split('T')[0], vencimiento: '', nota: '' },
-      CUENTAS: {
-        CAJA: 'Caja',
-        INVENTARIO: 'Inventario',
-        VENTAS: 'Ventas',
-        COSTO_VENTAS: 'Costo de ventas',
-        GASTOS: 'Gastos operativos',
-        MERMAS: 'Mermas',
-        RETIROS: 'Retiros',
-        CAPITAL: 'Capital',
-        APORTES: 'Aportes',
-        SOBRANTES: 'Sobrantes de arqueo',
-        FALTANTES: 'Faltantes de arqueo',
-        PASIVOS: 'Cuentas por pagar',
-        PAGO_PASIVOS: 'Pago de deudas',
-        RESULTADO: 'Resultado del ejercicio',
-        GANANCIAS_ACUM: 'Ganancias acumuladas',
-        SOBRANTES_INV: 'Sobrantes de inventario'
-      },
 
       prodExpandido: {},
       invExpandido: {},
@@ -1989,8 +1653,7 @@ export default {
         flujo: false,
         libro: false,
         cierres: false,
-        pasivos: false
-      },
+        },
       busquedaGlobalAbierta: false,
       CATEGORIAS_GASTO,
       METODOS_PAGO,
@@ -2103,7 +1766,7 @@ export default {
 
     mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-    masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos','contabilidad','auditoria'].includes(this.sec); },
+    masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos',].includes(this.sec); },
 
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
@@ -2300,107 +1963,25 @@ export default {
       return this.agruparHistorial(this.distribucionesOrdenadas, 'fecha');
     },
 
-    asientosPorPeriodo() {
-      return this.agruparHistorial(this.asientosFiltrados, 'fecha');
-    },
 
     ajustesRecientes() {
       return this.ajustes.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 20);
     },
 
-    activosTotal() { return m(this.saldoCaja + this.valorInventario); },
 
-    pasivosActivos() {
-      return this.pasivos.filter(p => !p.pagado);
-    },
 
-    pasivosTotalReal() {
-      return m(this.pasivosActivos.reduce((s, p) => s + n(p.monto), 0));
-    },
 
-    pasivosPagadosTotal() {
-      return m(this.pasivos.filter(p => p.pagado).reduce((s, p) => s + n(p.monto), 0));
-    },
 
-    pasivosOrdenados() {
-      return this.pasivos.slice().sort((a, b) => {
-        if (a.pagado !== b.pagado) return a.pagado ? 1 : -1;
-        return new Date(a.fecha) - new Date(b.fecha);
-      });
-    },
 
-    pasivosVencidos() {
-      const ahora = new Date();
-      return this.pasivosActivos.filter(p => p.vencimiento && new Date(p.vencimiento) < ahora);
-    },
 
-    flujoEntradas() {
-      const capitalIni = n(this.cfg.capitalInicial);
-      const ventas = m(this.ventas.filter(v => !v.anulada).reduce((s,v) => s + n(v.total), 0));
-      const aportes = this.aportesTotal;
-      const sobrantes = m(this.movCaja.filter(mv => mv.tipo === 'ingreso' && mv.concepto && mv.concepto.includes('Sobrante')).reduce((s,mv) => s + n(mv.monto), 0));
-      return m(capitalIni + ventas + aportes + sobrantes);
-    },
 
-    flujoSalidas() {
-      const compras = m(this.compras.filter(c => !c.anulada).reduce((s,c) => s + n(c.total), 0));
-      const gastos = m(this.gastos.reduce((s,g) => s + n(g.monto), 0));
-      const retiros = this.retirosTotal;
-      const faltantes = m(this.movCaja.filter(mv => mv.tipo === 'egreso' && mv.concepto && mv.concepto.includes('Faltante')).reduce((s,mv) => s + n(mv.monto), 0));
-      return m(compras + gastos + retiros + faltantes);
-    },
 
-    flujoNeto() { return m(this.flujoEntradas - this.flujoSalidas); },
 
-    margenBrutoPct() {
-      const ing = this.ventasPeriodo;
-      return ing > 0 ? ((this.gananciaBrutaPeriodo / ing) * 100).toFixed(2) : '0.00';
-    },
 
-    margenNetoPct() {
-      const ing = this.ventasPeriodo;
-      return ing > 0 ? ((this.gananciaNetaPeriodo / ing) * 100).toFixed(2) : '0.00';
-    },
 
-    cuentasLista() {
-      const set = {};
-      this.asientos.forEach(a => { set[a.cuentaDebe] = 1; set[a.cuentaHaber] = 1; });
-      return Object.keys(set).sort();
-    },
 
-    asientosFiltrados() {
-      let list = this.asientos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-      if (this.filtroAsientoInicio) {
-        const i = new Date(this.filtroAsientoInicio);
-        list = list.filter(a => new Date(a.fecha) >= i);
-      }
-      if (this.filtroAsientoFin) {
-        const f = new Date(this.filtroAsientoFin);
-        f.setHours(23, 59, 59, 999);
-        list = list.filter(a => new Date(a.fecha) <= f);
-      }
-      if (this.filtroAsientoCuenta) {
-        list = list.filter(a => a.cuentaDebe === this.filtroAsientoCuenta || a.cuentaHaber === this.filtroAsientoCuenta);
-      }
-      if (this.filtroAsientoTipo) {
-        list = list.filter(a => a.refTipo === this.filtroAsientoTipo);
-      }
-      return list;
-    },
 
-    balanzaPorCuenta() {
-      const map = {};
-      this.asientosFiltrados.forEach(a => {
-        if (!map[a.cuentaDebe]) map[a.cuentaDebe] = { cuenta: a.cuentaDebe, debe: 0, haber: 0 };
-        if (!map[a.cuentaHaber]) map[a.cuentaHaber] = { cuenta: a.cuentaHaber, debe: 0, haber: 0 };
-        map[a.cuentaDebe].debe += n(a.monto);
-        map[a.cuentaHaber].haber += n(a.monto);
-      });
-      return Object.values(map).sort((a, b) => a.cuenta.localeCompare(b.cuenta));
-    },
 
-    totalDebe() { return m(this.balanzaPorCuenta.reduce((s, b) => s + b.debe, 0)); },
-    totalHaber() { return m(this.balanzaPorCuenta.reduce((s, b) => s + b.haber, 0)); },
 
     movimientosRecientes() {
       return this.movCaja.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 30);
@@ -2424,7 +2005,6 @@ export default {
         .reduce((s, mv) => s + (mv.tipo === 'ingreso' ? n(mv.monto) : -n(mv.monto)), 0));
     },
 
-    patrimonioTotal() { return m(this.capitalTotal + this.gananciasAcumuladas); },
 
     gananciasAcumuladas() {
       return m(this.cierres.reduce((s, c) => s + n(c.ganancia), 0) + this.gananciaNetaPeriodo);
@@ -2489,9 +2069,7 @@ export default {
           formatMoney: fmt, formatNum: fmtCant,
           stockDe: (pid) => this.stock(pid),
           balanzaPorCuenta: this.balanzaPorCuenta,
-          asientos: this.asientos,
-          pasivos: this.pasivos
-        });
+                });
         const descartadas = this.cfg.anomaliasDescartadas || [];
         const filtradas = list.filter(r => !descartadas.includes(r.clave));
         const result = filtradas.slice(0, 8);
@@ -2519,51 +2097,6 @@ export default {
       return out;
     },
 
-    auditoriasOrdenadas() { return this.auditorias.slice().sort((a,b) => new Date(b.fechaInicio) - new Date(a.fechaInicio)); },
-    ultimaAuditoria() { return this.auditoriasOrdenadas.find(a => a.estado === 'cerrada') || null; },
-    auditDiasDesde() {
-      if (!this.ultimaAuditoria) return null;
-      return Math.floor((Date.now() - new Date(this.ultimaAuditoria.fechaFin).getTime()) / 86400000);
-    },
-    auditConteoActual() {
-      if (!this.auditActiva) return [];
-      const conteos = this.auditForm.conteos || {};
-      return this.prodsActivos.map(p => {
-        const c = conteos[p.id] || {};
-        const sistema = m(this.stock(p.id));
-        const contado = c.contado !== '' && c.contado !== undefined && c.contado !== null ? n(c.contado) : null;
-        const dif = contado !== null ? m(contado - sistema) : 0;
-        const costoUnit = this.costoPromProducto(p.id);
-        return {
-          productoId: p.id,
-          nombre: p.nombre,
-          sistema,
-          contado,
-          dif,
-          costoUnit,
-          costoDif: m(dif * costoUnit),
-          activo: contado !== null
-        };
-      });
-    },
-    auditResumen() {
-      if (!this.auditActiva) return null;
-      const cajaSistema = this.saldoCaja;
-      const cajaContada = this.auditForm.cajaContada !== '' ? n(this.auditForm.cajaContada) : null;
-      const difCaja = cajaContada !== null ? m(cajaContada - cajaSistema) : 0;
-      const conteo = this.auditConteoActual.filter(x => x.activo);
-      const difInventarioCosto = m(conteo.reduce((s, x) => s + x.costoDif, 0));
-      return {
-        cajaSistema,
-        cajaContada,
-        difCaja,
-        conteo,
-        totalContados: conteo.length,
-        totalProductos: this.prodsActivos.length,
-        difInventarioCosto,
-        totalDif: m(difCaja + difInventarioCosto)
-      };
-    },
     ultimaActividad() {
       const fechas = [
         ...this.ventas.map(v => v.fecha),
@@ -3004,8 +2537,7 @@ export default {
         {
           titulo: 'Contabilidad completa',
           icono: 'chart',
-          sec: 'contabilidad',
-          target: 'section:not([style*="display: none"]) .balance',
+          sec: target: 'section:not([style*="display: none"]) .balance',
           texto: 'Todo lo que paso en tu negocio queda registrado. <b>Resumen arriba, detalles abajo</b>. Puedes exportar todo a PDF para contabilidad.'
         },
         {
@@ -3018,8 +2550,7 @@ export default {
         {
           titulo: 'Auditoria fisica',
           icono: 'check',
-          sec: 'auditoria',
-          target: 'section:not([style*="display: none"]) .balance, section:not([style*="display: none"]) .card',
+          sec: target: 'section:not([style*="display: none"]) .balance, section:not([style*="display: none"]) .card',
           texto: 'Cada cierto tiempo, cuenta el dinero y los productos fisicos. La app te dice si <b>cuadra, sobra o falta</b>. Los ajustes se registran solos.'
         },
         {
@@ -3404,7 +2935,7 @@ export default {
 
         await this.recargar(['ventas', 'lotes']);
         await this.recrearAsientoVenta(venta);
-        await this.recargar(['asientos']);
+        await this.recargar([]);
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
@@ -3451,7 +2982,7 @@ export default {
               });
               await this.recargar(['ventas', 'lotes']);
               await this.recrearAsientoVenta({ ...v, anulada: true });
-              await this.recargar(['asientos']);
+              await this.recargar([]);
               this.toastMsg('Venta anulada');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -3608,7 +3139,7 @@ export default {
             const as = this.asientos.filter(a => a.refTipo === 'compra' && a.refId === id);
             if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
           });
-          await this.recargar(['compras', 'lotes', 'asientos']);
+          await this.recargar(['compras', 'lotes', ]);
           this.toastMsg('Compra eliminada');
         }
       };
@@ -3665,7 +3196,7 @@ export default {
           const compraGuardada = f.editId
             ? this.compras.find(x => x.id === f.editId)
             : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-          if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar(['asientos']); }
+          if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar([]); }
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
@@ -3796,7 +3327,7 @@ export default {
         });
         await this.recargar(['ajustes', 'lotes']);
         const mermaGuardada = this.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (mermaGuardada) { await this.recrearAsientoMerma(mermaGuardada); await this.recargar(['asientos']); }
+        if (mermaGuardada) { await this.recrearAsientoMerma(mermaGuardada); await this.recargar([]); }
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
       } else {
         const cs = n(f.costoSobrante);
@@ -3807,11 +3338,9 @@ export default {
           await P(db.ajustes, aj);
           await P(db.lotes, lote);
           if (cs > 0) {
-            const asSob = this.crearAsientoObj(aj.fecha, 'Sobrante inventario ' + prod.nombre, this.CUENTAS.INVENTARIO, this.CUENTAS.SOBRANTES_INV, m(cant * cs), TIPO_ASIENTO.AJUSTE, aj.id);
-            await P(db.asientos, asSob);
           }
         });
-        await this.recargar(['ajustes', 'lotes', 'asientos']);
+        await this.recargar(['ajustes', 'lotes', ]);
         this.toastMsg('Sobrante registrado');
       }
       this.ajusteForm = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
@@ -3848,7 +3377,7 @@ export default {
       this.arqueoPreview = { fisico: 0, diff: 0, class: 'cuadre' };
       await this.recargar(['arqueos', 'movCaja']);
       const arqGuardado = this.arqueos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (arqGuardado) { await this.recrearAsientoArqueo(arqGuardado); await this.recargar(['asientos']); }
+      if (arqGuardado) { await this.recrearAsientoArqueo(arqGuardado); await this.recargar([]); }
     },
 
     // ===== PATRIMONIO =====
@@ -3864,20 +3393,16 @@ export default {
       if (Math.abs(diff) < 0.01) {
         this.capInicialStr = '';
         return this.toastMsg('Sin cambios');
-      }
-      const C = this.CUENTAS;
-      const fecha = new Date().toISOString();
+      }      const fecha = new Date().toISOString();
       this.cfg.capitalInicial = val;
       try {
         await db.transaction('rw', db.asientos, db.config, async () => {
           await P(db.config, { key: 'cfg', value: this.cfg });
           if (diff > 0) {
-            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAJA, C.CAPITAL, diff, TIPO_ASIENTO.CAPITAL, 'cap_' + Date.now()));
           } else {
-            await P(db.asientos, this.crearAsientoObj(fecha, 'Ajuste capital inicial', C.CAPITAL, C.CAJA, Math.abs(diff), TIPO_ASIENTO.CAPITAL, 'cap_' + Date.now()));
           }
         });
-        await this.recargar(['asientos']);
+        await this.recargar([]);
       } catch (e) { console.error('guardarCapInicial', e); }
       this.capInicialStr = '';
       this.toastMsg(`Capital inicial: ${fmt(val)}`);
@@ -3893,7 +3418,7 @@ export default {
         await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
         await this.recargar(['retiros']);
         const rGuardado = this.retiros.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (rGuardado) { await this.recrearAsientoRetiro(rGuardado); await this.recargar(['asientos']); }
+        if (rGuardado) { await this.recrearAsientoRetiro(rGuardado); await this.recargar([]); }
         this.retiroForm = { monto: '', concepto: '' };
         this.retiroAbierto = false;
         this.toastMsg('Retiro registrado');
@@ -3906,7 +3431,7 @@ export default {
       await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
       const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar(['asientos']); }
+      if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar([]); }
       this.aporteForm = { monto: '', nota: '', socioId: '' };
       this.aporteAbierto = false;
       this.toastMsg('Aporte registrado');
@@ -3958,42 +3483,32 @@ export default {
               capitalAlCierre: this.capitalTotal,
               cerrado: true
             };
-            this.cfg.periodoInicio = f.toISOString();
-            const C = this.CUENTAS;
-            await db.transaction('rw', db.cierres, db.asientos, async () => {
-              await P(db.cierres, c);
-              const asientos = [];
-              const desc = 'Cierre ' + fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString());
+            this.cfg.periodoInicio = f.toISOString();            await db.transaction('rw', db.cierres, db.asientos, async () => {
+              await P(db.cierres, c);              const desc = 'Cierre ' + fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString());
 
               // 1. Cerrar Ventas
               if (totVentas > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Ventas', C.VENTAS, C.RESULTADO, totVentas, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 2. Cerrar Costo de ventas
               if (cogs > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Costo ventas', C.RESULTADO, C.COSTO_VENTAS, cogs, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 3. Cerrar Gastos
               if (totGastos > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Gastos', C.RESULTADO, C.GASTOS, totGastos, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 4. Cerrar Mermas
               if (totMermas > 0.01) {
-                asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Cerrar Mermas', C.RESULTADO, C.MERMAS, totMermas, TIPO_ASIENTO.CIERRE, c.id));
               }
               // 5. Transferir resultado a Ganancias acumuladas
               if (Math.abs(neta) > 0.01) {
                 if (neta > 0) {
-                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Resultado a Ganancias', C.RESULTADO, C.GANANCIAS_ACUM, neta, TIPO_ASIENTO.CIERRE, c.id));
                 } else {
-                  asientos.push(this.crearAsientoObj(f.toISOString(), desc + ' | Perdida a Ganancias', C.GANANCIAS_ACUM, C.RESULTADO, Math.abs(neta), TIPO_ASIENTO.CIERRE, c.id));
                 }
               }
 
               if (asientos.length) await db.asientos.bulkPut(asientos.map(x => clean(x)));
             });
             await this.guardarCfg();
-            await this.recargar(['cierres', 'asientos']);
+            await this.recargar(['cierres', ]);
             this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
             } finally {
               this._cerrando = false;
@@ -4573,7 +4088,7 @@ export default {
         this.toastMsg(`Pasivo registrado: ${fmt(monto)}`);
       }
       this.resetPasivo();
-      await this.recargar(['pasivos']);
+      await this.recargar([]);
     },
 
     editarPasivo(id) {
@@ -4599,7 +4114,7 @@ export default {
         msg: 'Eliminar deuda con "' + p.acreedor + '" por ' + fmt(p.monto) + '?',
         onOk: async () => {
           await db.pasivos.delete(id);
-          await this.recargar(['pasivos']);
+          await this.recargar([]);
           this.toastMsg('Pasivo eliminado');
         }
       };
@@ -4625,10 +4140,8 @@ export default {
                 concepto: 'Pago deuda: ' + p.acreedor + ' - ' + p.concepto,
                 nota: p.nota || ''
               });
-              const as = this.crearAsientoObj(ahora, 'Pago deuda ' + p.acreedor, this.CUENTAS.PASIVOS, this.CUENTAS.CAJA, n(p.monto), TIPO_ASIENTO.PAGO_PASIVO, p.id);
-              await P(db.asientos, as);
             });
-            await this.recargar(['pasivos', 'movCaja', 'asientos']);
+            await this.recargar(['movCaja', ]);
             this.toastMsg(`Deuda pagada: ${fmt(p.monto)}`);
           } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
         }
@@ -4651,7 +4164,7 @@ export default {
             onOk: async (v) => {
               if (v !== 'BORRAR') return this.toastMsg('Cancelado', TOAST.WARN);
               try {
-                const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos'];
+                const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
                 await db.transaction('rw', tables.concat(['config']), async () => {
                   for (const t of tables) await db.table(t).clear();
                   await db.config.clear();
@@ -5011,355 +4524,31 @@ export default {
       return m(val / tot);
     },
 
-    iniciarAuditoria() {
-      this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
-      this.auditActiva = {
-        id: genId('aud'),
-        fechaInicio: new Date().toISOString(),
-        estado: 'en_progreso',
-        caja: null,
-        inventario: null,
-        resumen: null
-      };
-      this.toastMsg('Auditoria iniciada');
-    },
 
-    cancelarAuditoria() {
-      this.confirm = {
-        activo: true, titulo: 'Cancelar auditoria',
-        msg: 'Se descartara el progreso actual. Continuar?',
-        onOk: () => {
-          this.auditActiva = null;
-          this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
-          this.toastMsg('Auditoria cancelada');
-        }
-      };
-    },
 
-    auditSiguientePaso() {
-      if (this.auditForm.paso === 1) {
-        if (this.auditForm.cajaContada === '') return this.toastMsg('Escribe el monto contado', TOAST.BAD);
-        this.auditForm.paso = 2;
-      } else if (this.auditForm.paso === 2) {
-        this.auditForm.paso = 3;
-      }
-    },
 
-    auditPasoAnterior() {
-      if (this.auditForm.paso > 1) this.auditForm.paso--;
-    },
 
-    setAuditConteo(pid, val) {
-      if (!this.auditForm.conteos[pid]) this.auditForm.conteos[pid] = {};
-      this.auditForm.conteos[pid].contado = val;
-    },
 
-    limpiarConteo(pid) {
-      if (this.auditForm.conteos[pid]) {
-        this.auditForm.conteos[pid].contado = '';
-      }
-    },
 
-    marcarTodoIgual() {
-      this.prodsActivos.forEach(p => {
-        if (!this.auditForm.conteos[p.id]) this.auditForm.conteos[p.id] = {};
-        this.auditForm.conteos[p.id].contado = m(this.stock(p.id));
-      });
-      this.toastMsg('Todos marcados como igual al sistema');
-    },
 
-    limpiarConteos() {
-      this.auditForm.conteos = {};
-      this.toastMsg('Conteos limpiados');
-    },
 
-    async cerrarAuditoria() {
-      if (!this.auditActiva) return;
-      const r = this.auditResumen;
-      if (!r) return;
-      const difCaja = r.difCaja;
-      const conteoAjustes = r.conteo.filter(x => x.dif !== 0);
-      const totalDif = r.totalDif;
-
-      const listado = [];
-      if (Math.abs(difCaja) > 0.01) listado.push('Caja: ' + fmt(difCaja));
-      conteoAjustes.forEach(x => listado.push(x.nombre + ': ' + x.dif + ' und (' + fmt(x.costoDif) + ')'));
-      if (!listado.length) listado.push('Sin diferencias');
-
-      this.confirm = {
-        activo: true,
-        titulo: 'Cerrar auditoria',
-        msg: 'Diferencia total: ' + fmt(totalDif) + '\n\n' + listado.join('\n') + '\n\nSe generaran ajustes automaticos. Continuar?',
-        onOk: async () => {
-          try {
-            const ahora = new Date().toISOString();
-            const auditId = this.auditActiva.id;
-            const C = this.CUENTAS;
-            const asientos = [];
-            const ajustesNuevos = [];
-            const movCajaNuevos = [];
-
-            // 1. Ajuste de caja
-            if (Math.abs(difCaja) > 0.01) {
-              const movId = genId('mc');
-              if (difCaja > 0) {
-                movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'ingreso', monto: difCaja, concepto: 'Sobrante de auditoria', nota: this.auditForm.cajaNota || '' });
-                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante caja', C.CAJA, C.SOBRANTES, difCaja, TIPO_ASIENTO.AUDITORIA, auditId));
-              } else {
-                movCajaNuevos.push({ id: movId, fecha: ahora, tipo: 'egreso', monto: Math.abs(difCaja), concepto: 'Faltante de auditoria', nota: this.auditForm.cajaNota || '' });
-                asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante caja', C.FALTANTES, C.CAJA, Math.abs(difCaja), TIPO_ASIENTO.AUDITORIA, auditId));
-              }
-            }
-
-            // 2. Ajustes de inventario
-            for (const item of conteoAjustes) {
-              const ajId = genId('a');
-              if (item.dif < 0) {
-                // Faltante: usar FIFO para calcular el costo real
-                const res = this.calcFIFO(item.productoId, Math.abs(item.dif));
-                if (!res.error) {
-                  ajustesNuevos.push({
-                    id: ajId,
-                    fecha: ahora,
-                    productoId: item.productoId,
-                    productoNombre: item.nombre,
-                    cantidad: item.dif,
-                    motivo: 'auditoria',
-                    costoPerdida: res.costoTotal,
-                    lotesUsados: res.usados,
-                    auditoriaId: auditId
-                  });
-                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Faltante ' + item.nombre, C.MERMAS, C.INVENTARIO, res.costoTotal, TIPO_ASIENTO.AUDITORIA, auditId));
-                  // Aplicar al lote
-                  for (const u of res.usados) {
-                    const l = this.lotes.find(x => x.id === u.loteId);
-                    if (l) {
-                      l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
-                      await P(db.lotes, clean(l));
-                    }
-                  }
-                }
-              } else {
-                // Sobrante
-                const cs = item.costoUnit || 0;
-                const ajObj = {
-                  id: ajId, fecha: ahora, productoId: item.productoId, productoNombre: item.nombre,
-                  cantidad: item.dif, motivo: 'auditoria', costoPerdida: 0, auditoriaId: auditId
-                };
-                ajustesNuevos.push(ajObj);
-                const loteId = genId('l');
-                await P(db.lotes, clean({
-                  id: loteId, compraId: 'aud-' + ajId, productoId: item.productoId,
-                  productoNombre: item.nombre, cantidadInicial: item.dif, cantidadVendida: 0,
-                  costo: cs, fecha: ahora
-                }));
-                if (cs > 0) {
-                  asientos.push(this.crearAsientoObj(ahora, 'Auditoria | Sobrante ' + item.nombre, C.INVENTARIO, C.SOBRANTES_INV, m(item.dif * cs), TIPO_ASIENTO.AUDITORIA, auditId));
-                }
-              }
-            }
-
-            // Guardar todo
-            await db.transaction('rw', db.auditorias, db.ajustes, db.movCaja, db.asientos, async () => {
-              if (ajustesNuevos.length) await db.ajustes.bulkPut(ajustesNuevos.map(x => clean(x)));
-              if (movCajaNuevos.length) await db.movCaja.bulkPut(movCajaNuevos.map(x => clean(x)));
-              if (asientos.length) await db.asientos.bulkPut(asientos.map(x => clean(x)));
-              await P(db.auditorias, clean({
-                id: auditId,
-                fechaInicio: this.auditActiva.fechaInicio,
-                fechaFin: ahora,
-                estado: 'cerrada',
-                caja: { sistema: r.cajaSistema, contado: r.cajaContada, diferencia: difCaja, nota: this.auditForm.cajaNota },
-                inventario: { items: r.conteo, conteoCompleto: r.totalContados === r.totalProductos },
-                resumen: { difCaja, difInventarioCosto: r.difInventarioCosto, totalDif }
-              }));
-            });
-
-            await this.recargar(['auditorias', 'ajustes', 'movCaja', 'asientos', 'lotes']);
-            this.auditActiva = null;
-            this.auditForm = { cajaContada: '', cajaNota: '', paso: 1, conteos: {} };
-            this.toastMsg(`Auditoria cerrada · Dif ${fmt(totalDif)}`);
-          } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
-        }
-      };
-    },
 
     // ===== LIBRO DIARIO =====
-    setMesAsientos() {
-      const now = new Date();
-      const inicio = new Date(now.getFullYear(), now.getMonth(), 1);
-      this.filtroAsientoInicio = inicio.toISOString().split('T')[0];
-      this.filtroAsientoFin = now.toISOString().split('T')[0];
-    },
 
-    crearAsientoObj(fecha, descripcion, cuentaDebe, cuentaHaber, monto, refTipo, refId) {
-      // Validaciones de integridad contable
-      const montoNum = n(monto);
-      if (montoNum < 0) {
-        throw new Error('Asiento con monto negativo: ' + descripcion);
-      }
-      if (montoNum === 0) {
-        throw new Error('Asiento con monto cero: ' + descripcion);
-      }
-      if (cuentaDebe === cuentaHaber) {
-        throw new Error('Debe y Haber son la misma cuenta: ' + descripcion);
-      }
-      if (!cuentaDebe || !cuentaHaber) {
-        throw new Error('Cuenta Debe o Haber vacia: ' + descripcion);
-      }
 
-      return {
-        id: genId('as'),
-        fecha,
-        descripcion,
-        cuentaDebe,
-        cuentaHaber,
-        monto: m(montoNum),
-        refTipo,
-        refId
-      };
-    },
 
-    async borrarAsientosDe(refTipo, refId) {
-      const existentes = this.asientos.filter(a => a.refTipo === refTipo && a.refId === refId);
-      if (existentes.length === 0) return;
-      await db.asientos.bulkDelete(existentes.map(a => a.id));
-    },
 
-    async recrearAsientoVenta(v) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('venta', v.id);
-      await this.borrarAsientosDe('costo', v.id);
-      if (v.anulada) return;
-      const asientos = [this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id)];
-      const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
-      if (cogs > 0) {
-        asientos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
-      }
-      await db.asientos.bulkPut(asientos.map(a => clean(a)));
-    },
 
-    async recrearAsientoCompra(c) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('compra', c.id);
-      if (c.anulada) return;
-      const as = this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id);
-      await P(db.asientos, as);
-    },
 
-    async recrearAsientoGasto(g) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('gasto', g.id);
-      if (g.saleDeCaja === false) return;
-      const as = this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id);
-      await P(db.asientos, as);
-    },
 
-    async recrearAsientoMerma(a) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('merma', a.id);
-      if (n(a.cantidad) >= 0) return;
-      const as = this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id);
-      await P(db.asientos, as);
-    },
 
-    async recrearAsientoRetiro(r) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('retiro', r.id);
-      const as = this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id);
-      await P(db.asientos, as);
-    },
 
-    async recrearAsientoAporte(k) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('aporte', k.id);
-      const as = this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id);
-      await P(db.asientos, as);
-    },
-
-    async recrearAsientoArqueo(a) {
-      const C = this.CUENTAS;
-      await this.borrarAsientosDe('arqueo', a.id);
-      const diff = n(a.diferencia);
-      if (Math.abs(diff) < 0.01) return;
-      let as;
-      if (diff > 0) {
-        as = this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id);
-      } else {
-        as = this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id);
-      }
-      await P(db.asientos, as);
-    },
 
     // ========================================================
     // FUENTE UNICA DE VERDAD para construir asientos desde cero.
     // Usado por regenerarAsientos() y por inicializar().
     // ========================================================
-    generarTodosLosAsientos() {
-      const C = this.CUENTAS;
-      const nuevos = [];
 
-      this.ventas.filter(v => !v.anulada).forEach(v => {
-        nuevos.push(this.crearAsientoObj(v.fecha, 'Venta #' + v.id.slice(-6), C.CAJA, C.VENTAS, n(v.total), TIPO_ASIENTO.VENTA, v.id));
-        const cogs = m(v.items.reduce((sum, it) => sum + n(it.costo), 0));
-        if (cogs > 0) {
-          nuevos.push(this.crearAsientoObj(v.fecha, 'Costo venta #' + v.id.slice(-6), C.COSTO_VENTAS, C.INVENTARIO, cogs, TIPO_ASIENTO.COSTO, v.id));
-        }
-      });
-
-      this.compras.filter(c => !c.anulada).forEach(c => {
-        nuevos.push(this.crearAsientoObj(c.fecha, 'Compra ' + (c.productoNombre || '') + ' #' + c.id.slice(-6), C.INVENTARIO, C.CAJA, n(c.total), TIPO_ASIENTO.COMPRA, c.id));
-      });
-
-      this.gastos.forEach(g => {
-        if (g.saleDeCaja === false) return;
-        nuevos.push(this.crearAsientoObj(g.fecha, 'Gasto ' + g.categoria + ': ' + g.concepto, C.GASTOS, C.CAJA, n(g.monto), TIPO_ASIENTO.GASTO, g.id));
-      });
-
-      this.ajustes.filter(a => n(a.cantidad) < 0).forEach(a => {
-        nuevos.push(this.crearAsientoObj(a.fecha, 'Merma ' + (a.productoNombre || ''), C.MERMAS, C.INVENTARIO, n(a.costoPerdida), TIPO_ASIENTO.MERMA, a.id));
-      });
-
-      this.retiros.forEach(r => {
-        nuevos.push(this.crearAsientoObj(r.fecha, 'Retiro: ' + (r.concepto || ''), C.RETIROS, C.CAJA, n(r.monto), TIPO_ASIENTO.RETIRO, r.id));
-      });
-
-      this.capital.forEach(k => {
-        nuevos.push(this.crearAsientoObj(k.fecha, 'Aporte: ' + (k.nota || ''), C.CAJA, C.APORTES, n(k.monto), TIPO_ASIENTO.APORTE, k.id));
-      });
-
-      this.arqueos.forEach(a => {
-        const diff = n(a.diferencia);
-        if (Math.abs(diff) < 0.01) return;
-        if (diff > 0) {
-          nuevos.push(this.crearAsientoObj(a.fecha, 'Sobrante de arqueo', C.CAJA, C.SOBRANTES, diff, TIPO_ASIENTO.ARQUEO, a.id));
-        } else {
-          nuevos.push(this.crearAsientoObj(a.fecha, 'Faltante de arqueo', C.FALTANTES, C.CAJA, Math.abs(diff), TIPO_ASIENTO.ARQUEO, a.id));
-        }
-      });
-
-      return nuevos;
-    },
-
-    regenerarAsientos() {
-      this.confirm = {
-        activo: true, titulo: 'Regenerar asientos',
-        msg: 'Esto borrara TODOS los asientos actuales y los reconstruira desde cero. Continuar?',
-        onOk: async () => {
-          try {
-            await db.asientos.clear();
-            const nuevos = this.generarTodosLosAsientos();
-            if (nuevos.length > 0) {
-              await db.asientos.bulkPut(nuevos.map(x => clean(x)));
-            }
-            await this.recargar(['asientos']);
-            this.toastMsg(`Asientos regenerados: ${nuevos.length}`);
-          } catch (e) {
-            this.toastMsg('Error: ' + e.message, TOAST.BAD);
-          }
-        }
-      };
-    },
 
     // ===== GASTOS =====
     resetGasto() {
@@ -5408,7 +4597,7 @@ export default {
       this.resetGasto();
       await this.recargar(['gastos', 'movCaja']);
       const gs = this.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (gs && (!f.editId || gs.id === f.editId)) { await this.recrearAsientoGasto(gs); await this.recargar(['asientos']); }
+      if (gs && (!f.editId || gs.id === f.editId)) { await this.recrearAsientoGasto(gs); await this.recargar([]); }
     },
 
     editarGasto(id) {
@@ -5440,7 +4629,7 @@ export default {
             const as = this.asientos.filter(a => a.refTipo === 'gasto' && a.refId === id);
             if (as.length > 0) await db.asientos.bulkDelete(as.map(a => a.id));
           });
-          await this.recargar(['gastos', 'movCaja', 'asientos']);
+          await this.recargar(['gastos', 'movCaja', ]);
           this.toastMsg('Gasto eliminado');
         }
       };
@@ -5619,8 +4808,8 @@ export default {
             { key: 'compras', label: 'Compras' },
             { key: 'gastos', label: 'Gastos' },
             { key: 'socios', label: 'Socios' },
-            { key: 'asientos', label: 'Asientos' },
-            { key: 'pasivos', label: 'Pasivos' }
+            { key: label: 'Asientos' },
+            { key: label: 'Pasivos' }
           ];
           const actuales = {
             productos: this.productos.length, lotes: this.lotes.length, ventas: this.ventas.length,
@@ -5712,7 +4901,7 @@ export default {
         errores.push('Falta productos y ventas (no parece un respaldo)');
       }
       // Arrays deben ser arrays
-      const tablas = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos','auditorias'];
+      const tablas = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
       tablas.forEach(t => {
         if (d[t] !== undefined && !Array.isArray(d[t])) {
           errores.push('"' + t + '" no es un array');
@@ -5756,7 +4945,7 @@ export default {
         console.warn('Import con avisos:', v.avisos);
       }
 
-      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', 'asientos', 'pasivos', 'auditorias'];
+      const tables = ['productos', 'lotes', 'ventas', 'compras', 'ajustes', 'arqueos', 'movCaja', 'cierres', 'capital', 'retiros', 'socios', 'distribuciones', 'gastos', ];
       // Snapshot antes por si falla
       const respaldo = {};
       try {
@@ -6381,10 +5570,7 @@ export default {
         socios: () => db.socios.toArray(),
         distribuciones: () => db.distribuciones.toArray(),
         gastos: () => db.gastos.toArray(),
-        asientos: () => db.asientos.toArray(),
-        pasivos: () => db.pasivos.toArray(),
-        auditorias: () => db.auditorias.toArray()
-      };
+            };
       for (const w of what) this[w] = await map[w]();
       this._stockMapCache = null;
       this._recCache = null;
@@ -6394,7 +5580,7 @@ export default {
 
     async recargarTodo() {
       const t = performance.now();
-      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos','asientos','pasivos','auditorias'];
+      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos',];
       let r;
       await db.transaction('r', tables.map(tb => db.table(tb)), async () => {
         r = await Promise.all(tables.map(tb => db.table(tb).toArray()));
@@ -6410,32 +5596,62 @@ export default {
     },
 
     // ===== CHART =====
+    setGraficoVista(vista) {
+      if (this.cfg.graficoVista === vista) return;
+      this.cfg.graficoVista = vista;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+    },
+
     async renderChart() {
       try {
         const cv = document.getElementById('chartVentas');
         if (!cv) return;
         if (this._chart) { try { this._chart.destroy(); } catch (e) {} this._chart = null; }
         const { default: Chart } = await import('chart.js/auto');
-        const meses = [];
+
+        const vista = this.cfg.graficoVista || 'mes';
+        const data = [];
         const now = new Date();
-        for (let i = 5; i >= 0; i--) {
-          const f = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: 0, g: 0 });
+
+        if (vista === 'semana') {
+          // Ultimas 8 semanas
+          for (let i = 7; i >= 0; i--) {
+            const fin = new Date(now);
+            fin.setDate(now.getDate() - i * 7);
+            fin.setHours(23, 59, 59, 999);
+            const ini = new Date(fin);
+            ini.setDate(fin.getDate() - 6);
+            ini.setHours(0, 0, 0, 0);
+            const label = ini.getDate() + '/' + (ini.getMonth() + 1);
+            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'semana' });
+          }
+        } else {
+          // Ultimos 6 meses
+          for (let i = 5; i >= 0; i--) {
+            const ini = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
+            const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const label = ini.toLocaleDateString('es', { month: 'short' });
+            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'mes' });
+          }
         }
+
         this.ventas.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
-          const me = meses.find(x => x.m === f.getMonth() && x.y === f.getFullYear());
-          if (me) { me.v += n(v.total); me.g += n(v.ganancia); }
+          const bucket = data.find(b => f >= b.ini && f <= b.fin);
+          if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
         });
+
         const dark = this.cfg.tema === 'dark';
         const txt = dark ? '#94a3b8' : '#6b7280', grid = dark ? '#334155' : '#e5e7eb';
+
         this._chart = new Chart(cv.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: meses.map(m => m.label),
+            labels: data.map(m => m.label),
             datasets: [
-              { label: 'Ventas', data: meses.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
-              { label: 'Ganancia', data: meses.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
+              { label: 'Ventas', data: data.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
+              { label: 'Ganancia', data: data.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
             ]
           },
           options: {
@@ -6443,11 +5659,292 @@ export default {
             animation: { duration: 500 },
             plugins: {
               legend: { position: 'bottom', labels: { color: txt, boxWidth: 12, font: { size: 10 } } },
-              tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } }
+              tooltip: {
+                callbacks: {
+                  title: (items) => {
+                    const b = data[items[0].dataIndex];
+                    if (!b) return '';
+                    if (b.tipo === 'semana') {
+                      return fmtFecha(b.ini.toISOString()) + ' - ' + fmtFecha(b.fin.toISOString());
+                    }
+                    return b.ini.toLocaleDateString('es', { month: 'long', year: 'numeric' });
+                  },
+                  label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw)
+                }
+              }
             },
             scales: {
               x: { ticks: { color: txt, font: { size: 9 } }, grid: { display: false } },
-              y: { beginAtZero: true, ticks: { color: txt, font: { size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: grid } }
+              y: { beginAtZero: true, ticks: { color: txt, font: { size: 9 }, callback: v => '
+
+    // ===== BACKUP AUTO =====
+    async backupAuto() {
+      try {
+        const data = buildData(this);
+        await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
+      } catch (e) {}
+    },
+
+    aplicarUpdate() {
+      this._aplicando = true;
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          setTimeout(() => location.reload(), 500);
+        }).catch(() => location.reload());
+      } else {
+        location.reload();
+      }
+    },
+
+    // ===== INICIALIZACIÓN =====
+    async inicializar() {
+      const _t0 = performance.now();
+      // Deteccion multi-pestana
+      try {
+        this._tabId = genId('tab');
+        if (typeof BroadcastChannel !== 'undefined') {
+          this._bc = new BroadcastChannel('tienda-pro');
+          this._bc.onmessage = (e) => {
+            if (e.data && e.data.tipo === 'hello' && e.data.tabId !== this._tabId) {
+              // Otra pestaña existe, avisar
+              this.otraPestana = true;
+              this._bc.postMessage({ tipo: 'existe', tabId: this._tabId });
+            }
+          };
+          this._bc.postMessage({ tipo: 'hello', tabId: this._tabId });
+        }
+      } catch (e) {}
+
+      try {
+        // SAFE MODE: contar intentos fallidos
+        let intentos = 0;
+        try {
+          const sm = await db.config.get('safeModeCounter');
+          intentos = (sm && sm.value) ? sm.value : 0;
+        } catch (e) {}
+        if (intentos >= 3) {
+          this.safeMode = true;
+          console.warn('SAFE MODE activado (3+ intentos fallidos)');
+        }
+        // Marcar inicio en curso
+        try { await P(db.config, { key: 'safeModeCounter', value: intentos + 1 }); } catch (e) {}
+
+        const c = await db.config.get('cfg');
+        if (c) this.cfg = { ...this.cfg, ...c.value };
+        else await this.guardarCfg();
+        try {
+          document.documentElement.setAttribute('data-theme', this.cfg.tema);
+        } catch (e) {}
+        this.aplicarEscalaFont();
+        // Limpiar items viejos de la cola de backups
+        try {
+          const hace7d = new Date(Date.now() - 7 * 86400000).toISOString();
+          const viejos = await db.tgQueue.filter(x => x.ts < hace7d).toArray();
+          if (viejos.length > 0) {
+            await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+            console.log('Limpiados ' + viejos.length + ' items viejos de tgQueue');
+          }
+        } catch (e) { console.error('limpiar tgQueue', e); }
+        setTimeout(() => this.mostrarTipAleatorio(), 2500);
+        // Aviso de configuracion inicial
+        if (!this.cfg.tiendaConfigurada && !this.cfg.avisoTiendaDescartado) {
+          setTimeout(() => { this.mostrarAvisoTienda = true; }, 800);
+        }
+        // No prellenar el campo de capital inicial
+        this.capInicialStr = '';
+        await this.recargarTodo();
+        // Pedir persistencia de storage (evita que el navegador borre datos)
+        await this.pedirPersistenciaStorage();
+        await this.actualizarInfoStorage();
+        // Restaurar carrito persistido (por si cerro la app a media venta)
+        try {
+          const savedCarrito = localStorage.getItem('carritoPro');
+          if (savedCarrito) {
+            const parsed = JSON.parse(savedCarrito);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const validos = parsed.filter(it => {
+                if (!it || !it.productoId) return false;
+                const prod = this.productos.find(x => x.id === it.productoId && !x.archivado);
+                return !!prod && this.stock(it.productoId) > 0;
+              });
+              if (validos.length > 0) {
+                this.carrito = validos;
+                this.toastMsg('Carrito restaurado (' + validos.length + ' item(s))');
+              } else {
+                localStorage.removeItem('carritoPro');
+              }
+            }
+          }
+        } catch (e) { console.error('restaurar carrito', e); }
+        const b = await db.config.get('backupAuto');
+        if (b) this.ultimoBackup = b;
+        const ahora = Date.now();
+        if (!this.cfg.ultimoBackupAuto || (ahora - this.cfg.ultimoBackupAuto) > 86400000) {
+          await this.backupAuto();
+          this.cfg.ultimoBackupAuto = ahora;
+          await this.guardarCfg();
+          const b2 = await db.config.get('backupAuto');
+          if (b2) this.ultimoBackup = b2;
+        }
+        // B13: migrar gastos viejos de movCaja a la tabla gastos
+        try {
+          const movsGasto = this.movCaja.filter(mv =>
+            mv.tipo === 'egreso' &&
+            mv.concepto &&
+            /gasto/i.test(mv.concepto) &&
+            !mv.concepto.startsWith('Pago deuda:') &&
+            !mv.concepto.startsWith('Gasto:')
+          );
+          const gastosConMov = new Set(this.gastos.filter(g => g.movId).map(g => g.movId));
+          const aMigrar = movsGasto.filter(mv => !gastosConMov.has(mv.id));
+          if (aMigrar.length > 0) {
+            const nuevosGastos = aMigrar.map(mv => {
+              const cat = /luz/i.test(mv.concepto) ? 'Luz' :
+                          /agua/i.test(mv.concepto) ? 'Agua' :
+                          /alquiler|renta/i.test(mv.concepto) ? 'Alquiler' :
+                          /internet|wifi/i.test(mv.concepto) ? 'Internet' :
+                          /transport/i.test(mv.concepto) ? 'Transporte' :
+                          /publicid|anuncio/i.test(mv.concepto) ? 'Publicidad' :
+                          /mantenim|reparac/i.test(mv.concepto) ? 'Mantenimiento' :
+                          /limpiez/i.test(mv.concepto) ? 'Limpieza' : 'Otros';
+              return {
+                id: genId('g'),
+                fecha: mv.fecha,
+                categoria: cat,
+                concepto: mv.concepto,
+                monto: n(mv.monto),
+                nota: mv.nota || '',
+                metodoPago: 'efectivo',
+                saleDeCaja: true,
+                movId: mv.id,
+                migrado: true
+              };
+            });
+            await db.gastos.bulkPut(nuevosGastos.map(x => clean(x)));
+            this.gastos = await db.gastos.toArray();
+            this.toastMsg('Migrados ' + aMigrar.length + ' gasto(s) antiguos');
+          }
+        } catch (e) { console.error('migrar gastos', e); }
+
+        if (this.asientos.length === 0 && (this.ventas.length > 0 || this.compras.length > 0 || this.gastos.length > 0)) {
+          try {
+            const nuevos = this.generarTodosLosAsientos();
+            if (nuevos.length > 0) {
+              await this.recargar([]);
+            }
+          } catch (e) { console.error('auto asientos', e); }
+        }
+
+        // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
+        // Telegram: usar token default o guardado (no en safe mode)
+        
+        if (this.cfg.tgChatId) this.tgEstado = 'conectado';
+        else {
+          this.tgEstado = 'esperando-start';
+          // Intentar auto-detectar (por si ya le dio Start antes)
+          setTimeout(() => this.tgAutoDetectarChat(), 2000);
+        }
+        const hash = location.hash.slice(1);
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos', ];
+        if (valid.includes(hash)) this.sec = hash;
+      } catch (e) {
+        console.error(e);
+        this.toastMsg('Error al cargar datos', TOAST.BAD);
+      } finally {
+        // Si todo fue bien, resetear contador
+        try { await P(db.config, { key: 'safeModeCounter', value: 0 }); } catch (e) {}
+        this.cargando = false;
+        this.splashVisible = false;
+        const _ms = (performance.now() - _t0).toFixed(1);
+        console.log('Inicializacion: ' + _ms + 'ms');
+        // Cargar handle de carpeta si existe
+        try {
+          const rec = await db.config.get('carpetaHandle');
+          if (rec && rec.value) {
+            this._carpetaHandle = rec.value;
+            this.cfg.tgCarpetaActiva = true;
+            this.cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
+          }
+        } catch (e) {}
+        // Actualizar cola pendiente
+        await this.tgActualizarCola();
+        // Ver si hay un backup pre-import pendiente
+        await this.cargarPreImportInfo();
+        // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
+        if (!this.safeMode && !this.cfg.tgChatId) this.iniciarTgPoll();
+        // Procesar cola cuando recupera conexion
+        window.addEventListener('online', () => {
+          setTimeout(() => this.tgProcesarCola(), 1000);
+        });
+        // Auto-backup a Telegram si esta activo (no en safe mode)
+        if (!this.safeMode && this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
+        this.$nextTick(() => {
+          if (this.sec === 'dashboard') {
+            const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
+            idle(() => this.renderChart());
+          }
+        });
+      }
+    }
+  },
+
+  watch: {
+    lotes: {
+      handler() { this.invalidarFifoCache(); },
+      deep: false
+    },
+    carrito: {
+      handler(val) {
+        try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
+      },
+      deep: true
+    },
+    ajustesAbierto(v) {
+      this.$nextTick(() => this._actualizarScrollLock());
+    },
+    masAbierto(v) {
+      this.$nextTick(() => this._actualizarScrollLock());
+    },
+    'cfg.fontScale'(v) {
+      try {
+        document.documentElement.style.setProperty('--font-scale', String(Number(v) || 1));
+      } catch (e) {}
+    },
+    'cfg.tema'(t) {
+      try { document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+      if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+    },
+    sec(s) {
+      if (s === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+    }
+  },
+
+  mounted() {
+    this.inicializar();
+    window.addEventListener('pwa:update', () => { this.hayUpdate = true; });
+    window.addEventListener('online', () => this.online = true);
+    window.addEventListener('offline', () => this.online = false);
+    window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
+    window.addEventListener('resize', () => { if (this.sec === 'dashboard') this.renderChart(); });
+    // Notificaciones: usar requestIdleCallback si esta disponible
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
+    idle(() => { this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000); });
+    idle(() => { this._tgColaTimer = setInterval(() => this.tgProcesarCola(), 5 * 60 * 1000); });
+    idle(() => this.chequearNotificaciones());
+  },
+
+  beforeUnmount() {
+    if (this._bc) { try { this._bc.close(); } catch (e) {} }
+    if (this._notifTimer) clearInterval(this._notifTimer);
+    if (this._tgColaTimer) clearInterval(this._tgColaTimer);
+    if (this._tgPollTimer) clearInterval(this._tgPollTimer);
+  }
+};
+
+
+</script>
+ + v.toLocaleString() }, grid: { color: grid } }
             }
           }
         });
@@ -6608,8 +6105,7 @@ export default {
           try {
             const nuevos = this.generarTodosLosAsientos();
             if (nuevos.length > 0) {
-              await db.asientos.bulkPut(nuevos.map(x => clean(x)));
-              await this.recargar(['asientos']);
+              await this.recargar([]);
             }
           } catch (e) { console.error('auto asientos', e); }
         }
@@ -6624,7 +6120,7 @@ export default {
           setTimeout(() => this.tgAutoDetectarChat(), 2000);
         }
         const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos', 'contabilidad', 'auditoria'];
+        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos', ];
         if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
