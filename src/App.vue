@@ -58,12 +58,6 @@
       </div>
     </header>
 
-    <div v-if="tipActual" class="tip-banner no-print" @click="clickTip">
-      <div class="tip-icono"><icon :name="tipActual.icono" :size="16" color="#fff"></icon></div>
-      <div class="tip-texto">{{ tipActual.texto }}</div>
-      <button class="tip-cerrar" @click.stop="cerrarTip" aria-label="Cerrar">×</button>
-    </div>
-
     <main @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
       <!-- ==================== DASHBOARD ==================== -->
       <section v-if="sec === 'dashboard'" class="fade-up">
@@ -1092,8 +1086,6 @@
         <div class="modal-title"><icon name="settings" :size="20"></icon> Ajustes</div>
 
         <div class="set-group">Personalizacion</div>
-
-
         <div class="set-row">
           <span class="lbl"><icon name="list" :size="18"></icon> Tamaño de letra</span>
           <div style="display:flex;align-items:center;gap:.4rem">
@@ -1106,7 +1098,6 @@
           Aumenta o reduce el tamaño de todas las letras de la app (1× a 2×).
         </div>
 
-        <div class="set-group">Tienda</div>
         <div class="set-row">
           <span class="lbl"><icon name="store" :size="18"></icon> Nombre de tienda</span>
           <input v-model="cfg.nombre" type="text" style="width:auto;flex:1;margin:0;padding:.4rem .6rem" @change="guardarCfg">
@@ -1136,7 +1127,41 @@
           <button class="link-btn" @click="restaurarBackupAuto">Restaurar backup automático</button>
         </div>
 
-        <div class="set-group">Notificaciones</div>
+                <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
+          <span class="lbl"><icon name="package" :size="18"></icon> Almacenamiento local</span>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--r-sm);padding:.7rem;margin-bottom:.6rem;font-size:.78rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+            <span style="color:var(--mut);font-weight:700">Uso de disco</span>
+            <span :class="'storage-badge ' + storageClase()">
+              {{ fmtBytes(storageInfo.uso) }} / {{ fmtBytes(storageInfo.cuota) }}
+            </span>
+          </div>
+          <div class="storage-bar">
+            <div class="storage-bar-fill" :class="storageClase()" :style="{ width: Math.min(storageInfo.porcentaje, 100) + '%' }"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.35rem">
+            <span style="color:var(--mut);font-size:.72rem">
+              {{ storageInfo.porcentaje }}% usado
+            </span>
+            <span :class="'storage-badge ' + (storagePersistente ? 'ok' : 'warn')">
+              {{ storagePersistente ? '✓ Persistente' : '⚠ Best-effort' }}
+            </span>
+          </div>
+          <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
+            <span v-if="storagePersistente">
+              El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de seguridad.
+            </span>
+            <span v-else>
+              ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
+            </span>
+          </div>
+          <button v-if="!storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
+            <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
+          </button>
+        </div>
+
+<div class="set-group">Notificaciones y alertas</div>
         <div v-if="!soportaNotif" class="info-box" style="background:rgba(220,38,38,.1);color:var(--bad);border-color:var(--bad);font-size:.75rem">
           Este dispositivo no soporta notificaciones del sistema. En iPhone necesitas instalar la app como PWA (Compartir > Agregar a pantalla de inicio).
         </div>
@@ -1303,8 +1328,8 @@
           </div>
         </div>
 
-        <div class="set-group" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" @click="umbralesAbierto = !umbralesAbierto">
-          <span>Alertas y umbrales</span>
+        <div class="set-row" style="cursor:pointer;padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem" @click="umbralesAbierto = !umbralesAbierto">
+          <span class="lbl"><icon name="alert" :size="18"></icon> Alertas y umbrales avanzados</span>
           <icon name="chevron" :size="14" :color="mutColor" :style="umbralesAbierto ? 'transform:rotate(180deg)' : ''"></icon>
         </div>
         <div v-if="umbralesAbierto">
@@ -1350,16 +1375,6 @@
           Elimina permanentemente productos, ventas, compras, gastos, socios, asientos, pasivos, etc. No se puede deshacer.
         </div>
 
-        <div class="set-group">Ayuda</div>
-        <div class="set-row">
-          <span class="lbl"><icon name="zap" :size="18"></icon> Ver tutorial</span>
-          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="repetirTutorial">Abrir</button>
-        </div>
-        <div class="set-row">
-          <span class="lbl"><icon name="refresh" :size="18"></icon> Reiniciar consejos</span>
-          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .8rem;font-size:.75rem" @click="reiniciarTips">Reiniciar</button>
-        </div>
-
         <div class="set-group">Avanzado</div>
         <div class="set-row">
           <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
@@ -1372,42 +1387,12 @@
           Activa la consola Eruda para depurar. Dejalo desactivado si no la necesitas.
         </div>
 
-        <div class="set-group">Información</div>
+        <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
+          <span class="lbl"><icon name="info" :size="18"></icon> Informacion</span>
+        </div>
         <div style="font-size:.78rem;color:var(--mut)">
           Versión 6.0 · Datos locales<br>
           {{ productos.length }} productos · {{ ventas.length }} ventas · {{ compras.length }} compras
-        </div>
-
-        <div class="set-group">Almacenamiento</div>
-        <div style="background:var(--bg);border-radius:var(--r-sm);padding:.7rem;margin-bottom:.6rem;font-size:.78rem">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
-            <span style="color:var(--mut);font-weight:700">Uso de disco</span>
-            <span :class="'storage-badge ' + storageClase()">
-              {{ fmtBytes(storageInfo.uso) }} / {{ fmtBytes(storageInfo.cuota) }}
-            </span>
-          </div>
-          <div class="storage-bar">
-            <div class="storage-bar-fill" :class="storageClase()" :style="{ width: Math.min(storageInfo.porcentaje, 100) + '%' }"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.35rem">
-            <span style="color:var(--mut);font-size:.72rem">
-              {{ storageInfo.porcentaje }}% usado
-            </span>
-            <span :class="'storage-badge ' + (storagePersistente ? 'ok' : 'warn')">
-              {{ storagePersistente ? '✓ Persistente' : '⚠ Best-effort' }}
-            </span>
-          </div>
-          <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
-            <span v-if="storagePersistente">
-              El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de seguridad.
-            </span>
-            <span v-else>
-              ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
-            </span>
-          </div>
-          <button v-if="!storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
-            <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
-          </button>
         </div>
 
         <button class="btn ghost" style="margin-top:.8rem" @click="ajustesAbierto = false">Cerrar</button>
@@ -1513,15 +1498,7 @@
     />
 
     <!-- ONBOARDING -->
-    <Onboarding
-      :activo="tutorialActivo"
-      :pasos="pasosTutorial()"
-      @cerrar="cerrarTutorial"
-      @ir="onTutorialIr"
-      @accion="onTutorialAccion"
-    />
-
-    <!-- TOAST -->
+<!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
   </div>
 </template>
@@ -1532,7 +1509,6 @@ import { generarRecomendaciones } from './insights.js';
 import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import { tgCheckName, tgRegister, tgLogin, tgStatus, tgGetMe, tgGetUpdates, tgListBackups, tgSendDocument, tgGetFile, tgFileUrl, tgDeleteMessage, tgDetectarChatId } from './telegram.js';
 import GlobalSearch from './components/GlobalSearch.vue';
-import Onboarding from './components/Onboarding.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
@@ -1541,26 +1517,6 @@ import AppToast from './components/AppToast.vue';
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 // Consejos utiles que se muestran al arrancar la app
-const TIPS_UTILES = [
-  { id: 'tamano-letra', icono: 'list', texto: 'Sabias que puedes aumentar el tamano de las letras hasta 2x? Ajustes > Interfaz > Tamano de letra.', sec: 'ajustes' },
-  { id: 'modo-oscuro', icono: 'moon', texto: 'Cambia entre tema claro y oscuro con el icono de sol/luna en la barra superior.', sec: null },
-  { id: 'modo-compacto', icono: 'list', texto: 'El modo compacto muestra mas informacion en pantalla. Ajustes > Interfaz.', sec: 'ajustes' },
-  { id: 'pin', icono: 'lock', texto: 'Protege las operaciones sensibles con un PIN. Ajustes > Seguridad.', sec: 'ajustes' },
-  { id: 'backup-tg', icono: 'upload', texto: 'Activa el backup automatico en Telegram para no perder datos. Ajustes > Backup en Telegram.', sec: 'ajustes' },
-  { id: 'compartir-precios', icono: 'share', texto: 'Comparte tu lista de precios por WhatsApp. Inventario > Compartir lista.', sec: 'inventario' },
-  { id: 'escalones', icono: 'trend', texto: 'Define precios por cantidad: al vender 10 o mas se aplica automaticamente. Al crear un producto.', sec: 'productos' },
-  { id: 'empaques', icono: 'package', texto: 'Configura empaques (saco, caja) para mostrar el stock como "2 sacos + 5 kg". Al crear un producto.', sec: 'productos' },
-  { id: 'arqueo', icono: 'wallet', texto: 'Haz un arqueo de caja al final del dia para detectar faltantes a tiempo. Esta en la seccion Caja.', sec: 'caja' },
-  { id: 'cierre', icono: 'calendar', texto: 'Cierra el periodo al final del mes para acumular la ganancia. Reportes > Cerrar Periodo.', sec: 'reportes' },
-  { id: 'busqueda', icono: 'search', texto: 'Usa la lupa arriba para buscar productos, ventas o socios en toda la app.', sec: null },
-  { id: 'gastos', icono: 'dollar', texto: 'Registra gastos (luz, alquiler, transporte) para ver tu ganancia neta real.', sec: 'gastos' },
-  { id: 'socios', icono: 'users', texto: 'Con socios, la app reparte la ganancia automaticamente por su porcentaje. Mas > Socios.', sec: 'socios' },
-  { id: 'anomalias', icono: 'alert', texto: 'La app detecta problemas automaticamente: ventas bajo costo, stock negativo, faltantes. Los veras en Inicio.', sec: null },
-  { id: 'mas', icono: 'menu', texto: 'Desde el boton "Mas" abajo accedes a Productos, Gastos, Socios y Reportes.', sec: null },
-  { id: 'exportar', icono: 'download', texto: 'Exporta un respaldo JSON para migrar de dispositivo o tener copia extra. Ajustes > Datos.', sec: 'ajustes' },
-  { id: 'merma', icono: 'alert', texto: 'Registra mermas (vencidos, danados) para saber tu perdida real. Inventario > Merma / Ajuste.', sec: 'inventario' }
-];
-
 // Chart.js se carga dinamicamente en renderChart()
 // jsPDF se carga dinamicamente al exportar PDF
 
@@ -1569,15 +1525,13 @@ const TIPS_UTILES = [
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Onboarding },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch },
 
 
   data() {
     return {
       online: navigator.onLine,
-      tipActual: null,
       mostrarAvisoTienda: false,
-      tipTimer: null,
       otraPestana: false,
       shareSheetAbierto: false,
       hayUpdate: false,
@@ -1632,7 +1586,6 @@ export default {
         tgCarpetaNombre: '',
         modoCompacto: false,
         fontScale: 1,
-        tipsVistos: [],
         graficoVista: 'mes',
         graficoProdPeriodo: 'mes',
         graficoProdTipo: 'vendidos',
@@ -1665,7 +1618,6 @@ export default {
       METODOS_PAGO,
       splashVisible: true,
       safeMode: false,
-      tutorialActivo: false,
       _tabId: null,
       tgEstado: 'sin-config',
       tgBackups: [],
@@ -2258,51 +2210,9 @@ export default {
     },
 
     // ===== TIPS =====
-    mostrarTipAleatorio() {
-      const vistos = new Set(this.cfg.tipsVistos || []);
-      const disponibles = TIPS_UTILES.filter(t => !vistos.has(t.id));
-      if (disponibles.length === 0) return;
-      const tip = disponibles[Math.floor(Math.random() * disponibles.length)];
-      this.tipActual = tip;
-      if (this.tipTimer) clearTimeout(this.tipTimer);
-      this.tipTimer = setTimeout(() => this.cerrarTip(), 10000);
-    },
 
-    cerrarTip() {
-      if (this.tipTimer) { clearTimeout(this.tipTimer); this.tipTimer = null; }
-      if (this.tipActual) {
-        if (!this.cfg.tipsVistos) this.cfg.tipsVistos = [];
-        if (!this.cfg.tipsVistos.includes(this.tipActual.id)) {
-          this.cfg.tipsVistos.push(this.tipActual.id);
-        }
-        this.guardarCfg();
-      }
-      this.tipActual = null;
-    },
 
-    clickTip() {
-      if (!this.tipActual) return;
-      const tip = this.tipActual;
-      this.cerrarTip();
-      if (tip.sec === 'ajustes') {
-        this.ajustesAbierto = true;
-      } else if (tip.sec) {
-        this.ir(tip.sec);
-      }
-    },
 
-    reiniciarTips() {
-      this.confirm = {
-        activo: true,
-        titulo: 'Reiniciar consejos',
-        msg: 'Se mostraran todos los consejos otra vez. Continuar?',
-        onOk: async () => {
-          this.cfg.tipsVistos = [];
-          await this.guardarCfg();
-          this.toastMsg('Consejos reiniciados');
-        }
-      };
-    },
 
     _actualizarScrollLock() {
       const hayModal = this.ajustesAbierto || this.masAbierto
@@ -2395,138 +2305,11 @@ export default {
     },
 
     // ===== TUTORIAL =====
-    pasosTutorial() {
-      const nombre = this.cfg.nombre || 'tu tienda';
-      return [
-        {
-          titulo: 'Bienvenido a Tienda Pro',
-          icono: 'store',
-          texto: 'Te voy a mostrar <b>todo lo que puedes hacer</b> en menos de 2 minutos. Es rapido y puedes saltarlo cuando quieras.',
-          bullets: [
-            'Ventas, compras e inventario',
-            'Caja, socios y reportes',
-            'Backup automatico en Telegram',
-            'Reportes y estadisticas'
-          ]
-        },
-        {
-          titulo: 'Inicio - Tu centro de mando',
-          icono: 'home',
-          sec: 'dashboard',
-          target: '.balance.azul',
-          texto: 'Aqui ves <b>el dinero en caja, ventas del dia, ganancia y todo de un vistazo</b>. Los consejos de Tienda Pro te avisan que hacer.'
-        },
-        {
-          titulo: 'Bara inferior - Navegacion',
-          icono: 'menu',
-          target: '.nav',
-          texto: 'Desde abajo llegas a todas partes. Toca cada boton para ver:',
-          bullets: [
-            '<b>Inicio</b> - resumen y consejos',
-            '<b>Ventas</b> - cobrar y ver historial',
-            '<b>Compras</b> - mercancia que entra',
-            '<b>Inventario</b> - que tienes y cuanto vale',
-            '<b>Mas</b> - todo lo demas'
-          ]
-        },
-        {
-          titulo: 'Empieza por aqui: tus datos',
-          icono: 'store',
-          sec: 'socios',
-          target: 'section:not([style*="display: none"]) .card-title',
-          texto: 'Antes de vender, configura lo basico. Toca <b>Ajustes</b> (arriba) y pon:',
-          bullets: [
-            '<b>Nombre de la tienda</b> - como quieres que aparezca',
-            '<b>Capital inicial</b> - el dinero con el que empiezas',
-            '<b>PIN</b> - para proteger operaciones sensibles'
-          ]
-        },
-        {
-          titulo: 'Crea tus productos',
-          icono: 'tag',
-          sec: 'productos',
-          target: 'section:not([style*="display: none"]) input[placeholder="Nombre del producto"]',
-          texto: 'Todo empieza con los productos. Toca <b>Mas → Productos</b> y agrega cada producto con su precio de venta. Puedes agregar <b>precios por cantidad</b> y <b>empaques</b> (sacos, cajas).'
-        },
-        {
-          titulo: 'Registra tus compras',
-          icono: 'bag',
-          sec: 'compras',
-          target: 'nav button, .card:first-child',
-          texto: 'Cuando compres mercancia, registrala aqui. La app calcula el <b>costo promedio</b> y crea los lotes automaticamente. Si compraste el mismo producto a precios distintos, cada lote respeta su costo.'
-        },
-        {
-          titulo: 'Haz tu primera venta',
-          icono: 'cart',
-          sec: 'ventas',
-          target: 'section:not([style*="display: none"]) .search input',
-          texto: 'Busca el producto, pon la cantidad, ajusta el precio si hace falta y toca <b>Cobrar Venta</b>. La app calcula la ganancia real usando FIFO (respeta cada lote).'
-        },
-        {
-          titulo: 'Tus gastos del dia',
-          icono: 'dollar',
-          sec: 'gastos',
-          target: 'section:not([style*="display: none"]) .card-title',
-          texto: 'Luz, agua, alquiler, transporte... cada gasto afecta tu ganancia neta. Se descuenta automaticamente de la caja si marcas "Sale de caja".'
-        },
-        {
-          titulo: 'Socios y reparto',
-          icono: 'users',
-          sec: 'socios',
-          target: 'section:not([style*="display: none"]) .balance',
-          texto: 'Si tienes socios, agregalos con su <b>% de participacion</b>. Al cerrar el mes, la app divide la ganancia automaticamente.'
-        },
-        {
-          titulo: 'Backup en Telegram',
-          icono: 'lock',
-          accion: 'abrir-ajustes',
-          target: '.modal-box',
-          texto: 'Tu informacion se respalda automaticamente en <b>Telegram</b> cada 24h. Los respaldos quedan cifrados y disponibles desde cualquier dispositivo.'
-        },
-        {
-          titulo: 'Listo para empezar',
-          icono: 'diamond',
-          sec: 'dashboard',
-          target: '.nav',
-          texto: 'Eso es todo. Ya puedes usar <b>' + nombre + '</b> como un profesional.',
-          bullets: [
-            'Agrega productos primero',
-            'Registra compras y ventas',
-            'Revisa los reportes cada mes',
-            'Revisa los consejos en Inicio'
-          ]
-        }
-      ];
-    },
 
-    iniciarTutorial() {
-      this.tutorialActivo = true;
-    },
 
-    cerrarTutorial() {
-      this.tutorialActivo = false;
-      this.cfg.tutorialVisto = true;
-      this.guardarCfg();
-      this.toastMsg('Tutorial completado');
-    },
 
-    repetirTutorial() {
-      this.ajustesAbierto = false;
-      setTimeout(() => this.iniciarTutorial(), 300);
-    },
 
-    onTutorialAccion(accion) {
-      if (accion === 'abrir-ajustes') {
-        this.ajustesAbierto = true;
-        this.$nextTick(() => {
-          // El Onboarding refrescara el target
-        });
-      }
-    },
 
-    onTutorialIr(sec) {
-      this.ir(sec);
-    },
 
 
     toggleCuadreProducto(id) {
@@ -5499,7 +5282,6 @@ export default {
             console.log('Limpiados ' + viejos.length + ' items viejos de tgQueue');
           }
         } catch (e) { console.error('limpiar tgQueue', e); }
-        setTimeout(() => this.mostrarTipAleatorio(), 2500);
         // Aviso de configuracion inicial
         if (!this.cfg.tiendaConfigurada && !this.cfg.avisoTiendaDescartado) {
           setTimeout(() => { this.mostrarAvisoTienda = true; }, 800);
