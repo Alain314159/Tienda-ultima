@@ -240,7 +240,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="v in histItemsMostrados(ventasPorPeriodo.actual, 'ventas')" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
+            <div v-for="v in histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
               <div class="info">
                 <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                 <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
@@ -248,8 +248,8 @@
               <button v-if="!v.anulada" class="link-btn" @click="anularVenta(v.id)">Anular</button>
               <span v-else class="badge arch">ANULADA</span>
             </div>
-            <div v-if="histHayMas(ventasPorPeriodo.actual, 'ventas')" class="hist-mas">
-              <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas ({{ histRestantes(ventasPorPeriodo.actual, 'ventas') }} restantes)</button>
+            <div v-if="histVentasHayMas" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas ({{ histVentasRestantes }} restantes)</button>
             </div>
           </div>
 
@@ -270,7 +270,7 @@
                 </div>
               </div>
               <div v-if="histHayMas(g.items, 'ventas')" class="hist-mas">
-                <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar {{ Math.min(20, histRestantes(ventasPorPeriodo.actual, 'ventas')) }} mas</button>
+                <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar {{ Math.min(20, histVentasRestantes) }} mas</button>
               </div>
             </div>
           </div>
@@ -356,7 +356,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ comprasPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="c in histItemsMostrados(comprasPorPeriodo.actual, 'compras')" :key="c.id" class="item" :id="'ref-' + c.id">
+            <div v-for="c in histComprasMostrados" :key="c.id" class="item" :id="'ref-' + c.id">
               <div class="info">
                 <div class="nm"><icon name="bag" :size="14"></icon> {{ c.productoNombre }}</div>
                 <div class="det">{{ fmtFH(c.fecha) }} · {{ fmtCant(c.cantidad) }} × {{ fmt(c.costo) }}</div>
@@ -374,8 +374,8 @@
                 <span v-else class="lock"><icon name="lock" :size="15" :color="mutColor"></icon></span>
               </div>
             </div>
-            <div v-if="histHayMas(comprasPorPeriodo.actual, 'compras')" class="hist-mas">
-              <button class="link-btn" @click="histMostrarMas('compras')">Mostrar 20 mas ({{ histRestantes(comprasPorPeriodo.actual, 'compras') }} restantes)</button>
+            <div v-if="histComprasHayMas" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('compras')">Mostrar 20 mas ({{ histComprasRestantes }} restantes)</button>
             </div>
           </div>
 
@@ -397,7 +397,7 @@
                 <b class="neg">{{ fmt(c.total) }}</b>
               </div>
               <div v-if="histHayMas(g.items, 'compras')" class="hist-mas">
-                <button class="link-btn" @click="histMostrarMas('compras')">Mostrar {{ Math.min(20, histRestantes(comprasPorPeriodo.actual, 'compras')) }} mas</button>
+                <button class="link-btn" @click="histMostrarMas('compras')">Mostrar {{ Math.min(20, histComprasRestantes) }} mas</button>
               </div>
             </div>
           </div>
@@ -438,7 +438,7 @@
             <button class="link-btn" @click="limpiarFiltroStock">Quitar filtro</button>
           </div>
           <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
-          <div v-for="p in prodsFiltrados" :key="p.id" v-memo="[p.id, p.nombre, p.precio, p.archivado, stock(p.id), prodExpandido[p.id]]" class="prod-wrap" :id="'ref-' + p.id" :class="'prod-' + badgeStock(p)">
+          <div v-for="p in prodsFiltrados" :key="p.id" v-memo="[p.id, p.nombre, p.precio, p.archivado, stockMap[p.id], badgeMap[p.id], prodExpandido[p.id]]" class="prod-wrap" :id="'ref-' + p.id" :class="'prod-' + (badgeMap[p.id] || 'ok')">
             <div class="item" :style="p.archivado ? 'opacity:.5' : ''" style="cursor:pointer"
               @click="prodExpandido[p.id] = !prodExpandido[p.id]">
               <div class="info">
@@ -924,7 +924,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ gastosPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="g in histItemsMostrados(gastosPorPeriodo.actual, 'gastos')" :key="g.id" class="item">
+            <div v-for="g in histGastosMostrados" :key="g.id" class="item">
               <div class="info">
                 <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
                 <div class="det">{{ fmtFH(g.fecha) }} · {{ g.saleDeCaja ? 'Caja' : 'Sin caja' }}</div>
@@ -939,8 +939,8 @@
                 </button>
               </div>
             </div>
-            <div v-if="histHayMas(gastosPorPeriodo.actual, 'gastos')" class="hist-mas">
-              <button class="link-btn" @click="histMostrarMas('gastos')">Mostrar 20 mas ({{ histRestantes(gastosPorPeriodo.actual, 'gastos') }} restantes)</button>
+            <div v-if="histGastosHayMas" class="hist-mas">
+              <button class="link-btn" @click="histMostrarMas('gastos')">Mostrar 20 mas ({{ histGastosRestantes }} restantes)</button>
             </div>
           </div>
 
@@ -1669,6 +1669,18 @@ export default {
   },
 
   computed: {
+    // ===== HISTORIAL COMPUTED (cachea slice/filtros y evita recalcular en cada render) =====
+    histVentasMostrados() { return this.histItemsMostrados(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasMostrados() { return this.histItemsMostrados(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosMostrados() { return this.histItemsMostrados(this.gastosPorPeriodo.actual, 'gastos'); },
+    histVentasHayMas() { return this.histHayMas(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasHayMas() { return this.histHayMas(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosHayMas() { return this.histHayMas(this.gastosPorPeriodo.actual, 'gastos'); },
+    histVentasRestantes() { return this.histRestantes(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasRestantes() { return this.histRestantes(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
+
+
     soportaNotif() {
       return typeof window !== 'undefined' && 'Notification' in window;
     },
@@ -1971,6 +1983,21 @@ export default {
     fmt, fmtCant, fmtFecha, fmtFH, n, m,
 
     stock(pid) { return this.stockMap[pid] || 0; },
+
+    badgeMap() {
+      const map = {};
+      const sm = this.stockMap;
+      for (const p of this.productos) {
+        const s = sm[p.id] || 0;
+        let b;
+        if (p.archivado) b = 'arch';
+        else if (s === 0) b = 'out';
+        else if (s <= Number(p.stockMinimo)) b = 'low';
+        else b = 'ok';
+        map[p.id] = b;
+      }
+      return map;
+    },
 
     badgeStock(p) {
       const s = this.stock(p.id);
