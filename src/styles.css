@@ -1624,22 +1624,23 @@ input::placeholder, textarea::placeholder {
   box-shadow: var(--sh-warn);
 }
 
-/* ===== COLORES DE STOCK EN PRODUCTOS ===== */
+/* ===== COLORES DE STOCK EN PRODUCTOS (diseño suave) ===== */
 .prod-wrap.prod-out .item {
-  border-left: 4px solid var(--bad);
-  background: rgba(239,68,68,.05);
+  border-left: 4px solid transparent;
+  background-image: linear-gradient(90deg, rgba(239,68,68,.09) 0%, rgba(239,68,68,0) 55%);
 }
 .prod-wrap.prod-low .item {
-  border-left: 4px solid var(--warn);
-  background: rgba(245,158,11,.05);
+  border-left: 4px solid transparent;
+  background-image: linear-gradient(90deg, rgba(245,158,11,.09) 0%, rgba(245,158,11,0) 55%);
 }
 .prod-wrap.prod-ok .item {
   border-left: 4px solid transparent;
+  background-image: none;
 }
 .prod-wrap.prod-arch .item {
-  border-left: 4px solid var(--mut);
+  border-left: 4px solid transparent;
+  background-image: linear-gradient(90deg, rgba(100,116,139,.09) 0%, rgba(100,116,139,0) 55%);
 }
-
 /* ===== IMPORT COMPARE ===== */
 .import-compare {
   border: 1px solid var(--brd);
