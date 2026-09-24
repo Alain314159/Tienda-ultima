@@ -26,6 +26,22 @@ export function generarRecomendaciones(state) {
   const totalMes = ventasMes.reduce((s, v) => s + (v.total || 0), 0);
   const totalMesAnt = ventasMesAnt.reduce((s, v) => s + (v.total || 0), 0);
 
+  // INSIGHTS_SEMANAL_V1 - Calculos semanales
+  const semanaActual = { i: new Date(ahora), f: new Date(ahora) };
+  semanaActual.i.setDate(ahora.getDate() - 6);
+  semanaActual.i.setHours(0, 0, 0, 0);
+  const semanaAnterior = { i: new Date(semanaActual.i), f: new Date(semanaActual.i) };
+  semanaAnterior.f.setMilliseconds(-1);
+  semanaAnterior.i.setDate(semanaAnterior.f.getDate() - 6);
+  semanaAnterior.i.setHours(0, 0, 0, 0);
+
+  const ventasSemana = ventas.filter(v => !v.anulada && new Date(v.fecha) >= semanaActual.i);
+  const ventasSemanaAnt = ventas.filter(v => !v.anulada && new Date(v.fecha) >= semanaAnterior.i && new Date(v.fecha) <= semanaAnterior.f);
+  const totalSemana = ventasSemana.reduce((s, v) => s + (v.total || 0), 0);
+  const totalSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.total || 0), 0);
+  const gananciaSemana = ventasSemana.reduce((s, v) => s + (v.ganancia || 0), 0);
+  const gananciaSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.ganancia || 0), 0);
+
   const push = (r) => out.push(r);
 
   // ============================================================
@@ -219,19 +235,70 @@ export function generarRecomendaciones(state) {
   // ============ INFO (peso 0-29) ==============================
   // ============================================================
 
+  // Tendencia SEMANAL (esta semana vs la anterior)
+  if (totalSemanaAnt > 100 && totalSemana > 0) {
+    const pctSem = ((totalSemana - totalSemanaAnt) / totalSemanaAnt) * 100;
+    if (Math.abs(pctSem) >= 15) {
+      push({
+        nivel: pctSem > 0 ? 'oportunidad' : 'atencion',
+        peso: Math.abs(pctSem) >= 30 ? 45 : 30,
+        icono: 'trend',
+        titulo: 'Ventas ' + (pctSem > 0 ? 'subieron' : 'bajaron') + ' ' + Math.abs(pctSem).toFixed(0) + '% esta semana',
+        detalle: 'De ' + formatMoney(totalSemanaAnt) + ' a ' + formatMoney(totalSemana),
+        sec: 'reportes', clave: 'tendencia-semanal'
+      });
+    }
+  }
+
+  // Tendencia MENSUAL (referencia secundaria)
   if (totalMesAnt > 100 && totalMes > 0) {
     const pct = ((totalMes - totalMesAnt) / totalMesAnt) * 100;
     if (Math.abs(pct) >= 15) {
       push({
         nivel: pct > 0 ? 'oportunidad' : 'info',
-        peso: Math.abs(pct) >= 30 ? 40 : 25,
+        peso: Math.abs(pct) >= 30 ? 38 : 22,
         icono: 'trend',
-        titulo: 'Ventas ' + (pct > 0 ? 'subieron' : 'bajaron') + ' ' + Math.abs(pct).toFixed(0) + '%',
+        titulo: 'Ventas ' + (pct > 0 ? 'subieron' : 'bajaron') + ' ' + Math.abs(pct).toFixed(0) + '% este mes',
         detalle: 'De ' + formatMoney(totalMesAnt) + ' a ' + formatMoney(totalMes),
-        sec: 'reportes', clave: 'tendencia-ventas'
+        sec: 'reportes', clave: 'tendencia-mensual'
       });
     }
   }
+
+  // ============================================================
+  // ============ REGLAS SEMANALES NUEVAS =======================
+  // ============================================================
+
+  // Margen semanal bajo
+  if (totalSemana > 200) {
+    const margenSem = (gananciaSemana / totalSemana) * 100;
+    if (margenSem < 10) {
+      push({
+        nivel: 'atencion', peso: 52, icono: 'chart',
+        titulo: 'Margen semanal bajo: ' + margenSem.toFixed(1) + '%',
+        detalle: 'Vendiste ' + formatMoney(totalSemana) + ' con ganancia de ' + formatMoney(gananciaSemana),
+        sec: 'reportes', clave: 'margen-semanal-bajo'
+      });
+    }
+  }
+
+  // Proyeccion semanal
+  if (totalSemana > 0) {
+    const diasPasados = Math.min(7, Math.ceil((ahora - semanaActual.i) / 86400000));
+    if (diasPasados >= 3 && diasPasados < 7) {
+      const promedio = totalSemana / diasPasados;
+      const proyeccionSemana = promedio * 7;
+      push({
+        nivel: 'info', peso: 16, icono: 'trend',
+        titulo: 'Proyeccion: ' + formatMoney(proyeccionSemana) + ' esta semana',
+        detalle: 'Al ritmo actual (' + formatMoney(promedio) + '/dia)',
+        sec: 'reportes', clave: 'proyeccion-semanal'
+      });
+    }
+  }
+
+  // Racha de dias con ventas (ya existe, dejamos que siga)
+
 
   const ganPorProd = {};
   ventasMes.forEach(v => v.items.forEach(it => {

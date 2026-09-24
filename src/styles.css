@@ -2611,3 +2611,37 @@ html { -webkit-overflow-scrolling: touch; }
 .chart-toggle button:active {
   transform: scale(.95);
 }
+
+
+/* CHART_TOGGLE_CSS */
+.chart-toggle {
+  display: inline-flex;
+  background: var(--bg-2);
+  border-radius: 99px;
+  padding: 3px;
+  gap: 2px;
+}
+.chart-toggle button {
+  background: transparent;
+  border: none;
+  color: var(--mut);
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .35rem .75rem;
+  border-radius: 99px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  letter-spacing: -0.01em;
+}
+.chart-toggle button.activo {
+  background: var(--card);
+  color: var(--pri);
+  box-shadow: 0 1px 3px rgba(15,23,42,.1);
+}
+[data-theme="dark"] .chart-toggle button.activo {
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.chart-toggle button:active {
+  transform: scale(.95);
+}

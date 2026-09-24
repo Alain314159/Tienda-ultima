@@ -103,8 +103,18 @@
           </div>
         </div>
 
+        <!-- CHART_TOGGLE_V1 -->
         <div class="card" style="margin-top:.8rem">
-          <div class="card-title"><icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon> Ventas vs Ganancia (6 meses)</div>
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <span style="display:flex;align-items:center;gap:.55rem">
+              <icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
+              Ventas vs Ganancia
+            </span>
+            <span class="chart-toggle">
+              <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
+              <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
+            </span>
+          </div>
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
         </div>
 
@@ -1602,6 +1612,7 @@ export default {
         modoCompacto: false,
         fontScale: 1,
         tipsVistos: [],
+        graficoVista: 'mes',
         avisoTiendaDescartado: false,
         tutorialVisto: false,
         mostrarSplash: true
@@ -5201,32 +5212,62 @@ export default {
     },
 
     // ===== CHART =====
+    setGraficoVista(vista) {
+      if (this.cfg.graficoVista === vista) return;
+      this.cfg.graficoVista = vista;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+    },
+
     async renderChart() {
       try {
         const cv = document.getElementById('chartVentas');
         if (!cv) return;
         if (this._chart) { try { this._chart.destroy(); } catch (e) {} this._chart = null; }
         const { default: Chart } = await import('chart.js/auto');
-        const meses = [];
+
+        const vista = this.cfg.graficoVista || 'mes';
+        const data = [];
         const now = new Date();
-        for (let i = 5; i >= 0; i--) {
-          const f = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          meses.push({ m: f.getMonth(), y: f.getFullYear(), label: f.toLocaleDateString('es', { month: 'short' }), v: 0, g: 0 });
+
+        if (vista === 'semana') {
+          // Ultimas 8 semanas
+          for (let i = 7; i >= 0; i--) {
+            const fin = new Date(now);
+            fin.setDate(now.getDate() - i * 7);
+            fin.setHours(23, 59, 59, 999);
+            const ini = new Date(fin);
+            ini.setDate(fin.getDate() - 6);
+            ini.setHours(0, 0, 0, 0);
+            const label = ini.getDate() + '/' + (ini.getMonth() + 1);
+            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'semana' });
+          }
+        } else {
+          // Ultimos 6 meses
+          for (let i = 5; i >= 0; i--) {
+            const ini = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
+            const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const label = ini.toLocaleDateString('es', { month: 'short' });
+            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'mes' });
+          }
         }
+
         this.ventas.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
-          const me = meses.find(x => x.m === f.getMonth() && x.y === f.getFullYear());
-          if (me) { me.v += n(v.total); me.g += n(v.ganancia); }
+          const bucket = data.find(b => f >= b.ini && f <= b.fin);
+          if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
         });
+
         const dark = this.cfg.tema === 'dark';
         const txt = dark ? '#94a3b8' : '#6b7280', grid = dark ? '#334155' : '#e5e7eb';
+
         this._chart = new Chart(cv.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: meses.map(m => m.label),
+            labels: data.map(m => m.label),
             datasets: [
-              { label: 'Ventas', data: meses.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
-              { label: 'Ganancia', data: meses.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
+              { label: 'Ventas', data: data.map(m => m.v), backgroundColor: '#2196F3', borderRadius: 4 },
+              { label: 'Ganancia', data: data.map(m => m.g), backgroundColor: '#16a34a', borderRadius: 4 }
             ]
           },
           options: {
@@ -5234,7 +5275,19 @@ export default {
             animation: { duration: 500 },
             plugins: {
               legend: { position: 'bottom', labels: { color: txt, boxWidth: 12, font: { size: 10 } } },
-              tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } }
+              tooltip: {
+                callbacks: {
+                  title: (items) => {
+                    const b = data[items[0].dataIndex];
+                    if (!b) return '';
+                    if (b.tipo === 'semana') {
+                      return fmtFecha(b.ini.toISOString()) + ' - ' + fmtFecha(b.fin.toISOString());
+                    }
+                    return b.ini.toLocaleDateString('es', { month: 'long', year: 'numeric' });
+                  },
+                  label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw)
+                }
+              }
             },
             scales: {
               x: { ticks: { color: txt, font: { size: 9 } }, grid: { display: false } },
@@ -5244,7 +5297,6 @@ export default {
         });
       } catch (e) { console.error('renderChart', e); }
     },
-
     // ===== BACKUP AUTO =====
     async backupAuto() {
       try {
