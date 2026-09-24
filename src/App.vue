@@ -270,7 +270,7 @@
                 </div>
               </div>
               <div v-if="histHayMas(g.items, 'ventas')" class="hist-mas">
-                <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas</button>
+                <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar {{ Math.min(20, histRestantes(ventasPorPeriodo.actual, 'ventas')) }} mas</button>
               </div>
             </div>
           </div>
@@ -397,7 +397,7 @@
                 <b class="neg">{{ fmt(c.total) }}</b>
               </div>
               <div v-if="histHayMas(g.items, 'compras')" class="hist-mas">
-                <button class="link-btn" @click="histMostrarMas('compras')">Mostrar 20 mas</button>
+                <button class="link-btn" @click="histMostrarMas('compras')">Mostrar {{ Math.min(20, histRestantes(comprasPorPeriodo.actual, 'compras')) }} mas</button>
               </div>
             </div>
           </div>
