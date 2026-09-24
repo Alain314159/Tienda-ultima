@@ -1650,6 +1650,10 @@ export default {
       _notifTimer: null,
       _fifoCache: {},
       _stockMapCache: null,
+
+      _agrupCache: null,
+
+      _carritoTimer: null,
       _recCache: null,
             _topRentCache: null,
       _invAgrCache: null,
@@ -1697,27 +1701,69 @@ export default {
     txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
     masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos'].includes(this.sec); },
 
+    _ventasStats() {
+      const ini = new Date(this.cfg.periodoInicio);
+      let totalCaja = 0, totalPeriodo = 0, gananciaPeriodo = 0;
+      for (const v of this.ventas) {
+        if (v.anulada) continue;
+        totalCaja += n(v.total);
+        if (new Date(v.fecha) >= ini) {
+          totalPeriodo += n(v.total);
+          gananciaPeriodo += n(v.ganancia);
+        }
+      }
+      return { totalCaja, totalPeriodo, gananciaPeriodo };
+    },
+
+    _lotesStats() {
+      let valor = 0, unidades = 0;
+      for (const l of this.lotes) {
+        const pend = n(l.cantidadInicial) - n(l.cantidadVendida);
+        valor += pend * n(l.costo);
+        unidades += pend;
+      }
+      return { valor: m(valor), unidades: m(unidades) };
+    },
+
+    _gastosStats() {
+      const ini = new Date(this.cfg.periodoInicio);
+      let periodo = 0, total = 0;
+      for (const g of this.gastos) {
+        total += n(g.monto);
+        if (new Date(g.fecha) >= ini) periodo += n(g.monto);
+      }
+      return { periodo: m(periodo), total: m(total) };
+    },
+
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
       const aportes = this.capital.reduce((s, x) => s + n(x.monto), 0);
       const retiros = this.retiros.reduce((s, x) => s + n(x.monto), 0);
-      const ventasC = this.ventas.filter(v => !v.anulada).reduce((s, v) => s + n(v.total), 0);
       const compras = this.compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
       const arq = this.movCaja.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + n(m.monto), 0)
         - this.movCaja.filter(m => m.tipo === 'egreso').reduce((s, m) => s + n(m.monto), 0);
-      return m(ini + aportes + ventasC - compras - retiros + arq);
+      return m(ini + aportes + this._ventasStats.totalCaja - compras - retiros + arq);
     },
 
-    valorInventario() {
-      return m(this.lotes.reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
-    },
+    valorInventario() { return this._lotesStats.valor; },
 
-    unidadesTotal() {
-      return m(this.lotes.reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)), 0));
-    },
+    unidadesTotal() { return this._lotesStats.unidades; },
 
     lotesActivos() {
       return this.lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+    },
+
+    _lotesPorProducto() {
+      const map = {};
+      for (const l of this.lotes) {
+        const pid = l.productoId;
+        if (!map[pid]) map[pid] = [];
+        map[pid].push(l);
+      }
+      for (const pid in map) {
+        map[pid].sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
+      }
+      return map;
     },
 
     stockMap() {
@@ -1747,35 +1793,22 @@ export default {
       return this.prodsActivos.filter(p => this.stock(p.id) <= 0.001);
     },
 
-    ventasPeriodo() {
-      const ini = new Date(this.cfg.periodoInicio);
-      return m(this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.total), 0));
-    },
+    ventasPeriodo() { return m(this._ventasStats.totalPeriodo); },
 
     comprasPeriodo() {
       const ini = new Date(this.cfg.periodoInicio);
       return m(this.compras.filter(c => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
     },
 
-    gananciaBrutaPeriodo() {
-      const ini = new Date(this.cfg.periodoInicio);
-      return m(this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.ganancia), 0));
-    },
+    gananciaBrutaPeriodo() { return m(this._ventasStats.gananciaPeriodo); },
 
-    gastosOpPeriodo() {
-      const ini = new Date(this.cfg.periodoInicio);
-      return m(this.gastos
-        .filter(g => new Date(g.fecha) >= ini)
-        .reduce((s, g) => s + n(g.monto), 0));
-    },
+    gastosOpPeriodo() { return this._gastosStats.periodo; },
 
     gastosOrdenados() {
       return this.gastos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     },
 
-    gastosTotalAcumulado() {
-      return m(this.gastos.reduce((s, g) => s + n(g.monto), 0));
-    },
+    gastosTotalAcumulado() { return this._gastosStats.total; },
 
     gastosPorCategoria() {
       const map = {};
@@ -1813,26 +1846,34 @@ export default {
 
     listaVenta() {
       const q = this.busqVenta.toLowerCase().trim();
-      if (!q) return this.prodsActivos.filter(p => this.stock(p.id) > 0).slice(0, 20);
-      return this.prodsActivos.filter(p =>
-        this.stock(p.id) > 0 &&
-        (p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))
-      ).slice(0, 20);
+      const sm = this.stockMap;
+      const out = [];
+      for (const p of this.prodsActivos) {
+        if ((sm[p.id] || 0) <= 0) continue;
+        if (q && !(p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))) continue;
+        out.push(p);
+        if (out.length >= 20) break;
+      }
+      return out;
     },
 
     listaCompra() {
       const q = this.busqCompra.toLowerCase().trim();
-      if (!q) return this.prodsActivos.slice(0, 20);
-      return this.prodsActivos.filter(p =>
-        p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q))
-      ).slice(0, 20);
+      const out = [];
+      for (const p of this.prodsActivos) {
+        if (q && !(p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))) continue;
+        out.push(p);
+        if (out.length >= 20) break;
+      }
+      return out;
     },
 
     prodsFiltrados() {
-      let list = this.productos;
-      if (!this.mostrarArchivados) list = list.filter(p => !p.archivado);
-      if (this.filtroStock === 'agotados') list = list.filter(p => this.stock(p.id) === 0);
-      else if (this.filtroStock === 'bajos') list = list.filter(p => { const st = this.stock(p.id); return st > 0 && st <= n(p.stockMinimo); });
+      const sm = this.stockMap;
+      const minMap = {};
+      let list = this.mostrarArchivados ? this.productos : this.productos.filter(p => !p.archivado);
+      if (this.filtroStock === 'agotados') list = list.filter(p => (sm[p.id] || 0) === 0);
+      else if (this.filtroStock === 'bajos') list = list.filter(p => { const st = sm[p.id] || 0; return st > 0 && st <= n(p.stockMinimo); });
       const q = this.busqProd.toLowerCase().trim();
       if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q));
       return list.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -2307,42 +2348,53 @@ export default {
 
     // ===== HISTORIAL PAGINADO POR PERIODOS =====
     agruparHistorial(items, keyFecha = 'fecha') {
-      const ini = new Date(this.cfg.periodoInicio);
+      const sig = items.length + '|' + (items[0]?.id || '') + '|' + (items[items.length - 1]?.id || '')
+        + '|' + this.cfg.periodoInicio + '|' + this.cierres.length + '|' + keyFecha;
+      if (this._agrupCache && this._agrupCache.sig === sig) return this._agrupCache.data;
+
+      const cierresProc = this.cierres.map(c => ({
+        cierre: c,
+        ci: new Date(c.periodoInicio || c.fechaCierre).getTime(),
+        cf: new Date(c.periodoFin || c.fechaCierre).getTime()
+      }));
+      const ini = new Date(this.cfg.periodoInicio).getTime();
       const actual = [];
+      const cerradosMap = {};
       const cerrados = [];
       const sinCierre = [];
 
-      items.forEach(it => {
-        const f = new Date(it[keyFecha]);
-        if (f >= ini) {
-          actual.push(it);
-          return;
+      for (const it of items) {
+        const f = new Date(it[keyFecha]).getTime();
+        if (f >= ini) { actual.push(it); continue; }
+        let match = null;
+        for (const cp of cierresProc) {
+          if (f >= cp.ci && f < cp.cf) { match = cp.cierre; break; }
         }
-        const cierre = this.cierres.find(c => {
-          const ci = new Date(c.periodoInicio || c.fechaCierre);
-          const cf = new Date(c.periodoFin || c.fechaCierre);
-          return f >= ci && f < cf;
-        });
-        if (cierre) {
-          let grupo = cerrados.find(g => g.cierre.id === cierre.id);
-          if (!grupo) { grupo = { cierre, items: [] }; cerrados.push(grupo); }
+        if (match) {
+          let grupo = cerradosMap[match.id];
+          if (!grupo) {
+            grupo = { cierre: match, items: [] };
+            cerradosMap[match.id] = grupo;
+            cerrados.push(grupo);
+          }
           grupo.items.push(it);
         } else {
           sinCierre.push(it);
         }
-      });
+      }
 
       if (sinCierre.length) {
         cerrados.push({ cierre: { id: '__antiguos__', periodo: 'Anteriores al primer cierre', fechaCierre: null }, items: sinCierre });
       }
-
       cerrados.sort((a, b) => {
         const fa = a.cierre.fechaCierre ? new Date(a.cierre.fechaCierre).getTime() : 0;
         const fb = b.cierre.fechaCierre ? new Date(b.cierre.fechaCierre).getTime() : 0;
         return fb - fa;
       });
 
-      return { actual, cerrados };
+      const data = { actual, cerrados };
+      this._agrupCache = { sig, data };
+      return data;
     },
 
     histPag(key) {
@@ -2387,13 +2439,12 @@ export default {
       const key = pid + '|' + q(cant);
       const cached = this._fifoCache[key];
       if (cached) return cached;
-      const lotes = this.lotes
-        .filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
-        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
+      const lotes = this._lotesPorProducto[pid] || [];
       let rest = cant, total = 0, usados = [];
       for (const l of lotes) {
-        if (rest <= 0) break;
         const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+        if (disp <= 0) continue;
+        if (rest <= 0) break;
         const usar = Math.min(disp, rest);
         total = m(total + (usar * n(l.costo)));
         usados.push({ loteId: l.id, cantidad: usar, costo: l.costo });
@@ -4988,6 +5039,7 @@ export default {
       this._recCache = null;
       this._topRentCache = null;
       this._invAgrCache = null;
+      this._agrupCache = null;
     },
 
     async recargarTodo() {
@@ -5412,7 +5464,10 @@ export default {
     },
     carrito: {
       handler(val) {
-        try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
+        if (this._carritoTimer) clearTimeout(this._carritoTimer);
+        this._carritoTimer = setTimeout(() => {
+          try { localStorage.setItem('carritoPro', JSON.stringify(val)); } catch (e) {}
+        }, 300);
       },
       deep: true
     },

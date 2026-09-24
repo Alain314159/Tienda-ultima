@@ -4,3 +4,5 @@ dist/
 *.log
 *.bak
 *.bak-*
+*.bak-*
+dist/
