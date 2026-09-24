@@ -414,47 +414,9 @@
             <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín.">
           </div>
 
-          <div class="escalones-box">
-            <div class="escalones-header">
-              <span>Precios por cantidad (opcional)</span>
-              <button class="link-btn" @click.prevent="agregarEscalon()">+ Agregar</button>
-            </div>
-            <div v-if="!prodForm.preciosEscalonados || !prodForm.preciosEscalonados.length" class="det" style="font-size:.72rem;color:var(--mut);padding:.4rem 0">
-              Sin escalones. Se usa el precio base para cualquier cantidad.
-            </div>
-            <div v-for="(e, i) in prodForm.preciosEscalonados" :key="i" class="escalon-row">
-              <span class="escalon-lbl">Desde</span>
-              <input v-model="e.min" type="number" inputmode="numeric" step="1" placeholder="Cant.">
-              <span class="escalon-lbl">a</span>
-              <input v-model="e.precio" type="number" inputmode="decimal" step="0.01" placeholder="Precio">
-              <button class="icon-btn bad" @click.prevent="quitarEscalon(i)" aria-label="Quitar">
-                <icon name="x" :size="14" color="#dc2626"></icon>
-              </button>
-            </div>
-          </div>
-
           <textarea v-model="prodForm.nota" placeholder="Nota interna (opcional)" rows="2"
             style="resize:none;font-family:inherit;font-size:.85rem"></textarea>
 
-          <div class="escalones-box">
-            <div class="escalones-header">
-              <span>Empaques (opcional)</span>
-              <button class="link-btn" @click.prevent="agregarEmpaque()">+ Agregar</button>
-            </div>
-            <div class="info-box" style="margin:.3rem 0 .5rem;font-size:.7rem">
-              Ej: "Saco" de 40 unidades. Se usara al comprar y para mostrar el stock.
-            </div>
-            <div v-if="!prodForm.empaques || !prodForm.empaques.length" class="det" style="font-size:.72rem;color:var(--mut);padding:.2rem 0">
-              Sin empaques definidos.
-            </div>
-            <div v-for="(e, i) in prodForm.empaques" :key="i" class="empaque-row">
-              <input v-model="e.nombre" type="text" placeholder="Nombre (saco, caja)">
-              <input v-model="e.unidades" type="number" inputmode="numeric" step="1" placeholder="Unidades">
-              <button class="icon-btn bad" @click.prevent="quitarEmpaque(i)" aria-label="Quitar">
-                <icon name="x" :size="14" color="#dc2626"></icon>
-              </button>
-            </div>
-          </div>
           <button class="btn pri" @click="guardarProducto()">
             <icon name="check" :size="16" color="#fff"></icon>
             {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}

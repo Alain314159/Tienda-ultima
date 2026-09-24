@@ -1624,22 +1624,13 @@ input::placeholder, textarea::placeholder {
   box-shadow: var(--sh-warn);
 }
 
-/* ===== COLORES DE STOCK EN PRODUCTOS (diseño suave) ===== */
-.prod-wrap.prod-out .item {
-  border-left: 4px solid transparent;
-  background-image: linear-gradient(90deg, rgba(239,68,68,.09) 0%, rgba(239,68,68,0) 55%);
-}
-.prod-wrap.prod-low .item {
-  border-left: 4px solid transparent;
-  background-image: linear-gradient(90deg, rgba(245,158,11,.09) 0%, rgba(245,158,11,0) 55%);
-}
-.prod-wrap.prod-ok .item {
-  border-left: 4px solid transparent;
-  background-image: none;
-}
+/* ===== COLORES DE STOCK EN PRODUCTOS (solo badge) ===== */
+.prod-wrap.prod-out .item,
+.prod-wrap.prod-low .item,
+.prod-wrap.prod-ok .item,
 .prod-wrap.prod-arch .item {
   border-left: 4px solid transparent;
-  background-image: linear-gradient(90deg, rgba(100,116,139,.09) 0%, rgba(100,116,139,0) 55%);
+  background-image: none;
 }
 /* ===== IMPORT COMPARE ===== */
 .import-compare {
