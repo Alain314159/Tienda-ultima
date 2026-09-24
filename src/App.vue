@@ -103,7 +103,7 @@
           </div>
         </div>
 
-        <!-- CHART_TOGGLE_V1 -->
+        <!-- GRAFICO_CIRCULAR_V1 -->
         <div class="card" style="margin-top:.8rem">
           <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
             <span style="display:flex;align-items:center;gap:.55rem">
@@ -111,11 +111,32 @@
               Ventas vs Ganancia
             </span>
             <span class="chart-toggle">
+              <button :class="{ activo: cfg.graficoVista === 'dia' }" @click="setGraficoVista('dia')">Días</button>
               <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
               <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
             </span>
           </div>
           <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
+        </div>
+
+        <!-- GRAFICO_PRODUCTOS_CIRCULAR -->
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <span style="display:flex;align-items:center;gap:.55rem">
+              <icon name="package" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
+              Top productos
+            </span>
+            <span class="chart-toggle">
+              <button :class="{ activo: cfg.graficoProdPeriodo === 'semana' }" @click="setGraficoProdPeriodo('semana')">Sem</button>
+              <button :class="{ activo: cfg.graficoProdPeriodo === 'mes' }" @click="setGraficoProdPeriodo('mes')">Mes</button>
+            </span>
+          </div>
+          <div class="chart-toggle" style="display:flex;justify-content:center;margin-bottom:.5rem;background:transparent">
+            <button :class="{ activo: cfg.graficoProdTipo === 'vendidos' }" @click="setGraficoProdTipo('vendidos')">Más vendidos</button>
+            <button :class="{ activo: cfg.graficoProdTipo === 'margen' }" @click="setGraficoProdTipo('margen')">Más margen</button>
+          </div>
+          <div class="chart-wrap" v-if="_topProductosGrafico().length > 0"><canvas id="chartProductos"></canvas></div>
+          <div v-else class="empty" style="padding:2rem 1rem">Sin ventas en este periodo</div>
         </div>
 
         <div class="card rec-card" v-if="recomendaciones.length">
@@ -1613,6 +1634,8 @@ export default {
         fontScale: 1,
         tipsVistos: [],
         graficoVista: 'mes',
+        graficoProdPeriodo: 'mes',
+        graficoProdTipo: 'vendidos',
         avisoTiendaDescartado: false,
         tutorialVisto: false,
         mostrarSplash: true
@@ -1709,6 +1732,7 @@ export default {
       preImportFecha: null,
       importFile: null,
       _chart: null,
+      _chartProd: null,
       _notifTimer: null,
       _fifoCache: {},
       _stockMapCache: null,
@@ -5212,6 +5236,110 @@ export default {
     },
 
     // ===== CHART =====
+    setGraficoProdPeriodo(p) {
+      if (this.cfg.graficoProdPeriodo === p) return;
+      this.cfg.graficoProdPeriodo = p;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
+    },
+
+    setGraficoProdTipo(t) {
+      if (this.cfg.graficoProdTipo === t) return;
+      this.cfg.graficoProdTipo = t;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
+    },
+
+    _topProductosGrafico() {
+      const ahora = new Date();
+      const periodo = this.cfg.graficoProdPeriodo || 'mes';
+      let ini;
+      if (periodo === 'semana') {
+        ini = new Date(ahora);
+        ini.setDate(ahora.getDate() - 6);
+        ini.setHours(0, 0, 0, 0);
+      } else {
+        ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      }
+      const tipo = this.cfg.graficoProdTipo || 'vendidos';
+      const map = {};
+      this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
+        v.items.forEach(it => {
+          if (!map[it.productoId]) {
+            map[it.productoId] = { id: it.productoId, nombre: it.nombre, cantidad: 0, ganancia: 0, ingresos: 0 };
+          }
+          map[it.productoId].cantidad += n(it.cantidad);
+          map[it.productoId].ganancia += n(it.ganancia);
+          map[it.productoId].ingresos += n(it.precio) * n(it.cantidad);
+        });
+      });
+      const lista = Object.values(map);
+      if (tipo === 'margen') {
+        lista.sort((a, b) => b.ganancia - a.ganancia);
+      } else {
+        lista.sort((a, b) => b.cantidad - a.cantidad);
+      }
+      return lista.slice(0, 6);
+    },
+
+    async renderChartProductos() {
+      try {
+        const cv = document.getElementById('chartProductos');
+        if (!cv) return;
+        if (this._chartProd) { try { this._chartProd.destroy(); } catch (e) {} this._chartProd = null; }
+        const items = this._topProductosGrafico();
+        if (items.length === 0) {
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0, 0, cv.width, cv.height);
+          return;
+        }
+        const { default: Chart } = await import('chart.js/auto');
+        const tipo = this.cfg.graficoProdTipo || 'vendidos';
+        const valorDe = (it) => tipo === 'margen' ? it.ganancia : it.cantidad;
+        const formatDe = (it) => tipo === 'margen' ? fmt(it.ganancia) : fmtCant(it.cantidad) + ' u';
+        const colores = ['#3B82F6', '#16A34A', '#D97706', '#8B5CF6', '#EC4899', '#0891B2'];
+        const dark = this.cfg.tema === 'dark';
+        const txt = dark ? '#94a3b8' : '#6b7280';
+        this._chartProd = new Chart(cv.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: items.map(it => it.nombre),
+            datasets: [{
+              data: items.map(it => valorDe(it)),
+              backgroundColor: colores,
+              borderWidth: 2,
+              borderColor: dark ? '#1e293b' : '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            cutout: '55%',
+            animation: { duration: 500 },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: txt, boxWidth: 12, font: { size: 10 }, padding: 8 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (c) => {
+                    const it = items[c.dataIndex];
+                    return ' ' + it.nombre + ': ' + formatDe(it);
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (e) { console.error('renderChartProductos', e); }
+    },
+    setGraficoVista(vista) {
+      if (this.cfg.graficoVista === vista) return;
+      this.cfg.graficoVista = vista;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+    },
+
     setGraficoVista(vista) {
       if (this.cfg.graficoVista === vista) return;
       this.cfg.graficoVista = vista;
@@ -5230,8 +5358,16 @@ export default {
         const data = [];
         const now = new Date();
 
-        if (vista === 'semana') {
-          // Ultimas 8 semanas
+        if (vista === 'dia') {
+          // Ultimos 14 dias
+          for (let i = 13; i >= 0; i--) {
+            const ini = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
+            const fin = new Date(ini);
+            fin.setHours(23, 59, 59, 999);
+            const label = ini.getDate() + '/' + (ini.getMonth() + 1);
+            data.push({ ini, fin, label, v: 0, g: 0, tipo: 'dia' });
+          }
+        } else if (vista === 'semana') {
           for (let i = 7; i >= 0; i--) {
             const fin = new Date(now);
             fin.setDate(now.getDate() - i * 7);
@@ -5243,7 +5379,6 @@ export default {
             data.push({ ini, fin, label, v: 0, g: 0, tipo: 'semana' });
           }
         } else {
-          // Ultimos 6 meses
           for (let i = 5; i >= 0; i--) {
             const ini = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
             const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
@@ -5280,9 +5415,8 @@ export default {
                   title: (items) => {
                     const b = data[items[0].dataIndex];
                     if (!b) return '';
-                    if (b.tipo === 'semana') {
-                      return fmtFecha(b.ini.toISOString()) + ' - ' + fmtFecha(b.fin.toISOString());
-                    }
+                    if (b.tipo === 'dia') return fmtFecha(b.ini.toISOString());
+                    if (b.tipo === 'semana') return fmtFecha(b.ini.toISOString()) + ' - ' + fmtFecha(b.fin.toISOString());
                     return b.ini.toLocaleDateString('es', { month: 'long', year: 'numeric' });
                   },
                   label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw)
@@ -5296,8 +5430,7 @@ export default {
           }
         });
       } catch (e) { console.error('renderChart', e); }
-    },
-    // ===== BACKUP AUTO =====
+    },    // ===== BACKUP AUTO =====
     async backupAuto() {
       try {
         const data = buildData(this);
@@ -5525,10 +5658,18 @@ export default {
     },
     'cfg.tema'(t) {
       try { document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-      if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+      if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => {
+        this.renderChart();
+        this.renderChartProductos();
+      }));
     },
     sec(s) {
-      if (s === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
+      if (s === 'dashboard') {
+        this.$nextTick(() => requestAnimationFrame(() => {
+          this.renderChart();
+          this.renderChartProductos();
+        }));
+      }
     }
   },
 
