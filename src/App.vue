@@ -217,7 +217,6 @@
               <span>Gan. {{ fmt(gananciaCarrito) }}</span>
             </div>
             <button class="btn ok" @click="iniciarCobro()" :disabled="procesandoVenta">
-              <icon name="check" :size="16" color="#fff"></icon>
               {{ procesandoVenta ? 'Procesando...' : 'Cobrar Venta' }}
             </button>
             <button class="btn ghost" @click="carrito = []">
@@ -418,7 +417,6 @@
             style="resize:none;font-family:inherit;font-size:.85rem"></textarea>
 
           <button class="btn pri" @click="guardarProducto()">
-            <icon name="check" :size="16" color="#fff"></icon>
             {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
           </button>
           <button v-if="prodForm.editId" class="btn ghost" @click="resetProd()">Cancelar</button>
@@ -770,7 +768,6 @@
             <span v-else style="color:var(--warn)"> (debe sumar 100%)</span>
           </div>
           <button class="btn pri" @click="guardarSocio()">
-            <icon name="check" :size="16" color="#fff"></icon>
             {{ socioForm.editId ? 'Actualizar' : 'Agregar Socio' }}
           </button>
           <button v-if="socioForm.editId" class="btn ghost" @click="resetSocio()">Cancelar</button>
@@ -809,7 +806,7 @@
             </div>
           </div>
           <button class="btn ok" @click="repartirGanancia()">
-            <icon name="check" :size="16" color="#fff"></icon> Repartir
+            Repartir
           </button>
 
           <div class="sheet-group" style="margin-top:1rem">Otros movimientos</div>
@@ -839,7 +836,7 @@
             <option v-for="s in sociosActivos" :key="s.id" :value="s.id">{{ s.nombre }}</option>
           </select>
           <button class="btn warn" @click="asignarAportesViejos()">
-            <icon name="check" :size="16" color="#fff"></icon> Asignar a este socio
+            Asignar a este socio
           </button>
         </div>
 
@@ -900,7 +897,6 @@
             </label>
           </div>
           <button class="btn warn" @click="guardarGasto()">
-            <icon name="check" :size="16" color="#fff"></icon>
             {{ gastoForm.editId ? 'Actualizar' : 'Registrar Gasto' }}
           </button>
           <button v-if="gastoForm.editId" class="btn ghost" @click="resetGasto()">Cancelar</button>
@@ -1139,7 +1135,7 @@
           <input v-model="cfg.horaArqueo" type="time" style="width:auto;margin:0;padding:.3rem .5rem" @change="guardarCfg">
         </div>
         <button class="btn ghost" style="margin-top:.3rem;font-size:.78rem" @click="probarNotif">
-          <icon name="check" :size="14" :color="mutColor"></icon> Probar notificacion
+          Probar notificacion
         </button>
 
         <div class="set-group">Ventas</div>
@@ -1392,7 +1388,6 @@
         </div>
 
         <button class="btn ok" @click="procesarVenta" :disabled="procesandoVenta">
-          <icon name="check" :size="16" color="#fff"></icon>
           {{ procesandoVenta ? 'Procesando...' : 'Confirmar Pago' }}
         </button>
         <button class="btn ghost" @click="cobroModal.activo = false">Cancelar</button>
