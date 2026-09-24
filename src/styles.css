@@ -1624,12 +1624,16 @@ input::placeholder, textarea::placeholder {
   box-shadow: var(--sh-warn);
 }
 
-/* ===== COLORES DE STOCK EN PRODUCTOS (solo badge) ===== */
+/* ===== COLORES DE STOCK EN PRODUCTOS (solo badge, con fondo de tarjeta) ===== */
+.prod-wrap .item {
+  background: var(--card);
+}
 .prod-wrap.prod-out .item,
 .prod-wrap.prod-low .item,
 .prod-wrap.prod-ok .item,
 .prod-wrap.prod-arch .item {
   border-left: 4px solid transparent;
+  background: var(--card);
   background-image: none;
 }
 /* ===== IMPORT COMPARE ===== */
