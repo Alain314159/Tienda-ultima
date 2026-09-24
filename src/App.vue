@@ -1337,7 +1337,10 @@
           Elimina permanentemente productos, ventas, compras, gastos, socios, asientos, pasivos, etc. No se puede deshacer.
         </div>
 
-        <div class="set-group">Avanzado</div>
+                <div v-if="otraPestana" class="set-row" style="background:rgba(245,158,11,.12);border:1px solid var(--warn);border-radius:8px;padding:.6rem;margin:.5rem 0">
+          <span class="lbl" style="color:var(--warn-d)"><icon name="alert" :size="18"></icon> Otra pestaña de Tienda Pro esta abierta. Cierrala para evitar conflictos de datos.</span>
+        </div>
+<div class="set-group">Avanzado</div>
         <div class="set-row">
           <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
           <label class="switch">
@@ -1654,6 +1657,9 @@ export default {
       _agrupCache: null,
 
       _carritoTimer: null,
+
+
+      _backupFallos: 0,
       _recCache: null,
             _topRentCache: null,
       _invAgrCache: null,
@@ -2781,7 +2787,7 @@ export default {
         this.toastMsg('⚠ ' + nombre + ' se agotó', TOAST.WARN, 'Avisar al grupo', () => {
           window.open(urlWA, '_blank');
         });
-      } catch (e) {}
+      } catch (e) { console.warn('chequearAgotados', e); }
 
       // 4. Aviso al bot de Telegram (timeout de 8s)
       try {
@@ -5014,6 +5020,19 @@ export default {
     cancelPrompt() { this.prompt.activo = false; },
 
     // ===== PERSISTENCIA =====
+    // ===== FLUSH EN CIERRE (antes de que el SO mate la pestaña) =====
+    _flushPendientes() {
+      // 1. Carrito: cancelar el debounce y guardar YA
+      if (this._carritoTimer) {
+        clearTimeout(this._carritoTimer);
+        this._carritoTimer = null;
+      }
+      try { localStorage.setItem('carritoPro', JSON.stringify(this.carrito)); } catch (e) { console.warn('flush carrito', e); }
+
+      // 2. Backup: disparar sin await (si el SO permite, alcanza a guardar)
+      this.backupAuto().catch(e => console.warn('flush backup', e));
+    },
+
     async guardarCfg() {
       try { await P(db.config, { key: 'cfg', value: this.cfg }); } catch (e) { console.error('guardarCfg', e); }
     },
@@ -5259,7 +5278,10 @@ export default {
       try {
         const data = buildData(this);
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
-      } catch (e) {}
+      } catch (e) {
+        this._backupFallos = (this._backupFallos || 0) + 1;
+        console.error('backupAuto fallo (intento ' + this._backupFallos + ')', e);
+      }
     },
 
     aplicarUpdate() {
@@ -5506,6 +5528,12 @@ export default {
     window.addEventListener('offline', () => this.online = false);
     window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
     window.addEventListener('resize', () => { if (this.sec === 'dashboard') this.renderChart(); });
+    // Flush al cerrar/cambiar de visibilidad (evita perder carrito por debounce)
+    window.addEventListener('beforeunload', () => this._flushPendientes());
+    window.addEventListener('pagehide', () => this._flushPendientes());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this._flushPendientes();
+    });
     // Notificaciones: usar requestIdleCallback si esta disponible
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
     idle(() => { this._notifTimer = setInterval(() => this.chequearNotificaciones(), 5 * 60 * 1000); });
