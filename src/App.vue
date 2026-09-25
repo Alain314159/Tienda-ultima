@@ -47,6 +47,9 @@
         <button class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
           <icon name="search" :size="18" color="#fff"></icon>
         </button>
+        <button class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
+          <icon name="calculator" :size="18" color="#fff"></icon>
+        </button>
         <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
           <icon :name="cfg.tema === 'dark' ? 'sun' : 'moon'" :size="18" color="#fff"></icon>
           <span>{{ cfg.tema === 'dark' ? 'Claro' : 'Oscuro' }}</span>
@@ -1460,6 +1463,8 @@
     <!-- ONBOARDING -->
 <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
+    <Calculator :visible="calcAbierto" @close="calcAbierto = false" />
+
   </div>
 </template>
 <script>
@@ -1473,6 +1478,7 @@ import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
+import Calculator from './components/Calculator.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1485,7 +1491,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator },
 
 
   data() {
@@ -1577,6 +1583,8 @@ export default {
       CATEGORIAS_GASTO,
       METODOS_PAGO,
       splashVisible: true,
+
+      calcAbierto: false,
       safeMode: false,
       _tabId: null,
       tgEstado: 'sin-config',
