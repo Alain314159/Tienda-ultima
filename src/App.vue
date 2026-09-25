@@ -2667,8 +2667,6 @@ export default {
         }));
 
         await this.recargar(['ventas', 'lotes']);
-        await this.recrearAsientoVenta(venta);
-        await this.recargar(['asientos']);
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
@@ -2714,8 +2712,6 @@ export default {
                 }
               });
               await this.recargar(['ventas', 'lotes']);
-              await this.recrearAsientoVenta({ ...v, anulada: true });
-              await this.recargar(['asientos']);
               this.toastMsg('Venta anulada');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -2927,7 +2923,7 @@ export default {
           const compraGuardada = f.editId
             ? this.compras.find(x => x.id === f.editId)
             : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-          if (compraGuardada) { await this.recrearAsientoCompra(compraGuardada); await this.recargar(['asientos']); }
+          
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
@@ -3058,7 +3054,7 @@ export default {
         });
         await this.recargar(['ajustes', 'lotes']);
         const mermaGuardada = this.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (mermaGuardada) { await this.recrearAsientoMerma(mermaGuardada); await this.recargar(['asientos']); }
+        
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
       } else {
         const cs = n(f.costoSobrante);
@@ -3091,7 +3087,7 @@ export default {
         await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
         await this.recargar(['retiros']);
         const rGuardado = this.retiros.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        if (rGuardado) { await this.recrearAsientoRetiro(rGuardado); await this.recargar(['asientos']); }
+        
         this.retiroForm = { monto: '', concepto: '' };
         this.retiroAbierto = false;
         this.toastMsg('Retiro registrado');
@@ -3104,7 +3100,7 @@ export default {
       await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
       const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (kGuardado) { await this.recrearAsientoAporte(kGuardado); await this.recargar(['asientos']); }
+      
       this.aporteForm = { monto: '', nota: '', socioId: '' };
       this.aporteAbierto = false;
       this.toastMsg('Aporte registrado');
@@ -4163,7 +4159,7 @@ export default {
       this.resetGasto();
       await this.recargar(['gastos', 'movCaja']);
       const gs = this.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      if (gs && (!f.editId || gs.id === f.editId)) { await this.recrearAsientoGasto(gs); await this.recargar(['asientos']); }
+      
     },
 
     editarGasto(id) {
@@ -5046,7 +5042,9 @@ export default {
         retiros: () => db.retiros.toArray(),
         socios: () => db.socios.toArray(),
         distribuciones: () => db.distribuciones.toArray(),
-        gastos: () => db.gastos.toArray()
+        gastos: () => db.gastos.toArray(),
+
+        asientos: () => db.asientos.toArray()
       };
       for (const w of what) this[w] = await map[w]();
       this._stockMapCache = null;
