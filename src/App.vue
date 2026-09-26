@@ -1400,9 +1400,18 @@
     <!-- ==================== RETIRO MODAL ==================== -->
     <div v-if="retiroAbierto" class="modal no-print">
       <div class="modal-box">
-        <div class="modal-title"><icon name="dollar" :size="20"></icon> Retirar Ganancia</div>
+        <div class="modal-title"><icon name="dollar" :size="20"></icon> Retirar</div>
+        <div class="grid2" style="margin-bottom:.5rem">
+          <button class="btn" :class="retiroForm.tipo === 'ganancia' ? 'pri' : 'ghost'" style="margin:0" @click="retiroForm.tipo = 'ganancia'">Ganancia</button>
+          <button class="btn" :class="retiroForm.tipo === 'capital' ? 'pri' : 'ghost'" style="margin:0" @click="retiroForm.tipo = 'capital'">Capital</button>
+        </div>
         <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
-          Disponible: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+          <template v-if="retiroForm.tipo === 'capital'">
+            Capital disponible: <b class="pos">{{ fmt(capitalDisponible) }}</b>
+          </template>
+          <template v-else>
+            Ganancia disponible: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+          </template>
         </div>
         <input v-model="retiroForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a retirar">
         <input v-model="retiroForm.concepto" type="text" placeholder="Concepto (obligatorio)">
@@ -1618,7 +1627,7 @@ export default {
 
       ajusteForm: { productoId: '', cantidad: '', motivo: '', costoSobrante: '' },
             
-      retiroForm: { monto: '', concepto: '' },
+      retiroForm: { monto: '', concepto: '', tipo: 'ganancia' },
       aporteForm: { monto: '', nota: '', socioId: '' },
       migrarSocioId: '',
       socioForm: { editId: '', nombre: '', porcentaje: '', aporte: '' },
@@ -1955,6 +1964,15 @@ export default {
 
     
     aportesTotal() { return m(this.capital.reduce((s, x) => s + n(x.monto), 0)); },
+    retirosGananciaTotal() {
+      return m(this.retiros.filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia').reduce((s, x) => s + n(x.monto), 0));
+    },
+    retirosCapitalTotal() {
+      return m(this.retiros.filter(r => r.tipoRetiro === 'capital').reduce((s, x) => s + n(x.monto), 0));
+    },
+    capitalDisponible() {
+      return m(this.capitalTotal - this.retirosCapitalTotal);
+    },
     retirosTotal() { return m(this.retiros.reduce((s, x) => s + n(x.monto), 0)); },
     capitalTotal() { return m(n(this.cfg.capitalInicial) + this.aportesTotal); },
 
@@ -1966,12 +1984,16 @@ export default {
       return m(this.cierres.reduce((s, c) => s + n(c.ganancia), 0) + this.gananciaNetaPeriodo);
     },
 
-    gananciaDisponible() { return m(this.gananciasAcumuladas - this.retirosTotal); },
+    gananciaDisponible() { return m(this.gananciasAcumuladas - this.retirosGananciaTotal); },
 
     movPatrimonio() {
       const movs = [
         ...this.capital.map(x => ({ id: x.id, tipo: 'Aporte', fecha: x.fecha, monto: x.monto, nota: x.nota })),
-        ...this.retiros.map(x => ({ id: x.id, tipo: 'Retiro', fecha: x.fecha, monto: x.monto, nota: x.concepto }))
+        ...this.retiros.map(x => ({
+          id: x.id,
+          tipo: x.tipoRetiro === 'capital' ? 'Retiro (capital)' : 'Retiro (ganancia)',
+          fecha: x.fecha, monto: x.monto, nota: x.concepto
+        }))
       ];
       return movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     },
@@ -3088,17 +3110,17 @@ export default {
     registrarRetiro() {
       const monto = n(this.retiroForm.monto);
       const c = (this.retiroForm.concepto || '').trim();
+      const tipo = this.retiroForm.tipo || 'ganancia';
       if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
       if (!c) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
-      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Máximo ' + fmt(this.gananciaDisponible), TOAST.BAD);
+      const max = tipo === 'capital' ? this.capitalDisponible : this.gananciaDisponible;
+      if (monto > max + 0.01) return this.toastMsg('Máximo ' + fmt(max), TOAST.BAD);
       this.pedirPin(async () => {
-        await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c });
+        await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c, tipoRetiro: tipo });
         await this.recargar(['retiros']);
-        const rGuardado = this.retiros.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-        
-        this.retiroForm = { monto: '', concepto: '' };
+        this.retiroForm = { monto: '', concepto: '', tipo: 'ganancia' };
         this.retiroAbierto = false;
-        this.toastMsg('Retiro registrado');
+        this.toastMsg(tipo === 'capital' ? 'Retiro de capital registrado' : 'Retiro de ganancia registrado');
       });
     },
 
