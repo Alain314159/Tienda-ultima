@@ -9,6 +9,19 @@
       <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="otraPestana = false">OK</button>
     </div>
 
+    <!-- ALERTA DE PERDIDA DE DATOS -->
+    <div v-if="alertaPerdidaDatos" class="multi-tab-warn no-print" style="background:rgba(239,68,68,.15);border:1px solid var(--bad)">
+      <div style="flex:1">
+        <b style="color:var(--bad)">⚠ Tus datos parecen haberse perdido</b><br>
+        <span style="font-size:.72rem">La app esta configurada pero la base de datos esta vacia. Restaura desde un backup.</span>
+        <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+          <button v-if="ultimoBackup" class="btn ok" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="restaurarBackupAuto">Restaurar backup local</button>
+          <button class="btn pri" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false; ajustesAbierto = true; sec = 'reportes'">Ver backups en Telegram</button>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false">Descartar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SAFE MODE BANNER -->
     <div v-if="safeMode" class="safe-mode-banner no-print">
       <div style="flex:1">
@@ -1508,6 +1521,10 @@ export default {
       online: navigator.onLine,
       mostrarAvisoTienda: false,
       otraPestana: false,
+
+      alertaPerdidaDatos: false,
+
+      _backupIntervalTimer: null,
       shareSheetAbierto: false,
       hayUpdate: false,
             _aplicando: false,
@@ -4571,6 +4588,7 @@ export default {
           await this.importarData(this.ultimoBackup.value);
           this.ajustesAbierto = false;
           this.toastMsg('Backup restaurado');
+          this.alertaPerdidaDatos = false;
         }
       };
     },
@@ -5304,6 +5322,10 @@ export default {
 
         // NUEVO: Enviar a Telegram si esta configurado (sin bloquear UI)
         if (this.cfg.tgChatId && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
+          // Nunca subir un backup vacio (evita pisar el bueno en Telegram)
+          if (this.productos.length === 0 && this.ventas.length === 0 && this.compras.length === 0) {
+            console.warn('backupAuto: base vacia, se omite subida a Telegram');
+          } else
           try {
             const hash = await this.hashContenido(JSON.stringify(data));
             if (this.cfg.tgUltimoHash !== hash) {
@@ -5398,6 +5420,22 @@ export default {
         await this.recargarTodo();
         // Pedir persistencia de storage (evita que el navegador borre datos)
         await this.pedirPersistenciaStorage();
+
+        // DETECCION DE PERDIDA DE DATOS
+        // Si la app ya estaba configurada pero no hay ningun dato, avisar
+        try {
+          const totalDatos = this.productos.length + this.ventas.length + this.compras.length;
+          if (totalDatos === 0 && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
+            console.warn('⚠ POSIBLE PERDIDA DE DATOS: app configurada pero base vacia');
+            setTimeout(() => { this.alertaPerdidaDatos = true; }, 1200);
+          }
+        } catch (e) { console.warn('deteccion perdida', e); }
+
+        // Backup auto cada 2h mientras la app este abierta
+        if (this._backupIntervalTimer) clearInterval(this._backupIntervalTimer);
+        this._backupIntervalTimer = setInterval(() => {
+          this.backupAuto().catch(e => console.warn('backup interval', e));
+        }, 2 * 60 * 60 * 1000);
         await this.actualizarInfoStorage();
         // Restaurar carrito persistido (por si cerro la app a media venta)
         try {
@@ -5422,7 +5460,7 @@ export default {
         const b = await db.config.get('backupAuto');
         if (b) this.ultimoBackup = b;
         const ahora = Date.now();
-        if (!this.cfg.ultimoBackupAuto || (ahora - this.cfg.ultimoBackupAuto) > 86400000) {
+        if (!this.cfg.ultimoBackupAuto || (ahora - this.cfg.ultimoBackupAuto) > 7200000) {
           await this.backupAuto();
           this.cfg.ultimoBackupAuto = ahora;
           await this.guardarCfg();
@@ -5589,6 +5627,7 @@ export default {
     if (this._bc) { try { this._bc.close(); } catch (e) {} }
     if (this._notifTimer) clearInterval(this._notifTimer);
     if (this._tgColaTimer) clearInterval(this._tgColaTimer);
+    if (this._backupIntervalTimer) clearInterval(this._backupIntervalTimer);
     if (this._tgPollTimer) clearInterval(this._tgPollTimer);
   }
 };
