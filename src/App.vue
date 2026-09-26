@@ -5301,6 +5301,27 @@ export default {
       try {
         const data = buildData(this);
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
+
+        // NUEVO: Enviar a Telegram si esta configurado (sin bloquear UI)
+        if (this.cfg.tgChatId && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
+          try {
+            const hash = await this.hashContenido(JSON.stringify(data));
+            if (this.cfg.tgUltimoHash !== hash) {
+              // Anti-duplicados: si ya hay un item 'auto' pendiente, actualizarlo
+              const pendientes = await db.tgQueue.where('estado').equals('pendiente').toArray();
+              const autoExistente = pendientes.find(x => x.motivo === 'auto');
+              if (autoExistente) {
+                await P(db.tgQueue, { ...autoExistente, ts: new Date().toISOString(), datos: data });
+              } else {
+                await this.tgEncolar(data, 'auto');
+              }
+              // Intentar enviar ya mismo (si hay red)
+              this.tgProcesarCola().catch(e => console.warn('backupAuto cola', e));
+            }
+          } catch (e) {
+            console.warn('backupAuto telegram', e);
+          }
+        }
       } catch (e) {
         this._backupFallos = (this._backupFallos || 0) + 1;
         console.error('backupAuto fallo (intento ' + this._backupFallos + ')', e);
@@ -5547,7 +5568,7 @@ export default {
   mounted() {
     this.inicializar();
     window.addEventListener('pwa:update', () => { this.hayUpdate = true; });
-    window.addEventListener('online', () => this.online = true);
+    window.addEventListener('online', () => { this.online = true; this.tgProcesarCola().catch(() => {}); });
     window.addEventListener('offline', () => this.online = false);
     window.addEventListener('popstate', e => { this.sec = (e.state && e.state.sec) || 'dashboard'; });
     window.addEventListener('resize', () => { if (this.sec === 'dashboard') this.renderChart(); });
