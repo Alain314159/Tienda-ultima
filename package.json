@@ -16,6 +16,9 @@
     "test:all": "vitest run && node tests/smoke.spec.mjs && node tests/functional.spec.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@royalscome/nextconsole": "^1.0.7",
     "chart.js": "^4.4.4",
     "dexie": "^4.0.8",
