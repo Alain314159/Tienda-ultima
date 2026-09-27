@@ -1918,7 +1918,7 @@ export default {
       let list = this.ventas.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       const q = this.busqHist.toLowerCase().trim();
       if (q) list = list.filter(v => v.items.some(i => i.nombre.toLowerCase().includes(q)));
-      return list.slice(0, 50);
+      return list;
     },
 
     comprasOrdenadas() {
