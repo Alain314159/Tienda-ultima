@@ -1353,16 +1353,6 @@
           <span class="lbl" style="color:var(--warn-d)"><icon name="alert" :size="18"></icon> Otra pestaña de Tienda Pro esta abierta. Cierrala para evitar conflictos de datos.</span>
         </div>
 <div class="set-group">Avanzado</div>
-        <div class="set-row">
-          <span class="lbl"><icon name="settings" :size="18"></icon> Consola de desarrollo</span>
-          <label class="switch">
-            <input type="checkbox" v-model="cfg.erudaActivo" @change="toggleEruda">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem">
-          Activa la consola Eruda para depurar. Dejalo desactivado si no la necesitas.
-        </div>
 
         <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
           <span class="lbl"><icon name="info" :size="18"></icon> Informacion</span>
@@ -1546,7 +1536,6 @@ export default {
         ultimoBackupAuto: null,
         ultimoExport: null,
         notifActivo: false,
-        erudaActivo: false,
         horaArqueo: '',
         ultimaNotifStock: null,
         ultimaNotifArqueo: null,
@@ -3793,27 +3782,6 @@ export default {
         }
       };
     },
-
-    // ===== ERUDA =====
-    toggleEruda() {
-      try {
-        if (this.cfg.erudaActivo) {
-          if (window.__loadEruda) window.__loadEruda();
-          else {
-            const sc = document.createElement('script');
-            sc.src = 'https://cdn.jsdelivr.net/npm/eruda';
-            sc.onload = () => { try { window.eruda.init(); } catch(e){} };
-            document.head.appendChild(sc);
-          }
-          this.toastMsg('Consola activada');
-        } else {
-          if (window.__unloadEruda) window.__unloadEruda();
-          this.toastMsg('Consola desactivada');
-        }
-        this.guardarCfg();
-      } catch (e) { console.error('toggleEruda', e); }
-    },
-
     // ===== CONFIGURACION DE TIENDA =====
     async verificarNombreTienda() {
       const nombre = (this.mtForm.nombre || '').toLowerCase().trim();
