@@ -2720,11 +2720,13 @@ export default {
         this.cobroModal.activo = false;
         this.procesandoVenta = false;
         this.toastMsg(`Venta exitosa: ${fmt(tot)}`);
+        try { window.Log && window.Log.evento('venta-guardada', { id: venta.id, items: items.length, total: tot, ganancia: gan }); } catch (e) {}
 
         // Notificaciones en background: sin await
         this.chequearAgotados().catch(e => console.warn('chequearAgotados', e));
       } catch (e) {
         this.toastMsg(e.message, TOAST.BAD);
+        try { window.Log && window.Log.evento('venta-error', { mensaje: e.message, stack: e.stack && e.stack.split('\n').slice(0, 3).join(' | ') }); } catch (er) {}
       } finally {
         this.procesandoVenta = false;
       }
@@ -2971,7 +2973,9 @@ export default {
           
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
+          try { window.Log && window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total }); } catch (e) {}
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
+          try { window.Log && window.Log.evento('compra-error', { mensaje: e.message }); } catch (er) {}
       };
       if (!f.editId && total > this.saldoCaja) {
         this.confirm = {
