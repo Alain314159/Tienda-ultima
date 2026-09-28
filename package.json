@@ -25,7 +25,6 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
     "@capgo/capacitor-updater": "^8.51.25",
-    "@royalscome/nextconsole": "^1.0.7",
     "chart.js": "^4.4.4",
     "dexie": "^4.0.8",
     "jspdf": "^2.5.2",
