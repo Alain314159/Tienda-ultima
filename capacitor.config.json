@@ -23,7 +23,8 @@
     "CapacitorUpdater": {
       "autoUpdate": true,
       "resetWhenUpdate": true,
-      "updateUrl": "https://api.capgo.app/updates"
+      "updateUrl": "https://api.capgo.app/updates",
+      "appId": "com.tiendapro.tiendapro"
     }
   }
 }
