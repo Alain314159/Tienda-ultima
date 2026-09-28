@@ -1353,6 +1353,10 @@
           <span class="lbl" style="color:var(--warn-d)"><icon name="alert" :size="18"></icon> Otra pestaña de Tienda Pro esta abierta. Cierrala para evitar conflictos de datos.</span>
         </div>
 <div class="set-group">Avanzado</div>
+        <div class="set-row">
+          <span class="lbl"><icon name="package" :size="18"></icon> Respaldo automático</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="backupPanelAbierto = true">Abrir</button>
+        </div>
 
         <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
           <span class="lbl"><icon name="info" :size="18"></icon> Informacion</span>
@@ -1476,6 +1480,7 @@
 <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
     <Calculator :visible="calcAbierto" @close="calcAbierto = false" />
+    <BackupPanel v-if="backupPanelAbierto" @close="backupPanelAbierto = false" @restore="onRestoreBackup" />
 
   </div>
 </template>
@@ -1491,6 +1496,7 @@ import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
 import Calculator from './components/Calculator.vue';
+import BackupPanel from './components/BackupPanel.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1503,7 +1509,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel },
 
 
   data() {
@@ -1600,6 +1606,9 @@ export default {
       splashVisible: true,
 
       calcAbierto: false,
+
+
+      backupPanelAbierto: false,
       safeMode: false,
       _tabId: null,
       tgEstado: 'sin-config',
@@ -4503,6 +4512,31 @@ export default {
       if (d.version && d.version < 6) avisos.push('Respaldo de version antigua (v' + d.version + ')');
       return { ok: errores.length === 0, errores, avisos };
     },
+
+    async onRestoreBackup(data) {
+
+
+      try {
+
+
+        await this.importarData(data);
+
+
+        this.toastMsg('Backup restaurado');
+
+
+      } catch (e) {
+
+
+        this.toastMsg('Error restaurando: ' + e.message, TOAST.BAD);
+
+
+      }
+
+
+    },
+
+
 
     async importarData(d) {
       // Validar primero
