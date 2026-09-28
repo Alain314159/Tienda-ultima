@@ -2641,3 +2641,40 @@ html { -webkit-overflow-scrolling: touch; }
 .chart-toggle button:active {
   transform: scale(.95);
 }
+
+/* ===== STATUS PANEL (Estado del sistema) ===== */
+.status-section {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--brd);
+}
+.status-section:last-child { border-bottom: none; }
+.status-section-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: .7rem;
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  padding: .3rem 0;
+  font-size: .78rem;
+  border-bottom: 1px solid var(--brd);
+}
+.status-row:last-child { border-bottom: none; }
+.status-row > span { color: var(--mut); }
+.status-badge {
+  padding: .15rem .5rem;
+  border-radius: 6px;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+.status-ok { background: rgba(34,197,94,.15); color: var(--ok); }
+.status-bad { background: rgba(239,68,68,.15); color: var(--bad); }
+.status-run { background: rgba(245,158,11,.15); color: var(--warn); }
+.status-warn { background: rgba(100,116,139,.15); color: var(--mut); }

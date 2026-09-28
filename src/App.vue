@@ -1354,6 +1354,10 @@
         </div>
 <div class="set-group">Avanzado</div>
         <div class="set-row">
+          <span class="lbl"><icon name="alert" :size="18"></icon> Estado del sistema</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="statusPanelAbierto = true">Abrir</button>
+        </div>
+        <div class="set-row">
           <span class="lbl"><icon name="package" :size="18"></icon> Respaldo automático</span>
           <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="backupPanelAbierto = true">Abrir</button>
         </div>
@@ -1481,11 +1485,14 @@
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
     <Calculator :visible="calcAbierto" @close="calcAbierto = false" />
     <BackupPanel v-if="backupPanelAbierto" @close="backupPanelAbierto = false" @restore="onRestoreBackup" />
+    <StatusPanel v-if="statusPanelAbierto" @close="statusPanelAbierto = false" />
 
   </div>
 </template>
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import BottomNav from './components/BottomNav.vue';
 import { generarRecomendaciones } from './insights.js';
 import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
@@ -1497,6 +1504,7 @@ import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
 import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
+import StatusPanel from './components/StatusPanel.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1509,7 +1517,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel },
 
 
   data() {
@@ -1609,6 +1617,10 @@ export default {
 
 
       backupPanelAbierto: false,
+
+
+
+      statusPanelAbierto: false,
       safeMode: false,
       _tabId: null,
       tgEstado: 'sin-config',
@@ -1719,6 +1731,7 @@ export default {
 
 
     soportaNotif() {
+      if (Capacitor.isNativePlatform()) return true;
       return typeof window !== 'undefined' && 'Notification' in window;
     },
 
@@ -3972,6 +3985,24 @@ export default {
     // ===== NOTIFICACIONES =====
     async enviarNotif(titulo, cuerpo) {
       try {
+        // NATIVO: usar LocalNotifications
+        if (Capacitor.isNativePlatform()) {
+          const perm = await LocalNotifications.checkPermissions();
+          if (perm.display !== 'granted') return { ok: false, motivo: 'sin-permiso' };
+          await LocalNotifications.schedule({
+            notifications: [{
+              id: Math.floor(Math.random() * 100000),
+              title: titulo,
+              body: cuerpo,
+              schedule: { at: new Date(Date.now() + 100) },
+              smallIcon: 'ic_stat_icon_config_sample',
+              iconColor: '#2196F3'
+            }]
+          });
+          return { ok: true, via: 'native' };
+        }
+
+        // WEB: Web Notification API
         if (!('Notification' in window)) return { ok: false, motivo: 'sin-soporte' };
         if (Notification.permission !== 'granted') return { ok: false, motivo: 'sin-permiso' };
         const opts = {
@@ -3980,12 +4011,10 @@ export default {
           badge: '/Tienda-ultima/icons/icon-192.png',
           tag: 'tienda-' + Date.now()
         };
-        // Timeout global: una notificacion NUNCA debe colgar la app
         const conTimeout = (promesa, ms) => Promise.race([
           promesa,
           new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
         ]);
-
         if ('serviceWorker' in navigator) {
           try {
             const reg = await conTimeout(navigator.serviceWorker.ready, 3000);
@@ -4008,6 +4037,27 @@ export default {
     },
 
     async pedirPermisoNotif() {
+      // NATIVO
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const perm = await LocalNotifications.requestPermissions();
+          if (perm.display === 'granted') {
+            this.cfg.notifActivo = true;
+            await this.guardarCfg();
+            await this.enviarNotif('Tienda Pro', 'Notificaciones activadas');
+            this.toastMsg('Notificaciones activadas');
+          } else {
+            this.cfg.notifActivo = false;
+            await this.guardarCfg();
+            this.toastMsg('Permiso denegado', TOAST.BAD);
+          }
+        } catch (e) {
+          this.toastMsg('Error: ' + e.message, TOAST.BAD);
+        }
+        return;
+      }
+
+      // WEB
       if (!('Notification' in window)) {
         this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.WARN);
         return;
@@ -4038,6 +4088,17 @@ export default {
     },
 
     async probarNotif() {
+      if (Capacitor.isNativePlatform()) {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          return this.toastMsg('Primero activa las notificaciones', TOAST.WARN);
+        }
+        const r = await this.enviarNotif('Tienda Pro', 'Esta es una notificacion de prueba');
+        if (r && r.ok) this.toastMsg('Notificacion enviada (' + r.via + ')');
+        else this.toastMsg('Fallo: ' + (r ? r.motivo : 'error'), TOAST.BAD);
+        return;
+      }
+
       if (!('Notification' in window)) {
         return this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.BAD);
       }
@@ -4055,7 +4116,9 @@ export default {
 
     async chequearNotificaciones() {
       if (!this.cfg.notifActivo) return;
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!Capacitor.isNativePlatform()) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      }
       const ahora = new Date();
       const hoy = ahora.toISOString().split('T')[0];
       let cambio = false;
