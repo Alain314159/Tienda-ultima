@@ -2,7 +2,10 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import AppIcon from './components/AppIcon.vue';
 import './styles.css';
-import { registerSW } from 'virtual:pwa-register';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 import NextConsole from '@royalscome/nextconsole';
 
 const app = createApp(App);
@@ -16,7 +19,43 @@ app.config.errorHandler = (err, instance, info) => {
 const vm = app.mount('#app');
 window.__app = vm;
 
-// NextConsole: activar en dev o con 5 toques en el titulo de la app
+// ============================================================
+// CAPACITOR: inicializacion nativa (solo en APK, no en web)
+// ============================================================
+if (Capacitor.isNativePlatform()) {
+  // Barra de estado azul (coherente con el header)
+  StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+  StatusBar.setBackgroundColor({ color: '#2196F3' }).catch(() => {});
+  StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+
+  // Ocultar splash al arrancar
+  SplashScreen.hide().catch(() => {});
+
+  // Boton atras de Android: comportamiento inteligente
+  CapApp.addListener('backButton', () => {
+    // 1. Si hay un modal abierto, cerrarlo
+    if (vm.cobroModal && vm.cobroModal.activo) { vm.cobroModal.activo = false; return; }
+    if (vm.ajustesAbierto) { vm.ajustesAbierto = false; return; }
+    if (vm.masAbierto) { vm.masAbierto = false; return; }
+    if (vm.retiroAbierto) { vm.retiroAbierto = false; return; }
+    if (vm.aporteAbierto) { vm.aporteAbierto = false; return; }
+    if (vm.confirm && vm.confirm.activo) { vm.confirm.activo = false; return; }
+    if (vm.prompt && vm.prompt.activo) { vm.prompt.activo = false; return; }
+    if (vm.shareSheetAbierto) { vm.shareSheetAbierto = false; return; }
+    if (vm.busquedaGlobalAbierta) { vm.busquedaGlobalAbierta = false; return; }
+    if (vm.calcAbierto) { vm.calcAbierto = false; return; }
+
+    // 2. Si no esta en dashboard, ir al dashboard
+    if (vm.sec && vm.sec !== 'dashboard') { vm.sec = 'dashboard'; return; }
+
+    // 3. Si esta en dashboard sin modales, minimizar la app
+    CapApp.minimizeApp();
+  });
+}
+
+// ============================================================
+// NEXT CONSOLE: activar en dev o con 5 toques en el titulo
+// ============================================================
 const nc = new NextConsole({
   defaultTab: 'console',
   panelHeight: 0.4,
@@ -25,7 +64,6 @@ const nc = new NextConsole({
 if (import.meta.env.DEV) {
   nc.show();
 } else {
-  // En produccion: 5 toques rapidos en el titulo para abrir la consola
   let _taps = 0, _tapTimer = null;
   document.addEventListener('click', (e) => {
     const h1 = e.target.closest('.header h1');
@@ -37,24 +75,28 @@ if (import.meta.env.DEV) {
   });
 }
 
-// Registrar Service Worker (PWA)
-if ('serviceWorker' in navigator) {
-  registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      window.dispatchEvent(new CustomEvent('pwa:update'));
-    },
-    onOfflineReady() {
-      console.log('✅ PWA lista para uso offline');
-    },
-    onRegisteredSW(url, reg) {
-      console.log('✅ Service Worker registrado:', url);
-      if (reg) {
-        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+// ============================================================
+// SERVICE WORKER (PWA): solo en web, NO en Capacitor
+// ============================================================
+if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        window.dispatchEvent(new CustomEvent('pwa:update'));
+      },
+      onOfflineReady() {
+        console.log('✅ PWA lista para uso offline');
+      },
+      onRegisteredSW(url, reg) {
+        console.log('✅ Service Worker registrado:', url);
+        if (reg) {
+          setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+        }
+      },
+      onRegisterError(err) {
+        console.error('❌ SW registro falló:', err);
       }
-    },
-    onRegisterError(err) {
-      console.error('❌ SW registro falló:', err);
-    }
-  });
+    });
+  }).catch(err => console.warn('PWA register fallo:', err));
 }
