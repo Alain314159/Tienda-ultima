@@ -7,6 +7,10 @@ import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import NextConsole from '@royalscome/nextconsole';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { Autosave } from './services/autosave.js';
+import { db } from './db.js';
+import { buildData } from './db.js';
 
 const app = createApp(App);
 
@@ -23,6 +27,9 @@ window.__app = vm;
 // CAPACITOR: inicializacion nativa (solo en APK, no en web)
 // ============================================================
 if (Capacitor.isNativePlatform()) {
+  // Avisar a Capgo que la app arranco bien (evita rollback automatico)
+  CapacitorUpdater.notifyAppReady().catch(e => console.warn('notifyAppReady fallo:', e));
+
   // Barra de estado azul (coherente con el header)
   StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   StatusBar.setBackgroundColor({ color: '#2196F3' }).catch(() => {});
@@ -52,6 +59,28 @@ if (Capacitor.isNativePlatform()) {
     CapApp.minimizeApp();
   });
 }
+
+// ============================================================
+// AUTOSAVE: cuenta operaciones y guarda backups en carpeta
+// ============================================================
+setTimeout(async () => {
+  try {
+    // Inicializar con la funcion que devuelve el estado actual
+    await Autosave.init({
+      getData: () => buildData(window.__app)
+    });
+    // Si hubo cambios desde el ultimo backup, guardar
+    await Autosave.verificarAlArrancar();
+    // Hook de Dexie: cada escritura cuenta como una operacion
+    db.on('changes', (changes) => {
+      const hayEscritura = changes.some(ch => ch.type === 1 || ch.type === 2 || ch.type === 3);
+      if (hayEscritura) Autosave.notificarOperacion();
+    });
+    console.log('[Autosave] inicializado');
+  } catch (e) {
+    console.warn('[Autosave] init fallo:', e);
+  }
+}, 1500);
 
 // ============================================================
 // NEXT CONSOLE: activar en dev o con 5 toques en el titulo

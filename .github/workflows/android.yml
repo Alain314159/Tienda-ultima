@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & Publish OTA
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Setup Java 17
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -38,6 +38,13 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      # --- NUEVO PASO: SUBIR ACTUALIZACION OTA A CAPGO ---
+      - name: Publish OTA Update to Capgo
+        run: npx @capgo/cli@latest bundle upload --channel=production --auto-bump
+        env:
+          CAPGO_TOKEN: ${{ secrets.CAPGO_TOKEN }}
+      # --------------------------------------------------
 
       - name: Build APK (debug)
         working-directory: android
