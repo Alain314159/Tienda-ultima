@@ -53,49 +53,7 @@
       <!-- ================================================ -->
       <!-- SECCION 2: GITHUB                                -->
       <!-- ================================================ -->
-      <!-- SECCION GITHUB (deshabilitada) -->
-      <div v-if="false" class="status-section">
-        <div class="status-section-title">
-          <icon name="file" :size="16" :color="'#6e40c9'"></icon>
-          Actividad en GitHub
-        </div>
-
-        <div v-if="ghError" class="info-box" style="background:rgba(239,68,68,.1);border-color:var(--bad)">
-          <b style="color:var(--bad);font-size:.8rem">Error: {{ ghError }}</b>
-        </div>
-
-        <div v-else>
-          <!-- Ultimo commit -->
-          <div v-if="ghCommit" class="info-box" style="margin-bottom:.6rem">
-            <div style="font-size:.7rem;color:var(--mut);margin-bottom:.3rem">ULTIMO COMMIT</div>
-            <div style="font-weight:700;font-size:.85rem;margin-bottom:.2rem">{{ ghCommit.msg }}</div>
-            <div style="font-size:.72rem;color:var(--mut)">
-              {{ ghCommit.hash }} · {{ ghCommit.date }}
-            </div>
-          </div>
-
-          <!-- Workflows recientes -->
-          <div v-if="ghRuns.length" style="margin-bottom:.6rem">
-            <div style="font-size:.7rem;color:var(--mut);margin-bottom:.4rem">WORKFLOWS RECIENTES</div>
-            <div v-for="r in ghRuns" :key="r.id"
-              style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;border:1px solid var(--brd);border-radius:8px;margin-bottom:.3rem;font-size:.75rem">
-              <div style="flex:1;overflow:hidden">
-                <div style="font-weight:600;text-overflow:ellipsis;white-space:nowrap;overflow:hidden">{{ r.name }}</div>
-                <div style="color:var(--mut);font-size:.68rem">{{ r.date }}</div>
-              </div>
-              <span :class="'status-badge status-' + r.status">{{ r.statusLabel }}</span>
-            </div>
-          </div>
-
-          <div v-if="ghLoading" style="text-align:center;font-size:.75rem;color:var(--mut);padding:.5rem">
-            Cargando...
-          </div>
-        </div>
-
-        <button class="btn ghost" @click="cargarGitHub" :disabled="ghLoading" style="width:100%">
-          {{ ghLoading ? 'Cargando...' : 'Refrescar GitHub' }}
-        </button>
-      </div>
+      
 
       <!-- ================================================ -->
       <!-- SECCION 3: NOTIFICACIONES                        -->
