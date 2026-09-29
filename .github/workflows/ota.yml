@@ -1,0 +1,38 @@
+name: OTA Update (Capgo)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'vite.config.js'
+      - 'index.html'
+      - 'package.json'
+      - '.github/workflows/ota.yml'
+  workflow_dispatch:
+
+jobs:
+  ota:
+    runs-on: ubuntu-latest
+    env:
+      CAPGO_TOKEN: 4ea529d6-4e6d-4801-b642-30da4af10e65
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (modo Capacitor)
+        run: CAPACITOR=1 npm run build
+
+      - name: Publish OTA to Capgo
+        run: npx -y @capgo/cli@latest bundle upload --channel=production --auto-bump
