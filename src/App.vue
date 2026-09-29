@@ -3460,50 +3460,82 @@ export default {
             if (this._cerrando) return;
             this._cerrando = true;
             try {
-            const i = new Date(this.cfg.periodoInicio);
-            const f = new Date();
-            const ventasRango = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-            const comprasRango = this.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
-            const gastosRango = this.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
-            const mermasRango = this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
+              const i = new Date(this.cfg.periodoInicio);
+              const f = new Date();
 
-            const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
-            const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
-            const bruta = m(totVentas - cogs);
-            const totGastos = m(gastosRango.reduce((s, g) => s + n(g.monto), 0));
-            const totMermas = m(mermasRango.reduce((s, a) => s + n(a.costoPerdida), 0));
-            const neta = m(bruta - totGastos - totMermas);
+              // Ventas del período (excluye caja 2 que es aparte)
+              const ventasRango = this.ventas.filter(v => !v.anulada && !v.caja2 && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+              const comprasRango = this.compras.filter(c => !c.anulada && !c.caja2 && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
+              const gastosRango = this.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
+              const mermasRango = this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
-            const c = {
-              id: genId('z'),
-              periodo: fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString()),
-              fechaCierre: f.toISOString(),
-              periodoInicio: i.toISOString(),
-              periodoFin: f.toISOString(),
-              totalVentas: totVentas,
-              totalCompras: m(comprasRango.reduce((s, c2) => s + n(c2.total), 0)),
-              cogs,
-              bruta,
-              gastos: totGastos,
-              mermas: totMermas,
-              ganancia: neta,
-              numVentas: ventasRango.length,
-              numCompras: comprasRango.length,
-              numGastos: gastosRango.length,
-              numMermas: mermasRango.length,
-              cajaAlCierre: this.saldoCaja,
-              inventarioAlCierre: this.valorInventario,
-              capitalAlCierre: this.capitalTotal,
-              cerrado: true
-            };
-            this.cfg.periodoInicio = f.toISOString();
-            await db.transaction('rw', db.cierres, async () => {
-              await P(db.cierres, c);
+              const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
+              const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
+              const bruta = m(totVentas - cogs);
+              const totGastos = m(gastosRango.reduce((s, g) => s + n(g.monto), 0));
+              const totMermas = m(mermasRango.reduce((s, a) => s + n(a.costoPerdida), 0));
+              const neta = m(bruta - totGastos - totMermas);
 
-            });
-            await this.guardarCfg();
-            await this.recargar(['cierres', 'asientos']);
-            this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
+              // ===== DEUDAS (solo pendientes, no cerradas por tipo) =====
+              const deudas = this.deudas || [];
+              const deudasCobrar = deudas.filter(d => d.tipo === 'cobrar' && d.estado === 'pendiente');
+              const deudasPagar = deudas.filter(d => d.tipo === 'pagar' && d.estado === 'pendiente');
+              const porCobrar = m(deudasCobrar.reduce((s, d) => s + (n(d.montoTotal) - n(d.montoPagado)), 0));
+              const porPagar = m(deudasPagar.reduce((s, d) => s + (n(d.montoTotal) - n(d.montoPagado)), 0));
+
+              // ===== FIADOS pendientes =====
+              const fiadosPendientes = (this.fiados || []).filter(fd => fd.estado === 'pendiente');
+              const totalFiadoPendiente = m(fiadosPendientes.reduce((s, fd) => s + (n(fd.totalFiado) - n(fd.totalPagado)), 0));
+              const gananciaFiadoPendiente = m(fiadosPendientes.reduce((s, fd) => s + (n(fd.gananciaTotal) - n(fd.gananciaCobrada || 0)), 0));
+
+              // ===== CAJA 2 (foto del momento) =====
+              const caja2Stats = this._caja2Stats;
+
+              const c = {
+                id: genId('z'),
+                periodo: fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString()),
+                fechaCierre: f.toISOString(),
+                periodoInicio: i.toISOString(),
+                periodoFin: f.toISOString(),
+                // Rentabilidad general
+                totalVentas: totVentas,
+                totalCompras: m(comprasRango.reduce((s, c2) => s + n(c2.total), 0)),
+                cogs,
+                bruta,
+                gastos: totGastos,
+                mermas: totMermas,
+                ganancia: neta,
+                numVentas: ventasRango.length,
+                numCompras: comprasRango.length,
+                numGastos: gastosRango.length,
+                numMermas: mermasRango.length,
+                cajaAlCierre: this.saldoCaja,
+                inventarioAlCierre: this.valorInventario,
+                capitalAlCierre: this.capitalTotal,
+                // Deudas
+                porCobrar,
+                porPagar,
+                balanceDeudas: m(porCobrar - porPagar),
+                numDeudasCobrar: deudasCobrar.length,
+                numDeudasPagar: deudasPagar.length,
+                // Fiados
+                fiadoPendiente: totalFiadoPendiente,
+                gananciaFiadoPendiente,
+                numFiadosPendientes: fiadosPendientes.length,
+                // Caja 2
+                caja2Ganancia: caja2Stats.gananciaAcumulada,
+                caja2Invertido: caja2Stats.invertidoActual,
+                caja2Disponible: caja2Stats.gananciaDisponible,
+                cerrado: true
+              };
+
+              this.cfg.periodoInicio = f.toISOString();
+              await db.transaction('rw', db.cierres, async () => {
+                await P(db.cierres, c);
+              });
+              await this.guardarCfg();
+              await this.recargar(['cierres']);
+              this.toastMsg('Período cerrado · Resultado ' + fmt(neta));
             } finally {
               this._cerrando = false;
             }
