@@ -21,6 +21,9 @@
         </button>
         <button class="sheet-btn" :class="{ activo: sec === 'deudas' }" @click="$emit('ir', 'deudas')">
           <icon name="dollar" :size="22"></icon>Deudas
+        </button>
+        <button class="sheet-btn" :class="{ activo: sec === 'fiados' }" @click="$emit('ir', 'fiados')">
+          <icon name="cart" :size="22"></icon>Fiados
         </button>        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
           <icon name="users" :size="22"></icon>Socios
         </button>

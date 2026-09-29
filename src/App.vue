@@ -994,6 +994,13 @@
         :secActiva="true"
       />
 
+      <!-- ==================== FIADOS ==================== -->
+      <FiadosSection
+        v-if="sec === 'fiados'"
+        :activo="true"
+        :secActiva="true"
+      />
+
 </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -1544,6 +1551,7 @@ import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import PersonasSection from './components/PersonasSection.vue';
 import DeudasSection from './components/DeudasSection.vue';
+import FiadosSection from './components/FiadosSection.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1556,7 +1564,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection, DeudasSection },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection, DeudasSection, FiadosSection },
 
 
   data() {
