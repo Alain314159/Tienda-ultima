@@ -431,6 +431,20 @@
           <textarea v-model="prodForm.nota" placeholder="Nota interna (opcional)" rows="2"
             style="resize:none;font-family:inherit;font-size:.85rem"></textarea>
 
+          <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
+            <span class="lbl" style="font-size:.82rem">
+              <icon name="package" :size="16" :color="prodForm.caja2 ? '#16a34a' : mutColor"></icon>
+              Pertenece a Caja 2
+            </span>
+            <label class="switch">
+              <input type="checkbox" v-model="prodForm.caja2">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div style="font-size:.68rem;color:var(--mut);margin-bottom:.5rem">
+            Los productos de Caja 2 se compran con Caja 1 y su ganancia se guarda aparte.
+          </div>
+
           <button class="btn pri" @click="guardarProducto()">
             {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
           </button>
@@ -1001,6 +1015,14 @@
         :secActiva="true"
       />
 
+      <!-- ==================== CAJA 2 ==================== -->
+      <Caja2Section
+        v-if="sec === 'caja2'"
+        :activo="true"
+        :secActiva="true"
+        @ir="ir"
+      />
+
 </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -1552,6 +1574,7 @@ import StatusPanel from './components/StatusPanel.vue';
 import PersonasSection from './components/PersonasSection.vue';
 import DeudasSection from './components/DeudasSection.vue';
 import FiadosSection from './components/FiadosSection.vue';
+import Caja2Section from './components/Caja2Section.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1564,7 +1587,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection, DeudasSection, FiadosSection },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection, DeudasSection, FiadosSection, Caja2Section },
 
 
   data() {
@@ -1805,6 +1828,7 @@ export default {
       let totalCaja = 0, totalPeriodo = 0, gananciaPeriodo = 0;
       for (const v of this.ventas) {
         if (v.anulada) continue;
+        if (v.caja2) continue; // ventas caja 2 no cuentan aca
         totalCaja += n(v.total);
         if (new Date(v.fecha) >= ini) {
           totalPeriodo += n(v.total);
@@ -1815,8 +1839,10 @@ export default {
     },
 
     _lotesStats() {
+      const pidsCaja2 = new Set(this.productos.filter(p => p.caja2).map(p => p.id));
       let valor = 0, unidades = 0;
       for (const l of this.lotes) {
+        if (pidsCaja2.has(l.productoId)) continue; // caja 2 no es inventario normal
         const pend = n(l.cantidadInicial) - n(l.cantidadVendida);
         valor += pend * n(l.costo);
         unidades += pend;
@@ -1834,14 +1860,59 @@ export default {
       return { periodo: m(periodo), total: m(total) };
     },
 
+    _caja2Stats() {
+      let gananciaAcumulada = 0;
+      let costoVendido = 0;
+      let invertidoActual = 0;
+      let totalVentas = 0;
+      let totalCompras = 0;
+      let totalRetirado = 0;
+      const pidsCaja2 = new Set(this.productos.filter(p => p.caja2).map(p => p.id));
+
+      for (const v of this.ventas) {
+        if (v.anulada || !v.caja2) continue;
+        totalVentas += n(v.total);
+        gananciaAcumulada += n(v.ganancia);
+        costoVendido += (n(v.total) - n(v.ganancia));
+      }
+
+      for (const c of this.compras) {
+        if (c.anulada || !c.caja2) continue;
+        totalCompras += n(c.total);
+      }
+
+      for (const mv of (this.caja2_mov || [])) {
+        if (mv.tipo === 'retiro') totalRetirado += n(mv.monto);
+      }
+
+      for (const l of this.lotes) {
+        if (!pidsCaja2.has(l.productoId)) continue;
+        const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
+        if (disp > 0) invertidoActual += disp * n(l.costo);
+      }
+
+      return {
+        totalVentas: m(totalVentas),
+        totalCompras: m(totalCompras),
+        costoVendido: m(costoVendido),
+        gananciaAcumulada: m(gananciaAcumulada),
+        invertidoActual: m(invertidoActual),
+        totalRetirado: m(totalRetirado),
+        gananciaDisponible: m(gananciaAcumulada - totalRetirado)
+      };
+    },
     saldoCaja() {
       const ini = n(this.cfg.capitalInicial);
       const aportes = this.capital.reduce((s, x) => s + n(x.monto), 0);
       const retiros = this.retiros.reduce((s, x) => s + n(x.monto), 0);
-      const compras = this.compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
+      // Compras caja 1 (las de caja 2 se manejan aparte)
+      const compras = this.compras.filter(c => !c.anulada && !c.caja2).reduce((s, c) => s + n(c.total), 0);
       const arq = this.movCaja.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + n(m.monto), 0)
         - this.movCaja.filter(m => m.tipo === 'egreso').reduce((s, m) => s + n(m.monto), 0);
-      return m(ini + aportes + this._ventasStats.totalCaja - compras - retiros + arq);
+      // Caja 2: sale efectivo al comprar, vuelve al vender (solo el costo)
+      const comprasCaja2 = this.compras.filter(c => !c.anulada && c.caja2).reduce((s, c) => s + n(c.total), 0);
+      const costoVueltoCaja2 = this._caja2Stats.costoVendido;
+      return m(ini + aportes + this._ventasStats.totalCaja - compras - retiros + arq - comprasCaja2 + costoVueltoCaja2);
     },
 
     valorInventario() { return this._lotesStats.valor; },
@@ -3054,7 +3125,7 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [], nota: '' };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [], nota: '', caja2: false };
     },
 
     agregarEscalon() {

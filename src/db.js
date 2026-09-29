@@ -220,6 +220,33 @@ db.version(10).stores({
   config: 'key'
 });
 
+
+// Version 11: caja 2 (productos con ganancia aislada)
+db.version(11).stores({
+  productos: 'id, nombre, archivado, caja2, [archivado+nombre], [caja2+archivado]',
+  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+  ventas: 'id, fecha, anulada, caja2, [anulada+fecha], [caja2+fecha]',
+  compras: 'id, productoId, fecha, caja2, [productoId+fecha], [caja2+fecha]',
+  ajustes: 'id, productoId, fecha, [productoId+fecha]',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo, [tipo+fecha]',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha, socioId',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria, [categoria+fecha]',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  auditorias: 'id, fechaInicio, estado',
+  tgQueue: 'id, estado, ts',
+  personas: 'id, nombre, roles, telefono, archivado, [archivado+nombre]',
+  deudas: 'id, personaId, tipo, estado, fecha, [tipo+estado], [personaId+estado]',
+  fiados: 'id, ventaId, clienteId, estado, fecha, [clienteId+estado], [estado+fecha]',
+  caja2_mov: 'id, tipo, fecha, [tipo+fecha]',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -309,6 +336,7 @@ export function buildData(state) {
     personas: state.personas || [],
     deudas: state.deudas || [],
     fiados: state.fiados || [],
+    caja2_mov: state.caja2_mov || [],
     asientos: state.asientos,
     pasivos: state.pasivos,
     auditorias: state.auditorias
