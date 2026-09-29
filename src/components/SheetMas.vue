@@ -15,7 +15,10 @@
       </div>
 
       <div class="sheet-group">Finanzas y reportes</div>
-      <div class="sheet-grid">        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
+      <div class="sheet-grid">
+        <button class="sheet-btn" :class="{ activo: sec === 'personas' }" @click="$emit('ir', 'personas')">
+          <icon name="users" :size="22"></icon>Personas
+        </button>        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
           <icon name="users" :size="22"></icon>Socios
         </button>
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="$emit('ir', 'reportes')">

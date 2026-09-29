@@ -979,7 +979,15 @@
           </div>
         </div>
       </section>
-    </main>
+          <!-- ==================== PERSONAS ==================== -->
+      <PersonasSection
+        v-if="sec === 'personas'"
+        :activo="true"
+        :secActiva="true"
+        @ir="ir"
+      />
+
+</main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
     <BottomNav
@@ -1527,6 +1535,7 @@ import AppToast from './components/AppToast.vue';
 import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
+import PersonasSection from './components/PersonasSection.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1539,7 +1548,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection },
 
 
   data() {
