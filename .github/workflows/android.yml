@@ -1,20 +1,17 @@
-name: Build Android APK & Publish OTA
+name: Build Android APK
 
 on:
   push:
     branches:
-      - migracion-capacitor
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       ANDROID_HOME: /usr/local/lib/android/sdk
-      CAPGO_TOKEN: 4ea529d6-4e6d-4801-b642-30da4af10e65
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,18 +37,25 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Publish OTA Update to Capgo
-        run: npx -y @capgo/cli@latest bundle upload --channel=production --auto-bump
+      - name: Create debug keystore if missing
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkey -v -keystore ~/.android/debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
-      - name: Build APK (debug)
+      - name: Build APK (release)
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: tienda-pro-debug-${{ github.sha }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: tienda-pro-release-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
