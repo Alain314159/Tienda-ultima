@@ -1670,6 +1670,10 @@ export default {
       ajustes: [],
       arqueos: [],
       movCaja: [],
+      personas: [],
+      deudas: [],
+      fiados: [],
+      caja2_mov: [],
       cierres: [],
       capital: [],
       retiros: [],
@@ -1745,7 +1749,7 @@ export default {
         periodoActivo: null
       },
 
-      cobroModal: { activo: false, total: 0, calcAbierta: false, billetes: {}, totalContado: 0, falta: 0, sobra: 0 },
+      cobroModal: { activo: false, total: 0, calcAbierta: false, billetes: {}, totalContado: 0, falta: 0, sobra: 0, clienteId: '', modo: 'normal', montoCobrado: '' },
       denominaciones: [10, 20, 50, 100, 200, 500, 1000, 2000, 5000],
       confirm: { activo: false, titulo: '', msg: '', onOk: null },
       prompt: { activo: false, titulo: '', msg: '', placeholder: '', type: 'text', value: '', onOk: null },
@@ -1803,6 +1807,11 @@ export default {
     histComprasRestantes() { return this.histRestantes(this.comprasPorPeriodo.actual, 'compras'); },
     histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
 
+
+    clientesParaVenta() {
+      return (this.personas || []).filter(p => p.roles && p.roles.includes('cliente') && !p.archivado)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    },
 
     esNativoApp() { return Capacitor.isNativePlatform(); },
 
@@ -2813,7 +2822,147 @@ export default {
       this.cobroModal.sobra = diff > 0 ? diff : 0;
     },
 
+    async _procesarVentaFiada(modo) {
+      this.procesandoVenta = true;
+      try {
+        // 1. Validaciones
+        if (!this.cobroModal.clienteId) {
+          throw new Error('Seleccioná un cliente para fiar');
+        }
+        const cliente = (this.personas || []).find(p => p.id === this.cobroModal.clienteId);
+        if (!cliente) throw new Error('Cliente no encontrado');
+        if (this.carrito.length === 0) throw new Error('Carrito vacío');
+
+        let montoCobrado = 0;
+        if (modo === 'parcial') {
+          montoCobrado = m(n(this.cobroModal.montoCobrado));
+          if (montoCobrado <= 0) throw new Error('Monto cobrado debe ser mayor a 0');
+          if (montoCobrado >= this.cobroModal.total - 0.001) {
+            // Cobró todo, no es parcial realmente
+            return this.procesarVentaNormal();
+          }
+        }
+
+        // 2. Calcular items con FIFO real
+        const items = []; let tot = 0, gan = 0, todos = [];
+        for (const it of this.carrito) {
+          const c = n(it.cant), pr = n(it.precio);
+          const f = this.calcFIFO(it.productoId, c);
+          if (f.error) throw new Error(f.error + ' en ' + it.nombre);
+          const sub = pr * c;
+          items.push({
+            productoId: it.productoId, nombre: it.nombre, cantidad: c,
+            unidad: it.unidad || '', precio: pr, costo: f.costoTotal,
+            ganancia: m(sub - f.costoTotal), lotesUsados: f.usados, pagado: false
+          });
+          tot = m(tot + sub);
+          gan = m(gan + (sub - f.costoTotal));
+          todos.push(...f.usados);
+        }
+
+        // 3. Crear venta
+        const venta = {
+          id: genId('v'),
+          fecha: new Date().toISOString(),
+          items: items.map(it => ({
+            productoId: it.productoId, nombre: it.nombre, cantidad: it.cantidad,
+            unidad: it.unidad, precio: it.precio, costo: it.costo,
+            ganancia: it.ganancia, lotesUsados: it.lotesUsados
+          })),
+          total: tot,
+          ganancia: gan,
+          anulada: false,
+          fiado: true,
+          clienteId: cliente.id,
+          clienteNombre: cliente.nombre
+        };
+
+        // 4. Crear fiado
+        const fiado = {
+          id: genId('f'),
+          ventaId: venta.id,
+          clienteId: cliente.id,
+          clienteNombre: cliente.nombre,
+          items: items.map(it => ({
+            productoId: it.productoId, nombre: it.nombre, cantidad: it.cantidad,
+            precio: it.precio, costo: it.costo, ganancia: it.ganancia, pagado: false
+          })),
+          totalFiado: tot,
+          totalPagado: montoCobrado,
+          gananciaTotal: gan,
+          gananciaCobrada: modo === 'parcial' ? m((gan / tot) * montoCobrado) : 0,
+          pagos: modo === 'parcial' ? [{ fecha: new Date().toISOString(), monto: montoCobrado, nota: 'Pago inicial' }] : [],
+          fecha: venta.fecha,
+          estado: modo === 'parcial' && montoCobrado >= tot - 0.001 ? 'saldado' : 'pendiente'
+        };
+
+        // 5. Escribir todo en una transaccion
+        await db.transaction('rw', db.ventas, db.lotes, db.fiados, async () => {
+          await P(db.ventas, venta);
+          await P(db.fiados, fiado);
+          const lotesActualizados = [];
+          for (const u of todos) {
+            const l = this.lotes.find(x => x.id === u.loteId);
+            if (l) {
+              l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
+              lotesActualizados.push(l);
+            }
+          }
+          if (lotesActualizados.length > 0) {
+            await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
+          }
+        });
+
+        // 6. Si fue parcial, registrar el ingreso en caja
+        if (modo === 'parcial' && montoCobrado > 0) {
+          await P(db.movCaja, {
+            id: genId('mc'),
+            fecha: new Date().toISOString(),
+            tipo: 'ingreso',
+            monto: montoCobrado,
+            concepto: 'Pago parcial fiado: ' + cliente.nombre,
+            fiadoId: fiado.id
+          });
+        }
+
+        await this.recargar(['ventas', 'lotes', 'fiados', 'movCaja']);
+
+        // 7. Limpiar UI
+        this.carrito = [];
+        localStorage.removeItem('carritoPro');
+        this.cobroModal.activo = false;
+        this.cobroModal.clienteId = '';
+        this.cobroModal.modo = 'normal';
+        this.cobroModal.montoCobrado = '';
+        this.cobroModal.billetes = {};
+        this.cobroModal.totalContado = 0;
+
+        try { window.Log && window.Log.evento('venta-fiada', { id: venta.id, cliente: cliente.nombre, total: tot, modo, montoCobrado }); } catch (e) {}
+
+        if (modo === 'parcial') {
+          this.toastMsg('Cobrado ' + fmt(montoCobrado) + ' · Fiado ' + fmt(tot - montoCobrado));
+        } else {
+          this.toastMsg('Fiado a ' + cliente.nombre + ': ' + fmt(tot));
+        }
+
+        this.chequearAgotados().catch(e => console.warn('chequearAgotados', e));
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+        try { window.Log && window.Log.evento('venta-fiada-error', { mensaje: e.message }); } catch (er) {}
+      } finally {
+        this.procesandoVenta = false;
+      }
+    },
+
     async procesarVenta() {
+      // Bifurcacion: si hay fiado, ir por ese camino
+      if (this.cobroModal.modo === 'fiado') {
+        return this._procesarVentaFiada('completo');
+      }
+      if (this.cobroModal.modo === 'parcial') {
+        return this._procesarVentaFiada('parcial');
+      }
+      // Flujo normal (sin cambios)
       this.procesandoVenta = true;
       try {
         const items = []; let tot = 0, gan = 0, todos = [];
@@ -5316,6 +5465,10 @@ export default {
         socios: () => db.socios.toArray(),
         distribuciones: () => db.distribuciones.toArray(),
         gastos: () => db.gastos.toArray(),
+        personas: () => db.personas.toArray(),
+        deudas: () => db.deudas.toArray(),
+        fiados: () => db.fiados.toArray(),
+        caja2_mov: () => db.caja2_mov.toArray(),
 
         asientos: () => db.asientos.toArray()
       };
