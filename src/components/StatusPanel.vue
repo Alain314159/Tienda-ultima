@@ -53,7 +53,8 @@
       <!-- ================================================ -->
       <!-- SECCION 2: GITHUB                                -->
       <!-- ================================================ -->
-      <div class="status-section">
+      <!-- SECCION GITHUB (deshabilitada) -->
+      <div v-if="false" class="status-section">
         <div class="status-section-title">
           <icon name="file" :size="16" :color="'#6e40c9'"></icon>
           Actividad en GitHub
@@ -180,7 +181,7 @@ export default {
   },
   async mounted() {
     await this.cargarOTA();
-    await this.cargarGitHub();
+    // await this.cargarGitHub(); // deshabilitado: requiere Worker de Cloudflare
     await this.checkNotif();
   },
   methods: {
