@@ -459,6 +459,10 @@
               @click="mostrarArchivados = !mostrarArchivados">
               {{ mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
             </button>
+          <button class="btn ghost" style="width:auto;display:inline-block;padding:.3rem .7rem;font-size:.72rem;margin-left:.3rem"
+            @click="mostrarCaja2 = !mostrarCaja2">
+            {{ mostrarCaja2 ? 'Ocultar Caja 2' : 'Mostrar Caja 2' }}
+          </button>
           </div>
           <div v-if="filtroStock" class="info-box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
             <span>Filtro: <b>{{ filtroStock === 'agotados' ? 'Agotados' : 'Stock bajo' }}</b></span>
@@ -471,6 +475,7 @@
               <div class="info">
                 <div class="nm">
                   {{ p.nombre }}
+                  <span v-if="p.caja2" class="badge" style="background:rgba(22,163,74,.15);color:#16a34a;font-size:.6rem;margin-left:.3rem">Caja 2</span>
                 </div>
                 <div v-if="p.nota" class="det" style="font-size:.72rem;font-style:italic;color:var(--mut);margin-top:.15rem">📝 {{ p.nota }}</div>
                 <div class="stock-line">
@@ -1730,6 +1735,8 @@ export default {
       busqProd: '',
       mostrarArchivados: false,
 
+      mostrarCaja2: false,
+
       ajusteForm: { productoId: '', cantidad: '', motivo: '', costoSobrante: '' },
             
       retiroForm: { monto: '', concepto: '', tipo: 'ganancia' },
@@ -2051,6 +2058,7 @@ export default {
       const sm = this.stockMap;
       const minMap = {};
       let list = this.mostrarArchivados ? this.productos : this.productos.filter(p => !p.archivado);
+      if (!this.mostrarCaja2) list = list.filter(p => !p.caja2);
       if (this.filtroStock === 'agotados') list = list.filter(p => (sm[p.id] || 0) === 0);
       else if (this.filtroStock === 'bajos') list = list.filter(p => { const st = sm[p.id] || 0; return st > 0 && st <= n(p.stockMinimo); });
       const q = this.busqProd.toLowerCase().trim();
@@ -2655,6 +2663,7 @@ export default {
 
     agregarCarrito(p) {
       const s = this.stock(p.id);
+      if (p.caja2) { this.toastMsg('Producto de Caja 2 · vendelo desde la seccion Caja 2', TOAST.WARN); return; }
       if (s <= 0) return this.toastMsg('Sin stock', TOAST.BAD);
       const ex = this.carrito.find(i => i.productoId === p.id);
       if (ex) {
