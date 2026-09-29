@@ -1142,7 +1142,7 @@
             </span>
           </div>
           <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
-            <span v-if="esNativoApp()">
+            <span v-if="esNativoApp">
               Almacenamiento persistente por defecto. Android no borra los datos de apps instaladas.
             </span>
             <span v-else-if="storagePersistente">
@@ -1152,7 +1152,7 @@
               ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
             </span>
           </div>
-          <button v-if="!esNativoApp() && !storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
+          <button v-if="!esNativoApp && !storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
             <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
           </button>
         </div>
