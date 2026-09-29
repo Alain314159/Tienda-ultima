@@ -16,7 +16,6 @@
         <span style="font-size:.72rem">La app esta configurada pero la base de datos esta vacia. Restaura desde un backup.</span>
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button v-if="ultimoBackup" class="btn ok" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="restaurarBackupAuto">Restaurar backup local</button>
-          <button class="btn pri" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false; ajustesAbierto = true; sec = 'reportes'">Ver backups en Telegram</button>
           <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false">Descartar</button>
         </div>
       </div>
@@ -57,10 +56,10 @@
     <header class="header no-print">
       <h1><icon name="store" :size="20" color="#fff"></icon> {{ cfg.nombre || 'Tienda Pro' }}</h1>
       <div class="hacts">
-        <button class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
+        <button v-if="cfg.busquedaGlobalActiva !== false" class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
           <icon name="search" :size="18" color="#fff"></icon>
         </button>
-        <button class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
+        <button v-if="cfg.calcActiva !== false" class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
           <icon name="calculator" :size="18" color="#fff"></icon>
         </button>
         <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
@@ -1077,6 +1076,26 @@
           <input v-model="cfg.nombre" type="text" style="width:auto;flex:1;margin:0;padding:.4rem .6rem" @change="guardarCfg">
         </div>
 
+                <div class="set-row">
+          <span class="lbl"><icon name="calculator" :size="18"></icon> Boton de calculadora</span>
+          <label class="switch">
+            <input type="checkbox" :checked="cfg.calcActiva !== false" @change="cfg.calcActiva = $event.target.checked; guardarCfg()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Muestra u oculta el icono de calculadora en la barra superior.
+        </div>
+        <div class="set-row">
+          <span class="lbl"><icon name="search" :size="18"></icon> Busqueda global</span>
+          <label class="switch">
+            <input type="checkbox" :checked="cfg.busquedaGlobalActiva !== false" @change="cfg.busquedaGlobalActiva = $event.target.checked; guardarCfg()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Muestra u oculta el buscador global en la barra superior.
+        </div>
         <div class="set-group">Seguridad</div>
         <div class="set-row">
           <span class="lbl"><icon name="lock" :size="18"></icon> PIN operaciones sensibles</span>
@@ -1123,14 +1142,17 @@
             </span>
           </div>
           <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
-            <span v-if="storagePersistente">
+            <span v-if="esNativoApp()">
+              Almacenamiento persistente por defecto. Android no borra los datos de apps instaladas.
+            </span>
+            <span v-else-if="storagePersistente">
               El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de seguridad.
             </span>
             <span v-else>
               ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
             </span>
           </div>
-          <button v-if="!storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
+          <button v-if="!esNativoApp() && !storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
             <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
           </button>
         </div>
@@ -1353,6 +1375,14 @@
           <span class="lbl" style="color:var(--warn-d)"><icon name="alert" :size="18"></icon> Otra pestaña de Tienda Pro esta abierta. Cierrala para evitar conflictos de datos.</span>
         </div>
 <div class="set-group">Avanzado</div>
+        <div class="set-row">
+          <span class="lbl"><icon name="alert" :size="18"></icon> Estado del sistema</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="statusPanelAbierto = true">Abrir</button>
+        </div>
+        <div class="set-row">
+          <span class="lbl"><icon name="package" :size="18"></icon> Respaldo automático</span>
+          <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="backupPanelAbierto = true">Abrir</button>
+        </div>
 
         <div class="set-row" style="padding-top:.6rem;border-top:1px solid var(--brd);margin-top:.6rem">
           <span class="lbl"><icon name="info" :size="18"></icon> Informacion</span>
@@ -1476,11 +1506,15 @@
 <!-- TOAST -->
     <AppToast :toast="toast" @accion="toast.accionFn && toast.accionFn(); toast.show = false" />
     <Calculator :visible="calcAbierto" @close="calcAbierto = false" />
+    <BackupPanel v-if="backupPanelAbierto" @close="backupPanelAbierto = false" @restore="onRestoreBackup" />
+    <StatusPanel v-if="statusPanelAbierto" @close="statusPanelAbierto = false" />
 
   </div>
 </template>
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import BottomNav from './components/BottomNav.vue';
 import { generarRecomendaciones } from './insights.js';
 import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
@@ -1491,6 +1525,8 @@ import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import AppToast from './components/AppToast.vue';
 import Calculator from './components/Calculator.vue';
+import BackupPanel from './components/BackupPanel.vue';
+import StatusPanel from './components/StatusPanel.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1503,7 +1539,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel },
 
 
   data() {
@@ -1551,6 +1587,10 @@ export default {
         stockMinDefault: 5,
         anomaliasDescartadas: [],
         calcBilletesActiva: false,
+
+        calcActiva: true,
+
+        busquedaGlobalActiva: true,
         tgToken: '',
         tgChatId: '',
         nombreTienda: '',
@@ -1600,6 +1640,13 @@ export default {
       splashVisible: true,
 
       calcAbierto: false,
+
+
+      backupPanelAbierto: false,
+
+
+
+      statusPanelAbierto: false,
       safeMode: false,
       _tabId: null,
       tgEstado: 'sin-config',
@@ -1709,7 +1756,10 @@ export default {
     histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
 
 
+    esNativoApp() { return Capacitor.isNativePlatform(); },
+
     soportaNotif() {
+      if (Capacitor.isNativePlatform()) return true;
       return typeof window !== 'undefined' && 'Notification' in window;
     },
 
@@ -2711,11 +2761,13 @@ export default {
         this.cobroModal.activo = false;
         this.procesandoVenta = false;
         this.toastMsg(`Venta exitosa: ${fmt(tot)}`);
+        try { window.Log && window.Log.evento('venta-guardada', { id: venta.id, items: items.length, total: tot, ganancia: gan }); } catch (e) {}
 
         // Notificaciones en background: sin await
         this.chequearAgotados().catch(e => console.warn('chequearAgotados', e));
       } catch (e) {
         this.toastMsg(e.message, TOAST.BAD);
+        try { window.Log && window.Log.evento('venta-error', { mensaje: e.message, stack: e.stack && e.stack.split('\n').slice(0, 3).join(' | ') }); } catch (er) {}
       } finally {
         this.procesandoVenta = false;
       }
@@ -2962,7 +3014,9 @@ export default {
           
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
+          try { window.Log && window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total }); } catch (e) {}
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
+          try { window.Log && window.Log.evento('compra-error', { mensaje: e.message }); } catch (er) {}
       };
       if (!f.editId && total > this.saldoCaja) {
         this.confirm = {
@@ -3959,6 +4013,24 @@ export default {
     // ===== NOTIFICACIONES =====
     async enviarNotif(titulo, cuerpo) {
       try {
+        // NATIVO: usar LocalNotifications
+        if (Capacitor.isNativePlatform()) {
+          const perm = await LocalNotifications.checkPermissions();
+          if (perm.display !== 'granted') return { ok: false, motivo: 'sin-permiso' };
+          await LocalNotifications.schedule({
+            notifications: [{
+              id: Math.floor(Math.random() * 100000),
+              title: titulo,
+              body: cuerpo,
+              schedule: { at: new Date(Date.now() + 100) },
+              smallIcon: 'ic_stat_icon_config_sample',
+              iconColor: '#2196F3'
+            }]
+          });
+          return { ok: true, via: 'native' };
+        }
+
+        // WEB: Web Notification API
         if (!('Notification' in window)) return { ok: false, motivo: 'sin-soporte' };
         if (Notification.permission !== 'granted') return { ok: false, motivo: 'sin-permiso' };
         const opts = {
@@ -3967,12 +4039,10 @@ export default {
           badge: '/Tienda-ultima/icons/icon-192.png',
           tag: 'tienda-' + Date.now()
         };
-        // Timeout global: una notificacion NUNCA debe colgar la app
         const conTimeout = (promesa, ms) => Promise.race([
           promesa,
           new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
         ]);
-
         if ('serviceWorker' in navigator) {
           try {
             const reg = await conTimeout(navigator.serviceWorker.ready, 3000);
@@ -3995,6 +4065,27 @@ export default {
     },
 
     async pedirPermisoNotif() {
+      // NATIVO
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const perm = await LocalNotifications.requestPermissions();
+          if (perm.display === 'granted') {
+            this.cfg.notifActivo = true;
+            await this.guardarCfg();
+            await this.enviarNotif('Tienda Pro', 'Notificaciones activadas');
+            this.toastMsg('Notificaciones activadas');
+          } else {
+            this.cfg.notifActivo = false;
+            await this.guardarCfg();
+            this.toastMsg('Permiso denegado', TOAST.BAD);
+          }
+        } catch (e) {
+          this.toastMsg('Error: ' + e.message, TOAST.BAD);
+        }
+        return;
+      }
+
+      // WEB
       if (!('Notification' in window)) {
         this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.WARN);
         return;
@@ -4025,6 +4116,17 @@ export default {
     },
 
     async probarNotif() {
+      if (Capacitor.isNativePlatform()) {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          return this.toastMsg('Primero activa las notificaciones', TOAST.WARN);
+        }
+        const r = await this.enviarNotif('Tienda Pro', 'Esta es una notificacion de prueba');
+        if (r && r.ok) this.toastMsg('Notificacion enviada (' + r.via + ')');
+        else this.toastMsg('Fallo: ' + (r ? r.motivo : 'error'), TOAST.BAD);
+        return;
+      }
+
       if (!('Notification' in window)) {
         return this.toastMsg('Este dispositivo no soporta notificaciones', TOAST.BAD);
       }
@@ -4042,7 +4144,9 @@ export default {
 
     async chequearNotificaciones() {
       if (!this.cfg.notifActivo) return;
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!Capacitor.isNativePlatform()) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      }
       const ahora = new Date();
       const hoy = ahora.toISOString().split('T')[0];
       let cambio = false;
@@ -4504,6 +4608,31 @@ export default {
       return { ok: errores.length === 0, errores, avisos };
     },
 
+    async onRestoreBackup(data) {
+
+
+      try {
+
+
+        await this.importarData(data);
+
+
+        this.toastMsg('Backup restaurado');
+
+
+      } catch (e) {
+
+
+        this.toastMsg('Error restaurando: ' + e.message, TOAST.BAD);
+
+
+      }
+
+
+    },
+
+
+
     async importarData(d) {
       // Validar primero
       const v = this.validarEsquema(d);
@@ -4892,6 +5021,17 @@ export default {
 
     // ===== COLA DE BACKUPS =====
     async tgEncolar(datos, motivo) {
+      // ANTI-ACUMULACION: solo puede haber UN backup 'auto' en cola.
+      // Si ya hay alguno (pendiente, enviando o error), lo borramos y creamos uno nuevo.
+      if (motivo === 'auto' || !motivo) {
+        try {
+          const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
+          if (viejos.length > 0) {
+            await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+            console.log('[tg] Limpiados ' + viejos.length + ' backups auto viejos');
+          }
+        } catch (e) { console.warn('tg limpiar viejos', e); }
+      }
       const id = genId('tq');
       await P(db.tgQueue, {
         id,
@@ -4917,7 +5057,28 @@ export default {
       if (!this.cfg.tgChatId) return;
       this.tgProcesandoCola = true;
       try {
-        const items = await db.tgQueue.filter(x => x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)).toArray();
+        // Limpieza previa: si hay varios 'auto', dejar solo el mas reciente
+        const todos = await db.tgQueue.toArray();
+        const autos = todos.filter(x => x.motivo === 'auto').sort((a, b) => new Date(b.ts) - new Date(a.ts));
+        if (autos.length > 1) {
+          const borrar = autos.slice(1).map(x => x.id);
+          await db.tgQueue.bulkDelete(borrar);
+          console.log('[tg] Cola limpiada: ' + borrar.length + ' auto viejos descartados');
+        }
+
+        // Procesar pendientes + errores reintentables
+        const items = await db.tgQueue.filter(x =>
+          x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)
+        ).toArray();
+
+        // Ordenar: manuales primero, auto ultimo. Y auto solo uno.
+        items.sort((a, b) => {
+          const ma = a.motivo === 'auto' ? 1 : 0;
+          const mb = b.motivo === 'auto' ? 1 : 0;
+          if (ma !== mb) return ma - mb;
+          return new Date(a.ts) - new Date(b.ts);
+        });
+
         for (const item of items) {
           if (item.intentos >= 5) {
             await P(db.tgQueue, { ...item, estado: 'fallido' });
@@ -5288,28 +5449,27 @@ export default {
         const data = buildData(this);
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
 
-        // NUEVO: Enviar a Telegram si esta configurado (sin bloquear UI)
         if (this.cfg.tgChatId && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
-          // Nunca subir un backup vacio (evita pisar el bueno en Telegram)
           if (this.productos.length === 0 && this.ventas.length === 0 && this.compras.length === 0) {
             console.warn('backupAuto: base vacia, se omite subida a Telegram');
-          } else
-          try {
-            const hash = await this.hashContenido(JSON.stringify(data));
-            if (this.cfg.tgUltimoHash !== hash) {
-              // Anti-duplicados: si ya hay un item 'auto' pendiente, actualizarlo
-              const pendientes = await db.tgQueue.where('estado').equals('pendiente').toArray();
-              const autoExistente = pendientes.find(x => x.motivo === 'auto');
-              if (autoExistente) {
-                await P(db.tgQueue, { ...autoExistente, ts: new Date().toISOString(), datos: data });
-              } else {
+          } else {
+            try {
+              const hash = await this.hashContenido(JSON.stringify(data));
+              if (this.cfg.tgUltimoHash !== hash) {
+                // Limpiar TODOS los auto anteriores (pendientes, error, enviando)
+                try {
+                  const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
+                  if (viejos.length > 0) {
+                    await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+                  }
+                } catch (e) { /* ignora */ }
+
                 await this.tgEncolar(data, 'auto');
+                this.tgProcesarCola().catch(e => console.warn('backupAuto cola', e));
               }
-              // Intentar enviar ya mismo (si hay red)
-              this.tgProcesarCola().catch(e => console.warn('backupAuto cola', e));
+            } catch (e) {
+              console.warn('backupAuto telegram', e);
             }
-          } catch (e) {
-            console.warn('backupAuto telegram', e);
           }
         }
       } catch (e) {
@@ -5530,6 +5690,12 @@ export default {
   },
 
   watch: {
+    'cfg.calcActiva'(newVal) {
+      if (newVal === false) this.calcAbierto = false;
+    },
+    'cfg.busquedaGlobalActiva'(newVal) {
+      if (newVal === false) this.busquedaGlobalAbierta = false;
+    },
     lotes: {
       handler() { this.invalidarFifoCache(); },
       deep: false

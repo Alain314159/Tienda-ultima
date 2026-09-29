@@ -19,6 +19,12 @@
     "StatusBar": {
       "style": "DARK",
       "backgroundColor": "#2196F3"
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": true,
+      "resetWhenUpdate": true,
+      "updateUrl": "https://api.capgo.app/updates",
+      "appId": "com.tiendapro.tiendapro"
     }
   }
 }

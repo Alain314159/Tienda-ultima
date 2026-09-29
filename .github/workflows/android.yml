@@ -1,0 +1,57 @@
+name: Build Android APK & Publish OTA
+
+on:
+  push:
+    branches:
+      - migracion-capacitor
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      CAPGO_TOKEN: 4ea529d6-4e6d-4801-b642-30da4af10e65
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (modo Capacitor)
+        run: CAPACITOR=1 npm run build
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Publish OTA Update to Capgo
+        run: npx -y @capgo/cli@latest bundle upload --channel=production --auto-bump
+
+      - name: Build APK (debug)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tienda-pro-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
