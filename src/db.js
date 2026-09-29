@@ -169,6 +169,31 @@ db.version(8).stores({
   config: 'key'
 });
 
+
+// Version 9: deudas (por cobrar y por pagar)
+db.version(9).stores({
+  productos: 'id, nombre, archivado, [archivado+nombre]',
+  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+  ventas: 'id, fecha, anulada, [anulada+fecha]',
+  compras: 'id, productoId, fecha, [productoId+fecha]',
+  ajustes: 'id, productoId, fecha, [productoId+fecha]',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo, [tipo+fecha]',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha, socioId',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  gastos: 'id, fecha, categoria, [categoria+fecha]',
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+  auditorias: 'id, fechaInicio, estado',
+  tgQueue: 'id, estado, ts',
+  personas: 'id, nombre, roles, telefono, archivado, [archivado+nombre]',
+  deudas: 'id, personaId, tipo, estado, fecha, [tipo+estado], [personaId+estado]',
+  config: 'key'
+});
+
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') window.db = db;
 
@@ -256,6 +281,7 @@ export function buildData(state) {
     distribuciones: state.distribuciones,
     gastos: state.gastos,
     personas: state.personas || [],
+    deudas: state.deudas || [],
     asientos: state.asientos,
     pasivos: state.pasivos,
     auditorias: state.auditorias

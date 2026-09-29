@@ -987,6 +987,13 @@
         @ir="ir"
       />
 
+      <!-- ==================== DEUDAS ==================== -->
+      <DeudasSection
+        v-if="sec === 'deudas'"
+        :activo="true"
+        :secActiva="true"
+      />
+
 </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -1536,6 +1543,7 @@ import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import PersonasSection from './components/PersonasSection.vue';
+import DeudasSection from './components/DeudasSection.vue';
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1548,7 +1556,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 export default {
   name: 'App',
-  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection },
+  components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel, PersonasSection, DeudasSection },
 
 
   data() {

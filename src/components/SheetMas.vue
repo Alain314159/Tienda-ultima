@@ -18,6 +18,9 @@
       <div class="sheet-grid">
         <button class="sheet-btn" :class="{ activo: sec === 'personas' }" @click="$emit('ir', 'personas')">
           <icon name="users" :size="22"></icon>Personas
+        </button>
+        <button class="sheet-btn" :class="{ activo: sec === 'deudas' }" @click="$emit('ir', 'deudas')">
+          <icon name="dollar" :size="22"></icon>Deudas
         </button>        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
           <icon name="users" :size="22"></icon>Socios
         </button>
