@@ -141,7 +141,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 // Crear en: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained
 // Repository: Alain314159/Tienda-ultima
 // Permissions: Actions: Read, Contents: Read
-const GITHUB_TOKEN = 'PEGA_TU_TOKEN_AQUI';
+const GITHUB_TOKEN = '';
 const GITHUB_REPO = 'Alain314159/Tienda-ultima';
 
 export default {

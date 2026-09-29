@@ -16,7 +16,6 @@
         <span style="font-size:.72rem">La app esta configurada pero la base de datos esta vacia. Restaura desde un backup.</span>
         <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
           <button v-if="ultimoBackup" class="btn ok" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="restaurarBackupAuto">Restaurar backup local</button>
-          <button class="btn pri" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false; ajustesAbierto = true; sec = 'reportes'">Ver backups en Telegram</button>
           <button class="btn ghost" style="width:auto;margin:0;padding:.4rem .7rem;font-size:.72rem" @click="alertaPerdidaDatos = false">Descartar</button>
         </div>
       </div>
@@ -57,10 +56,10 @@
     <header class="header no-print">
       <h1><icon name="store" :size="20" color="#fff"></icon> {{ cfg.nombre || 'Tienda Pro' }}</h1>
       <div class="hacts">
-        <button class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
+        <button v-if="cfg.busquedaGlobalActiva !== false" class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
           <icon name="search" :size="18" color="#fff"></icon>
         </button>
-        <button class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
+        <button v-if="cfg.calcActiva !== false" class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
           <icon name="calculator" :size="18" color="#fff"></icon>
         </button>
         <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
@@ -1077,6 +1076,26 @@
           <input v-model="cfg.nombre" type="text" style="width:auto;flex:1;margin:0;padding:.4rem .6rem" @change="guardarCfg">
         </div>
 
+                <div class="set-row">
+          <span class="lbl"><icon name="calculator" :size="18"></icon> Boton de calculadora</span>
+          <label class="switch">
+            <input type="checkbox" :checked="cfg.calcActiva !== false" @change="cfg.calcActiva = $event.target.checked; guardarCfg()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Muestra u oculta el icono de calculadora en la barra superior.
+        </div>
+        <div class="set-row">
+          <span class="lbl"><icon name="search" :size="18"></icon> Busqueda global</span>
+          <label class="switch">
+            <input type="checkbox" :checked="cfg.busquedaGlobalActiva !== false" @change="cfg.busquedaGlobalActiva = $event.target.checked; guardarCfg()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.2rem;margin-bottom:.5rem">
+          Muestra u oculta el buscador global en la barra superior.
+        </div>
         <div class="set-group">Seguridad</div>
         <div class="set-row">
           <span class="lbl"><icon name="lock" :size="18"></icon> PIN operaciones sensibles</span>
@@ -1123,14 +1142,17 @@
             </span>
           </div>
           <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;line-height:1.5">
-            <span v-if="storagePersistente">
+            <span v-if="esNativoApp()">
+              Almacenamiento persistente por defecto. Android no borra los datos de apps instaladas.
+            </span>
+            <span v-else-if="storagePersistente">
               El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de seguridad.
             </span>
             <span v-else>
               ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
             </span>
           </div>
-          <button v-if="!storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
+          <button v-if="!esNativoApp() && !storagePersistente" class="btn ghost" style="width:auto;margin:.5rem 0 0;padding:.4rem .8rem;font-size:.72rem" @click="pedirPersistenciaStorage">
             <icon name="lock" :size="12" :color="mutColor"></icon> Solicitar almacenamiento persistente
           </button>
         </div>
@@ -1565,6 +1587,10 @@ export default {
         stockMinDefault: 5,
         anomaliasDescartadas: [],
         calcBilletesActiva: false,
+
+        calcActiva: true,
+
+        busquedaGlobalActiva: true,
         tgToken: '',
         tgChatId: '',
         nombreTienda: '',
@@ -1729,6 +1755,8 @@ export default {
     histComprasRestantes() { return this.histRestantes(this.comprasPorPeriodo.actual, 'compras'); },
     histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
 
+
+    esNativoApp() { return Capacitor.isNativePlatform(); },
 
     soportaNotif() {
       if (Capacitor.isNativePlatform()) return true;
@@ -4993,6 +5021,17 @@ export default {
 
     // ===== COLA DE BACKUPS =====
     async tgEncolar(datos, motivo) {
+      // ANTI-ACUMULACION: solo puede haber UN backup 'auto' en cola.
+      // Si ya hay alguno (pendiente, enviando o error), lo borramos y creamos uno nuevo.
+      if (motivo === 'auto' || !motivo) {
+        try {
+          const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
+          if (viejos.length > 0) {
+            await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+            console.log('[tg] Limpiados ' + viejos.length + ' backups auto viejos');
+          }
+        } catch (e) { console.warn('tg limpiar viejos', e); }
+      }
       const id = genId('tq');
       await P(db.tgQueue, {
         id,
@@ -5018,7 +5057,28 @@ export default {
       if (!this.cfg.tgChatId) return;
       this.tgProcesandoCola = true;
       try {
-        const items = await db.tgQueue.filter(x => x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)).toArray();
+        // Limpieza previa: si hay varios 'auto', dejar solo el mas reciente
+        const todos = await db.tgQueue.toArray();
+        const autos = todos.filter(x => x.motivo === 'auto').sort((a, b) => new Date(b.ts) - new Date(a.ts));
+        if (autos.length > 1) {
+          const borrar = autos.slice(1).map(x => x.id);
+          await db.tgQueue.bulkDelete(borrar);
+          console.log('[tg] Cola limpiada: ' + borrar.length + ' auto viejos descartados');
+        }
+
+        // Procesar pendientes + errores reintentables
+        const items = await db.tgQueue.filter(x =>
+          x.estado === 'pendiente' || (x.estado === 'error' && (x.intentos || 0) < 5)
+        ).toArray();
+
+        // Ordenar: manuales primero, auto ultimo. Y auto solo uno.
+        items.sort((a, b) => {
+          const ma = a.motivo === 'auto' ? 1 : 0;
+          const mb = b.motivo === 'auto' ? 1 : 0;
+          if (ma !== mb) return ma - mb;
+          return new Date(a.ts) - new Date(b.ts);
+        });
+
         for (const item of items) {
           if (item.intentos >= 5) {
             await P(db.tgQueue, { ...item, estado: 'fallido' });
@@ -5389,28 +5449,27 @@ export default {
         const data = buildData(this);
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
 
-        // NUEVO: Enviar a Telegram si esta configurado (sin bloquear UI)
         if (this.cfg.tgChatId && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
-          // Nunca subir un backup vacio (evita pisar el bueno en Telegram)
           if (this.productos.length === 0 && this.ventas.length === 0 && this.compras.length === 0) {
             console.warn('backupAuto: base vacia, se omite subida a Telegram');
-          } else
-          try {
-            const hash = await this.hashContenido(JSON.stringify(data));
-            if (this.cfg.tgUltimoHash !== hash) {
-              // Anti-duplicados: si ya hay un item 'auto' pendiente, actualizarlo
-              const pendientes = await db.tgQueue.where('estado').equals('pendiente').toArray();
-              const autoExistente = pendientes.find(x => x.motivo === 'auto');
-              if (autoExistente) {
-                await P(db.tgQueue, { ...autoExistente, ts: new Date().toISOString(), datos: data });
-              } else {
+          } else {
+            try {
+              const hash = await this.hashContenido(JSON.stringify(data));
+              if (this.cfg.tgUltimoHash !== hash) {
+                // Limpiar TODOS los auto anteriores (pendientes, error, enviando)
+                try {
+                  const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
+                  if (viejos.length > 0) {
+                    await db.tgQueue.bulkDelete(viejos.map(x => x.id));
+                  }
+                } catch (e) { /* ignora */ }
+
                 await this.tgEncolar(data, 'auto');
+                this.tgProcesarCola().catch(e => console.warn('backupAuto cola', e));
               }
-              // Intentar enviar ya mismo (si hay red)
-              this.tgProcesarCola().catch(e => console.warn('backupAuto cola', e));
+            } catch (e) {
+              console.warn('backupAuto telegram', e);
             }
-          } catch (e) {
-            console.warn('backupAuto telegram', e);
           }
         }
       } catch (e) {
@@ -5631,6 +5690,12 @@ export default {
   },
 
   watch: {
+    'cfg.calcActiva'(newVal) {
+      if (newVal === false) this.calcAbierto = false;
+    },
+    'cfg.busquedaGlobalActiva'(newVal) {
+      if (newVal === false) this.busquedaGlobalAbierta = false;
+    },
     lotes: {
       handler() { this.invalidarFifoCache(); },
       deep: false
