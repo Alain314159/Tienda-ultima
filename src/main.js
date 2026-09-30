@@ -1,4 +1,5 @@
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
 import App from './App.vue';
 import AppIcon from './components/AppIcon.vue';
 import './styles.css';
@@ -16,6 +17,8 @@ import { db } from './db.js';
 Log.init().catch(e => console.warn('Log init fallo:', e));
 
 const app = createApp(App);
+const pinia = createPinia();
+app.use(pinia);
 
 app.component('icon', AppIcon);
 
