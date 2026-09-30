@@ -1,21 +1,27 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { db, genId, clean, P, n, m } from '../db.js';
+import { db, n, m, genId, clean, P } from '../db.js';
 
 export const useVentasStore = defineStore('ventas', () => {
-  // Estado
   const ventas = ref([]);
-  const carrito = ref([]);
   const cargando = ref(false);
 
-  // Getters
-  const totalCarrito = computed(() => {
-    return m(carrito.value.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0));
+  const noAnuladas = computed(() => ventas.value.filter(v => !v.anulada));
+
+  const delPeriodo = computed(() => {
+    const cfg = JSON.parse(localStorage.getItem('cfg') || '{}');
+    const ini = new Date(cfg.periodoInicio || 0);
+    return ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= ini);
   });
 
-  const cantidadItems = computed(() => carrito.value.length);
+  const totalPeriodo = computed(() =>
+    m(delPeriodo.value.reduce((s, v) => s + n(v.total), 0))
+  );
 
-  // Acciones
+  const gananciaPeriodo = computed(() =>
+    m(delPeriodo.value.reduce((s, v) => s + n(v.ganancia), 0))
+  );
+
   async function cargar() {
     cargando.value = true;
     try {
@@ -25,33 +31,10 @@ export const useVentasStore = defineStore('ventas', () => {
     }
   }
 
-  function agregarAlCarrito(producto, cantidad = 1) {
-    const existente = carrito.value.find(it => it.productoId === producto.id);
-    if (existente) {
-      existente.cant = String(n(existente.cant) + cantidad);
-    } else {
-      carrito.value.push({
-        productoId: producto.id,
-        nombre: producto.nombre,
-        precio: String(producto.precio || 0),
-        cant: String(cantidad)
-      });
-    }
-  }
-
-  function quitarDelCarrito(productoId) {
-    const idx = carrito.value.findIndex(it => it.productoId === productoId);
-    if (idx >= 0) carrito.value.splice(idx, 1);
-  }
-
-  function limpiarCarrito() {
-    carrito.value = [];
-  }
-
-  async function guardarVenta(venta) {
+  async function guardar(venta) {
     const nueva = {
-      id: genId('v'),
-      fecha: new Date().toISOString(),
+      id: venta.id || genId('v'),
+      fecha: venta.fecha || new Date().toISOString(),
       ...venta,
       anulada: false
     };
@@ -60,12 +43,19 @@ export const useVentasStore = defineStore('ventas', () => {
     return nueva;
   }
 
+  async function anular(id) {
+    const v = ventas.value.find(x => x.id === id);
+    if (!v) return null;
+    const actualizada = { ...v, anulada: true, fechaAnulacion: new Date().toISOString() };
+    await P(db.ventas, actualizada);
+    const idx = ventas.value.findIndex(x => x.id === id);
+    ventas.value[idx] = actualizada;
+    return actualizada;
+  }
+
   return {
-    // Estado
-    ventas, carrito, cargando,
-    // Getters
-    totalCarrito, cantidadItems,
-    // Acciones
-    cargar, agregarAlCarrito, quitarDelCarrito, limpiarCarrito, guardarVenta
+    ventas, cargando,
+    noAnuladas, delPeriodo, totalPeriodo, gananciaPeriodo,
+    cargar, guardar, anular
   };
 });
