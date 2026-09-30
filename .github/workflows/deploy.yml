@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - migracion-total
       - master
       - refactor/arquitectura-modular
   workflow_dispatch:

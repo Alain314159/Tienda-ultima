@@ -6,11 +6,6 @@ export default defineConfig(({ mode }) => {
   const isCapacitor = process.env.CAPACITOR === '1' || mode === 'capacitor';
 
   return {
-    resolve: isCapacitor ? {
-      alias: {
-        'virtual:pwa-register': '/src/shims/pwa-register.js'
-      }
-    } : {},
     base: isCapacitor ? './' : '/Tienda-ultima/',
     plugins: [
       vue(),
@@ -62,40 +57,24 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365
-                },
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            }
-          ]
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
         }
       })
     ].filter(Boolean),
     build: {
-      target: 'es2020',
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true
-        }
-      },
-      rollupOptions: {
+      target: 'baseline-widely-available',
+      minify: 'oxc',
+      rolldownOptions: {
         output: {
-          manualChunks: {
-            'vue-vendor': ['vue'],
-            'chart-vendor': ['chart.js'],
-            'pdf-vendor': ['jspdf', 'jspdf-autotable'],
-            'db-vendor': ['dexie']
+          codeSplitting: {
+            groups: [
+              { name: 'vue-vendor', test: /node_modules[\\/]vue/ },
+              { name: 'chart-vendor', test: /node_modules[\\/]chart\.js/ },
+              { name: 'pdf-vendor', test: /node_modules[\\/](jspdf|jspdf-autotable)/ },
+              { name: 'db-vendor', test: /node_modules[\\/]dexie/ },
+              { name: 'router-vendor', test: /node_modules[\\/]vue-router/ },
+              { name: 'pinia-vendor', test: /node_modules[\\/]pinia/ }
+            ]
           }
         }
       }
