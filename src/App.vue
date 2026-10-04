@@ -56,15 +56,15 @@
     <header class="header no-print">
       <h1><icon name="store" :size="20" color="#fff"></icon> {{ configStore.nombreTienda || 'Tienda Pro' }}</h1>
       <div class="hacts">
-        <button v-if="cfg.busquedaGlobalActiva !== false" class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
+        <button v-if="configStore.busquedaGlobalActiva !== false" class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
           <icon name="search" :size="18" color="#fff"></icon>
         </button>
-        <button v-if="cfg.calcActiva !== false" class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
+        <button v-if="configStore.calcActiva !== false" class="h-btn" @click="calcAbierto = true" aria-label="Calculadora">
           <icon name="calculator" :size="18" color="#fff"></icon>
         </button>
         <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
-          <icon :name="cfg.tema === 'dark' ? 'sun' : 'moon'" :size="18" color="#fff"></icon>
-          <span>{{ cfg.tema === 'dark' ? 'Claro' : 'Oscuro' }}</span>
+          <icon :name="configStore.tema === 'dark' ? 'sun' : 'moon'" :size="18" color="#fff"></icon>
+          <span>{{ configStore.tema === 'dark' ? 'Claro' : 'Oscuro' }}</span>
         </button>
         <button class="h-btn" @click="ajustesAbierto = true" aria-label="Ajustes">
           <icon name="settings" :size="18" color="#fff"></icon>
@@ -79,17 +79,17 @@
         <div class="balance azul">
           <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Efectivo en Caja</div>
           <div class="val">{{ fmt(cajaStore.saldoCaja) }}</div>
-          <div class="sub">Inventario: {{ fmt(lotesStore.valorInventario) }} · Desde {{ fmtFecha(cfg.periodoInicio) }}</div>
+          <div class="sub">Inventario: {{ fmt(lotesStore.valorInventario) }} · Desde {{ fmtFecha(configStore.periodoInicio) }}</div>
         </div>
 
-        <div v-if="productosBajoStock.length || productosAgotados.length" class="alert-box-stock">
-          <div v-if="productosAgotados.length" class="alert-chip alert-out" @click="irAStock('agotados')">
+        <div v-if="productosStore.productosBajoStock.length || productosStore.productosAgotados.length" class="alert-box-stock">
+          <div v-if="productosStore.productosAgotados.length" class="alert-chip alert-out" @click="irAStock('agotados')">
             <icon name="alert" :size="14" color="#fff"></icon>
-            <b>{{ productosAgotados.length }}</b> agotado(s)
+            <b>{{ productosStore.productosAgotados.length }}</b> agotado(s)
           </div>
-          <div v-if="productosBajoStock.length" class="alert-chip alert-low" @click="irAStock('bajos')">
+          <div v-if="productosStore.productosBajoStock.length" class="alert-chip alert-low" @click="irAStock('bajos')">
             <icon name="alert" :size="14" color="#fff"></icon>
-            <b>{{ productosBajoStock.length }}</b> bajo(s)
+            <b>{{ productosStore.productosBajoStock.length }}</b> bajo(s)
           </div>
         </div>
 
@@ -104,11 +104,11 @@
           </div>
           <div class="stat">
             <div class="lbl"><icon name="bag" :size="13" :color="mutColor"></icon> Compras</div>
-            <div class="val neg">{{ fmt(comprasPeriodo) }}</div>
+            <div class="val neg">{{ fmt(cierresStore.comprasPeriodo) }}</div>
           </div>
           <div class="stat">
             <div class="lbl"><icon name="chart" :size="13" :color="mutColor"></icon> Margen</div>
-            <div class="val" style="color:var(--pri)">{{ margenPeriodo }}%</div>
+            <div class="val" style="color:var(--pri)">{{ cierresStore.margenPeriodo }}%</div>
           </div>
         </div>
 
@@ -612,7 +612,7 @@
           </div>
           <div class="grid2" style="margin-bottom:.5rem">
             <div><span class="det">Ventas</span><div style="font-weight:800">{{ fmt(ventasStore.ventasPeriodo) }}</div></div>
-            <div><span class="det">Compras</span><div style="font-weight:800" class="neg">{{ fmt(comprasPeriodo) }}</div></div>
+            <div><span class="det">Compras</span><div style="font-weight:800" class="neg">{{ fmt(cierresStore.comprasPeriodo) }}</div></div>
           </div>
           <div style="font-size:.9rem;font-weight:800;margin-bottom:.6rem">
             Ganancia: <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
@@ -1102,7 +1102,7 @@
                 <div class="set-row">
           <span class="lbl"><icon name="calculator" :size="18"></icon> Boton de calculadora</span>
           <label class="switch">
-            <input type="checkbox" :checked="cfg.calcActiva !== false" @change="cfg.calcActiva = $event.target.checked; guardarCfg()">
+            <input type="checkbox" :checked="configStore.calcActiva !== false" @change="cfg.calcActiva = $event.target.checked; guardarCfg()">
             <span class="slider"></span>
           </label>
         </div>
@@ -1112,7 +1112,7 @@
         <div class="set-row">
           <span class="lbl"><icon name="search" :size="18"></icon> Busqueda global</span>
           <label class="switch">
-            <input type="checkbox" :checked="cfg.busquedaGlobalActiva !== false" @change="cfg.busquedaGlobalActiva = $event.target.checked; guardarCfg()">
+            <input type="checkbox" :checked="configStore.busquedaGlobalActiva !== false" @change="cfg.busquedaGlobalActiva = $event.target.checked; guardarCfg()">
             <span class="slider"></span>
           </label>
         </div>
@@ -1845,8 +1845,8 @@ export default {
         && !this.mtProcesando;
     },
 
-    mutColor() { return this.cfg.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
-    txtColor() { return this.cfg.tema === 'dark' ? '#f1f5f9' : '#111827'; },
+    mutColor() { return this.configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
+    txtColor() { return this.configStore.tema === 'dark' ? '#f1f5f9' : '#111827'; },
     masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos'].includes(this.sec); },
 
     _ventasStats() {
@@ -2440,7 +2440,7 @@ export default {
     },
 
     toggleTema() {
-      this.cfg.tema = this.cfg.tema === 'dark' ? 'light' : 'dark';
+      this.cfg.tema = this.configStore.tema === 'dark' ? 'light' : 'dark';
       try { document.documentElement.setAttribute('data-theme', this.cfg.tema); } catch (e) {}
       this.guardarCfg();
       if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
@@ -4287,7 +4287,7 @@ export default {
       let cambio = false;
 
       // 1. Stock bajo
-      const bajo = this.productosAgotados.length + this.productosBajoStock.length;
+      const bajo = this.productosStore.productosAgotados.length + this.productosStore.productosBajoStock.length;
       if (bajo > 0 && this.cfg.ultimaNotifStock !== hoy) {
         this.enviarNotif('Stock bajo', bajo + ' producto(s) en alerta');
         this.cfg.ultimaNotifStock = hoy;
@@ -5446,7 +5446,7 @@ export default {
         const valorDe = (it) => tipo === 'margen' ? it.ganancia : it.cantidad;
         const formatDe = (it) => tipo === 'margen' ? fmt(it.ganancia) : fmtCant(it.cantidad) + ' u';
         const colores = ['#3B82F6', '#16A34A', '#D97706', '#8B5CF6', '#EC4899', '#0891B2'];
-        const dark = this.cfg.tema === 'dark';
+        const dark = this.configStore.tema === 'dark';
         const txt = dark ? '#94a3b8' : '#6b7280';
         this._chartProd = new Chart(cv.getContext('2d'), {
           type: 'doughnut',
@@ -5541,7 +5541,7 @@ export default {
           if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
         });
 
-        const dark = this.cfg.tema === 'dark';
+        const dark = this.configStore.tema === 'dark';
         const txt = dark ? '#94a3b8' : '#6b7280', grid = dark ? '#334155' : '#e5e7eb';
 
         this._chart = new Chart(cv.getContext('2d'), {
