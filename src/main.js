@@ -1,4 +1,5 @@
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
 import App from './App.vue';
 import AppIcon from './components/AppIcon.vue';
 import './styles.css';
@@ -15,8 +16,12 @@ import { db } from './db.js';
 // Logger: captura console, errores globales y eventos
 Log.init().catch(e => console.warn('Log init fallo:', e));
 
+// Crear instancia de Pinia
+const pinia = createPinia();
+
 const app = createApp(App);
 
+app.use(pinia);
 app.component('icon', AppIcon);
 
 app.config.errorHandler = (err, instance, info) => {
