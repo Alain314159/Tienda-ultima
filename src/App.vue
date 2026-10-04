@@ -1907,7 +1907,7 @@ export default {
     async onPullRefresh() {
       if (this.refrescando) return;
       this.refrescando = true;
-      try { await this.recargarTodo(); } catch (e) {}
+      try { await this.recargarTodoStores(); } catch (e) {}
       setTimeout(() => { this.refrescando = false; this.pullDist = 0; }, 500);
       this.toastMsg('Datos actualizados');
     },
@@ -2422,7 +2422,7 @@ export default {
           }
         }));
 
-        await this.recargar(['ventas', 'lotes']);
+        await this.recargarStores('ventas', 'lotes']);
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
@@ -2487,7 +2487,7 @@ export default {
                   await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
                 }
               });
-              await this.recargar(['ventas', 'lotes']);
+              await this.recargarStores('ventas', 'lotes']);
               this.toastMsg('Producto anulado');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -2521,7 +2521,7 @@ export default {
                   await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
                 }
               });
-              await this.recargar(['ventas', 'lotes']);
+              await this.recargarStores('ventas', 'lotes']);
               this.toastMsg('Venta anulada');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -2676,7 +2676,7 @@ export default {
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
           });
-          await this.recargar(['compras', 'lotes', 'asientos']);
+          await this.recargarStores('compras', 'lotes', 'asientos']);
           this.toastMsg('Compra eliminada');
         }
       };
@@ -2729,7 +2729,7 @@ export default {
               await P(db.lotes, lote);
             });
           }
-          await this.recargar(['compras', 'lotes']);
+          await this.recargarStores('compras', 'lotes']);
           const compraGuardada = f.editId
             ? this.comprasStore.compras.find(x => x.id === f.editId)
             : this.comprasStore.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
@@ -2802,7 +2802,7 @@ export default {
         this.toastMsg('Producto agregado');
       }
       this.resetProd();
-      await this.recargar(['productos']);
+      await this.recargarStores('productos']);
     },
 
     editarProducto(id) {
@@ -2826,7 +2826,7 @@ export default {
         msg: '¿Archivar "' + p.nombre + '"?',
         onOk: async () => {
           await P(db.productos, { ...p, archivado: true });
-          await this.recargar(['productos']);
+          await this.recargarStores('productos']);
           this.toastMsg('Archivado');
         }
       };
@@ -2835,7 +2835,7 @@ export default {
     async restaurarProducto(id) {
       const p = this.productosStore.productos.find(x => x.id === id);
       await P(db.productos, { ...p, archivado: false });
-      await this.recargar(['productos']);
+      await this.recargarStores('productos']);
       this.toastMsg('Restaurado');
     },
 
@@ -2864,7 +2864,7 @@ export default {
           }
           if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
         });
-        await this.recargar(['ajustes', 'lotes']);
+        await this.recargarStores('ajustes', 'lotes']);
         const mermaGuardada = this.ajustesStore.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
         
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
@@ -2877,7 +2877,7 @@ export default {
           await P(db.ajustes, aj);
           await P(db.lotes, lote);
         });
-        await this.recargar(['ajustes', 'lotes']);
+        await this.recargarStores('ajustes', 'lotes']);
         this.toastMsg('Sobrante registrado');
       }
       this.ajusteForm = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
@@ -2934,7 +2934,7 @@ export default {
 
             });
             await this.guardarCfg();
-            await this.recargar(['cierres', 'asientos']);
+            await this.recargarStores('cierres', 'asientos']);
             this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
             } finally {
               this._cerrando = false;
@@ -3398,7 +3398,7 @@ export default {
           try {
             const actualizados = sinAsignar.map(x => ({ ...x, socioId: sid }));
             await db.capital.bulkPut(actualizados.map(x => clean(x)));
-            await this.recargar(['capital']);
+            await this.recargarStores('capital']);
             this.migrarSocioId = '';
             this.toastMsg(`Asignados ${actualizados.length} aportes`);
           } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
@@ -3430,7 +3430,7 @@ export default {
         this.toastMsg('Socio agregado');
       }
       this.resetSocio();
-      await this.recargar(['socios']);
+      await this.recargarStores('socios']);
     },
     editarSocio(id) {
       const s = this.capitalStore.socios.find(x => x.id === id);
@@ -3446,7 +3446,7 @@ export default {
         msg: 'Eliminar a "' + s.nombre + '"? Las distribuciones previas se conservan.',
         onOk: async () => {
           await db.socios.delete(id);
-          await this.recargar(['socios']);
+          await this.recargarStores('socios']);
           this.toastMsg('Socio eliminado');
         }
       };
@@ -3480,7 +3480,7 @@ export default {
               socios: dists.map(d => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto }))
             });
           });
-          await this.recargar(['distribuciones', 'retiros']);
+          await this.recargarStores('distribuciones', 'retiros']);
           this.repartoForm = { monto: '', concepto: '' };
           this.toastMsg(`Repartido ${fmt(monto)}`);
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
@@ -3962,7 +3962,7 @@ export default {
         this.toastMsg(`Gasto registrado: ${fmt(monto)}`);
       }
       this.resetGasto();
-      await this.recargar(['gastos', 'movCaja']);
+      await this.recargarStores('gastos', 'movCaja']);
       const gs = this.gastosStore.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
       
     },
@@ -3994,7 +3994,7 @@ export default {
             await db.gastos.delete(id);
             if (g.movId) await db.movCaja.delete(g.movId);
           });
-          await this.recargar(['gastos', 'movCaja', 'asientos']);
+          await this.recargarStores('gastos', 'movCaja', 'asientos']);
           this.toastMsg('Gasto eliminado');
         }
       };
@@ -4359,7 +4359,7 @@ export default {
         }
       }
       if (d.cfg) this.configStore.cfg = { ...this.configStore.cfg, ...d.cfg };
-      await this.recargarTodo();
+      await this.recargarTodoStores();
     },
 
     async restaurarBackupAuto() {
@@ -4887,10 +4887,6 @@ export default {
       this.backupAuto().catch(e => console.warn('flush backup', e));
     },
 
-    async guardarCfg() {
-      try { await P(db.config, { key: 'cfg', value: this.configStore.cfg }); } catch (e) { console.error('guardarCfg', e); }
-      this.guardarCfg();
-      this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
     },
 
     setGraficoProdTipo(t) {
@@ -5182,7 +5178,7 @@ export default {
         }
         // No prellenar el campo de capital inicial
         this.capInicialStr = '';
-        await this.recargarTodo();
+        await this.recargarTodoStores();
         // Pedir persistencia de storage (evita que el navegador borre datos)
         await this.pedirPersistenciaStorage();
 
