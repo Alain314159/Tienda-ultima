@@ -255,12 +255,24 @@
               <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
             <div v-for="v in histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
-              <div class="info">
-                <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
+              <div class="info" @click="toggleExpandirVenta(v.id)" style="cursor:pointer;flex:1">
+                <div class="nm">{{ v.items.length > 1 ? v.items[0].nombre + ' +' + (v.items.length - 1) + ' más' : v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                 <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
+                <div v-if="ventaExpandida === v.id" class="venta-items-expand" style="margin-top:.4rem;padding:.4rem;background:rgba(0,0,0,.05);border-radius:.4rem">
+                  <div v-for="(it, idx) in v.items" :key="it.id" style="display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid rgba(0,0,0,.1)">
+                    <span>{{ it.nombre }} × {{ fmtCant(it.cantidad) }}</span>
+                    <div style="display:flex;gap:.4rem;align-items:center">
+                      <span>{{ fmt(it.precio * it.cantidad) }}</span>
+                      <button v-if="!v.anulada && !it.anulado" class="link-btn" style="font-size:.7rem;padding:.2rem .3rem" @click.stop="anularProductoEnVenta(v.id, idx)">Anular</button>
+                      <span v-if="it.anulado" class="badge arch" style="font-size:.7rem">ANULADO</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <button v-if="!v.anulada" class="link-btn" @click="anularVenta(v.id)">Anular</button>
-              <span v-else class="badge arch">ANULADA</span>
+              <div style="display:flex;flex-direction:column;gap:.4rem">
+                <button v-if="!v.anulada" class="link-btn" @click="anularVenta(v.id)">Anular</button>
+                <span v-else class="badge arch">ANULADA</span>
+              </div>
             </div>
             <div v-if="histVentasHayMas" class="hist-mas">
               <button class="link-btn" @click="histMostrarMas('ventas')">Mostrar 20 mas ({{ histVentasRestantes }} restantes)</button>
@@ -278,9 +290,19 @@
             </div>
             <div v-if="histAbierto('ventas', g.cierre.id)">
               <div v-for="v in histItemsMostrados(g.items, 'ventas')" :key="v.id" class="item" :class="{ anulada: v.anulada }">
-                <div class="info">
-                  <div class="nm">{{ v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
+                <div class="info" @click="toggleExpandirVenta(v.id)" style="cursor:pointer;flex:1">
+                  <div class="nm">{{ v.items.length > 1 ? v.items[0].nombre + ' +' + (v.items.length - 1) + ' más' : v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                   <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
+                  <div v-if="ventaExpandida === v.id" class="venta-items-expand" style="margin-top:.4rem;padding:.4rem;background:rgba(0,0,0,.05);border-radius:.4rem">
+                    <div v-for="(it, idx) in v.items" :key="it.id" style="display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid rgba(0,0,0,.1)">
+                      <span>{{ it.nombre }} × {{ fmtCant(it.cantidad) }}</span>
+                      <div style="display:flex;gap:.4rem;align-items:center">
+                        <span>{{ fmt(it.precio * it.cantidad) }}</span>
+                        <button v-if="!v.anulada && !it.anulado" class="link-btn" style="font-size:.7rem;padding:.2rem .3rem" @click.stop="anularProductoEnVenta(v.id, idx)">Anular</button>
+                        <span v-if="it.anulado" class="badge arch" style="font-size:.7rem">ANULADO</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div v-if="histHayMas(g.items, 'ventas')" class="hist-mas">
@@ -1626,6 +1648,7 @@ export default {
       capital: [],
       retiros: [],
       socios: [],
+      ventaExpandida: null,
       distribuciones: [],
       gastos: [],
             
@@ -1898,7 +1921,10 @@ export default {
       const mermas = this.ajustes
         .filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(this.cfg.periodoInicio))
         .reduce((s, a) => s + n(a.costoPerdida), 0);
-      return m(this.gananciaBrutaPeriodo - this.gastosOpPeriodo - mermas);
+      const retirosPeriodo = this.retiros
+        .filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia' && new Date(r.fecha) >= new Date(this.cfg.periodoInicio))
+        .reduce((s, r) => s + n(r.monto), 0);
+      return m(this.gananciaBrutaPeriodo - this.gastosOpPeriodo - mermas - retirosPeriodo);
     },
 
     margenPeriodo() {
@@ -2771,6 +2797,58 @@ export default {
       } finally {
         this.procesandoVenta = false;
       }
+    },
+
+    toggleExpandirVenta(id) {
+      this.ventaExpandida = this.ventaExpandida === id ? null : id;
+    },
+
+    anularProductoEnVenta(ventaId, itemIndex) {
+      const v = this.ventas.find(x => x.id === ventaId);
+      if (!v || v.anulada) return;
+      const item = v.items[itemIndex];
+      if (!item) return;
+      
+      this.pedirPin(() => {
+        this.confirm = {
+          activo: true, titulo: 'Anular producto',
+          msg: `\u00bfAnular "${item.nombre}" (${fmtCant(item.cantidad)} \u00d7 ${fmt(item.precio)}) de esta venta? Se restaura el stock y se ajusta el total.`,
+          onOk: async () => {
+            try {
+              await db.transaction('rw', db.ventas, db.lotes, async () => {
+                const itemsActualizados = v.items.map((it, idx) => 
+                  idx === itemIndex ? { ...it, anulado: true } : it
+                );
+                const nuevoTotal = itemsActualizados.reduce((s, it) => s + (it.anulado ? 0 : n(it.precio) * n(it.cantidad)), 0);
+                const nuevaGanancia = itemsActualizados.reduce((s, it) => s + (it.anulado ? 0 : n(it.ganancia)), 0);
+                
+                await P(db.ventas, { 
+                  ...v, 
+                  items: itemsActualizados,
+                  total: m(nuevoTotal),
+                  ganancia: m(nuevaGanancia)
+                });
+                
+                const lotesActualizados = [];
+                if (item.lotesUsados) {
+                  for (const u of item.lotesUsados) {
+                    const l = this.lotes.find(x => x.id === u.loteId);
+                    if (l) {
+                      l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
+                      lotesActualizados.push(l);
+                    }
+                  }
+                }
+                if (lotesActualizados.length > 0) {
+                  await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
+                }
+              });
+              await this.recargar(['ventas', 'lotes']);
+              this.toastMsg('Producto anulado');
+            } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
+          }
+        };
+      });
     },
 
     anularVenta(id) {
