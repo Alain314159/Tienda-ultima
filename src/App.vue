@@ -831,7 +831,7 @@
         <div class="card">
           <div class="card-title"><icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Movimientos de dinero</div>
           <div style="font-size:.82rem;color:var(--mut);margin-bottom:.7rem">
-            Disponible para retiro: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+            Disponible para retiro: <b class="pos">{{ fmt(capitalStore.gananciaDisponible) }}</b>
           </div>
 
           <div class="sheet-group" style="margin-top:0">Repartir ganancia entre socios</div>
@@ -1458,15 +1458,15 @@
       <div class="modal-box">
         <div class="modal-title"><icon name="dollar" :size="20"></icon> Retirar</div>
         <div class="grid2" style="margin-bottom:.5rem">
-          <button class="btn" :class="retiroForm.tipo === 'ganancia' ? 'pri' : 'ghost'" style="margin:0" @click="retiroForm.tipo = 'ganancia'">Ganancia</button>
+          <button class="btn" :class="capitalStore.retiroForm.tipo === 'ganancia' ? 'pri' : 'ghost'" style="margin:0" @click="capitalStore.retiroForm.tipo = 'ganancia'">Ganancia</button>
           <button class="btn" :class="retiroForm.tipo === 'capital' ? 'pri' : 'ghost'" style="margin:0" @click="retiroForm.tipo = 'capital'">Capital</button>
         </div>
         <div style="font-size:.82rem;color:var(--mut);margin-bottom:.5rem">
           <template v-if="retiroForm.tipo === 'capital'">
-            Capital disponible: <b class="pos">{{ fmt(capitalDisponible) }}</b>
+            Capital disponible: <b class="pos">{{ fmt(capitalStore.capitalDisponible) }}</b>
           </template>
           <template v-else>
-            Ganancia disponible: <b class="pos">{{ fmt(gananciaDisponible) }}</b>
+            Ganancia disponible: <b class="pos">{{ fmt(capitalStore.gananciaDisponible) }}</b>
           </template>
         </div>
         <input v-model="retiroForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a retirar">
