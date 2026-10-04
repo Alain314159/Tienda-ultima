@@ -2631,7 +2631,7 @@ export default {
       this._fifoCache = {};
     },
 
-    agregarCarrito(p) {
+    // Usar ventasStore.agregarCarrito(p) directamente
       const s = this.stock(p.id);
       if (s <= 0) return this.toastMsg('Sin stock', TOAST.BAD);
       const ex = this.carrito.find(i => i.productoId === p.id);
@@ -2908,7 +2908,7 @@ export default {
       });
     },
 
-    anularVenta(id) {
+    // Usar ventasStore.anularVenta(id) directamente
       const v = this.ventas.find(x => x.id === id);
       if (!v) return;
       this.pedirPin(() => {
@@ -3185,7 +3185,7 @@ export default {
       this.prodForm.empaques.splice(i, 1);
     },
 
-    async guardarProducto() {
+    // Usar productosStore.guardarProducto() directamente
       const p = this.prodForm;
       const nombre = (p.nombre || '').trim();
       const precio = n(p.precio);
