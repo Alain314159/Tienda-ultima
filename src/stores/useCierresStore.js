@@ -181,6 +181,22 @@ export const useCierresStore = defineStore('cierres', () => {
     await cargarCierres();
   }
 
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      cierres: cargarCierres,
+      asientos: () => {}
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     cierres,
