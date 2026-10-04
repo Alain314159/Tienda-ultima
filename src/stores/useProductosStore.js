@@ -175,6 +175,21 @@ export const useProductosStore = defineStore('productos', () => {
     mostrarArchivados.value = !mostrarArchivados.value;
   }
 
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      productos: cargarProductos
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     productos,
