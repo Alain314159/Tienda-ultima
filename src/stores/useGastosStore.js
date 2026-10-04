@@ -165,10 +165,28 @@ export const useGastosStore = defineStore('gastos', () => {
     };
   }
 
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      gastos: cargarGastos,
+      movCaja: () => {},
+      asientos: () => {}
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     gastos,
     gastoForm,
+    gastosOrdenadas,
     gastosOrdenados,
     gastosTotalAcumulado,
     gastosOpPeriodo,
@@ -179,7 +197,8 @@ export const useGastosStore = defineStore('gastos', () => {
     guardarGasto,
     eliminarGasto,
     editarGasto,
-    limpiarGastoForm
+    limpiarGastoForm,
+    recargarStores
   };
 });
 
