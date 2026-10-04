@@ -2887,42 +2887,6 @@ export default {
     
     
     // ===== PATRIMONIO =====
-    
-    
-    registrarRetiro() {
-      const monto = n(this.retiroForm.monto);
-      const c = (this.retiroForm.concepto || '').trim();
-      const tipo = this.retiroForm.tipo || 'ganancia';
-      if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
-      if (!c) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
-      const max = tipo === 'capital' ? this.capitalStore.capitalDisponible : this.capitalStore.gananciaDisponible;
-      if (monto > max + 0.01) return this.toastMsg('Máximo ' + fmt(max), TOAST.BAD);
-      this.pedirPin(async () => {
-        await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c, tipoRetiro: tipo });
-        await this.recargar(['retiros']);
-        this.retiroForm = { monto: '', concepto: '', tipo: 'ganancia' };
-        this.retiroAbierto = false;
-        this.toastMsg(tipo === 'capital' ? 'Retiro de capital registrado' : 'Retiro de ganancia registrado');
-      });
-    },
-
-    async registrarAporte() {
-      const monto = n(this.aporteForm.monto);
-      if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
-      await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
-      await this.recargar(['capital']);
-      const kGuardado = this.capitalStore.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
-      
-      this.aporteForm = { monto: '', nota: '', socioId: '' };
-      this.aporteAbierto = false;
-      this.toastMsg('Aporte registrado');
-    },
-
-    cerrarPeriodo() {
-      if (this._cerrando) return this.toastMsg('Cierre en proceso...', TOAST.WARN);
-      this.pedirPin(() => {
-        this.confirm = {
-          activo: true, titulo: 'Cerrar período',
           msg: '¿Cerrar el período actual? Los contadores del inicio se reinician y la ganancia se acumula. Esta acción no se puede deshacer.',
           onOk: async () => {
             if (this._cerrando) return;
