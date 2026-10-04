@@ -285,6 +285,24 @@ export const useCapitalStore = defineStore('capital', () => {
     ]);
   }
 
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      capital: cargarCapital,
+      retiros: cargarRetiros,
+      socios: cargarSocios,
+      distribuciones: cargarDistribuciones
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     capital,
