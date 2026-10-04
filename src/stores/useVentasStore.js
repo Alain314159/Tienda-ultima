@@ -88,6 +88,16 @@ export const useVentasStore = defineStore('ventas', () => {
       .reduce((s, v) => s + n(v.ganancia), 0));
   });
 
+  /**
+   * Ventas filtradas por búsqueda
+   */
+  const ventasFiltradas = computed(() => {
+    let list = ventas.value.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    const q = busqVenta.value.toLowerCase().trim();
+    if (q) list = list.filter(v => v.items.some(i => i.nombre.toLowerCase().includes(q)));
+    return list;
+  });
+
   // ===== ACCIONES DE CARRITO =====
   
   /**

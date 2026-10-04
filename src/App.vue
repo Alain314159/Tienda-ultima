@@ -1753,15 +1753,6 @@ export default {
 
   computed: {
     // ===== HISTORIAL COMPUTED (cachea slice/filtros y evita recalcular en cada render) =====
-    histVentasMostrados() { return this.histItemsMostrados(this.ventasPorPeriodo.actual, 'ventas'); },
-    histComprasMostrados() { return this.histItemsMostrados(this.comprasPorPeriodo.actual, 'compras'); },
-    histGastosMostrados() { return this.histItemsMostrados(this.gastosPorPeriodo.actual, 'gastos'); },
-    histVentasHayMas() { return this.histHayMas(this.ventasPorPeriodo.actual, 'ventas'); },
-    histComprasHayMas() { return this.histHayMas(this.comprasPorPeriodo.actual, 'compras'); },
-    histGastosHayMas() { return this.histHayMas(this.gastosPorPeriodo.actual, 'gastos'); },
-    histVentasRestantes() { return this.histRestantes(this.ventasPorPeriodo.actual, 'ventas'); },
-    histComprasRestantes() { return this.histRestantes(this.comprasPorPeriodo.actual, 'compras'); },
-    histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
 
 
     esNativoApp() { return Capacitor.isNativePlatform(); },
@@ -1784,9 +1775,9 @@ export default {
     masActivo() { return this.masAbierto || ['productos','reportes','socios','gastos'].includes(this.sec); },
 
     _ventasStats() {
-      const ini = new Date(this.cfg.periodoInicio);
+      const ini = new Date(this.configStore.cfg.periodoInicio);
       let totalCaja = 0, totalPeriodo = 0, gananciaPeriodo = 0;
-      for (const v of this.ventas) {
+      for (const v of this.ventasStore.ventas) {
         if (v.anulada) continue;
         totalCaja += n(v.total);
         if (new Date(v.fecha) >= ini) {
@@ -1799,7 +1790,7 @@ export default {
 
     _lotesStats() {
       let valor = 0, unidades = 0;
-      for (const l of this.lotes) {
+      for (const l of this.lotesStore.lotes) {
         const pend = n(l.cantidadInicial) - n(l.cantidadVendida);
         valor += pend * n(l.costo);
         unidades += pend;
@@ -1808,9 +1799,9 @@ export default {
     },
 
     _gastosStats() {
-      const ini = new Date(this.cfg.periodoInicio);
+      const ini = new Date(this.configStore.cfg.periodoInicio);
       let periodo = 0, total = 0;
-      for (const g of this.gastos) {
+      for (const g of this.gastosStore.gastos) {
         total += n(g.monto);
         if (new Date(g.fecha) >= ini) periodo += n(g.monto);
       }
@@ -1818,12 +1809,12 @@ export default {
     },
 
     saldoCaja() {
-      const ini = n(this.cfg.capitalInicial);
-      const aportes = this.capital.reduce((s, x) => s + n(x.monto), 0);
-      const retiros = this.retiros.reduce((s, x) => s + n(x.monto), 0);
-      const compras = this.compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
-      const arq = this.movCaja.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + n(m.monto), 0)
-        - this.movCaja.filter(m => m.tipo === 'egreso').reduce((s, m) => s + n(m.monto), 0);
+      const ini = n(this.configStore.cfg.capitalInicial);
+      const aportes = this.capitalStore.capital.reduce((s, x) => s + n(x.monto), 0);
+      const retiros = this.capitalStore.retiros.reduce((s, x) => s + n(x.monto), 0);
+      const compras = this.comprasStore.compras.filter(c => !c.anulada).reduce((s, c) => s + n(c.total), 0);
+      const arq = this.cajaStore.movCaja.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + n(m.monto), 0)
+        - this.cajaStore.movCaja.filter(m => m.tipo === 'egreso').reduce((s, m) => s + n(m.monto), 0);
       return m(ini + aportes + this._ventasStats.totalCaja - compras - retiros + arq);
     },
 
@@ -1832,12 +1823,12 @@ export default {
     unidadesTotal() { return this._lotesStats.unidades; },
 
     lotesActivos() {
-      return this.lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+      return this.lotesStore.lotes.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
     },
 
     _lotesPorProducto() {
       const map = {};
-      for (const l of this.lotes) {
+      for (const l of this.lotesStore.lotes) {
         const pid = l.productoId;
         if (!map[pid]) map[pid] = [];
         map[pid].push(l);
@@ -1850,19 +1841,19 @@ export default {
 
     stockMap() {
       const cached = this._stockMapCache;
-      if (cached && cached._vLotes === this.lotes && cached._vProds === this.productos) return cached.data;
+      if (cached && cached._vLotes === this.lotesStore.lotes && cached._vProds === this.productosStore.productos) return cached.data;
       const map = {};
-      this.productos.forEach(p => { map[p.id] = 0; });
-      this.lotes.forEach(l => {
+      this.productosStore.productos.forEach(p => { map[p.id] = 0; });
+      this.lotesStore.lotes.forEach(l => {
         if (map[l.productoId] !== undefined) {
           map[l.productoId] += (n(l.cantidadInicial) - n(l.cantidadVendida));
         }
       });
-      this._stockMapCache = { _vLotes: this.lotes, _vProds: this.productos, data: map };
+      this._stockMapCache = { _vLotes: this.lotesStore.lotes, _vProds: this.productosStore.productos, data: map };
       return map;
     },
 
-    prodsActivos() { return this.productos.filter(p => !p.archivado); },
+    prodsActivos() { return this.productosStore.productos.filter(p => !p.archivado); },
 
     productosBajoStock() {
       return this.prodsActivos.filter(p => {
@@ -1878,8 +1869,8 @@ export default {
     ventasPeriodo() { return m(this._ventasStats.totalPeriodo); },
 
     comprasPeriodo() {
-      const ini = new Date(this.cfg.periodoInicio);
-      return m(this.compras.filter(c => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
+      const ini = new Date(this.configStore.cfg.periodoInicio);
+      return m(this.comprasStore.compras.filter(c => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
     },
 
     gananciaBrutaPeriodo() { return m(this._ventasStats.gananciaPeriodo); },
@@ -1887,14 +1878,14 @@ export default {
     gastosOpPeriodo() { return this._gastosStats.periodo; },
 
     gastosOrdenados() {
-      return this.gastos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      return this.gastosStore.gastos.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     },
 
     gastosTotalAcumulado() { return this._gastosStats.total; },
 
     gastosPorCategoria() {
       const map = {};
-      this.gastos.forEach(g => {
+      this.gastosStore.gastos.forEach(g => {
         const c = g.categoria || 'Sin categoria';
         if (!map[c]) map[c] = 0;
         map[c] += n(g.monto);
@@ -1903,33 +1894,33 @@ export default {
     },
 
     gananciaNetaPeriodo() {
-      const mermas = this.ajustes
-        .filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(this.cfg.periodoInicio))
+      const mermas = this.ajustesStore.ajustes
+        .filter(a => a.cantidad < 0 && new Date(a.fecha) >= new Date(this.configStore.cfg.periodoInicio))
         .reduce((s, a) => s + n(a.costoPerdida), 0);
-      const retirosPeriodo = this.retiros
-        .filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia' && new Date(r.fecha) >= new Date(this.cfg.periodoInicio))
+      const retirosPeriodo = this.capitalStore.retiros
+        .filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia' && new Date(r.fecha) >= new Date(this.configStore.cfg.periodoInicio))
         .reduce((s, r) => s + n(r.monto), 0);
-      return m(this.gananciaBrutaPeriodo - this.gastosOpPeriodo - mermas - retirosPeriodo);
+      return m(this.ventasStore.gananciaBrutaPeriodo - this.gastosStore.gastosOpPeriodo - mermas - retirosPeriodo);
     },
 
     margenPeriodo() {
-      return this.ventasPeriodo > 0 ? ((this.gananciaNetaPeriodo / this.ventasPeriodo) * 100).toFixed(2) : '0.00';
+      return this.ventasStore.ventasPeriodo > 0 ? ((this.cierresStore.gananciaNetaPeriodo / this.ventasStore.ventasPeriodo) * 100).toFixed(2) : '0.00';
     },
 
     totalCarrito() {
-      return m(this.carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0));
+      return m(this.ventasStore.carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0));
     },
 
     gananciaItem(it) {
-      const f = this.calcFIFO(it.productoId, n(it.cant));
+      const f = this.lotesStore.calcFIFO(it.productoId, n(it.cant));
       if (f.error) return 0;
       return m((n(it.precio) * n(it.cant)) - f.costoTotal);
     },
 
     gananciaCarrito() {
       let gan = 0;
-      for (const it of this.carrito) {
-        const f = this.calcFIFO(it.productoId, n(it.cant));
+      for (const it of this.ventasStore.carrito) {
+        const f = this.lotesStore.calcFIFO(it.productoId, n(it.cant));
         if (!f.error) gan = m(gan + this.gananciaItem(it));
       }
       return m(gan);
@@ -1962,7 +1953,7 @@ export default {
     prodsFiltrados() {
       const sm = this.stockMap;
       const minMap = {};
-      let list = this.mostrarArchivados ? this.productos : this.productos.filter(p => !p.archivado);
+      let list = this.mostrarArchivados ? this.productosStore.productos : this.productosStore.productos.filter(p => !p.archivado);
       if (this.filtroStock === 'agotados') list = list.filter(p => (sm[p.id] || 0) === 0);
       else if (this.filtroStock === 'bajos') list = list.filter(p => { const st = sm[p.id] || 0; return st > 0 && st <= n(p.stockMinimo); });
       const q = this.busqProd.toLowerCase().trim();
@@ -1971,21 +1962,21 @@ export default {
     },
 
     ventasFiltradas() {
-      let list = this.ventas.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      let list = this.ventasStore.ventas.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       const q = this.busqHist.toLowerCase().trim();
       if (q) list = list.filter(v => v.items.some(i => i.nombre.toLowerCase().includes(q)));
       return list;
     },
 
     comprasOrdenadas() {
-      return this.compras.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      return this.comprasStore.compras.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     },
 
     invAgrupado() {
-      const sig = this.prodsActivos.length + '|' + this.lotes.length + '|' + this.lotes[0]?.id + '|' + this.lotes[this.lotes.length-1]?.id;
+      const sig = this.prodsActivos.length + '|' + this.lotesStore.lotes.length + '|' + this.lotesStore.lotes[0]?.id + '|' + this.lotesStore.lotes[this.lotesStore.lotes.length-1]?.id;
       if (this._invAgrCache && this._invAgrCache.sig === sig) return this._invAgrCache.data;
       const result = this.prodsActivos.map(p => {
-        const lotes = this.lotesDeProducto(p.id);
+        const lotes = this.lotesStore.lotesDeProducto(p.id);
         return {
           id: p.id,
           nombre: p.nombre,
@@ -2001,15 +1992,15 @@ export default {
     },
 
     ventasPorPeriodo() {
-      return this.agruparHistorial(this.ventasFiltradas, 'fecha');
+      return this.agruparHistorial(this.ventasStore.ventasFiltradas, 'fecha');
     },
 
     comprasPorPeriodo() {
-      return this.agruparHistorial(this.comprasOrdenadas, 'fecha');
+      return this.agruparHistorial(this.comprasStore.comprasOrdenadas, 'fecha');
     },
 
     gastosPorPeriodo() {
-      return this.agruparHistorial(this.gastosOrdenados, 'fecha');
+      return this.agruparHistorial(this.gastosStore.gastosOrdenadas, 'fecha');
     },
 
     
@@ -2017,7 +2008,7 @@ export default {
     
 
     ajustesRecientes() {
-      return this.ajustes.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 20);
+      return this.ajustesStore.ajustes.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 20);
     },
 
 
@@ -2036,33 +2027,33 @@ export default {
 
 
     
-    aportesTotal() { return m(this.capital.reduce((s, x) => s + n(x.monto), 0)); },
+    aportesTotal() { return m(this.capitalStore.capital.reduce((s, x) => s + n(x.monto), 0)); },
     retirosGananciaTotal() {
-      return m(this.retiros.filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia').reduce((s, x) => s + n(x.monto), 0));
+      return m(this.capitalStore.retiros.filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia').reduce((s, x) => s + n(x.monto), 0));
     },
     retirosCapitalTotal() {
-      return m(this.retiros.filter(r => r.tipoRetiro === 'capital').reduce((s, x) => s + n(x.monto), 0));
+      return m(this.capitalStore.retiros.filter(r => r.tipoRetiro === 'capital').reduce((s, x) => s + n(x.monto), 0));
     },
     capitalDisponible() {
-      return m(this.capitalTotal - this.retirosCapitalTotal);
+      return m(this.capitalStore.capitalTotal - this.capitalStore.retirosCapitalTotal);
     },
-    retirosTotal() { return m(this.retiros.reduce((s, x) => s + n(x.monto), 0)); },
-    capitalTotal() { return m(n(this.cfg.capitalInicial) + this.aportesTotal); },
+    retirosTotal() { return m(this.capitalStore.retiros.reduce((s, x) => s + n(x.monto), 0)); },
+    capitalTotal() { return m(n(this.configStore.cfg.capitalInicial) + this.aportesTotal); },
 
     
     
     
 
     gananciasAcumuladas() {
-      return m(this.cierres.reduce((s, c) => s + n(c.ganancia), 0) + this.gananciaNetaPeriodo);
+      return m(this.cierresStore.cierres.reduce((s, c) => s + n(c.ganancia), 0) + this.cierresStore.gananciaNetaPeriodo);
     },
 
-    gananciaDisponible() { return m(this.gananciasAcumuladas - this.retirosGananciaTotal); },
+    gananciaDisponible() { return m(this.capitalStore.gananciasAcumuladas - this.capitalStore.retirosGananciaTotal); },
 
     movPatrimonio() {
       const movs = [
-        ...this.capital.map(x => ({ id: x.id, tipo: 'Aporte', fecha: x.fecha, monto: x.monto, nota: x.nota })),
-        ...this.retiros.map(x => ({
+        ...this.capitalStore.capital.map(x => ({ id: x.id, tipo: 'Aporte', fecha: x.fecha, monto: x.monto, nota: x.nota })),
+        ...this.capitalStore.retiros.map(x => ({
           id: x.id,
           tipo: x.tipoRetiro === 'capital' ? 'Retiro (capital)' : 'Retiro (ganancia)',
           fecha: x.fecha, monto: x.monto, nota: x.concepto
@@ -2072,39 +2063,39 @@ export default {
     },
 
     cierresOrdenados() {
-      return this.cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre));
+      return this.cierresStore.cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre));
     },
 
-    sociosActivos() { return this.socios.filter(s => s.activo !== false); },
-    aportesSinSocio() { return this.capital.filter(x => !x.socioId); },
+    sociosActivos() { return this.capitalStore.socios.filter(s => s.activo !== false); },
+    aportesSinSocio() { return this.capitalStore.capital.filter(x => !x.socioId); },
     aportesSinSocioTotal() { return m(this.aportesSinSocio.reduce((s, x) => s + n(x.monto), 0)); },
-    sumaPorcentajes() { return m(this.sociosActivos.reduce((s, x) => s + n(x.porcentaje), 0)); },
-    totalDistribuido() { return m(this.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
-    distribucionesOrdenadas() { return this.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
+    sumaPorcentajes() { return m(this.capitalStore.sociosActivos.reduce((s, x) => s + n(x.porcentaje), 0)); },
+    totalDistribuido() { return m(this.capitalStore.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
+    distribucionesOrdenadas() { return this.capitalStore.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
 
     
     recomendaciones() {
       const sig = [
-        this.ventas.length, this.compras.length, this.ajustes.length,
-        this.lotes.length, this.gastos.length, this.movCaja.length,
-        this.cierres.length,
-        this.productos.length, this.saldoCaja, this.gananciaNetaPeriodo,
-        JSON.stringify(this.cfg.anomaliasDescartadas || []),
-        this.cfg.umbralDescuentoPct, this.cfg.umbralDiasCierre
+        this.ventasStore.ventas.length, this.comprasStore.compras.length, this.ajustesStore.ajustes.length,
+        this.lotesStore.lotes.length, this.gastosStore.gastos.length, this.cajaStore.movCaja.length,
+        this.cierresStore.cierres.length,
+        this.productosStore.productos.length, this.saldoCaja, this.cierresStore.gananciaNetaPeriodo,
+        JSON.stringify(this.configStore.cfg.anomaliasDescartadas || []),
+        this.configStore.cfg.umbralDescuentoPct, this.configStore.cfg.umbralDiasCierre
       ].join('|');
       const cached = this._recCache;
       if (cached && cached.sig === sig) return cached.data;
 
       try {
         const list = generarRecomendaciones({
-          ventas: this.ventas, compras: this.compras, gastos: this.gastos,
-          ajustes: this.ajustes, productos: this.productos, lotes: this.lotes,
-          cierres: this.cierres, movCaja: this.movCaja,
+          ventas: this.ventasStore.ventas, compras: this.comprasStore.compras, gastos: this.gastosStore.gastos,
+          ajustes: this.ajustesStore.ajustes, productos: this.productosStore.productos, lotes: this.lotesStore.lotes,
+          cierres: this.cierresStore.cierres, movCaja: this.cajaStore.movCaja,
           saldoCaja: this.saldoCaja, cfg: this.cfg,
           formatMoney: fmt, formatNum: fmtCant,
           stockDe: (pid) => this.stock(pid)
         });
-        const descartadas = this.cfg.anomaliasDescartadas || [];
+        const descartadas = this.configStore.cfg.anomaliasDescartadas || [];
         const filtradas = list.filter(r => !descartadas.includes(r.clave));
         const result = filtradas.slice(0, 8);
         this._recCache = { sig, data: result };
@@ -2132,7 +2123,7 @@ export default {
     badgeMap() {
       const map = {};
       const sm = this.stockMap;
-      for (const p of this.productos) {
+      for (const p of this.productosStore.productos) {
         const s = sm[p.id] || 0;
         let b;
         if (p.archivado) b = 'arch';
@@ -2161,13 +2152,13 @@ export default {
     },
 
     lotesDeProducto(pid) {
-      return this.lotes
+      return this.lotesStore.lotes
         .filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
     },
 
     valorLotesProducto(pid) {
-      return m(this.lotesDeProducto(pid).reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
+      return m(this.lotesStore.lotesDeProducto(pid).reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
     },
 
     async conWatchdog(nombre, promesa, timeoutMs = 15000) {
@@ -2204,7 +2195,7 @@ export default {
     },
 
     onTouchStart(e) {
-      const hayModal = this.ajustesAbierto || this.masAbierto || this.cobroModal.activo
+      const hayModal = this.ajustesStore.ajustesAbierto || this.masAbierto || this.cobroModal.activo
         || this.confirm.activo || this.prompt.activo
         || this.retiroAbierto || this.aporteAbierto
         || this.shareSheetAbierto;
@@ -2304,7 +2295,7 @@ export default {
     },
 
     aplicarEscalaFont() {
-      const val = Number(this.cfg.fontScale) || 1;
+      const val = Number(this.configStore.cfg.fontScale) || 1;
       try {
         document.documentElement.style.setProperty('--font-scale', String(val));
       } catch (e) {}
@@ -2312,17 +2303,17 @@ export default {
 
     cambiarEscalaFont(delta) {
       const opciones = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2];
-      let idx = opciones.indexOf(Number(this.cfg.fontScale));
+      let idx = opciones.indexOf(Number(this.configStore.cfg.fontScale));
       if (idx < 0) {
         // Buscar la más cercana
         idx = opciones.reduce((best, v, i) =>
-          Math.abs(v - Number(this.cfg.fontScale)) < Math.abs(opciones[best] - Number(this.cfg.fontScale)) ? i : best
+          Math.abs(v - Number(this.configStore.cfg.fontScale)) < Math.abs(opciones[best] - Number(this.configStore.cfg.fontScale)) ? i : best
         , 0);
       }
       idx += delta;
       if (idx < 0) idx = 0;
       if (idx >= opciones.length) idx = opciones.length - 1;
-      this.cfg.fontScale = opciones[idx];
+      this.configStore.cfg.fontScale = opciones[idx];
       this.aplicarEscalaFont();
       this.guardarCfg();
     },
@@ -2330,12 +2321,12 @@ export default {
     // ===== AVISO DE CONFIGURACION INICIAL =====
     abrirAjustesDesdeAviso() {
       this.mostrarAvisoTienda = false;
-      this.ajustesAbierto = true;
+      this.ajustesStore.ajustesAbierto = true;
     },
 
     cerrarAvisoTienda() {
       this.mostrarAvisoTienda = false;
-      this.cfg.avisoTiendaDescartado = true;
+      this.configStore.cfg.avisoTiendaDescartado = true;
       this.guardarCfg();
     },
 
@@ -2349,7 +2340,7 @@ export default {
 
 
     _actualizarScrollLock() {
-      const hayModal = this.ajustesAbierto || this.masAbierto
+      const hayModal = this.ajustesStore.ajustesAbierto || this.masAbierto
         || this.cobroModal.activo || this.confirm.activo
         || this.prompt.activo || this.retiroAbierto
         || this.aporteAbierto;
@@ -2374,8 +2365,8 @@ export default {
     },
 
     toggleTema() {
-      this.cfg.tema = this.configStore.tema === 'dark' ? 'light' : 'dark';
-      try { document.documentElement.setAttribute('data-theme', this.cfg.tema); } catch (e) {}
+      this.configStore.cfg.tema = this.configStore.tema === 'dark' ? 'light' : 'dark';
+      try { document.documentElement.setAttribute('data-theme', this.configStore.cfg.tema); } catch (e) {}
       this.guardarCfg();
       if (this.sec === 'dashboard') this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
     },
@@ -2424,16 +2415,16 @@ export default {
 
     
     descartarAnomalia(clave) {
-      if (!this.cfg.anomaliasDescartadas) this.cfg.anomaliasDescartadas = [];
-      if (!this.cfg.anomaliasDescartadas.includes(clave)) {
-        this.cfg.anomaliasDescartadas.push(clave);
+      if (!this.configStore.cfg.anomaliasDescartadas) this.configStore.cfg.anomaliasDescartadas = [];
+      if (!this.configStore.cfg.anomaliasDescartadas.includes(clave)) {
+        this.configStore.cfg.anomaliasDescartadas.push(clave);
         this.guardarCfg();
         this.toastMsg('Anomalia descartada');
       }
     },
 
     restaurarAnomalias() {
-      this.cfg.anomaliasDescartadas = [];
+      this.configStore.cfg.anomaliasDescartadas = [];
       this.guardarCfg();
       this.toastMsg('Anomalias restauradas');
     },
@@ -2453,15 +2444,15 @@ export default {
     // ===== HISTORIAL PAGINADO POR PERIODOS =====
     agruparHistorial(items, keyFecha = 'fecha') {
       const sig = items.length + '|' + (items[0]?.id || '') + '|' + (items[items.length - 1]?.id || '')
-        + '|' + this.cfg.periodoInicio + '|' + this.cierres.length + '|' + keyFecha;
+        + '|' + this.configStore.cfg.periodoInicio + '|' + this.cierresStore.cierres.length + '|' + keyFecha;
       if (this._agrupCache && this._agrupCache.sig === sig) return this._agrupCache.data;
 
-      const cierresProc = this.cierres.map(c => ({
+      const cierresProc = this.cierresStore.cierres.map(c => ({
         cierre: c,
         ci: new Date(c.periodoInicio || c.fechaCierre).getTime(),
         cf: new Date(c.periodoFin || c.fechaCierre).getTime()
       }));
-      const ini = new Date(this.cfg.periodoInicio).getTime();
+      const ini = new Date(this.configStore.cfg.periodoInicio).getTime();
       const actual = [];
       const cerradosMap = {};
       const cerrados = [];
@@ -2568,13 +2559,13 @@ export default {
     // Usar ventasStore.agregarCarrito(p) directamente
       const s = this.stock(p.id);
       if (s <= 0) return this.toastMsg('Sin stock', TOAST.BAD);
-      const ex = this.carrito.find(i => i.productoId === p.id);
+      const ex = this.ventasStore.carrito.find(i => i.productoId === p.id);
       if (ex) {
         if (n(ex.cant) < s) ex.cant = String(n(ex.cant) + 1);
         else return this.toastMsg('Stock máximo', TOAST.WARN);
       } else {
         const precioInicial = this.precioParaCantidad(p.id, 1);
-        this.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(precioInicial), cant: '1' });
+        this.ventasStore.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(precioInicial), cant: '1' });
       }
       this.busqVenta = '';
       this.focusVenta = false;
@@ -2607,12 +2598,12 @@ export default {
     },
 
     tieneEscalones(pid) {
-      const p = this.productos.find(x => x.id === pid);
+      const p = this.productosStore.productos.find(x => x.id === pid);
       return !!(p && p.preciosEscalonados && p.preciosEscalonados.length);
     },
 
     esPrecioEscalon(it) {
-      const p = this.productos.find(x => x.id === it.productoId);
+      const p = this.productosStore.productos.find(x => x.id === it.productoId);
       if (!p || !p.preciosEscalonados || !p.preciosEscalonados.length) return false;
       const base = n(p.precio);
       const actual = n(it.precio);
@@ -2620,7 +2611,7 @@ export default {
     },
 
     recalcularPrecio(it) {
-      const prod = this.productos.find(x => x.id === it.productoId);
+      const prod = this.productosStore.productos.find(x => x.id === it.productoId);
       if (!prod || !prod.preciosEscalonados || !prod.preciosEscalonados.length) return;
       const nuevo = this.precioParaCantidad(it.productoId, n(it.cant));
       if (n(it.precio) !== nuevo) {
@@ -2650,7 +2641,7 @@ export default {
 
     // Formato de stock usando empaques
     formatStock(prodId, cant) {
-      const p = this.productos.find(x => x.id === prodId);
+      const p = this.productosStore.productos.find(x => x.id === prodId);
       const total = n(cant);
       // Sin empaques: mostrar la cantidad tal cual (respeta fracciones)
       if (!p || !p.empaques || !p.empaques.length) return fmtCant(total);
@@ -2676,7 +2667,7 @@ export default {
     },
 
     precioParaCantidad(prodId, cant) {
-      const p = this.productos.find(x => x.id === prodId);
+      const p = this.productosStore.productos.find(x => x.id === prodId);
       if (!p) return 0;
       const escalones = (p.preciosEscalonados || []).slice().sort((a, b) => a.min - b.min);
       let precio = n(p.precio);
@@ -2688,13 +2679,13 @@ export default {
     },
 
     iniciarCobro() {
-      const inv = this.carrito.filter(it => n(it.cant) <= 0);
+      const inv = this.ventasStore.carrito.filter(it => n(it.cant) <= 0);
       if (inv.length) return this.toastMsg('Todas las cantidades deben ser > 0', TOAST.BAD);
 
       // Detectar ventas con perdida
       const conPerdida = [];
-      for (const it of this.carrito) {
-        const f = this.calcFIFO(it.productoId, n(it.cant));
+      for (const it of this.ventasStore.carrito) {
+        const f = this.lotesStore.calcFIFO(it.productoId, n(it.cant));
         if (f.error) continue;
         const ingreso = n(it.precio) * n(it.cant);
         if (ingreso < f.costoTotal - 0.01) {
@@ -2738,9 +2729,9 @@ export default {
       this.procesandoVenta = true;
       try {
         const items = []; let tot = 0, gan = 0, todos = [];
-        for (const it of this.carrito) {
+        for (const it of this.ventasStore.carrito) {
           const c = n(it.cant), pr = n(it.precio);
-          const f = this.calcFIFO(it.productoId, c);
+          const f = this.lotesStore.calcFIFO(it.productoId, c);
           if (f.error) throw new Error(f.error + ' en ' + it.nombre);
           const sub = pr * c;
           items.push({
@@ -2758,7 +2749,7 @@ export default {
           await P(db.ventas, venta);
           const lotesActualizados = [];
           for (const u of todos) {
-            const l = this.lotes.find(x => x.id === u.loteId);
+            const l = this.lotesStore.lotes.find(x => x.id === u.loteId);
             if (l) {
               l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
               lotesActualizados.push(l);
@@ -2773,7 +2764,7 @@ export default {
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
-        this.carrito = [];
+        this.ventasStore.carrito = [];
         localStorage.removeItem('carritoPro');
         this.cobroModal.activo = false;
         this.procesandoVenta = false;
@@ -2795,7 +2786,7 @@ export default {
     },
 
     anularProductoEnVenta(ventaId, itemIndex) {
-      const v = this.ventas.find(x => x.id === ventaId);
+      const v = this.ventasStore.ventas.find(x => x.id === ventaId);
       if (!v || v.anulada) return;
       const item = v.items[itemIndex];
       if (!item) return;
@@ -2823,7 +2814,7 @@ export default {
                 const lotesActualizados = [];
                 if (item.lotesUsados) {
                   for (const u of item.lotesUsados) {
-                    const l = this.lotes.find(x => x.id === u.loteId);
+                    const l = this.lotesStore.lotes.find(x => x.id === u.loteId);
                     if (l) {
                       l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
                       lotesActualizados.push(l);
@@ -2843,7 +2834,7 @@ export default {
     },
 
     // Usar ventasStore.anularVenta(id) directamente
-      const v = this.ventas.find(x => x.id === id);
+      const v = this.ventasStore.ventas.find(x => x.id === id);
       if (!v) return;
       this.pedirPin(() => {
         this.confirm = {
@@ -2857,7 +2848,7 @@ export default {
                 for (const it of v.items) {
                   if (!it.lotesUsados) continue;
                   for (const u of it.lotesUsados) {
-                    const l = this.lotes.find(x => x.id === u.loteId);
+                    const l = this.lotesStore.lotes.find(x => x.id === u.loteId);
                     if (l) {
                       l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
                       lotesActualizados.push(l);
@@ -2879,7 +2870,7 @@ export default {
     // ===== ALERTAS DE PRODUCTOS AGOTADOS =====
     async chequearAgotados() {
       try {
-        const avisados = new Set(this.cfg.productosAvisados || []);
+        const avisados = new Set(this.configStore.cfg.productosAvisados || []);
         const nuevosAgotados = [];
         const recuperados = [];
 
@@ -2899,7 +2890,7 @@ export default {
         if (nuevosAgotados.length === 0 && recuperados.length === 0) return;
 
         // Guardar estado
-        this.cfg.productosAvisados = Array.from(avisados);
+        this.configStore.cfg.productosAvisados = Array.from(avisados);
         await this.guardarCfg();
 
         // Notificar cada agotado nuevo (aislado para no cortar el resto)
@@ -2940,7 +2931,7 @@ export default {
       // 4. Aviso al bot de Telegram (timeout de 8s)
       try {
         const token = this.tgTokenActual();
-        const chatId = this.cfg.tgChatId;
+        const chatId = this.configStore.cfg.tgChatId;
         if (token && chatId) {
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), 8000);
@@ -2975,7 +2966,7 @@ export default {
 
     // Empaques del producto actual en compra
     empaquesCompraActual() {
-      const p = this.productos.find(x => x.id === this.compraForm.productoId);
+      const p = this.productosStore.productos.find(x => x.id === this.compraForm.productoId);
       return (p && p.empaques) || [];
     },
 
@@ -3000,12 +2991,12 @@ export default {
     },
 
     loteSinVentas(cid) {
-      const l = this.lotes.find(x => x.compraId === cid);
+      const l = this.lotesStore.lotes.find(x => x.compraId === cid);
       return l ? n(l.cantidadVendida) === 0 : true;
     },
 
     editarCompra(id) {
-      const c = this.compras.find(x => x.id === id);
+      const c = this.comprasStore.compras.find(x => x.id === id);
       if (!c || !this.loteSinVentas(id)) return;
       this.compraForm = { editId: id, productoId: c.productoId, nombre: c.productoNombre, cantidad: String(c.cantidad), costo: String(c.costo), unidad: c.unidad || '' };
       window.scrollTo(0, 0);
@@ -3013,12 +3004,12 @@ export default {
 
     eliminarCompra(id) {
       if (!this.loteSinVentas(id)) return;
-      const c = this.compras.find(x => x.id === id);
+      const c = this.comprasStore.compras.find(x => x.id === id);
       this.confirm = {
         activo: true, titulo: 'Eliminar compra',
         msg: '¿Eliminar compra de ' + c.productoNombre + '?',
         onOk: async () => {
-          const l = this.lotes.find(x => x.compraId === id);
+          const l = this.lotesStore.lotes.find(x => x.compraId === id);
           await db.transaction('rw', db.compras, db.lotes, async () => {
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
@@ -3045,9 +3036,9 @@ export default {
       const ejecutar = async () => {
         try {
           if (f.editId) {
-            const l = this.lotes.find(x => x.compraId === f.editId);
+            const l = this.lotesStore.lotes.find(x => x.compraId === f.editId);
             if (l && n(l.cantidadVendida) > 0) return this.toastMsg('Lote con ventas: no editable', TOAST.BAD);
-            const c = this.compras.find(x => x.id === f.editId);
+            const c = this.comprasStore.compras.find(x => x.id === f.editId);
             await db.transaction('rw', db.compras, db.lotes, async () => {
               await P(db.compras, Object.assign({}, c, {
                 productoId: f.productoId, productoNombre: f.nombre,
@@ -3078,8 +3069,8 @@ export default {
           }
           await this.recargar(['compras', 'lotes']);
           const compraGuardada = f.editId
-            ? this.compras.find(x => x.id === f.editId)
-            : this.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
+            ? this.comprasStore.compras.find(x => x.id === f.editId)
+            : this.comprasStore.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
           
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
@@ -3098,7 +3089,7 @@ export default {
 
     // ===== PRODUCTOS =====
     resetProd() {
-      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [], nota: '' };
+      this.prodForm = { editId: '', nombre: '', precio: '', stockMin: String(this.configStore.cfg.stockMinDefault || 5), preciosEscalonados: [], empaques: [], nota: '' };
     },
 
     agregarEscalon() {
@@ -3126,7 +3117,7 @@ export default {
       const min = n(p.stockMin);
       if (!nombre) return this.toastMsg('Nombre obligatorio', TOAST.BAD);
       if (precio <= 0) return this.toastMsg('Precio debe ser > 0', TOAST.BAD);
-      const dup = this.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
+      const dup = this.productosStore.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
       if (dup) return this.toastMsg('Ya existe ese nombre', TOAST.BAD);
 
       // Validar y normalizar escalones
@@ -3141,7 +3132,7 @@ export default {
       const nota = (p.nota || '').trim();
 
       if (p.editId) {
-        const o = this.productos.find(x => x.id === p.editId);
+        const o = this.productosStore.productos.find(x => x.id === p.editId);
         await P(db.productos, { ...o, nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques, nota });
         this.toastMsg('Producto actualizado');
       } else {
@@ -3153,7 +3144,7 @@ export default {
     },
 
     editarProducto(id) {
-      const p = this.productos.find(x => x.id === id);
+      const p = this.productosStore.productos.find(x => x.id === id);
       if (!p) return;
       this.prodForm = {
         editId: id, nombre: p.nombre, precio: String(p.precio),
@@ -3166,7 +3157,7 @@ export default {
     },
 
     archivarProducto(id) {
-      const p = this.productos.find(x => x.id === id);
+      const p = this.productosStore.productos.find(x => x.id === id);
       if (this.stock(id) > 0) return this.toastMsg('No archivar con stock > 0', TOAST.BAD);
       this.confirm = {
         activo: true, titulo: 'Archivar producto',
@@ -3180,7 +3171,7 @@ export default {
     },
 
     async restaurarProducto(id) {
-      const p = this.productos.find(x => x.id === id);
+      const p = this.productosStore.productos.find(x => x.id === id);
       await P(db.productos, { ...p, archivado: false });
       await this.recargar(['productos']);
       this.toastMsg('Restaurado');
@@ -3193,17 +3184,17 @@ export default {
       if (!f.productoId) return this.toastMsg('Selecciona producto', TOAST.BAD);
       if (cant === 0) return this.toastMsg('Cantidad no puede ser 0', TOAST.BAD);
       if (!f.motivo) return this.toastMsg('Selecciona motivo', TOAST.BAD);
-      const prod = this.productos.find(p => p.id === f.productoId);
+      const prod = this.productosStore.productos.find(p => p.id === f.productoId);
       if (cant < 0 && Math.abs(cant) > this.stock(f.productoId)) return this.toastMsg('Solo hay ' + this.stock(f.productoId), TOAST.BAD);
       if (cant < 0) {
-        const res = this.calcFIFO(f.productoId, Math.abs(cant));
+        const res = this.lotesStore.calcFIFO(f.productoId, Math.abs(cant));
         if (res.error) return this.toastMsg(res.error, TOAST.BAD);
         const aj = { id: genId('a'), fecha: new Date().toISOString(), productoId: f.productoId, productoNombre: prod.nombre, cantidad: cant, motivo: f.motivo, costoPerdida: res.costoTotal, lotesUsados: res.usados };
         await db.transaction('rw', db.ajustes, db.lotes, async () => {
           await P(db.ajustes, aj);
           const lotesActualizados = [];
           for (const u of res.usados) {
-            const l = this.lotes.find(x => x.id === u.loteId);
+            const l = this.lotesStore.lotes.find(x => x.id === u.loteId);
             if (l) {
               l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
               lotesActualizados.push(l);
@@ -3212,7 +3203,7 @@ export default {
           if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
         });
         await this.recargar(['ajustes', 'lotes']);
-        const mermaGuardada = this.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
+        const mermaGuardada = this.ajustesStore.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
         
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
       } else {
@@ -3242,7 +3233,7 @@ export default {
       const tipo = this.retiroForm.tipo || 'ganancia';
       if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
       if (!c) return this.toastMsg('Concepto obligatorio', TOAST.BAD);
-      const max = tipo === 'capital' ? this.capitalDisponible : this.gananciaDisponible;
+      const max = tipo === 'capital' ? this.capitalStore.capitalDisponible : this.capitalStore.gananciaDisponible;
       if (monto > max + 0.01) return this.toastMsg('Máximo ' + fmt(max), TOAST.BAD);
       this.pedirPin(async () => {
         await P(db.retiros, { id: genId('r'), fecha: new Date().toISOString(), monto, concepto: c, tipoRetiro: tipo });
@@ -3258,7 +3249,7 @@ export default {
       if (monto <= 0) return this.toastMsg('Monto inválido', TOAST.BAD);
       await P(db.capital, { id: genId('k'), fecha: new Date().toISOString(), monto, nota: this.aporteForm.nota || '', socioId: this.aporteForm.socioId || null });
       await this.recargar(['capital']);
-      const kGuardado = this.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
+      const kGuardado = this.capitalStore.capital.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
       
       this.aporteForm = { monto: '', nota: '', socioId: '' };
       this.aporteAbierto = false;
@@ -3275,12 +3266,12 @@ export default {
             if (this._cerrando) return;
             this._cerrando = true;
             try {
-            const i = new Date(this.cfg.periodoInicio);
+            const i = new Date(this.configStore.cfg.periodoInicio);
             const f = new Date();
-            const ventasRango = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-            const comprasRango = this.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
-            const gastosRango = this.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
-            const mermasRango = this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
+            const ventasRango = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+            const comprasRango = this.comprasStore.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
+            const gastosRango = this.gastosStore.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
+            const mermasRango = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
             const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
             const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
@@ -3308,10 +3299,10 @@ export default {
               numMermas: mermasRango.length,
               cajaAlCierre: this.saldoCaja,
               inventarioAlCierre: this.valorInventario,
-              capitalAlCierre: this.capitalTotal,
+              capitalAlCierre: this.capitalStore.capitalTotal,
               cerrado: true
             };
-            this.cfg.periodoInicio = f.toISOString();
+            this.configStore.cfg.periodoInicio = f.toISOString();
             await db.transaction('rw', db.cierres, async () => {
               await P(db.cierres, c);
 
@@ -3391,9 +3382,9 @@ export default {
     },
 
     setPeriodoActual() {
-      this.rep.fechaInicio = this.cfg.periodoInicio.split('T')[0];
+      this.rep.fechaInicio = this.configStore.cfg.periodoInicio.split('T')[0];
       this.rep.fechaFin = new Date().toISOString().split('T')[0];
-      this.rep.isoInicio = this.cfg.periodoInicio;
+      this.rep.isoInicio = this.configStore.cfg.periodoInicio;
       this.rep.isoFin = new Date().toISOString();
       this.rep.periodoActivo = 'actual';
     },
@@ -3405,11 +3396,11 @@ export default {
       if (!this.rep.isoFin) f.setHours(23, 59, 59, 999);
       if (i > f) return this.toastMsg('Fecha inicio > fin', TOAST.BAD);
 
-      const vp = this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-      const cp = this.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
-      const gp = this.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
+      const vp = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+      const cp = this.comprasStore.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
+      const gp = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
-      const gastosTotal = m(this.gastos
+      const gastosTotal = m(this.gastosStore.gastos
         .filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
         .reduce((s, g) => s + n(g.monto), 0));
 
@@ -3446,14 +3437,14 @@ export default {
 
       // Stock actual por (producto, costo)
       const stockPorProdCosto = {};
-      this.lotes.forEach(l => {
+      this.lotesStore.lotes.forEach(l => {
         const key = l.productoId + '|' + n(l.costo);
         const disp = n(l.cantidadInicial) - n(l.cantidadVendida);
         if (!stockPorProdCosto[key]) stockPorProdCosto[key] = 0;
         stockPorProdCosto[key] += disp;
       });
 
-      const cuadre = this.productos.filter(p => !p.archivado || this.stock(p.id) > 0).map(p => {
+      const cuadre = this.productosStore.productos.filter(p => !p.archivado || this.stock(p.id) > 0).map(p => {
         const prodId = p.id;
         const claves = new Set();
         Object.keys(ventasPorClave).forEach(k => {
@@ -3554,7 +3545,7 @@ export default {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text(this.cfg.nombre || 'Tienda Pro', 14, 14);
+      doc.text(this.configStore.cfg.nombre || 'Tienda Pro', 14, 14);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text('Cuadre por periodo', 14, 21);
@@ -3611,10 +3602,10 @@ export default {
           ['Caja', fmt(this.saldoCaja)],
           ['Valor del inventario', fmt(this.valorInventario)],
           ['ACTIVOS TOTALES', fmt(this.saldoCaja + this.valorInventario)],
-          ['Capital', fmt(this.capitalTotal)],
-          ['Ganancias acumuladas', fmt(this.gananciasAcumuladas)],
+          ['Capital', fmt(this.capitalStore.capitalTotal)],
+          ['Ganancias acumuladas', fmt(this.capitalStore.gananciasAcumuladas)],
           ['PATRIMONIO', fmt(this.patrimonioTotal)],
-          ['Disponible para retiro', fmt(this.gananciaDisponible)]
+          ['Disponible para retiro', fmt(this.capitalStore.gananciaDisponible)]
         ],
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
@@ -3632,14 +3623,14 @@ export default {
       });
 
       // --- Reparto entre socios (abajo a la izquierda) ---
-      if (this.sociosActivos.length > 0) {
+      if (this.capitalStore.sociosActivos.length > 0) {
         const y = doc.lastAutoTable.finalY + 8;
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 41, 59);
         doc.text('Reparto entre socios', 14, y);
 
-        const socioRows = this.sociosActivos.map(sc => [
+        const socioRows = this.capitalStore.sociosActivos.map(sc => [
           sc.nombre,
           n(sc.porcentaje).toFixed(2) + '%',
           fmt(r.neta * n(sc.porcentaje) / 100)
@@ -3675,7 +3666,7 @@ export default {
       doc.text('Detalle por producto', 14, 11);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text((this.cfg.nombre || '') + '  ·  ' + r._fechaI + ' al ' + r._fechaF, PW - 14, 11, { align: 'right' });
+      doc.text((this.configStore.cfg.nombre || '') + '  ·  ' + r._fechaI + ' al ' + r._fechaF, PW - 14, 11, { align: 'right' });
 
       const PFILL = [235, 244, 255];
       const TFILL = [229, 231, 235];
@@ -3750,7 +3741,7 @@ export default {
         doc.setPage(p);
         doc.setFontSize(7);
         doc.setTextColor(150);
-        doc.text((this.cfg.nombre || 'Tienda Pro') + '  ·  Generado ' + generadoTxt, 10, PH - 6);
+        doc.text((this.configStore.cfg.nombre || 'Tienda Pro') + '  ·  Generado ' + generadoTxt, 10, PH - 6);
         doc.text('Pagina ' + p + ' de ' + totalPages, PW - 10, PH - 6, { align: 'right' });
       }
 
@@ -3760,7 +3751,7 @@ export default {
 
 // ===== SOCIOS =====
     aportesDeSocio(sid) {
-      return this.capital.filter(x => x.socioId === sid);
+      return this.capitalStore.capital.filter(x => x.socioId === sid);
     },
     totalAportesSocio(sid) {
       return m(this.aportesDeSocio(sid).reduce((s, x) => s + n(x.monto), 0));
@@ -3770,7 +3761,7 @@ export default {
       if (!sid) return this.toastMsg('Elige un socio primero', TOAST.BAD);
       const sinAsignar = this.aportesSinSocio;
       if (!sinAsignar.length) return this.toastMsg('No hay aportes sin asignar', TOAST.WARN);
-      const socio = this.socios.find(x => x.id === sid);
+      const socio = this.capitalStore.socios.find(x => x.id === sid);
       if (!socio) return;
       const total = this.aportesSinSocioTotal;
       this.confirm = {
@@ -3789,7 +3780,7 @@ export default {
       };
     },
     totalPorSocio(sid) {
-      return m(this.distribuciones.filter(d => d.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
+      return m(this.capitalStore.distribuciones.filter(d => d.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
     },
     resetSocio() {
       this.socioForm = { editId: '', nombre: '', porcentaje: '', aporte: '' };
@@ -3802,10 +3793,10 @@ export default {
       if (!nombre) return this.toastMsg('Nombre obligatorio', TOAST.BAD);
       if (pct < 0 || pct > 100) return this.toastMsg('Porcentaje entre 0 y 100', TOAST.BAD);
       if (aporte < 0) return this.toastMsg('Aporte invalido', TOAST.BAD);
-      const dup = this.socios.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== f.editId);
+      const dup = this.capitalStore.socios.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== f.editId);
       if (dup) return this.toastMsg('Ya existe ese socio', TOAST.BAD);
       if (f.editId) {
-        const o = this.socios.find(x => x.id === f.editId);
+        const o = this.capitalStore.socios.find(x => x.id === f.editId);
         await P(db.socios, { ...o, nombre, porcentaje: pct, aporte });
         this.toastMsg('Socio actualizado');
       } else {
@@ -3816,13 +3807,13 @@ export default {
       await this.recargar(['socios']);
     },
     editarSocio(id) {
-      const s = this.socios.find(x => x.id === id);
+      const s = this.capitalStore.socios.find(x => x.id === id);
       if (!s) return;
       this.socioForm = { editId: id, nombre: s.nombre, porcentaje: String(s.porcentaje || ''), aporte: String(s.aporte || '') };
       window.scrollTo(0, 0);
     },
     eliminarSocio(id) {
-      const s = this.socios.find(x => x.id === id);
+      const s = this.capitalStore.socios.find(x => x.id === id);
       if (!s) return;
       this.confirm = {
         activo: true, titulo: 'Eliminar socio',
@@ -3838,12 +3829,12 @@ export default {
       const monto = n(this.repartoForm.monto);
       const concepto = (this.repartoForm.concepto || '').trim() || 'Reparto de ganancia';
       if (monto <= 0) return this.toastMsg('Monto invalido', TOAST.BAD);
-      if (!this.sociosActivos.length) return this.toastMsg('Sin socios activos', TOAST.BAD);
-      if (monto > this.gananciaDisponible + 0.01) return this.toastMsg('Maximo ' + fmt(this.gananciaDisponible), TOAST.BAD);
+      if (!this.capitalStore.sociosActivos.length) return this.toastMsg('Sin socios activos', TOAST.BAD);
+      if (monto > this.capitalStore.gananciaDisponible + 0.01) return this.toastMsg('Maximo ' + fmt(this.capitalStore.gananciaDisponible), TOAST.BAD);
       if (Math.abs(this.sumaPorcentajes - 100) > 0.01) return this.toastMsg('Los porcentajes deben sumar 100% (actual: ' + this.sumaPorcentajes + '%)', TOAST.BAD);
       this.pedirPin(async () => {
         try {
-          const dists = this.sociosActivos.map(s => ({
+          const dists = this.capitalStore.sociosActivos.map(s => ({
             id: genId('di'),
             fecha: new Date().toISOString(),
             socioId: s.id,
@@ -3969,13 +3960,13 @@ export default {
 
     async registrarTienda() {
       if (!this.puedoRegistrar) return;
-      if (!this.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
+      if (!this.configStore.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
       this.mtProcesando = true;
       try {
-        const r = await tgRegister(this.mtForm.nombre.toLowerCase().trim(), this.mtForm.password, this.cfg.tgChatId);
-        this.cfg.nombreTienda = r.nombre;
-        this.cfg.tiendaConfigurada = true;
-        this.cfg.tgAutoBackup = true;
+        const r = await tgRegister(this.mtForm.nombre.toLowerCase().trim(), this.mtForm.password, this.configStore.cfg.tgChatId);
+        this.configStore.cfg.nombreTienda = r.nombre;
+        this.configStore.cfg.tiendaConfigurada = true;
+        this.configStore.cfg.tgAutoBackup = true;
         await this.guardarCfg();
         this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
         this.mtCheck = { estado: 'idle', motivo: '', verificando: false };
@@ -3990,13 +3981,13 @@ export default {
 
     async loginTienda() {
       if (!this.mtForm.loginNombre || !this.mtForm.loginPassword) return;
-      if (!this.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
+      if (!this.configStore.cfg.tgChatId) return this.toastMsg('Primero conecta el bot con /start', TOAST.BAD);
       this.mtProcesando = true;
       try {
-        const r = await tgLogin(this.mtForm.loginNombre.toLowerCase().trim(), this.mtForm.loginPassword, this.cfg.tgChatId);
-        this.cfg.nombreTienda = r.nombre;
-        this.cfg.tiendaConfigurada = true;
-        this.cfg.tgAutoBackup = true;
+        const r = await tgLogin(this.mtForm.loginNombre.toLowerCase().trim(), this.mtForm.loginPassword, this.configStore.cfg.tgChatId);
+        this.configStore.cfg.nombreTienda = r.nombre;
+        this.configStore.cfg.tiendaConfigurada = true;
+        this.configStore.cfg.tgAutoBackup = true;
         await this.guardarCfg();
         this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
         this.toastMsg('Sesion iniciada');
@@ -4009,12 +4000,12 @@ export default {
     },
 
     async tgCargarEstadoTienda() {
-      if (!this.cfg.tgChatId) return;
+      if (!this.configStore.cfg.tgChatId) return;
       try {
-        const r = await tgStatus(this.cfg.tgChatId);
+        const r = await tgStatus(this.configStore.cfg.tgChatId);
         if (r.nombre) {
-          this.cfg.nombreTienda = r.nombre;
-          this.cfg.tiendaConfigurada = true;
+          this.configStore.cfg.nombreTienda = r.nombre;
+          this.configStore.cfg.tiendaConfigurada = true;
           await this.guardarCfg();
         }
       } catch (e) { /* silencioso */ }
@@ -4034,7 +4025,7 @@ export default {
           return true;
         }
         // Solo pedir si el usuario ya tiene datos (evita pedirlo en primera visita)
-        if (this.ventas.length + this.compras.length + this.productos.length < 3) {
+        if (this.ventasStore.ventas.length + this.comprasStore.compras.length + this.productosStore.productos.length < 3) {
           console.log('Poco contenido, se pedira persistencia mas tarde');
           return false;
         }
@@ -4139,12 +4130,12 @@ export default {
         try {
           const perm = await LocalNotifications.requestPermissions();
           if (perm.display === 'granted') {
-            this.cfg.notifActivo = true;
+            this.configStore.cfg.notifActivo = true;
             await this.guardarCfg();
             await this.enviarNotif('Tienda Pro', 'Notificaciones activadas');
             this.toastMsg('Notificaciones activadas');
           } else {
-            this.cfg.notifActivo = false;
+            this.configStore.cfg.notifActivo = false;
             await this.guardarCfg();
             this.toastMsg('Permiso denegado', TOAST.BAD);
           }
@@ -4160,7 +4151,7 @@ export default {
         return;
       }
       if (Notification.permission === 'granted') {
-        this.cfg.notifActivo = true;
+        this.configStore.cfg.notifActivo = true;
         await this.guardarCfg();
         this.toastMsg('Notificaciones activadas');
         return;
@@ -4168,7 +4159,7 @@ export default {
       try {
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
-          this.cfg.notifActivo = true;
+          this.configStore.cfg.notifActivo = true;
           await this.guardarCfg();
           this.enviarNotif('Tienda Pro', 'Notificaciones activadas');
           this.toastMsg('Notificaciones activadas');
@@ -4179,7 +4170,7 @@ export default {
     },
 
     async desactivarNotif() {
-      this.cfg.notifActivo = false;
+      this.configStore.cfg.notifActivo = false;
       await this.guardarCfg();
       this.toastMsg('Notificaciones desactivadas');
     },
@@ -4212,7 +4203,7 @@ export default {
     },
 
     async chequearNotificaciones() {
-      if (!this.cfg.notifActivo) return;
+      if (!this.configStore.cfg.notifActivo) return;
       if (!Capacitor.isNativePlatform()) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
       }
@@ -4222,24 +4213,24 @@ export default {
 
       // 1. Stock bajo
       const bajo = this.productosStore.productosAgotados.length + this.productosStore.productosBajoStock.length;
-      if (bajo > 0 && this.cfg.ultimaNotifStock !== hoy) {
+      if (bajo > 0 && this.configStore.cfg.ultimaNotifStock !== hoy) {
         this.enviarNotif('Stock bajo', bajo + ' producto(s) en alerta');
-        this.cfg.ultimaNotifStock = hoy;
+        this.configStore.cfg.ultimaNotifStock = hoy;
         cambio = true;
       }
 
       // 2. Hora de arqueo
-      if (this.cfg.horaArqueo) {
-        const partes = this.cfg.horaArqueo.split(':');
+      if (this.configStore.cfg.horaArqueo) {
+        const partes = this.configStore.cfg.horaArqueo.split(':');
         const hh = parseInt(partes[0]) || 0;
         const mm = parseInt(partes[1]) || 0;
         const horaArq = new Date();
         horaArq.setHours(hh, mm, 0, 0);
         if (ahora >= horaArq) {
-          const hayArqueoHoy = this.arqueos.some(a => a.fecha && a.fecha.split('T')[0] === hoy);
-          if (!hayArqueoHoy && this.cfg.ultimaNotifArqueo !== hoy) {
+          const hayArqueoHoy = this.cajaStore.arqueos.some(a => a.fecha && a.fecha.split('T')[0] === hoy);
+          if (!hayArqueoHoy && this.configStore.cfg.ultimaNotifArqueo !== hoy) {
             this.enviarNotif('Arqueo pendiente', 'No hay arqueo registrado hoy');
-            this.cfg.ultimaNotifArqueo = hoy;
+            this.configStore.cfg.ultimaNotifArqueo = hoy;
             cambio = true;
           }
         }
@@ -4247,25 +4238,25 @@ export default {
 
       // 3. Anomalias criticas
       const criticas = this.anomaliasCriticas;
-      if (criticas > 0 && this.cfg.ultimaNotifCriticas !== hoy) {
+      if (criticas > 0 && this.configStore.cfg.ultimaNotifCriticas !== hoy) {
         this.enviarNotif('Anomalias criticas', criticas + ' problema(s) urgente(s)');
-        this.cfg.ultimaNotifCriticas = hoy;
+        this.configStore.cfg.ultimaNotifCriticas = hoy;
         cambio = true;
       }
 
       // 4. Cierre pendiente
-      const ultimoCierre = this.cierres.length > 0 ? Math.max(...this.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.cfg.periodoInicio).getTime();
+      const ultimoCierre = this.cierresStore.cierres.length > 0 ? Math.max(...this.cierresStore.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.configStore.cfg.periodoInicio).getTime();
       const dias = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
-      if (dias >= n(this.cfg.umbralDiasCierre || 30) && this.cfg.ultimaNotifCierre !== hoy) {
+      if (dias >= n(this.configStore.cfg.umbralDiasCierre || 30) && this.configStore.cfg.ultimaNotifCierre !== hoy) {
         this.enviarNotif('Cierre pendiente', dias + ' dias sin cerrar periodo');
-        this.cfg.ultimaNotifCierre = hoy;
+        this.configStore.cfg.ultimaNotifCierre = hoy;
         cambio = true;
       }
 
       // 5. Auto-backup fallando repetidamente
-      if (this.cfg.tgAutoBackup && (this.cfg.tgFallosConsecutivos || 0) >= 3 && this.cfg.ultimaNotifBackupFail !== hoy) {
-        this.enviarNotif('⚠ Backup fallando', 'El backup automatico fallo ' + this.cfg.tgFallosConsecutivos + ' veces. Revisa Telegram.');
-        this.cfg.ultimaNotifBackupFail = hoy;
+      if (this.configStore.cfg.tgAutoBackup && (this.configStore.cfg.tgFallosConsecutivos || 0) >= 3 && this.configStore.cfg.ultimaNotifBackupFail !== hoy) {
+        this.enviarNotif('⚠ Backup fallando', 'El backup automatico fallo ' + this.configStore.cfg.tgFallosConsecutivos + ' veces. Revisa Telegram.');
+        this.configStore.cfg.ultimaNotifBackupFail = hoy;
         cambio = true;
       }
 
@@ -4316,7 +4307,7 @@ export default {
       if (monto <= 0) return this.toastMsg('Monto debe ser > 0', TOAST.BAD);
 
       if (f.editId) {
-        const o = this.gastos.find(x => x.id === f.editId);
+        const o = this.gastosStore.gastos.find(x => x.id === f.editId);
         if (!o) return;
         await db.transaction('rw', db.gastos, db.movCaja, async () => {
           let movId = o.movId || null;
@@ -4346,12 +4337,12 @@ export default {
       }
       this.resetGasto();
       await this.recargar(['gastos', 'movCaja']);
-      const gs = this.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
+      const gs = this.gastosStore.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
       
     },
 
     editarGasto(id) {
-      const g = this.gastos.find(x => x.id === id);
+      const g = this.gastosStore.gastos.find(x => x.id === id);
       if (!g) return;
       this.gastoForm = {
         editId: g.id,
@@ -4367,7 +4358,7 @@ export default {
     },
 
     eliminarGasto(id) {
-      const g = this.gastos.find(x => x.id === id);
+      const g = this.gastosStore.gastos.find(x => x.id === id);
       if (!g) return;
       this.confirm = {
         activo: true, titulo: 'Eliminar gasto',
@@ -4385,13 +4376,13 @@ export default {
 
     // ===== COMPARTIR EXISTENCIA (NUEVO) =====
     async compartirExistencia() {
-      const lineas = this.productos
+      const lineas = this.productosStore.productos
         .filter(p => !p.archivado)
         .map(p => p.nombre + ': ' + fmtCant(this.stock(p.id)));
 
       if (lineas.length === 0) return this.toastMsg('No hay productos', TOAST.WARN);
 
-      const texto = (this.cfg.nombre || 'Tienda Pro') + '\nExistencia al ' + fmtFecha(new Date().toISOString()) + '\n\n' + lineas.join('\n');
+      const texto = (this.configStore.cfg.nombre || 'Tienda Pro') + '\nExistencia al ' + fmtFecha(new Date().toISOString()) + '\n\n' + lineas.join('\n');
 
       if (navigator.share) {
         try {
@@ -4409,7 +4400,7 @@ export default {
 
     // ===== COMPARTIR PRECIOS =====
     generarTextoPrecios() {
-      const nombre = this.cfg.nombre || 'Tienda Pro';
+      const nombre = this.configStore.cfg.nombre || 'Tienda Pro';
       const fecha = fmtFecha(new Date().toISOString());
       const prods = this.prodsActivos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
       if (prods.length === 0) return null;
@@ -4507,7 +4498,7 @@ export default {
     exportar() {
       const d = buildData(this);
       this.descargar(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }), 'respaldo-tienda-' + new Date().toISOString().split('T')[0] + '.json');
-      this.cfg.ultimoExport = new Date().toISOString();
+      this.configStore.cfg.ultimoExport = new Date().toISOString();
       this.guardarCfg();
       this.toastMsg('Respaldo descargado');
     },
@@ -4560,8 +4551,8 @@ export default {
             { key: 'pasivos', label: 'Pasivos' }
           ];
           const actuales = {
-            productos: this.productos.length, lotes: this.lotes.length, ventas: this.ventas.length,
-            compras: this.compras.length, gastos: this.gastos.length, socios: this.socios.length};
+            productos: this.productosStore.productos.length, lotes: this.lotesStore.lotes.length, ventas: this.ventasStore.ventas.length,
+            compras: this.comprasStore.compras.length, gastos: this.gastosStore.gastos.length, socios: this.capitalStore.socios.length};
           const nuevos = {};
           campos.forEach(c => { nuevos[c.key] = (d[c.key] || []).length; });
 
@@ -4621,9 +4612,9 @@ export default {
 
           await this.importarData(d);
           this.importPreview = null;
-          this.ajustesAbierto = false;
+          this.ajustesStore.ajustesAbierto = false;
           this.toastMsg('Datos importados (puedes deshacer desde Ajustes)', TOAST.OK, 'Deshacer', () => {
-            this.ajustesAbierto = true;
+            this.ajustesStore.ajustesAbierto = true;
           });
         } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
       };
@@ -4752,7 +4743,7 @@ export default {
         msg: '¿Reemplazar los datos con el backup automático del ' + fmtFH(this.ultimoBackup.fecha) + '?',
         onOk: async () => {
           await this.importarData(this.ultimoBackup.value);
-          this.ajustesAbierto = false;
+          this.ajustesStore.ajustesAbierto = false;
           this.toastMsg('Backup restaurado');
           this.alertaPerdidaDatos = false;
         }
@@ -4815,12 +4806,12 @@ export default {
     // ===== TELEGRAM BACKUP =====
     tgTokenActual() {
       // Ya no hay token local. Todo pasa por el Worker (proxy).
-      return this.cfg.tgChatId ? 'proxy' : '';
+      return this.configStore.cfg.tgChatId ? 'proxy' : '';
     },
 
     
     async tgBackupAhora() {
-      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) {
+      if (!this.configStore.cfg.tiendaConfigurada || !this.configStore.cfg.nombreTienda) {
         return this.toastMsg('Configura un nombre de tienda antes de hacer backups', TOAST.BAD);
       }
       const data = buildData(this);
@@ -4834,7 +4825,7 @@ export default {
 
     async tgEnviarDatos(data, motivo, mostrarToast) {
       const token = this.tgTokenActual();
-      const chatId = this.cfg.tgChatId;
+      const chatId = this.configStore.cfg.tgChatId;
       if (!token || !chatId) throw new Error('Sin conexion a Telegram');
 
       this.tgCargando = true;
@@ -4845,7 +4836,7 @@ export default {
         const hash = await this.hashContenido(json);
 
         // 2. Si es auto y el hash no cambio, saltar
-        if (motivo === 'auto' && this.cfg.tgUltimoHash === hash) {
+        if (motivo === 'auto' && this.configStore.cfg.tgUltimoHash === hash) {
           this.tgProgreso = 'Sin cambios';
           return { ok: true, saltado: true };
         }
@@ -4865,10 +4856,10 @@ export default {
 
         // 6. Enviar a Telegram
         this.tgProgreso = 'Subiendo a Telegram...';
-        await tgSendDocument(chatId, this.cfg.nombreTienda, gz, 'Backup · ' + resumen);
+        await tgSendDocument(chatId, this.configStore.cfg.nombreTienda, gz, 'Backup · ' + resumen);
 
         // 7. Guardar en carpeta del teléfono (si esta configurada)
-        if (this.cfg.tgCarpetaActiva) {
+        if (this.configStore.cfg.tgCarpetaActiva) {
           this.tgProgreso = 'Guardando en carpeta...';
           const nombreLocal = 'tienda-backup-' + fecha.split('T')[0] + '.json.gz';
           const okCarpeta = await this.guardarEnCarpeta(nombreLocal, gz);
@@ -4878,8 +4869,8 @@ export default {
         }
 
         // 8. Actualizar cfg
-        this.cfg.tgUltimoBackup = fecha;
-        this.cfg.tgUltimoHash = hash;
+        this.configStore.cfg.tgUltimoBackup = fecha;
+        this.configStore.cfg.tgUltimoHash = hash;
         await this.guardarCfg();
 
         // 9. Rotación: borrar backups viejos si hay más de N
@@ -4903,12 +4894,12 @@ export default {
     async tgListar() {
       const token = this.tgTokenActual();
       if (!token) return;
-      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) {
+      if (!this.configStore.cfg.tiendaConfigurada || !this.configStore.cfg.nombreTienda) {
         return this.toastMsg('Configura un nombre de tienda primero', TOAST.WARN);
       }
       this.tgCargando = true;
       try {
-        this.tgBackups = await tgListBackups(this.cfg.tgChatId, this.cfg.nombreTienda);
+        this.tgBackups = await tgListBackups(this.configStore.cfg.tgChatId, this.configStore.cfg.nombreTienda);
         this.toastMsg(this.tgBackups.length + ' backup(s) encontrado(s)');
       } catch (e) {
         this.toastMsg('Error: ' + e.message, TOAST.BAD);
@@ -4958,7 +4949,7 @@ export default {
 
     async tgEliminar(bk) {
       const token = this.tgTokenActual();
-      const chatId = this.cfg.tgChatId;
+      const chatId = this.configStore.cfg.tgChatId;
       if (!token || !chatId) return;
       this.confirm = {
         activo: true,
@@ -4982,12 +4973,12 @@ export default {
         titulo: 'Desconectar Telegram',
         msg: 'Se borrara el token y el chat_id guardados. Los backups en Telegram no se tocan.',
         onOk: async () => {
-          this.cfg.tgToken = '';
-          this.cfg.tgChatId = '';
-          this.cfg.tgNombre = '';
-          this.cfg.tgAutoBackup = false;
-          this.cfg.nombreTienda = '';
-          this.cfg.tiendaConfigurada = false;
+          this.configStore.cfg.tgToken = '';
+          this.configStore.cfg.tgChatId = '';
+          this.configStore.cfg.tgNombre = '';
+          this.configStore.cfg.tgAutoBackup = false;
+          this.configStore.cfg.nombreTienda = '';
+          this.configStore.cfg.tiendaConfigurada = false;
           await this.guardarCfg();
           this.tgEstado = 'sin-config';
           this.tgBackups = [];
@@ -4999,19 +4990,19 @@ export default {
     async tgAutoDetectarChat() {
       const token = this.tgTokenActual();
       if (!token) return false;
-      if (this.cfg.tgChatId) return true;
+      if (this.configStore.cfg.tgChatId) return true;
       try {
         const updates = await tgGetUpdates();
         const chat = tgDetectarChatId(updates);
         if (chat) {
-          this.cfg.tgChatId = String(chat.chatId);
-          this.cfg.tgNombre = chat.nombre || chat.username || 'Usuario';
-          this.cfg.tgAutoBackup = true;
+          this.configStore.cfg.tgChatId = String(chat.chatId);
+          this.configStore.cfg.tgNombre = chat.nombre || chat.username || 'Usuario';
+          this.configStore.cfg.tgAutoBackup = true;
           await this.guardarCfg();
           this.tgEstado = 'conectado';
           try { await this.tgCargarEstadoTienda(); } catch (e) {}
           console.log('Telegram: chat auto-detectado', chat);
-          this.toastMsg('Telegram conectado: ' + this.cfg.tgNombre);
+          this.toastMsg('Telegram conectado: ' + this.configStore.cfg.tgNombre);
           return true;
         }
         this.tgEstado = 'esperando-start';
@@ -5027,26 +5018,26 @@ export default {
       // 1. Procesar cola pendiente primero
       try { await this.tgProcesarCola(); } catch (e) {}
       // 2. Auto-backup si esta activo
-      if (!this.cfg.tgAutoBackup) return;
-      if (!this.cfg.tgChatId) return;
-      if (!this.cfg.tiendaConfigurada || !this.cfg.nombreTienda) return;
-      const ult = this.cfg.tgUltimoBackup ? new Date(this.cfg.tgUltimoBackup).getTime() : 0;
+      if (!this.configStore.cfg.tgAutoBackup) return;
+      if (!this.configStore.cfg.tgChatId) return;
+      if (!this.configStore.cfg.tiendaConfigurada || !this.configStore.cfg.nombreTienda) return;
+      const ult = this.configStore.cfg.tgUltimoBackup ? new Date(this.configStore.cfg.tgUltimoBackup).getTime() : 0;
       const horas = (Date.now() - ult) / 3600000;
       if (horas >= 24) {
         const data = buildData(this);
         try {
           await this.tgEnviarDatos(data, 'auto', false);
           // Exito: resetear contador
-          if (this.cfg.tgFallosConsecutivos > 0) {
-            this.cfg.tgFallosConsecutivos = 0;
+          if (this.configStore.cfg.tgFallosConsecutivos > 0) {
+            this.configStore.cfg.tgFallosConsecutivos = 0;
             await this.guardarCfg();
           }
         } catch (e) {
           // Fallo: incrementar contador
-          this.cfg.tgFallosConsecutivos = (this.cfg.tgFallosConsecutivos || 0) + 1;
+          this.configStore.cfg.tgFallosConsecutivos = (this.configStore.cfg.tgFallosConsecutivos || 0) + 1;
           await this.guardarCfg();
           await this.tgEncolar(data, 'auto');
-          console.warn('Auto-backup fallo (' + this.cfg.tgFallosConsecutivos + ' consecutivos):', e.message);
+          console.warn('Auto-backup fallo (' + this.configStore.cfg.tgFallosConsecutivos + ' consecutivos):', e.message);
         }
       }
     },
@@ -5056,7 +5047,7 @@ export default {
     iniciarTgPoll() {
       if (this._tgPollTimer) return;
       this._tgPollTimer = setInterval(async () => {
-        if (this.cfg.tgChatId) { clearInterval(this._tgPollTimer); this._tgPollTimer = null; return; }
+        if (this.configStore.cfg.tgChatId) { clearInterval(this._tgPollTimer); this._tgPollTimer = null; return; }
         await this.tgAutoDetectarChat();
       }, 5000);
     },
@@ -5123,7 +5114,7 @@ export default {
 
     async tgProcesarCola() {
       if (this.tgProcesandoCola) return;
-      if (!this.cfg.tgChatId) return;
+      if (!this.configStore.cfg.tgChatId) return;
       this.tgProcesandoCola = true;
       try {
         // Limpieza previa: si hay varios 'auto', dejar solo el mas reciente
@@ -5173,11 +5164,11 @@ export default {
 
     // ===== ROTACIÓN =====
     async tgRotarViejos() {
-      const mantener = n(this.cfg.tgMantenerN) || 10;
+      const mantener = n(this.configStore.cfg.tgMantenerN) || 10;
       if (this.tgBackups.length <= mantener) return 0;
       const sobrantes = this.tgBackups.slice(mantener);
       const token = this.tgTokenActual();
-      const chatId = this.cfg.tgChatId;
+      const chatId = this.configStore.cfg.tgChatId;
       let borrados = 0;
       for (const bk of sobrantes) {
         try {
@@ -5244,11 +5235,11 @@ export default {
     
     // ===== SEGURIDAD =====
     pedirPin(cb) {
-      if (!this.cfg.pinActivo) { cb(); return; }
+      if (!this.configStore.cfg.pinActivo) { cb(); return; }
       this.prompt = {
         activo: true, titulo: 'PIN de seguridad', msg: 'Ingresa tu PIN',
         placeholder: '••••', type: 'password', value: '',
-        onOk: v => { if (v === this.cfg.pin) cb(); else this.toastMsg('PIN incorrecto', TOAST.BAD); }
+        onOk: v => { if (v === this.configStore.cfg.pin) cb(); else this.toastMsg('PIN incorrecto', TOAST.BAD); }
       };
     },
 
@@ -5264,7 +5255,7 @@ export default {
         clearTimeout(this._carritoTimer);
         this._carritoTimer = null;
       }
-      try { localStorage.setItem('carritoPro', JSON.stringify(this.carrito)); } catch (e) { console.warn('flush carrito', e); }
+      try { localStorage.setItem('carritoPro', JSON.stringify(this.ventasStore.carrito)); } catch (e) { console.warn('flush carrito', e); }
 
       // 2. Backup: disparar sin await (si el SO permite, alcanza a guardar)
       this.backupAuto().catch(e => console.warn('flush backup', e));
@@ -5319,22 +5310,22 @@ export default {
 
     // ===== CHART =====
     setGraficoProdPeriodo(p) {
-      if (this.cfg.graficoProdPeriodo === p) return;
-      this.cfg.graficoProdPeriodo = p;
+      if (this.configStore.cfg.graficoProdPeriodo === p) return;
+      this.configStore.cfg.graficoProdPeriodo = p;
       this.guardarCfg();
       this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
     },
 
     setGraficoProdTipo(t) {
-      if (this.cfg.graficoProdTipo === t) return;
-      this.cfg.graficoProdTipo = t;
+      if (this.configStore.cfg.graficoProdTipo === t) return;
+      this.configStore.cfg.graficoProdTipo = t;
       this.guardarCfg();
       this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
     },
 
     _topProductosGrafico() {
       const ahora = new Date();
-      const periodo = this.cfg.graficoProdPeriodo || 'mes';
+      const periodo = this.configStore.cfg.graficoProdPeriodo || 'mes';
       let ini;
       if (periodo === 'semana') {
         ini = new Date(ahora);
@@ -5343,9 +5334,9 @@ export default {
       } else {
         ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
       }
-      const tipo = this.cfg.graficoProdTipo || 'vendidos';
+      const tipo = this.configStore.cfg.graficoProdTipo || 'vendidos';
       const map = {};
-      this.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
+      this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
         v.items.forEach(it => {
           if (!map[it.productoId]) {
             map[it.productoId] = { id: it.productoId, nombre: it.nombre, cantidad: 0, ganancia: 0, ingresos: 0 };
@@ -5376,7 +5367,7 @@ export default {
           return;
         }
         const { default: Chart } = await import('chart.js/auto');
-        const tipo = this.cfg.graficoProdTipo || 'vendidos';
+        const tipo = this.configStore.cfg.graficoProdTipo || 'vendidos';
         const valorDe = (it) => tipo === 'margen' ? it.ganancia : it.cantidad;
         const formatDe = (it) => tipo === 'margen' ? fmt(it.ganancia) : fmtCant(it.cantidad) + ' u';
         const colores = ['#3B82F6', '#16A34A', '#D97706', '#8B5CF6', '#EC4899', '#0891B2'];
@@ -5416,15 +5407,15 @@ export default {
       } catch (e) { console.error('renderChartProductos', e); }
     },
     setGraficoVista(vista) {
-      if (this.cfg.graficoVista === vista) return;
-      this.cfg.graficoVista = vista;
+      if (this.configStore.cfg.graficoVista === vista) return;
+      this.configStore.cfg.graficoVista = vista;
       this.guardarCfg();
       this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
     },
 
     setGraficoVista(vista) {
-      if (this.cfg.graficoVista === vista) return;
-      this.cfg.graficoVista = vista;
+      if (this.configStore.cfg.graficoVista === vista) return;
+      this.configStore.cfg.graficoVista = vista;
       this.guardarCfg();
       this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
     },
@@ -5436,7 +5427,7 @@ export default {
         if (this._chart) { try { this._chart.destroy(); } catch (e) {} this._chart = null; }
         const { default: Chart } = await import('chart.js/auto');
 
-        const vista = this.cfg.graficoVista || 'mes';
+        const vista = this.configStore.cfg.graficoVista || 'mes';
         const data = [];
         const now = new Date();
 
@@ -5469,7 +5460,7 @@ export default {
           }
         }
 
-        this.ventas.filter(x => !x.anulada).forEach(v => {
+        this.ventasStore.ventas.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
           const bucket = data.find(b => f >= b.ini && f <= b.fin);
           if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
@@ -5518,13 +5509,13 @@ export default {
         const data = buildData(this);
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
 
-        if (this.cfg.tgChatId && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
-          if (this.productos.length === 0 && this.ventas.length === 0 && this.compras.length === 0) {
+        if (this.configStore.cfg.tgChatId && this.configStore.cfg.nombreTienda && this.configStore.cfg.tiendaConfigurada) {
+          if (this.productosStore.productos.length === 0 && this.ventasStore.ventas.length === 0 && this.comprasStore.compras.length === 0) {
             console.warn('backupAuto: base vacia, se omite subida a Telegram');
           } else {
             try {
               const hash = await this.hashContenido(JSON.stringify(data));
-              if (this.cfg.tgUltimoHash !== hash) {
+              if (this.configStore.cfg.tgUltimoHash !== hash) {
                 // Limpiar TODOS los auto anteriores (pendientes, error, enviando)
                 try {
                   const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
@@ -5596,7 +5587,7 @@ export default {
         if (c) this.cfg = { ...this.cfg, ...c.value };
         else await this.guardarCfg();
         try {
-          document.documentElement.setAttribute('data-theme', this.cfg.tema);
+          document.documentElement.setAttribute('data-theme', this.configStore.cfg.tema);
         } catch (e) {}
         this.aplicarEscalaFont();
         // Limpiar items viejos de la cola de backups
@@ -5609,7 +5600,7 @@ export default {
           }
         } catch (e) { console.error('limpiar tgQueue', e); }
         // Aviso de configuracion inicial
-        if (!this.cfg.tiendaConfigurada && !this.cfg.avisoTiendaDescartado) {
+        if (!this.configStore.cfg.tiendaConfigurada && !this.configStore.cfg.avisoTiendaDescartado) {
           setTimeout(() => { this.mostrarAvisoTienda = true; }, 800);
         }
         // No prellenar el campo de capital inicial
@@ -5621,8 +5612,8 @@ export default {
         // DETECCION DE PERDIDA DE DATOS
         // Si la app ya estaba configurada pero no hay ningun dato, avisar
         try {
-          const totalDatos = this.productos.length + this.ventas.length + this.compras.length;
-          if (totalDatos === 0 && this.cfg.nombreTienda && this.cfg.tiendaConfigurada) {
+          const totalDatos = this.productosStore.productos.length + this.ventasStore.ventas.length + this.comprasStore.compras.length;
+          if (totalDatos === 0 && this.configStore.cfg.nombreTienda && this.configStore.cfg.tiendaConfigurada) {
             console.warn('⚠ POSIBLE PERDIDA DE DATOS: app configurada pero base vacia');
             setTimeout(() => { this.alertaPerdidaDatos = true; }, 1200);
           }
@@ -5642,11 +5633,11 @@ export default {
             if (Array.isArray(parsed) && parsed.length > 0) {
               const validos = parsed.filter(it => {
                 if (!it || !it.productoId) return false;
-                const prod = this.productos.find(x => x.id === it.productoId && !x.archivado);
+                const prod = this.productosStore.productos.find(x => x.id === it.productoId && !x.archivado);
                 return !!prod && this.stock(it.productoId) > 0;
               });
               if (validos.length > 0) {
-                this.carrito = validos;
+                this.ventasStore.carrito = validos;
                 this.toastMsg('Carrito restaurado (' + validos.length + ' item(s))');
               } else {
                 localStorage.removeItem('carritoPro');
@@ -5657,23 +5648,23 @@ export default {
         const b = await db.config.get('backupAuto');
         if (b) this.ultimoBackup = b;
         const ahora = Date.now();
-        if (!this.cfg.ultimoBackupAuto || (ahora - this.cfg.ultimoBackupAuto) > 7200000) {
+        if (!this.configStore.cfg.ultimoBackupAuto || (ahora - this.configStore.cfg.ultimoBackupAuto) > 7200000) {
           await this.backupAuto();
-          this.cfg.ultimoBackupAuto = ahora;
+          this.configStore.cfg.ultimoBackupAuto = ahora;
           await this.guardarCfg();
           const b2 = await db.config.get('backupAuto');
           if (b2) this.ultimoBackup = b2;
         }
         // B13: migrar gastos viejos de movCaja a la tabla gastos
         try {
-          const movsGasto = this.movCaja.filter(mv =>
+          const movsGasto = this.cajaStore.movCaja.filter(mv =>
             mv.tipo === 'egreso' &&
             mv.concepto &&
             /gasto/i.test(mv.concepto) &&
             !mv.concepto.startsWith('Pago deuda:') &&
             !mv.concepto.startsWith('Gasto:')
           );
-          const gastosConMov = new Set(this.gastos.filter(g => g.movId).map(g => g.movId));
+          const gastosConMov = new Set(this.gastosStore.gastos.filter(g => g.movId).map(g => g.movId));
           const aMigrar = movsGasto.filter(mv => !gastosConMov.has(mv.id));
           if (aMigrar.length > 0) {
             const nuevosGastos = aMigrar.map(mv => {
@@ -5699,7 +5690,7 @@ export default {
               };
             });
             await db.gastos.bulkPut(nuevosGastos.map(x => clean(x)));
-            this.gastos = await db.gastos.toArray();
+            this.gastosStore.gastos = await db.gastos.toArray();
             this.toastMsg('Migrados ' + aMigrar.length + ' gasto(s) antiguos');
           }
         } catch (e) { console.error('migrar gastos', e); }
@@ -5708,7 +5699,7 @@ export default {
         // Tutorial desactivado - se puede abrir desde Ajustes > Ayuda
         // Telegram: usar token default o guardado (no en safe mode)
         
-        if (this.cfg.tgChatId) this.tgEstado = 'conectado';
+        if (this.configStore.cfg.tgChatId) this.tgEstado = 'conectado';
         else {
           this.tgEstado = 'esperando-start';
           // Intentar auto-detectar (por si ya le dio Start antes)
@@ -5732,8 +5723,8 @@ export default {
           const rec = await db.config.get('carpetaHandle');
           if (rec && rec.value) {
             this._carpetaHandle = rec.value;
-            this.cfg.tgCarpetaActiva = true;
-            this.cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
+            this.configStore.cfg.tgCarpetaActiva = true;
+            this.configStore.cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
           }
         } catch (e) {}
         // Actualizar cola pendiente
@@ -5741,13 +5732,13 @@ export default {
         // Ver si hay un backup pre-import pendiente
         await this.cargarPreImportInfo();
         // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
-        if (!this.safeMode && !this.cfg.tgChatId) this.iniciarTgPoll();
+        if (!this.safeMode && !this.configStore.cfg.tgChatId) this.iniciarTgPoll();
         // Procesar cola cuando recupera conexion
         window.addEventListener('online', () => {
           setTimeout(() => this.tgProcesarCola(), 1000);
         });
         // Auto-backup a Telegram si esta activo (no en safe mode)
-        if (!this.safeMode && this.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
+        if (!this.safeMode && this.configStore.cfg.tgAutoBackup) setTimeout(() => this.tgAutoBackupCheck(), 5000);
         this.$nextTick(() => {
           if (this.sec === 'dashboard') {
             const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));

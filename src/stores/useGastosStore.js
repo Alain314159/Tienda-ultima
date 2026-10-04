@@ -31,11 +31,13 @@ export const useGastosStore = defineStore('gastos', () => {
   /**
    * Gastos ordenados por fecha (más reciente primero)
    */
-  const gastosOrdenados = computed(() => {
+  const gastosOrdenadas = computed(() => {
     return gastos.value
       .slice()
       .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   });
+
+  const gastosOrdenados = computed(() => gastosOrdenadas.value);
 
   /**
    * Total de gastos acumulados
