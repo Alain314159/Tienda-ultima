@@ -185,7 +185,6 @@ export const useCajaStore = defineStore('caja', () => {
   };
 });
 
-// Importar genId desde db
-import { genId } from '../db';
+// ===== EXPORTS =====
 
 export default useCajaStore;
