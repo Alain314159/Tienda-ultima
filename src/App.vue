@@ -4889,55 +4889,6 @@ export default {
 
     async guardarCfg() {
       try { await P(db.config, { key: 'cfg', value: this.configStore.cfg }); } catch (e) { console.error('guardarCfg', e); }
-    },
-
-    async recargar(what) {
-      const map = {
-        productos: () => db.productos.toArray(),
-        lotes: () => db.lotes.toArray(),
-        ventas: () => db.ventas.toArray(),
-        compras: () => db.compras.toArray(),
-        ajustes: () => db.ajustes.toArray(),
-        arqueos: () => db.arqueos.toArray(),
-        movCaja: () => db.movCaja.toArray(),
-        cierres: () => db.cierres.toArray(),
-        capital: () => db.capital.toArray(),
-        retiros: () => db.retiros.toArray(),
-        socios: () => db.socios.toArray(),
-        distribuciones: () => db.distribuciones.toArray(),
-        gastos: () => db.gastos.toArray(),
-
-        asientos: () => db.asientos.toArray()
-      };
-      for (const w of what) this[w] = await map[w]();
-      this._stockMapCache = null;
-      this._recCache = null;
-      this._topRentCache = null;
-      this._invAgrCache = null;
-      this._agrupCache = null;
-    },
-
-    async recargarTodo() {
-      const t = performance.now();
-      const tables = ['productos','lotes','ventas','compras','ajustes','arqueos','movCaja','cierres','capital','retiros','socios','distribuciones','gastos'];
-      let r;
-      await db.transaction('r', tables.map(tb => db.table(tb)), async () => {
-        r = await Promise.all(tables.map(tb => db.table(tb).toArray()));
-      });
-      tables.forEach((k, i) => this[tables[i]] = r[i]);
-      this.invalidarFifoCache();
-      this._stockMapCache = null;
-      this._recCache = null;
-      this._topRentCache = null;
-      this._invAgrCache = null;
-      const ms = (performance.now() - t).toFixed(1);
-      if (ms > 100) console.log('recargarTodo: ' + ms + 'ms');
-    },
-
-    // ===== CHART =====
-    setGraficoProdPeriodo(p) {
-      if (this.configStore.cfg.graficoProdPeriodo === p) return;
-      this.configStore.cfg.graficoProdPeriodo = p;
       this.guardarCfg();
       this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
     },
