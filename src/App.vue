@@ -1886,7 +1886,19 @@ export default {
     async onPullRefresh() {
       if (this.refrescando) return;
       this.refrescando = true;
-      try { await this.recargarTodoStores(); } catch (e) {}
+      try {
+        await Promise.all([
+          this.productosStore.cargarProductos(),
+          this.lotesStore.cargarLotes(),
+          this.ventasStore.cargarVentas(),
+          this.comprasStore.cargarCompras(),
+          this.ajustesStore.cargarAjustes(),
+          this.cajaStore.cargarTodo(),
+          this.capitalStore.cargarTodo(),
+          this.gastosStore.cargarGastos(),
+          this.cierresStore.cargarTodo()
+        ]);
+      } catch (e) {}
       setTimeout(() => { this.refrescando = false; this.pullDist = 0; }, 500);
       this.toastMsg('Datos actualizados');
     },
