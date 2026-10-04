@@ -1758,9 +1758,6 @@ export default {
   computed: {
     // ===== HISTORIAL COMPUTED (cachea slice/filtros y evita recalcular en cada render) =====
 
-
-    esNativoApp() { return Capacitor.isNativePlatform(); },
-
     soportaNotif() {
       if (Capacitor.isNativePlatform()) return true;
       return typeof window !== 'undefined' && 'Notification' in window;
@@ -1776,26 +1773,6 @@ export default {
 
     mutColor() { return this.configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'; },
     txtColor() { return this.configStore.tema === 'dark' ? '#f1f5f9' : '#111827'; },
-      const movs = [
-        ...this.capitalStore.capital.map(x => ({ id: x.id, tipo: 'Aporte', fecha: x.fecha, monto: x.monto, nota: x.nota })),
-        ...this.capitalStore.retiros.map(x => ({
-          id: x.id,
-          tipo: x.tipoRetiro === 'capital' ? 'Retiro (capital)' : 'Retiro (ganancia)',
-          fecha: x.fecha, monto: x.monto, nota: x.concepto
-        }))
-      ];
-      return movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-    },
-
-    cierresOrdenados() {
-      return this.cierresStore.cierres.slice().sort((a, b) => new Date(b.fechaCierre) - new Date(a.fechaCierre));
-    },
-
-    sociosActivos() { return this.capitalStore.socios.filter(s => s.activo !== false); },
-    aportesSinSocio() { return this.capitalStore.capital.filter(x => !x.socioId); },
-    aportesSinSocioTotal() { return m(this.aportesSinSocio.reduce((s, x) => s + n(x.monto), 0)); },
-    sumaPorcentajes() { return m(this.capitalStore.sociosActivos.reduce((s, x) => s + n(x.porcentaje), 0)); },
-    totalDistribuido() { return m(this.capitalStore.distribuciones.reduce((s, d) => s + n(d.monto), 0)); },
     distribucionesOrdenadas() { return this.capitalStore.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); },
 
     
