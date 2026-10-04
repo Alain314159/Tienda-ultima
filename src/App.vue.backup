@@ -35,7 +35,7 @@
       <div class="splash-logo">
         <icon name="store" :size="48" color="#fff"></icon>
       </div>
-      <div class="splash-title">{{ configStore.nombreTienda || 'Tienda Pro' }}</div>
+      <div class="splash-title">{{ cfg.nombre || 'Tienda Pro' }}</div>
       <div class="splash-spinner"></div>
     </div>
 
@@ -54,7 +54,7 @@
 
     <!-- HEADER -->
     <header class="header no-print">
-      <h1><icon name="store" :size="20" color="#fff"></icon> {{ configStore.nombreTienda || 'Tienda Pro' }}</h1>
+      <h1><icon name="store" :size="20" color="#fff"></icon> {{ cfg.nombre || 'Tienda Pro' }}</h1>
       <div class="hacts">
         <button v-if="cfg.busquedaGlobalActiva !== false" class="h-btn" @click="busquedaGlobalAbierta = true" aria-label="Buscar">
           <icon name="search" :size="18" color="#fff"></icon>
@@ -78,8 +78,8 @@
       <section v-if="sec === 'dashboard'" class="fade-up">
         <div class="balance azul">
           <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Efectivo en Caja</div>
-          <div class="val">{{ fmt(cajaStore.saldoCaja) }}</div>
-          <div class="sub">Inventario: {{ fmt(lotesStore.valorInventario) }} · Desde {{ fmtFecha(cfg.periodoInicio) }}</div>
+          <div class="val">{{ fmt(saldoCaja) }}</div>
+          <div class="sub">Inventario: {{ fmt(valorInventario) }} · Desde {{ fmtFecha(cfg.periodoInicio) }}</div>
         </div>
 
         <div v-if="productosBajoStock.length || productosAgotados.length" class="alert-box-stock">
@@ -96,11 +96,11 @@
         <div class="grid2">
           <div class="stat">
             <div class="lbl"><icon name="trend" :size="13" :color="mutColor"></icon> Ventas</div>
-            <div class="val" style="color:var(--pri)">{{ fmt(ventasStore.ventasPeriodo) }}</div>
+            <div class="val" style="color:var(--pri)">{{ fmt(ventasPeriodo) }}</div>
           </div>
           <div class="stat">
             <div class="lbl"><icon name="dollar" :size="13" :color="mutColor"></icon> Ganancia</div>
-            <div class="val pos">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</div>
+            <div class="val pos">{{ fmt(gananciaNetaPeriodo) }}</div>
           </div>
           <div class="stat">
             <div class="lbl"><icon name="bag" :size="13" :color="mutColor"></icon> Compras</div>
@@ -611,11 +611,11 @@
             Período actual: desde {{ fmtFecha(cfg.periodoInicio) }}
           </div>
           <div class="grid2" style="margin-bottom:.5rem">
-            <div><span class="det">Ventas</span><div style="font-weight:800">{{ fmt(ventasStore.ventasPeriodo) }}</div></div>
+            <div><span class="det">Ventas</span><div style="font-weight:800">{{ fmt(ventasPeriodo) }}</div></div>
             <div><span class="det">Compras</span><div style="font-weight:800" class="neg">{{ fmt(comprasPeriodo) }}</div></div>
           </div>
           <div style="font-size:.9rem;font-weight:800;margin-bottom:.6rem">
-            Ganancia: <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
+            Ganancia: <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(gananciaNetaPeriodo) }}</span>
           </div>
           <button class="btn warn" @click="cerrarPeriodo()">
             <icon name="calendar" :size="16" color="#fff"></icon> Cerrar Período y Empezar Nuevo
@@ -1550,22 +1550,6 @@ import AppToast from './components/AppToast.vue';
 import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
-
-// Importar stores de Pinia
-import { 
-  useConfigStore, 
-  useProductosStore, 
-  useLotesStore, 
-  useVentasStore,
-  useCajaStore,
-  useCapitalStore,
-  useGastosStore,
-  useCierresStore 
-} from './stores';
-
-// Importar servicios
-import { Busqueda, Fechas, Notificaciones, Validaciones } from './services';
-
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
@@ -1580,24 +1564,6 @@ export default {
   name: 'App',
   components: { BottomNav, SheetMas, ModalConfirm, ModalPrompt, AppToast, GlobalSearch, Calculator, BackupPanel, StatusPanel },
 
-
-  setup() {
-    // Inicializar stores de Pinia
-    const configStore = useConfigStore();
-    const productosStore = useProductosStore();
-    const lotesStore = useLotesStore();
-    const ventasStore = useVentasStore();
-    const cajaStore = useCajaStore();
-    const capitalStore = useCapitalStore();
-    const gastosStore = useGastosStore();
-    const cierresStore = useCierresStore();
-
-    return {
-      // Stores (disponibles en template)
-      configStore, productosStore, lotesStore, ventasStore,
-      cajaStore, capitalStore, gastosStore, cierresStore
-    };
-  },
 
   data() {
     return {
