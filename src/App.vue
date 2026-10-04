@@ -255,7 +255,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="v in histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
+            <div v-for="v in ventasStore.histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
               <div class="info" @click="toggleExpandirVenta(v.id)" style="cursor:pointer;flex:1">
                 <div class="nm">{{ v.items.length > 1 ? v.items[0].nombre + ' +' + (v.items.length - 1) + ' más' : v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                 <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
@@ -626,7 +626,7 @@
         <div class="card">
           <div class="card-title"><icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres</div>
           <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
-          <div v-for="c in cierresOrdenados" :key="c.id" class="item" style="flex-direction:column;align-items:stretch;gap:.3rem">
+          <div v-for="c in cierresStore.cierresOrdenados" :key="c.id" class="item" style="flex-direction:column;align-items:stretch;gap:.3rem">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
               <div class="nm">{{ c.periodo }}</div>
               <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
@@ -906,8 +906,8 @@
       <section v-if="sec === 'gastos'" class="fade-up">
         <div class="balance gastos-bal">
           <div class="lbl"><icon name="dollar" :size="14" color="#fff"></icon> Gastos del periodo</div>
-          <div class="val">{{ fmt(gastosOpPeriodo) }}</div>
-          <div class="sub">Acumulado: {{ fmt(gastosTotalAcumulado) }} · {{ gastos.length }} registro(s)</div>
+          <div class="val">{{ fmt(gastosStore.gastosOpPeriodo) }}</div>
+          <div class="sub">Acumulado: {{ fmt(gastosStore.gastosTotalAcumulado) }} · {{ gastos.length }} registro(s)</div>
         </div>
 
         <div class="card">
