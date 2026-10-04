@@ -2655,12 +2655,12 @@ export default {
     },
 
     agregarPrimero() {
-      if (this.listaVenta.length > 0) this.agregarCarrito(this.listaVenta[0]);
+      if (this.ventasStore.listaVenta.length > 0) this.ventasStore.agregarCarrito(this.ventasStore.listaVenta[0]);
     },
 
     cambiarCant(it, dir) {
       let val = n(it.cant) + dir;
-      if (val > this.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', TOAST.WARN);
+      if (val > this.productosStore.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', TOAST.WARN);
       if (val < 0) val = 0;
       it.cant = String(val);
       this.recalcularPrecio(it);
