@@ -1587,6 +1587,8 @@ export default {
     const productosStore = useProductosStore();
     const lotesStore = useLotesStore();
     const ventasStore = useVentasStore();
+    const comprasStore = useComprasStore();
+    const ajustesStore = useAjustesStore();
     const cajaStore = useCajaStore();
     const capitalStore = useCapitalStore();
     const gastosStore = useGastosStore();
@@ -1595,7 +1597,7 @@ export default {
     return {
       // Stores (disponibles en template)
       configStore, productosStore, lotesStore, ventasStore,
-      cajaStore, capitalStore, gastosStore, cierresStore
+      comprasStore, ajustesStore, cajaStore, capitalStore, gastosStore, cierresStore
     };
   },
 
@@ -1606,6 +1608,8 @@ export default {
       this.productosStore.cargarProductos(),
       this.lotesStore.cargarLotes(),
       this.ventasStore.cargarVentas(),
+      this.comprasStore.cargarCompras(),
+      this.ajustesStore.cargarAjustes(),
       this.cajaStore.cargarTodo(),
       this.capitalStore.cargarTodo(),
       this.gastosStore.cargarGastos(),
