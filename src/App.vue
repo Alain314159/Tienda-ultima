@@ -1599,6 +1599,22 @@ export default {
     };
   },
 
+  async created() {
+    // Cargar datos iniciales desde stores
+    await Promise.all([
+      this.configStore.cargarCfg(),
+      this.productosStore.cargarProductos(),
+      this.lotesStore.cargarLotes(),
+      this.ventasStore.cargarVentas(),
+      this.cajaStore.cargarTodo(),
+      this.capitalStore.cargarTodo(),
+      this.gastosStore.cargarGastos(),
+      this.cierresStore.cargarTodo()
+    ]);
+    this.cargando = false;
+    this.splashVisible = false;
+  },
+
   data() {
     return {
       online: navigator.onLine,
