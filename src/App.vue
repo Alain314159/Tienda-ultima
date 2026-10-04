@@ -183,7 +183,7 @@
         <div class="card">
           <div class="card-title"><icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta</div>
           <div class="search">
-            <input :value="busqVenta" @input="setBusq('busqVenta', $event.target.value)" type="text" placeholder="Buscar producto por nombre o código..."
+            <input v-model="ventasStore.busqVenta" @input="ventasStore.setBusqVenta($event.target.value)" @focus="focusVenta = true" type="text" placeholder="Buscar producto por nombre o código..."
               autocomplete="off" @focus="focusVenta = true" @click="focusVenta = true" @keyup.enter="agregarPrimero">
           </div>
           <div v-if="focusVenta" class="drop-static">
@@ -192,17 +192,17 @@
               <button @click="focusVenta = false; busqVenta = ''" aria-label="Cerrar">×</button>
             </div>
             <div v-if="listaVenta.length === 0" class="empty">Sin coincidencias (o sin stock)</div>
-            <div v-for="p in listaVenta" :key="p.id" class="drop-item" @click="agregarCarrito(p)">
+            <div v-for="p in ventasStore.listaVenta" :key="p.id" class="drop-item" @click="agregarCarrito(p)">
               <span>{{ p.nombre }}</span>
               <span style="color:var(--mut);white-space:nowrap">Stock {{ fmtCant(stock(p.id)) }} {{ p.unidad || '' }} · {{ fmt(p.precio) }}</span>
             </div>
           </div>
 
-          <div v-if="carrito.length" style="margin-top:.2rem">
-            <div v-for="(it, i) in carrito" :key="i" class="cart-item">
+          <div v-if="ventasStore.carrito.length" style="margin-top:.2rem">
+            <div v-for="(it, i) in ventasStore.carrito" :key="i" class="cart-item">
               <div class="cart-top">
                 <div class="nm">{{ it.nombre }}</div>
-                <button class="del-btn" @click="carrito.splice(i, 1)" aria-label="Quitar">
+                <button class="del-btn" @click="ventasStore.carrito.splice(i, 1)" @click.stop aria-label="Quitar">
                   <icon name="x" :size="14" color="#fff"></icon>
                 </button>
               </div>
@@ -210,9 +210,9 @@
                 <div class="cart-field">
                   <label>Cantidad</label>
                   <div class="qty-input">
-                    <button type="button" @click="cambiarCant(it, -1)">−</button>
-                    <input :value="it.cant" type="text" inputmode="decimal" @input="actualizarCantidadInput(it, $event.target.value)" @blur="validarCant(it)">
-                    <button type="button" @click="cambiarCant(it, 1)">+</button>
+                    <button type="button" @click="ventasStore.cambiarCant(it, -1)" @click.stop>−</button>
+                    <input :value="it.cant" type="text" inputmode="decimal" @input="ventasStore.actualizarCantidadInput(it, $event.target.value)" @click.stop @blur="ventasStore.validarCant(it)" @click.stop>
+                    <button type="button" @click="ventasStore.cambiarCant(it, 1)" @click.stop>+</button>
                   </div>
                 </div>
                 <div class="cart-field">
@@ -221,7 +221,7 @@
                 </div>
               </div>
               <div class="cart-total-line">
-                <span>{{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} = <b style="color:var(--pri)">{{ fmt(subTotalItem(it)) }}</b></span>
+                <span>{{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} = <b style="color:var(--pri)">{{ fmt(ventasStore.subTotalItem(it)) }}</b></span>
                 <span class="pos">+{{ fmt(gananciaItem(it)) }}</span>
                 <span class="cart-tag" :class="esPrecioEscalon(it) ? 'tag-esc' : 'tag-unit'" v-if="tieneEscalones(it.productoId)">
                   {{ esPrecioEscalon(it) ? 'Por cantidad' : 'Por unidad' }}
@@ -229,8 +229,8 @@
               </div>
             </div>
             <div class="total-box">
-              <span>TOTAL {{ fmt(totalCarrito) }}</span>
-              <span>Gan. {{ fmt(gananciaCarrito) }}</span>
+              <span>TOTAL {{ fmt(ventasStore.totalCarrito) }}</span>
+              <span>Gan. {{ fmt(ventasStore.gananciaCarrito) }}</span>
             </div>
             <button class="btn ok" @click="iniciarCobro()" :disabled="procesandoVenta">
               {{ procesandoVenta ? 'Procesando...' : 'Cobrar Venta' }}
