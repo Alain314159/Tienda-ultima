@@ -222,6 +222,7 @@
               </div>
               <div class="cart-total-line">
                 <span>{{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} = <b style="color:var(--pri)">{{ fmt(subTotalItem(it)) }}</b></span>
+                <span class="pos">+{{ fmt(gananciaItem(it)) }}</span>
                 <span class="cart-tag" :class="esPrecioEscalon(it) ? 'tag-esc' : 'tag-unit'" v-if="tieneEscalones(it.productoId)">
                   {{ esPrecioEscalon(it) ? 'Por cantidad' : 'Por unidad' }}
                 </span>
@@ -1935,11 +1936,17 @@ export default {
       return m(this.carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0));
     },
 
+    gananciaItem(it) {
+      const f = this.calcFIFO(it.productoId, n(it.cant));
+      if (f.error) return 0;
+      return m((n(it.precio) * n(it.cant)) - f.costoTotal);
+    },
+
     gananciaCarrito() {
       let gan = 0;
       for (const it of this.carrito) {
         const f = this.calcFIFO(it.productoId, n(it.cant));
-        if (!f.error) gan = m(gan + ((n(it.precio) * n(it.cant)) - f.costoTotal));
+        if (!f.error) gan = m(gan + this.gananciaItem(it));
       }
       return m(gan);
     },
