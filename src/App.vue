@@ -2875,7 +2875,7 @@ export default {
             try {
             const i = new Date(this.configStore.cfg.periodoInicio);
             const f = new Date();
-            const ventasRango = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+            const ventasRango = this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
             const comprasRango = this.comprasStore.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
             const gastosRango = this.gastosStore.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
             const mermasRango = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
@@ -3003,7 +3003,7 @@ export default {
       if (!this.rep.isoFin) f.setHours(23, 59, 59, 999);
       if (i > f) return this.toastMsg('Fecha inicio > fin', TOAST.BAD);
 
-      const vp = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+      const vp = this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
       const cp = this.comprasStore.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
       const gp = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
@@ -4890,7 +4890,7 @@ export default {
       }
       const tipo = this.configStore.cfg.graficoProdTipo || 'vendidos';
       const map = {};
-      this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
+      this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
         v.items.forEach(it => {
           if (!map[it.productoId]) {
             map[it.productoId] = { id: it.productoId, nombre: it.nombre, cantidad: 0, ganancia: 0, ingresos: 0 };
@@ -5014,7 +5014,7 @@ export default {
           }
         }
 
-        this.ventasStore.ventas.filter(x => !x.anulada).forEach(v => {
+        this.ventasStore.ventas.value.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
           const bucket = data.find(b => f >= b.ini && f <= b.fin);
           if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
