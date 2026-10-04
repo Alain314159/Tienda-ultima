@@ -169,6 +169,22 @@ export const useCajaStore = defineStore('caja', () => {
     ]);
   }
 
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      movCaja: cargarMovCaja,
+      arqueos: cargarArqueos
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     movCaja,
