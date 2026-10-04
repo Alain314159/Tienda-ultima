@@ -192,7 +192,7 @@
               <button @click="focusVenta = false; busqVenta = ''" aria-label="Cerrar">×</button>
             </div>
             <div v-if="listaVenta.length === 0" class="empty">Sin coincidencias (o sin stock)</div>
-            <div v-for="p in ventasStore.listaVenta" :key="p.id" class="drop-item" @click="agregarCarrito(p)">
+            <div v-for="p in ventasStore.listaVenta" :key="p.id" class="drop-item" @click="ventasStore.agregarCarrito(p)" @click.stop>
               <span>{{ p.nombre }}</span>
               <span style="color:var(--mut);white-space:nowrap">Stock {{ fmtCant(stock(p.id)) }} {{ p.unidad || '' }} · {{ fmt(p.precio) }}</span>
             </div>
@@ -538,7 +538,7 @@
           <select v-model="ajusteForm.productoId">
             <option value="">Seleccionar producto...</option>
             <option v-for="p in prodsActivos" :key="p.id" :value="p.id">
-              {{ p.nombre }} (Stock: {{ fmtCant(stock(p.id)) }} {{ p.unidad || '' }})
+              {{ p.nombre }} (Stock: {{ fmtCant(productosStore.stock(p.id)) }} {{ p.unidad || '' }})
             </option>
           </select>
           <div class="grid2">
