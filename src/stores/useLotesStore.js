@@ -148,6 +148,37 @@ export const useLotesStore = defineStore('lotes', () => {
     }
   }
 
+  /**
+   * Lotes de un producto específico
+   */
+  function lotesDeProducto(pid) {
+    return lotes.value
+      .filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+      .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
+  }
+
+  /**
+   * Valor de lotes de un producto
+   */
+  function valorLotesProducto(pid) {
+    return m(lotesDeProducto(pid).reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
+  }
+
+  /**
+   * Recarga datos específicos
+   */
+  async function recargarStores(tables) {
+    const reloadMap = {
+      lotes: cargarLotes
+    };
+
+    for (const table of tables) {
+      if (reloadMap[table]) {
+        await reloadMap[table]();
+      }
+    }
+  }
+
   // ===== EXPORTS =====
   return {
     lotes,
