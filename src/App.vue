@@ -2297,62 +2297,6 @@ export default {
       });
     },
 
-    agregarPrimero() {
-      if (this.ventasStore.listaVenta.length > 0) this.ventasStore.agregarCarrito(this.ventasStore.listaVenta[0]);
-    },
-
-    cambiarCant(it, dir) {
-      let val = n(it.cant) + dir;
-      if (val > this.productosStore.stock(it.productoId)) return this.toastMsg('Stock maximo alcanzado', TOAST.WARN);
-      if (val < 0) val = 0;
-      it.cant = String(val);
-      this.recalcularPrecio(it);
-      this.$forceUpdate();
-    },
-
-    actualizarCantidadInput(it, valor) {
-      it.cant = String(valor);
-      this.recalcularPrecio(it);
-    },
-
-    tieneEscalones(pid) {
-      const p = this.productosStore.productos.find(x => x.id === pid);
-      return !!(p && p.preciosEscalonados && p.preciosEscalonados.length);
-    },
-
-    esPrecioEscalon(it) {
-      const p = this.productosStore.productos.find(x => x.id === it.productoId);
-      if (!p || !p.preciosEscalonados || !p.preciosEscalonados.length) return false;
-      const base = n(p.precio);
-      const actual = n(it.precio);
-      return Math.abs(actual - base) > 0.001;
-    },
-
-    recalcularPrecio(it) {
-      const prod = this.productosStore.productos.find(x => x.id === it.productoId);
-      if (!prod || !prod.preciosEscalonados || !prod.preciosEscalonados.length) return;
-      const nuevo = this.precioParaCantidad(it.productoId, n(it.cant));
-      if (n(it.precio) !== nuevo) {
-        it.precio = String(nuevo);
-        it._precioAuto = true;
-      }
-    },
-
-    validarCant(it) {
-      let val = n(it.cant);
-      if (val > this.productosStore.stock(it.productoId)) {
-        val = this.productosStore.stock(it.productoId);
-        this.toastMsg('Cantidad ajustada al stock disponible', TOAST.WARN);
-      }
-      if (val < 0) val = 0;
-      it.cant = String(val);
-      this.recalcularPrecio(it);
-      this.$forceUpdate();
-    },
-
-    validarPrecio(it) {
-      it.precio = String(n(it.precio));
-      it._precioManual = true;
     },
 
     subTotalItem(it) { return m(n(it.precio) * n(it.cant)); },
