@@ -2,30 +2,35 @@ import { defineStore } from 'pinia';
 import { db } from '../db.js';
 import { useUtilitiesStore } from './utilitiesStore.js';
 
-export const useGastosStore = defineStore('gastos', {
+export const useCierresStore = defineStore('cierres', {
   state: () => ({
-    gastos: [],
+    cierres: [],
+    asientos: [],
   }),
   getters: {
-    gastosOpPeriodo: (state) => {
+    gananciaNetaPeriodo: (state) => {
       const utils = useUtilitiesStore();
-      return utils.m(state.gastos.reduce((acc, g) => acc + utils.n(g.monto), 0));
+      return utils.m(state.cierres.reduce((acc, cierre) => acc + utils.n(cierre.ganancia), 0));
     },
-    gastosTotalAcumulado: (state) => {
+    comprasPeriodo: (state) => {
       const utils = useUtilitiesStore();
-      return utils.m(state.gastos.reduce((acc, g) => acc + utils.n(g.monto), 0));
+      return utils.m(state.cierres.reduce((acc, cierre) => acc + utils.n(cierre.totalCompras || 0), 0));
+    },
+    margenPeriodo: (state) => {
+      const utils = useUtilitiesStore();
+      const ingresos = state.cierres.reduce((acc, cierre) => acc + utils.n(cierre.totalVentas || 0), 0);
+      const ganancia = state.cierres.reduce((acc, cierre) => acc + utils.n(cierre.ganancia), 0);
+      if (ingresos === 0) return 0;
+      return utils.m((ganancia / ingresos) * 100);
     },
   },
   actions: {
     async cargar() {
-      this.gastos = await db.gastos.toArray();
+      this.cierres = await db.cierres.toArray();
+      this.asientos = await db.asientos.toArray();
     },
-    async guardar(gasto) {
-      await db.gastos.put(gasto);
-      await this.cargar();
-    },
-    async eliminar(id) {
-      await db.gastos.delete(id);
+    async cerrarPeriodo(periodo) {
+      await db.cierres.put(periodo);
       await this.cargar();
     },
   },
