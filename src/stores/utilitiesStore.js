@@ -7,6 +7,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
   };
 
   const m = (v) => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
+  const multiplicar = (a, b) => m(n(a) * n(b));
 
   const fmt = (v) => {
     try {
@@ -19,7 +20,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
   const fmtCant = (v, fixed = 4) => {
     const num = Number.parseFloat(v);
     if (!Number.isFinite(num)) return '0';
-    return Number(num).toFixed(fixed).replace(/\.0+$|(?<=\.\d)0+$/g, '');
+    return Number(num).toFixed(fixed).replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1');
   };
 
   const fmtFecha = (iso) => {
@@ -61,6 +62,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
   return {
     n,
     m,
+    multiplicar,
     redondear,
     sumar,
     restar,
