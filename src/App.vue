@@ -1740,7 +1740,6 @@ export default {
       _chart: null,
       _chartProd: null,
       _notifTimer: null,
-      _fifoCache: {},
       _stockMapCache: null,
 
       _agrupCache: null,
@@ -1934,12 +1933,6 @@ export default {
 
     totalCarrito() {
       return m(this.carrito.reduce((s, it) => s + (n(it.precio) * n(it.cant)), 0));
-    },
-
-    gananciaItem(it) {
-      const f = this.calcFIFO(it.productoId, n(it.cant));
-      if (f.error) return 0;
-      return m((n(it.precio) * n(it.cant)) - f.costoTotal);
     },
 
     gananciaCarrito() {
@@ -2555,6 +2548,12 @@ export default {
     // Compara dos fechas ignorando hora (mismo dia)
     
     // ===== VENTAS =====
+    gananciaItem(it) {
+      const f = this.calcFIFO(it.productoId, n(it.cant));
+      if (f.error) return 0;
+      return m((n(it.precio) * n(it.cant)) - f.costoTotal);
+    },
+
     calcFIFO(pid, cant) {
       const key = pid + '|' + q(cant);
       const cached = this._fifoCache[key];
@@ -5820,6 +5819,11 @@ export default {
         }));
       }
     }
+  },
+
+  created() {
+    // Cache FIFO no reactivo (evita re-renders al escribir durante el render)
+    this._fifoCache = {};
   },
 
   mounted() {
