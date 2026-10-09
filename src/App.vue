@@ -255,7 +255,7 @@
               <span class="hist-titulo">Periodo actual</span>
               <span class="hist-count">{{ ventasPorPeriodo.actual.length }}</span>
             </div>
-            <div v-for="v in histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
+            <div v-for="v in histVentasMostrados" :key="v.id" v-memo="[v.id, v.anulada, v.total, v.ganancia, ventaExpandida]" class="item" :class="{ anulada: v.anulada }" :id="'ref-' + v.id">
               <div class="info" @click="toggleExpandirVenta(v.id)" style="cursor:pointer;flex:1">
                 <div class="nm">{{ v.items.length > 1 ? v.items[0].nombre + ' +' + (v.items.length - 1) + ' más' : v.items.map(x => x.nombre + ' ×' + fmtCant(x.cantidad)).join(', ') }}</div>
                 <div class="det">{{ fmtFH(v.fecha) }} · <b style="color:var(--pri)">{{ fmt(v.total) }}</b> · <span class="pos">+{{ fmt(v.ganancia) }}</span></div>
