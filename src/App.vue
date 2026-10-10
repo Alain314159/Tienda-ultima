@@ -184,7 +184,7 @@
           <div class="card-title"><icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta</div>
           <div class="search">
             <input v-model="ventasStore.busqVenta" @input="ventasStore.setBusqVenta($event.target.value)" @focus="focusVenta = true" type="text" placeholder="Buscar producto por nombre o código..."
-              autocomplete="off" @focus="focusVenta = true" @click="focusVenta = true" @keyup.enter="agregarPrimero">
+              autocomplete="off" @click="focusVenta = true" @keyup.enter="agregarPrimero">
           </div>
           <div v-if="focusVenta" class="drop-static">
             <div class="drop-head">
@@ -211,7 +211,7 @@
                   <label>Cantidad</label>
                   <div class="qty-input">
                     <button type="button" @click="ventasStore.cambiarCant(it, -1)" @click.stop>−</button>
-                    <input :value="it.cant" type="text" inputmode="decimal" @input="ventasStore.actualizarCantidadInput(it, $event.target.value)" @click.stop @blur="ventasStore.validarCant(it)" @click.stop>
+                    <input :value="it.cant" type="text" inputmode="decimal" @input="ventasStore.actualizarCantidadInput(it, $event.target.value)" @blur="ventasStore.validarCant(it)">
                     <button type="button" @click="ventasStore.cambiarCant(it, 1)" @click.stop>+</button>
                   </div>
                 </div>
@@ -1810,6 +1810,59 @@ export default {
     anomaliasCriticas() {
       return this.recomendacionesUrgentes;
     },
+    // ===== PUENTES STORES: historial por periodo =====
+    ventasPorPeriodo() { return this.agruparHistorial(this.ventasStore.ventas, 'fecha'); },
+    comprasPorPeriodo() { return this.agruparHistorial(this.comprasStore.compras, 'fecha'); },
+    gastosPorPeriodo() { return this.agruparHistorial(this.gastosStore.gastos, 'fecha'); },
+
+    histVentasMostrados() { return this.histItemsMostrados(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasMostrados() { return this.histItemsMostrados(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosMostrados() { return this.histItemsMostrados(this.gastosPorPeriodo.actual, 'gastos'); },
+    histVentasHayMas() { return this.histHayMas(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasHayMas() { return this.histHayMas(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosHayMas() { return this.histHayMas(this.gastosPorPeriodo.actual, 'gastos'); },
+    histVentasRestantes() { return this.histRestantes(this.ventasPorPeriodo.actual, 'ventas'); },
+    histComprasRestantes() { return this.histRestantes(this.comprasPorPeriodo.actual, 'compras'); },
+    histGastosRestantes() { return this.histRestantes(this.gastosPorPeriodo.actual, 'gastos'); },
+
+    // ===== PUENTES STORES: varios =====
+    unidadesTotal() {
+      let u = 0;
+      for (const l of this.lotesStore.lotes) u += (n(l.cantidadInicial) - n(l.cantidadVendida));
+      return m(u);
+    },
+    listaCompra() {
+      const q = (this.busqCompra||'').toLowerCase().trim();
+      const out = [];
+      for (const p of this.productosStore.prodsActivos) {
+        if (q && !(p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))) continue;
+        out.push(p);
+        if (out.length >= 20) break;
+      }
+      return out;
+    },
+    aportesSinSocio() { return this.capitalStore.capital.filter(x => !x.socioId); },
+    aportesSinSocioTotal() { return m(this.aportesSinSocio.reduce((s, x) => s + n(x.monto), 0)); },
+    sociosActivos() { return this.capitalStore.socios.filter(s => s.activo !== false); },
+    ventasFiltradas() { return this.ventasStore.ventasFiltradas; },
+    listaVenta() { return this.ventasStore.listaVenta; },
+    ventaExpandida() { return this.ventasStore.ventaExpandida; },
+    comprasOrdenadas() { return this.comprasStore.comprasOrdenadas; },
+    cierresOrdenados() { return this.cierresStore.cierresOrdenados; },
+    gastosOrdenados() { return this.gastosStore.gastosOrdenados; },
+    gastosPorCategoria() { return this.gastosStore.gastosPorCategoria; },
+    ajustesRecientes() { return this.ajustesStore.ajustesRecientes; },
+    gananciaNetaPeriodo() { return this.cierresStore.gananciaNetaPeriodo; },
+    movPatrimonio() { return this.capitalStore.movPatrimonio; },
+    sumaPorcentajes() { return this.sociosStore.sumaPorcentajes; },
+    totalDistribuido() { return this.sociosStore.totalDistribuido; },
+    prodsActivos() { return this.productosStore.prodsActivos; },
+    prodsFiltrados() { return this.productosStore.productosFiltrados; },
+    stockMap() { return this.lotesStore.stockMap; },
+    lotesActivos() { return this.lotesStore.lotesActivos; },
+    valorInventario() { return this.lotesStore.valorInventario; },
+    esNativoApp() { return Capacitor.isNativePlatform(); },
+
 
     
       },
@@ -2235,6 +2288,21 @@ export default {
       const h = this.histPag(key);
       return !!h.abiertos[id];
     },
+    // ===== VENTAS: ganancia por item (delegado al store) =====
+    gananciaItem(it) {
+      return this.ventasStore.gananciaItem(it);
+    },
+
+    // ===== PUENTES: metodos delegados a stores =====
+    anularVenta(id) { return this.ventasStore.anularVenta(id); },
+    validarPrecio(it) { return this.ventasStore.validarPrecio(it); },
+    esPrecioEscalon(it) { return this.ventasStore.esPrecioEscalon(it); },
+    tieneEscalones(pid) { return this.productosStore.tieneEscalones(pid); },
+    guardarCfg() { return this.configStore.guardarCfg(); },
+    registrarAporte(...a) { return this.capitalStore.registrarAporte(...a); },
+    registrarRetiro(...a) { return this.capitalStore.registrarRetiro(...a); },
+    cerrarPeriodo(...a) { return this.cierresStore.cerrarPeriodo(...a); },
+
 
     // Compara dos fechas ignorando hora (mismo dia)
     
@@ -2265,29 +2333,31 @@ export default {
       this._fifoCache = {};
     },
 
-    // Usar ventasStore.agregarCarrito(p) directamente
-      const s = this.productosStore.stock(p.id);
-      if (s <= 0) return this.toastMsg('Sin stock', TOAST.BAD);
-      const ex = this.ventasStore.carrito.find(i => i.productoId === p.id);
-      if (ex) {
-        if (n(ex.cant) < s) ex.cant = String(n(ex.cant) + 1);
-        else return this.toastMsg('Stock máximo', TOAST.WARN);
-      } else {
-        const precioInicial = this.precioParaCantidad(p.id, 1);
-        this.ventasStore.carrito.push({ productoId: p.id, nombre: p.nombre, precio: String(precioInicial), cant: '1' });
-      }
-      this.busqVenta = '';
-      this.focusVenta = false;
-      this.$nextTick(() => {
-        const items = document.querySelectorAll('.cart-item');
-        const last = items[items.length - 1];
-        if (last) {
-          last.classList.add('cart-item-flash');
-          setTimeout(() => last.classList.remove('cart-item-flash'), 500);
-        }
-      });
+    agregarCarrito(p) {
+      return this.ventasStore.agregarCarrito(p);
     },
 
+    // ===== DISPATCHER: recarga selectiva de stores por nombre de tabla =====
+    async recargarStores(...tables) {
+      const map = {
+        ventas: () => this.ventasStore.cargarVentas(),
+        lotes: () => this.lotesStore.cargarLotes(),
+        compras: () => this.comprasStore.cargarCompras(),
+        productos: () => this.productosStore.cargarProductos(),
+        ajustes: () => this.ajustesStore.cargarAjustes(),
+        cierres: () => this.cierresStore.cargarCierres(),
+        capital: () => this.capitalStore.cargarCapital(),
+        socios: () => this.capitalStore.cargarSocios(),
+        distribuciones: () => this.capitalStore.cargarDistribuciones(),
+        retiros: () => this.capitalStore.cargarRetiros(),
+        gastos: () => this.gastosStore.cargarGastos(),
+        movCaja: () => this.cajaStore.cargarMovCaja(),
+        arqueos: () => this.cajaStore.cargarArqueos(),
+        asientos: () => Promise.resolve(),
+      };
+      const pend = [];
+      for (const t of tables) { if (map[t]) pend.push(map[t]()); }
+      await Promise.all(pend);
     },
 
     subTotalItem(it) { return m(n(it.precio) * n(it.cant)); },
@@ -2413,7 +2483,7 @@ export default {
           }
         }));
 
-        await this.recargarStores('ventas', 'lotes']);
+        await this.recargarStores('ventas', 'lotes');
 
         // Liberar la UI de inmediato (evita "Procesando..." si una
         // notificacion se queda colgada por red lenta o SW no listo)
@@ -2435,7 +2505,7 @@ export default {
     },
 
     toggleExpandirVenta(id) {
-      this.ventaExpandida = this.ventaExpandida === id ? null : id;
+      return this.ventasStore.toggleExpandirVenta(id);
     },
 
     anularProductoEnVenta(ventaId, itemIndex) {
@@ -2478,7 +2548,7 @@ export default {
                   await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
                 }
               });
-              await this.recargarStores('ventas', 'lotes']);
+              await this.recargarStores('ventas', 'lotes');
               this.toastMsg('Producto anulado');
             } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
           }
@@ -2486,38 +2556,8 @@ export default {
       });
     },
 
-    // Usar ventasStore.anularVenta(id) directamente
-      const v = this.ventasStore.ventas.find(x => x.id === id);
-      if (!v) return;
-      this.pedirPin(() => {
-        this.confirm = {
-          activo: true, titulo: 'Anular venta',
-          msg: '¿Anular venta por ' + fmt(v.total) + '? Se restaura el stock y se descuenta de caja.',
-          onOk: async () => {
-            try {
-              await db.transaction('rw', db.ventas, db.lotes, async () => {
-                await P(db.ventas, { ...v, anulada: true, fechaAnulacion: new Date().toISOString() });
-                const lotesActualizados = [];
-                for (const it of v.items) {
-                  if (!it.lotesUsados) continue;
-                  for (const u of it.lotesUsados) {
-                    const l = this.lotesStore.lotes.find(x => x.id === u.loteId);
-                    if (l) {
-                      l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
-                      lotesActualizados.push(l);
-                    }
-                  }
-                }
-                if (lotesActualizados.length > 0) {
-                  await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
-                }
-              });
-              await this.recargarStores('ventas', 'lotes']);
-              this.toastMsg('Venta anulada');
-            } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
-          }
-        };
-      });
+    anularVenta(id) {
+      return this.ventasStore.anularVenta(id);
     },
 
     // ===== ALERTAS DE PRODUCTOS AGOTADOS =====
@@ -2667,7 +2707,7 @@ export default {
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
           });
-          await this.recargarStores('compras', 'lotes', 'asientos']);
+          await this.recargarStores('compras', 'lotes', 'asientos');
           this.toastMsg('Compra eliminada');
         }
       };
@@ -2720,7 +2760,7 @@ export default {
               await P(db.lotes, lote);
             });
           }
-          await this.recargarStores('compras', 'lotes']);
+          await this.recargarStores('compras', 'lotes');
           const compraGuardada = f.editId
             ? this.comprasStore.compras.find(x => x.id === f.editId)
             : this.comprasStore.compras.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
@@ -2763,37 +2803,8 @@ export default {
       this.prodForm.empaques.splice(i, 1);
     },
 
-    // Usar productosStore.guardarProducto() directamente
-      const p = this.prodForm;
-      const nombre = (p.nombre || '').trim();
-      const precio = n(p.precio);
-      const min = n(p.stockMin);
-      if (!nombre) return this.toastMsg('Nombre obligatorio', TOAST.BAD);
-      if (precio <= 0) return this.toastMsg('Precio debe ser > 0', TOAST.BAD);
-      const dup = this.productosStore.productos.find(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== p.editId && !x.archivado);
-      if (dup) return this.toastMsg('Ya existe ese nombre', TOAST.BAD);
-
-      // Validar y normalizar escalones
-      const escalones = (p.preciosEscalonados || [])
-        .filter(e => n(e.min) > 0 && n(e.precio) > 0)
-        .map(e => ({ min: n(e.min), precio: n(e.precio) }))
-        .sort((a, b) => a.min - b.min);
-
-      const empaques = (p.empaques || [])
-        .filter(e => (e.nombre || '').trim() && n(e.unidades) > 0)
-        .map(e => ({ nombre: e.nombre.trim(), unidades: Math.floor(n(e.unidades)) }));
-      const nota = (p.nota || '').trim();
-
-      if (p.editId) {
-        const o = this.productosStore.productos.find(x => x.id === p.editId);
-        await P(db.productos, { ...o, nombre, precio, stockMinimo: min, preciosEscalonados: escalones, empaques, nota });
-        this.toastMsg('Producto actualizado');
-      } else {
-        await P(db.productos, { id: genId('p'), nombre, precio, stockMinimo: min, archivado: false, preciosEscalonados: escalones, empaques, nota });
-        this.toastMsg('Producto agregado');
-      }
-      this.resetProd();
-      await this.recargarStores('productos']);
+    guardarProducto() {
+      return this.productosStore.guardarProducto(this.prodForm);
     },
 
     editarProducto(id) {
@@ -2817,7 +2828,7 @@ export default {
         msg: '¿Archivar "' + p.nombre + '"?',
         onOk: async () => {
           await P(db.productos, { ...p, archivado: true });
-          await this.recargarStores('productos']);
+          await this.recargarStores('productos');
           this.toastMsg('Archivado');
         }
       };
@@ -2826,7 +2837,7 @@ export default {
     async restaurarProducto(id) {
       const p = this.productosStore.productos.find(x => x.id === id);
       await P(db.productos, { ...p, archivado: false });
-      await this.recargarStores('productos']);
+      await this.recargarStores('productos');
       this.toastMsg('Restaurado');
     },
 
@@ -2855,7 +2866,7 @@ export default {
           }
           if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map(l => clean(l)));
         });
-        await this.recargarStores('ajustes', 'lotes']);
+        await this.recargarStores('ajustes', 'lotes');
         const mermaGuardada = this.ajustesStore.ajustes.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
         
         this.toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
@@ -2868,7 +2879,7 @@ export default {
           await P(db.ajustes, aj);
           await P(db.lotes, lote);
         });
-        await this.recargarStores('ajustes', 'lotes']);
+        await this.recargarStores('ajustes', 'lotes');
         this.toastMsg('Sobrante registrado');
       }
       this.ajusteForm = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };
@@ -2878,62 +2889,10 @@ export default {
     
     
     // ===== PATRIMONIO =====
-          msg: '¿Cerrar el período actual? Los contadores del inicio se reinician y la ganancia se acumula. Esta acción no se puede deshacer.',
-          onOk: async () => {
-            if (this._cerrando) return;
-            this._cerrando = true;
-            try {
-            const i = new Date(this.configStore.cfg.periodoInicio);
-            const f = new Date();
-            const ventasRango = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-            const comprasRango = this.comprasStore.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
-            const gastosRango = this.gastosStore.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
-            const mermasRango = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
-
-            const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
-            const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
-            const bruta = m(totVentas - cogs);
-            const totGastos = m(gastosRango.reduce((s, g) => s + n(g.monto), 0));
-            const totMermas = m(mermasRango.reduce((s, a) => s + n(a.costoPerdida), 0));
-            const neta = m(bruta - totGastos - totMermas);
-
-            const c = {
-              id: genId('z'),
-              periodo: fmtFecha(i.toISOString()) + ' - ' + fmtFecha(f.toISOString()),
-              fechaCierre: f.toISOString(),
-              periodoInicio: i.toISOString(),
-              periodoFin: f.toISOString(),
-              totalVentas: totVentas,
-              totalCompras: m(comprasRango.reduce((s, c2) => s + n(c2.total), 0)),
-              cogs,
-              bruta,
-              gastos: totGastos,
-              mermas: totMermas,
-              ganancia: neta,
-              numVentas: ventasRango.length,
-              numCompras: comprasRango.length,
-              numGastos: gastosRango.length,
-              numMermas: mermasRango.length,
-              cajaAlCierre: this.cajaStore.saldoCaja,
-              inventarioAlCierre: this.lotesStore.valorInventario,
-              capitalAlCierre: this.capitalStore.capitalTotal,
-              cerrado: true
-            };
-            this.configStore.cfg.periodoInicio = f.toISOString();
-            await db.transaction('rw', db.cierres, async () => {
-              await P(db.cierres, c);
-
-            });
-            await this.guardarCfg();
-            await this.recargarStores('cierres', 'asientos']);
-            this.toastMsg(`Período cerrado · Resultado ${fmt(neta)}`);
-            } finally {
-              this._cerrando = false;
-            }
-          }
-        };
-      });
+    cerrarPeriodo() {
+      return this.cierresStore.cerrarPeriodo();
     },
+
 
     // ===== CUADRE / REPORTES (NUEVO) =====
     setSemana() {
@@ -3389,7 +3348,7 @@ export default {
           try {
             const actualizados = sinAsignar.map(x => ({ ...x, socioId: sid }));
             await db.capital.bulkPut(actualizados.map(x => clean(x)));
-            await this.recargarStores('capital']);
+            await this.recargarStores('capital');
             this.migrarSocioId = '';
             this.toastMsg(`Asignados ${actualizados.length} aportes`);
           } catch (e) { this.toastMsg('Error: ' + e.message, TOAST.BAD); }
@@ -3421,7 +3380,7 @@ export default {
         this.toastMsg('Socio agregado');
       }
       this.resetSocio();
-      await this.recargarStores('socios']);
+      await this.recargarStores('socios');
     },
     editarSocio(id) {
       const s = this.capitalStore.socios.find(x => x.id === id);
@@ -3437,7 +3396,7 @@ export default {
         msg: 'Eliminar a "' + s.nombre + '"? Las distribuciones previas se conservan.',
         onOk: async () => {
           await db.socios.delete(id);
-          await this.recargarStores('socios']);
+          await this.recargarStores('socios');
           this.toastMsg('Socio eliminado');
         }
       };
@@ -3471,7 +3430,7 @@ export default {
               socios: dists.map(d => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto }))
             });
           });
-          await this.recargarStores('distribuciones', 'retiros']);
+          await this.recargarStores('distribuciones', 'retiros');
           this.repartoForm = { monto: '', concepto: '' };
           this.toastMsg(`Repartido ${fmt(monto)}`);
         } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
@@ -3953,7 +3912,7 @@ export default {
         this.toastMsg(`Gasto registrado: ${fmt(monto)}`);
       }
       this.resetGasto();
-      await this.recargarStores('gastos', 'movCaja']);
+      await this.recargarStores('gastos', 'movCaja');
       const gs = this.gastosStore.gastos.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
       
     },
@@ -3985,7 +3944,7 @@ export default {
             await db.gastos.delete(id);
             if (g.movId) await db.movCaja.delete(g.movId);
           });
-          await this.recargarStores('gastos', 'movCaja', 'asientos']);
+          await this.recargarStores('gastos', 'movCaja', 'asientos');
           this.toastMsg('Gasto eliminado');
         }
       };
@@ -4876,8 +4835,6 @@ export default {
 
       // 2. Backup: disparar sin await (si el SO permite, alcanza a guardar)
       this.backupAuto().catch(e => console.warn('flush backup', e));
-    },
-
     },
 
     setGraficoProdTipo(t) {
