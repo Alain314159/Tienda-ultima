@@ -1776,10 +1776,10 @@ export default {
     
     recomendaciones() {
       const sig = [
-        this.ventasStore.ventas.value.length, this.comprasStore.compras.value.length, this.ajustesStore.ajustes.value.length,
-        this.lotesStore.lotes.value.length, this.gastosStore.gastos.value.length, this.cajaStore.movCaja.value.length,
-        this.cierresStore.cierres.value.length,
-        this.productosStore.productos.value.length, this.cajaStore.saldoCaja, this.cierresStore.gananciaNetaPeriodo,
+        this.ventasStore.ventas.length, this.comprasStore.compras.length, this.ajustesStore.ajustes.length,
+        this.lotesStore.lotes.length, this.gastosStore.gastos.length, this.cajaStore.movCaja.length,
+        this.cierresStore.cierres.length,
+        this.productosStore.productos.length, this.cajaStore.saldoCaja, this.cierresStore.gananciaNetaPeriodo,
         JSON.stringify(this.configStore.cfg.anomaliasDescartadas || []),
         this.configStore.cfg.umbralDescuentoPct, this.configStore.cfg.umbralDiasCierre
       ].join('|');
@@ -1788,9 +1788,9 @@ export default {
 
       try {
         const list = generarRecomendaciones({
-          ventas: this.ventasStore.ventas.value, compras: this.comprasStore.compras.value, gastos: this.gastosStore.gastos.value,
-          ajustes: this.ajustesStore.ajustes.value, productos: this.productosStore.productos.value, lotes: this.lotesStore.lotes.value,
-          cierres: this.cierresStore.cierres.value, movCaja: this.cajaStore.movCaja.value,
+          ventas: this.ventasStore.ventas, compras: this.comprasStore.compras, gastos: this.gastosStore.gastos,
+          ajustes: this.ajustesStore.ajustes, productos: this.productosStore.productos, lotes: this.lotesStore.lotes,
+          cierres: this.cierresStore.cierres, movCaja: this.cajaStore.movCaja,
           saldoCaja: this.cajaStore.saldoCaja, cfg: this.configStore.cfg,
           formatMoney: fmt, formatNum: fmtCant,
           stockDe: (pid) => this.productosStore.stock(pid)
@@ -2153,7 +2153,7 @@ export default {
     // ===== HISTORIAL PAGINADO POR PERIODOS =====
     agruparHistorial(items, keyFecha = 'fecha') {
       const sig = items.length + '|' + (items[0]?.id || '') + '|' + (items[items.length - 1]?.id || '')
-        + '|' + this.configStore.cfg.periodoInicio + '|' + this.cierresStore.cierres.value.length + '|' + keyFecha;
+        + '|' + this.configStore.cfg.periodoInicio + '|' + this.cierresStore.cierres.length + '|' + keyFecha;
       if (this._agrupCache && this._agrupCache.sig === sig) return this._agrupCache.data;
 
       const cierresProc = this.cierresStore.cierres.map(c => ({
@@ -2885,7 +2885,7 @@ export default {
             try {
             const i = new Date(this.configStore.cfg.periodoInicio);
             const f = new Date();
-            const ventasRango = this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+            const ventasRango = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
             const comprasRango = this.comprasStore.compras.filter(c => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
             const gastosRango = this.gastosStore.gastos.filter(g => new Date(g.fecha) >= i && new Date(g.fecha) <= f);
             const mermasRango = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
@@ -3013,7 +3013,7 @@ export default {
       if (!this.rep.isoFin) f.setHours(23, 59, 59, 999);
       if (i > f) return this.toastMsg('Fecha inicio > fin', TOAST.BAD);
 
-      const vp = this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+      const vp = this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
       const cp = this.comprasStore.compras.filter(c => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
       const gp = this.ajustesStore.ajustes.filter(a => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
@@ -3642,7 +3642,7 @@ export default {
           return true;
         }
         // Solo pedir si el usuario ya tiene datos (evita pedirlo en primera visita)
-        if (this.ventasStore.ventas.value.length + this.comprasStore.compras.value.length + this.productosStore.productos.value.length < 3) {
+        if (this.ventasStore.ventas.length + this.comprasStore.compras.length + this.productosStore.productos.length < 3) {
           console.log('Poco contenido, se pedira persistencia mas tarde');
           return false;
         }
@@ -3862,7 +3862,7 @@ export default {
       }
 
       // 4. Cierre pendiente
-      const ultimoCierre = this.cierresStore.cierres.value.length > 0 ? Math.max(...this.cierresStore.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.configStore.cfg.periodoInicio).getTime();
+      const ultimoCierre = this.cierresStore.cierres.length > 0 ? Math.max(...this.cierresStore.cierres.map(c => new Date(c.fechaCierre).getTime())) : new Date(this.configStore.cfg.periodoInicio).getTime();
       const dias = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
       if (dias >= n(this.configStore.cfg.umbralDiasCierre || 30) && this.configStore.cfg.ultimaNotifCierre !== hoy) {
         this.enviarNotif('Cierre pendiente', dias + ' dias sin cerrar periodo');
@@ -4168,8 +4168,8 @@ export default {
             { key: 'pasivos', label: 'Pasivos' }
           ];
           const actuales = {
-            productos: this.productosStore.productos.value.length, lotes: this.lotesStore.lotes.value.length, ventas: this.ventasStore.ventas.value.length,
-            compras: this.comprasStore.compras.value.length, gastos: this.gastosStore.gastos.value.length, socios: this.capitalStore.socios.length};
+            productos: this.productosStore.productos.length, lotes: this.lotesStore.lotes.length, ventas: this.ventasStore.ventas.length,
+            compras: this.comprasStore.compras.length, gastos: this.gastosStore.gastos.length, socios: this.capitalStore.socios.length};
           const nuevos = {};
           campos.forEach(c => { nuevos[c.key] = (d[c.key] || []).length; });
 
@@ -4900,7 +4900,7 @@ export default {
       }
       const tipo = this.configStore.cfg.graficoProdTipo || 'vendidos';
       const map = {};
-      this.ventasStore.ventas.value.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
+      this.ventasStore.ventas.filter(v => !v.anulada && new Date(v.fecha) >= ini).forEach(v => {
         v.items.forEach(it => {
           if (!map[it.productoId]) {
             map[it.productoId] = { id: it.productoId, nombre: it.nombre, cantidad: 0, ganancia: 0, ingresos: 0 };
@@ -5024,7 +5024,7 @@ export default {
           }
         }
 
-        this.ventasStore.ventas.value.filter(x => !x.anulada).forEach(v => {
+        this.ventasStore.ventas.filter(x => !x.anulada).forEach(v => {
           const f = new Date(v.fecha);
           const bucket = data.find(b => f >= b.ini && f <= b.fin);
           if (bucket) { bucket.v += n(v.total); bucket.g += n(v.ganancia); }
@@ -5074,7 +5074,7 @@ export default {
         await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
 
         if (this.configStore.cfg.tgChatId && this.configStore.cfg.nombreTienda && this.configStore.cfg.tiendaConfigurada) {
-          if (this.productosStore.productos.value.length === 0 && this.ventasStore.ventas.value.length === 0 && this.comprasStore.compras.value.length === 0) {
+          if (this.productosStore.productos.length === 0 && this.ventasStore.ventas.length === 0 && this.comprasStore.compras.length === 0) {
             console.warn('backupAuto: base vacia, se omite subida a Telegram');
           } else {
             try {
@@ -5176,7 +5176,7 @@ export default {
         // DETECCION DE PERDIDA DE DATOS
         // Si la app ya estaba configurada pero no hay ningun dato, avisar
         try {
-          const totalDatos = this.productosStore.productos.value.length + this.ventasStore.ventas.value.length + this.comprasStore.compras.value.length;
+          const totalDatos = this.productosStore.productos.length + this.ventasStore.ventas.length + this.comprasStore.compras.length;
           if (totalDatos === 0 && this.configStore.cfg.nombreTienda && this.configStore.cfg.tiendaConfigurada) {
             console.warn('⚠ POSIBLE PERDIDA DE DATOS: app configurada pero base vacia');
             setTimeout(() => { this.alertaPerdidaDatos = true; }, 1200);
