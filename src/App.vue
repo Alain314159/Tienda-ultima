@@ -1560,7 +1560,9 @@ import {
   useCajaStore,
   useCapitalStore,
   useGastosStore,
-  useCierresStore 
+  useCierresStore,
+  useComprasStore,
+  useAjustesStore
 } from './stores';
 
 // Importar servicios
@@ -1595,9 +1597,9 @@ export default {
     const cierresStore = useCierresStore();
 
     return {
-      // Stores (disponibles en template)
-      configStore, productosStore, lotesStore, ventasStore,
-      comprasStore, ajustesStore, cajaStore, capitalStore, gastosStore, cierresStore
+      // Alias reactivo para el template (cfg.*); los stores se exponen
+      // via computed para que this.X funcione en metodos/computeds.
+      cfg: configStore.cfg
     };
   },
 
@@ -1756,6 +1758,18 @@ export default {
   },
 
   computed: {
+    // Stores via computed: setup() solo expone al template, no a this.*
+    configStore() { return useConfigStore(); },
+    productosStore() { return useProductosStore(); },
+    lotesStore() { return useLotesStore(); },
+    ventasStore() { return useVentasStore(); },
+    comprasStore() { return useComprasStore(); },
+    ajustesStore() { return useAjustesStore(); },
+    cajaStore() { return useCajaStore(); },
+    capitalStore() { return useCapitalStore(); },
+    gastosStore() { return useGastosStore(); },
+    cierresStore() { return useCierresStore(); },
+
     soportaNotif() {
       if (Capacitor.isNativePlatform()) return true;
       return typeof window !== 'undefined' && 'Notification' in window;
