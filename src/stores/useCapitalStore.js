@@ -251,7 +251,7 @@ export const useCapitalStore = defineStore('capital', () => {
     if (n(monto) <= 0) throw new Error('Monto inválido');
     if (socios.value.length === 0) throw new Error('No hay socios configurados');
     
-    const totalPorcentaje = socios.value.reduce((s, s) => s + n(s.porcentaje), 0);
+    const totalPorcentaje = socios.value.reduce((acc, so) => acc + n(so.porcentaje), 0);
     if (totalPorcentaje <= 0) throw new Error('Porcentajes de socios inválidos');
     
     const distribucion = {
