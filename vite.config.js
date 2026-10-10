@@ -91,11 +91,13 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vue-vendor': ['vue'],
-            'chart-vendor': ['chart.js'],
-            'pdf-vendor': ['jspdf', 'jspdf-autotable'],
-            'db-vendor': ['dexie']
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('/vue/') || id.includes('/@vue/') || id.includes('/pinia/')) return 'vue-vendor';
+              if (id.includes('chart.js')) return 'chart-vendor';
+              if (id.includes('jspdf')) return 'pdf-vendor';
+              if (id.includes('dexie')) return 'db-vendor';
+            }
           }
         }
       }
