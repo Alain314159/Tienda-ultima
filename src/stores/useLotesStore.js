@@ -5,7 +5,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { db, P, n, m, q } from '../db';
-import { calcFIFO } from '../services/fifo';
+import { calcFIFO as _calcFIFOBase } from '../services/fifo';
 
 export const useLotesStore = defineStore('lotes', () => {
   // ===== ESTADO =====
@@ -89,7 +89,7 @@ export const useLotesStore = defineStore('lotes', () => {
    * Calcula el costo FIFO para una cantidad de producto
    */
   function calcFIFO(productoId, cantidad) {
-    return calcFIFO(productoId, cantidad, lotes.value);
+    return _calcFIFOBase(productoId, cantidad, lotes.value);
   }
 
   // ===== ACCIONES =====
