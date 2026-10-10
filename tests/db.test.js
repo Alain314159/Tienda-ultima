@@ -116,7 +116,7 @@ describe('buildData() - exportacion', () => {
       gastos: [], asientos: [], pasivos: []
     };
     const data = buildData(state);
-    expect(data.version).toBe(7);
+    expect(data.version).toBe(9);
     expect(data.gastos).toEqual([]);
     expect(data.pasivos).toEqual([]);
   });
