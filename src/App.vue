@@ -2352,6 +2352,10 @@ export default {
     },
 
     // ===== DISPATCHER: recarga selectiva de stores por nombre de tabla =====
+    async recargarTodoStores() {
+      return this.recargarStores('ventas','lotes','compras','productos','ajustes','cierres','capital','socios','distribuciones','retiros','gastos','movCaja','arqueos');
+    },
+
     async recargarStores(...tables) {
       const map = {
         ventas: () => this.ventasStore.cargarVentas(),
