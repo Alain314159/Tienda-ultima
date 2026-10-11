@@ -78,6 +78,11 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     const header = await page.$('.header');
     console.log(header ? '  ✅ Header visible' : '  ⚠️  Header no visible');
 
+    grabar('Cerrar aviso inicial si existe');
+    const btnAviso = await page.$('.modal-box.aviso-tienda button:has-text("Recordarme")') || await page.$('.aviso-tienda button');
+    if (btnAviso) { await btnAviso.click(); await esperar(600); console.log('  ✅ Aviso inicial cerrado'); }
+    else console.log('  ⚠️  Sin aviso inicial');
+
     grabar('Navegar a Ventas');
     await page.click('nav button:has-text("Ventas")');
     await esperar(800);
