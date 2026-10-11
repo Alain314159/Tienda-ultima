@@ -10,7 +10,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Autosave } from './services/autosave.js';
 import { Log } from './services/logger.js';
-import { buildData } from './db.js';
+import { buildData, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH } from './db.js';
 import { db } from './db.js';
 
 // Logger: captura console, errores globales y eventos
@@ -23,6 +23,23 @@ const app = createApp(App);
 
 app.use(pinia);
 app.component('icon', AppIcon);
+
+// ============================================================
+// UTILIDADES GLOBALES (accesibles en cualquier template via this.X)
+// ============================================================
+Object.assign(app.config.globalProperties, {
+  n,
+  m,
+  q,
+  genId,
+  clean,
+  P,
+  vib,
+  fmt,
+  fmtCant,
+  fmtFecha,
+  fmtFH,
+});
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue Error:', err, info);
