@@ -184,6 +184,8 @@ export const useLotesStore = defineStore('lotes', () => {
     lotes,
     lotesActivos,
     lotesPorProducto,
+    lotesDeProducto,
+    valorLotesProducto,
     stockMap,
     valorInventario,
     stock,

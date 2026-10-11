@@ -1562,7 +1562,8 @@ import {
   useGastosStore,
   useCierresStore,
   useComprasStore,
-  useAjustesStore
+  useAjustesStore,
+  useSociosStore
 } from './stores';
 
 // Importar servicios
@@ -1769,6 +1770,7 @@ export default {
     capitalStore() { return useCapitalStore(); },
     gastosStore() { return useGastosStore(); },
     cierresStore() { return useCierresStore(); },
+    sociosStore() { return useSociosStore(); },
 
     soportaNotif() {
       if (Capacitor.isNativePlatform()) return true;
@@ -1858,6 +1860,7 @@ export default {
     aportesSinSocio() { return this.capitalStore.capital.filter(x => !x.socioId); },
     aportesSinSocioTotal() { return m(this.aportesSinSocio.reduce((s, x) => s + n(x.monto), 0)); },
     sociosActivos() { return this.capitalStore.socios.filter(s => s.activo !== false); },
+    socios() { return this.capitalStore.socios; },
     ventasFiltradas() { return this.ventasStore.ventasFiltradas; },
     listaVenta() { return this.ventasStore.listaVenta; },
     ventaExpandida() { return this.ventasStore.ventaExpandida; },
@@ -1873,6 +1876,22 @@ export default {
     prodsActivos() { return this.productosStore.prodsActivos; },
     prodsFiltrados() { return this.productosStore.productosFiltrados; },
     stockMap() { return this.lotesStore.stockMap; },
+    invAgrupado() {
+      const sig = this.prodsActivos.length + '|' + this.lotesStore.lotes.length;
+      if (this._invAgrCache && this._invAgrCache.sig === sig) return this._invAgrCache.data;
+      const result = this.prodsActivos.map(p => {
+        const lts = this.lotesStore.lotesDeProducto(p.id);
+        return {
+          id: p.id, nombre: p.nombre, unidad: p.unidad,
+          stockTotal: this.productosStore.stock(p.id),
+          valorTotal: this.lotesStore.valorLotesProducto ? this.lotesStore.valorLotesProducto(p.id) : 0,
+          lotes: lts
+        };
+      }).filter(g => g.stockTotal > 0 || g.lotes.length > 0)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      this._invAgrCache = { sig, data: result };
+      return result;
+    },
     lotesActivos() { return this.lotesStore.lotesActivos; },
     valorInventario() { return this.lotesStore.valorInventario; },
     esNativoApp() { return Capacitor.isNativePlatform(); },
@@ -2312,6 +2331,13 @@ export default {
     validarPrecio(it) { return this.ventasStore.validarPrecio(it); },
     esPrecioEscalon(it) { return this.ventasStore.esPrecioEscalon(it); },
     tieneEscalones(pid) { return this.productosStore.tieneEscalones(pid); },
+    stock(pid) { return this.lotesStore.stockMap[pid] || 0; },
+    setGraficoProdPeriodo(p) {
+      if (this.configStore.cfg.graficoProdPeriodo === p) return;
+      this.configStore.cfg.graficoProdPeriodo = p;
+      this.guardarCfg();
+      this.$nextTick(() => requestAnimationFrame(() => this.renderChartProductos()));
+    },
     guardarCfg() { return this.configStore.guardarCfg(); },
     registrarAporte(...a) { return this.capitalStore.registrarAporte(...a); },
     registrarRetiro(...a) { return this.capitalStore.registrarRetiro(...a); },

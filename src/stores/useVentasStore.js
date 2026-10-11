@@ -395,6 +395,7 @@ export const useVentasStore = defineStore('ventas', () => {
     ventaExpandida,
     procesandoVenta,
     listaVenta,
+    ventasFiltradas,
     totalCarrito,
     gananciaCarrito,
     gananciaItem,
