@@ -120,11 +120,11 @@ export const useCierresStore = defineStore('cierres', () => {
       const f = new Date();
       
       // Filtrar datos del período
-      const ventasRango = ventasStore.ventas.value.filter(
+      const ventasRango = ventasStore.ventas.filter(
         v => !v.anulada && new Date(v.fecha) >= ini && new Date(v.fecha) <= f
       );
       const comprasRango = []; // TODO: Filtrar compras
-      const gastosRango = gastosStore.gastos.value.filter(
+      const gastosRango = gastosStore.gastos.filter(
         g => new Date(g.fecha) >= ini && new Date(g.fecha) <= f
       );
       const mermasRango = []; // TODO: Filtrar ajustes

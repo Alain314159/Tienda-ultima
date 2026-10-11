@@ -26,17 +26,32 @@ function serializar(valor, depth = 0) {
   if (t === 'number' || t === 'boolean') return String(valor);
   if (t === 'function') return '[Function ' + (valor.name || 'anon') + ']';
   if (valor instanceof Error) {
-    return valor.name + ': ' + valor.message + (valor.stack ? '\n' + valor.stack.split('\n').slice(0, 5).join('\n') : '');
+    return (
+      valor.name + ': ' + valor.message + (valor.stack ? '\n' + valor.stack.split('\n').slice(0, 5).join('\n') : '')
+    );
   }
   if (Array.isArray(valor)) {
-    if (valor.length > 20) return '[Array(' + valor.length + ')] ' + valor.slice(0, 20).map(v => serializar(v, depth + 1)).join(', ') + '...';
-    return '[' + valor.map(v => serializar(v, depth + 1)).join(', ') + ']';
+    if (valor.length > 20)
+      return (
+        '[Array(' +
+        valor.length +
+        ')] ' +
+        valor
+          .slice(0, 20)
+          .map((v) => serializar(v, depth + 1))
+          .join(', ') +
+        '...'
+      );
+    return '[' + valor.map((v) => serializar(v, depth + 1)).join(', ') + ']';
   }
   if (t === 'object') {
     const keys = Object.keys(valor).slice(0, 15);
-    const partes = keys.map(k => {
-      try { return k + ': ' + serializar(valor[k], depth + 1); }
-      catch { return k + ': [error]'; }
+    const partes = keys.map((k) => {
+      try {
+        return k + ': ' + serializar(valor[k], depth + 1);
+      } catch {
+        return k + ': [error]';
+      }
     });
     if (Object.keys(valor).length > 15) partes.push('...');
     return '{' + partes.join(', ') + '}';
@@ -45,7 +60,9 @@ function serializar(valor, depth = 0) {
 }
 
 function formatearArgs(args) {
-  return Array.from(args).map(a => serializar(a)).join(' ');
+  return Array.from(args)
+    .map((a) => serializar(a))
+    .join(' ');
 }
 
 function timestamp() {
@@ -72,7 +89,9 @@ async function escribirLineas(lineas) {
       const prev = localStorage.getItem(key) || '';
       const nuevo = (prev + texto).slice(-500000); // max ~500KB por dia
       localStorage.setItem(key, nuevo);
-    } catch (e) { /* silencioso */ }
+    } catch (e) {
+      /* silencioso */
+    }
     return;
   }
 
@@ -84,10 +103,22 @@ async function escribirLineas(lineas) {
     try {
       const actual = await Filesystem.readFile({ path, directory: Directory.Documents, encoding: Encoding.UTF8 });
       const contenido = (typeof actual.data === 'string' ? actual.data : '') + texto;
-      await Filesystem.writeFile({ path, data: contenido, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
+      await Filesystem.writeFile({
+        path,
+        data: contenido,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
     } catch (e) {
       // No existe, crear
-      await Filesystem.writeFile({ path, data: texto, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
+      await Filesystem.writeFile({
+        path,
+        data: texto,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
     }
   } catch (e) {
     // Ultimo recurso: silencioso
@@ -141,7 +172,7 @@ export const Log = {
       log: console.log,
       warn: console.warn,
       error: console.error,
-      info: console.info
+      info: console.info,
     };
     const self = this;
     console.log = (...args) => {
@@ -163,7 +194,10 @@ export const Log = {
 
     // 2. Capturar errores globales
     window.addEventListener('error', (e) => {
-      agregar('FATAL', (e.message || 'error') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?'));
+      agregar(
+        'FATAL',
+        (e.message || 'error') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?')
+      );
     });
 
     // 3. Capturar promesas rechazadas
@@ -185,7 +219,10 @@ export const Log = {
     window.addEventListener('beforeunload', () => flush());
 
     // 5. Encabezado
-    agregar('INIT', 'Logger iniciado · plataforma=' + (esNativo() ? 'nativo' : 'web') + ' · ' + new Date().toISOString());
+    agregar(
+      'INIT',
+      'Logger iniciado · plataforma=' + (esNativo() ? 'nativo' : 'web') + ' · ' + new Date().toISOString()
+    );
 
     // 6. Rotacion silenciosa
     setTimeout(() => this.rotar().catch(() => {}), 3000);
@@ -197,12 +234,20 @@ export const Log = {
   },
 
   // Log manual
-  info(msg, data) { agregar('INFO', msg + (data ? ' · ' + serializar(data) : '')); },
-  warn(msg, data) { agregar('WARN', msg + (data ? ' · ' + serializar(data) : '')); },
-  error(msg, data) { agregar('ERROR', msg + (data ? ' · ' + serializar(data) : '')); },
+  info(msg, data) {
+    agregar('INFO', msg + (data ? ' · ' + serializar(data) : ''));
+  },
+  warn(msg, data) {
+    agregar('WARN', msg + (data ? ' · ' + serializar(data) : ''));
+  },
+  error(msg, data) {
+    agregar('ERROR', msg + (data ? ' · ' + serializar(data) : ''));
+  },
 
   // Forzar escritura inmediata
-  async flush() { await flush(); },
+  async flush() {
+    await flush();
+  },
 
   // Listar archivos de log disponibles
   async listar() {
@@ -210,14 +255,17 @@ export const Log = {
       const archivos = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith('log_')) archivos.push({ name: k.replace('log_', '') + '.log', size: (localStorage.getItem(k) || '').length });
+        if (k && k.startsWith('log_'))
+          archivos.push({ name: k.replace('log_', '') + '.log', size: (localStorage.getItem(k) || '').length });
       }
       return archivos.sort((a, b) => b.name.localeCompare(a.name));
     }
     try {
       const r = await Filesystem.readdir({ path: CARPETA, directory: Directory.Documents });
-      return (r.files || []).filter(f => f.name.endsWith('.log')).sort((a, b) => b.name.localeCompare(a.name));
-    } catch (e) { return []; }
+      return (r.files || []).filter((f) => f.name.endsWith('.log')).sort((a, b) => b.name.localeCompare(a.name));
+    } catch (e) {
+      return [];
+    }
   },
 
   // Leer el contenido de un archivo de log
@@ -226,9 +274,15 @@ export const Log = {
       return localStorage.getItem('log_' + nombre.replace('.log', '')) || '';
     }
     try {
-      const r = await Filesystem.readFile({ path: `${CARPETA}/${nombre}`, directory: Directory.Documents, encoding: Encoding.UTF8 });
+      const r = await Filesystem.readFile({
+        path: `${CARPETA}/${nombre}`,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+      });
       return typeof r.data === 'string' ? r.data : '';
-    } catch (e) { return ''; }
+    } catch (e) {
+      return '';
+    }
   },
 
   // Borrar logs viejos
@@ -244,29 +298,35 @@ export const Log = {
     try {
       const r = await Filesystem.readdir({ path: CARPETA, directory: Directory.Documents });
       const limite = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
-      for (const f of (r.files || [])) {
+      for (const f of r.files || []) {
         const m = f.name.match(/app-(\d{4}-\d{2}-\d{2})\.log/);
         if (m && m[1] < limite) {
-          try { await Filesystem.deleteFile({ path: `${CARPETA}/${f.name}`, directory: Directory.Documents }); } catch (e) {}
+          try {
+            await Filesystem.deleteFile({ path: `${CARPETA}/${f.name}`, directory: Directory.Documents });
+          } catch (e) {}
         }
       }
     } catch (e) {}
   },
 
   // Para probar desde la UI
-  async info() {
+  async estado() {
     const archivos = await this.listar();
     return {
       activo: _activo,
       buffer: _buffer.length,
       archivos,
-      plataforma: esNativo() ? 'nativo' : 'web'
+      plataforma: esNativo() ? 'nativo' : 'web',
     };
   },
 
   // Desactivar (por si molesta)
-  desactivar() { _activo = false; },
-  activar() { _activo = true; }
+  desactivar() {
+    _activo = false;
+  },
+  activar() {
+    _activo = true;
+  },
 };
 
 export default Log;

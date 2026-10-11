@@ -10,10 +10,12 @@ export const useLotesStore = defineStore('lotes', {
     lotesActivos: (state) => state.lotes.filter((l) => (l.cantidadInicial || 0) - (l.cantidadVendida || 0) > 0),
     valorInventario: (state) => {
       const utils = useUtilitiesStore();
-      return utils.m(state.lotes.reduce((acc, lote) => {
-        const disponible = utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida);
-        return acc + disponible * utils.n(lote.costo);
-      }, 0));
+      return utils.m(
+        state.lotes.reduce((acc, lote) => {
+          const disponible = utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida);
+          return acc + disponible * utils.n(lote.costo);
+        }, 0)
+      );
     },
   },
   actions: {
@@ -25,14 +27,21 @@ export const useLotesStore = defineStore('lotes', {
     },
     valorProducto(productoId) {
       const utils = useUtilitiesStore();
-      return utils.m(this.porProducto(productoId).reduce((acc, lote) => {
-        const disponible = utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida);
-        return acc + disponible * utils.n(lote.costo);
-      }, 0));
+      return utils.m(
+        this.porProducto(productoId).reduce((acc, lote) => {
+          const disponible = utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida);
+          return acc + disponible * utils.n(lote.costo);
+        }, 0)
+      );
     },
     stockProducto(productoId) {
       const utils = useUtilitiesStore();
-      return utils.m(this.porProducto(productoId).reduce((acc, lote) => acc + (utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida)), 0));
+      return utils.m(
+        this.porProducto(productoId).reduce(
+          (acc, lote) => acc + (utils.n(lote.cantidadInicial) - utils.n(lote.cantidadVendida)),
+          0
+        )
+      );
     },
   },
 });

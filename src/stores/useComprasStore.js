@@ -28,7 +28,7 @@ export const useComprasStore = defineStore('compras', () => {
     empaqueId: '',
     precioEmpaque: '',
     cantidadEmpaque: '',
-    usarEmpaque: false
+    usarEmpaque: false,
   });
   const busqCompra = ref('');
 
@@ -38,9 +38,7 @@ export const useComprasStore = defineStore('compras', () => {
    * Compras ordenadas por fecha (más reciente primero)
    */
   const comprasOrdenadas = computed(() => {
-    return compras.value
-      .slice()
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    return compras.value.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   });
 
   /**
@@ -48,18 +46,14 @@ export const useComprasStore = defineStore('compras', () => {
    */
   const comprasPeriodo = computed(() => {
     const ini = new Date(configStore.periodoInicio);
-    return m(compras.value
-      .filter(c => !c.anulada && new Date(c.fecha) >= ini)
-      .reduce((s, c) => s + n(c.total), 0));
+    return m(compras.value.filter((c) => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
   });
 
   /**
    * Total de compras (todas)
    */
   const comprasTotal = computed(() => {
-    return m(compras.value
-      .filter(c => !c.anulada)
-      .reduce((s, c) => s + n(c.total), 0));
+    return m(compras.value.filter((c) => !c.anulada).reduce((s, c) => s + n(c.total), 0));
   });
 
   /**
@@ -68,9 +62,7 @@ export const useComprasStore = defineStore('compras', () => {
   const margenPeriodo = computed(() => {
     const ventasPeriodo = 0; // Se obtendrá de ventasStore
     const gananciaNetaPeriodo = 0; // Se obtendrá de cierresStore
-    return ventasPeriodo > 0 
-      ? ((gananciaNetaPeriodo / ventasPeriodo) * 100).toFixed(2) 
-      : '0.00';
+    return ventasPeriodo > 0 ? ((gananciaNetaPeriodo / ventasPeriodo) * 100).toFixed(2) : '0.00';
   });
 
   // ===== ACCIONES =====
@@ -99,7 +91,7 @@ export const useComprasStore = defineStore('compras', () => {
     if (costo <= 0) return { error: 'Costo inválido' };
     if (!c.productoId) return { error: 'Selecciona un producto' };
 
-    const producto = productosStore.productos.find(p => p.id === c.productoId);
+    const producto = productosStore.productos.find((p) => p.id === c.productoId);
     if (!producto) return { error: 'Producto no encontrado' };
 
     try {
@@ -116,7 +108,7 @@ export const useComprasStore = defineStore('compras', () => {
         empaqueId: c.usarEmpaque ? c.empaqueId : null,
         precioEmpaque: c.usarEmpaque ? n(c.precioEmpaque) : null,
         cantidadEmpaque: c.usarEmpaque ? n(c.cantidadEmpaque) : null,
-        anulada: false
+        anulada: false,
       };
 
       await db.transaction('rw', db.compras, db.lotes, async () => {
@@ -130,7 +122,7 @@ export const useComprasStore = defineStore('compras', () => {
           cantidadInicial: cantidad,
           cantidadVendida: 0,
           costo: costo,
-          nota: `Compra ${compra.id}`
+          nota: `Compra ${compra.id}`,
         };
         await P(db.lotes, lote);
       });
@@ -149,7 +141,7 @@ export const useComprasStore = defineStore('compras', () => {
    * Anula una compra
    */
   async function anularCompra(id) {
-    const c = compras.value.find(x => x.id === id);
+    const c = compras.value.find((x) => x.id === id);
     if (!c || c.anulada) return { error: 'Compra no encontrada o ya anulada' };
 
     try {
@@ -157,8 +149,8 @@ export const useComprasStore = defineStore('compras', () => {
         await P(db.compras, { ...c, anulada: true, fechaAnulacion: new Date().toISOString() });
 
         // Revertir lote si es el único o el más reciente
-        const lotes = lotesStore.lotes.filter(l => l.productoId === c.productoId);
-        const loteCompra = lotes.find(l => l.cantidadInicial === c.cantidad && l.costo === c.costo);
+        const lotes = lotesStore.lotes.filter((l) => l.productoId === c.productoId);
+        const loteCompra = lotes.find((l) => l.cantidadInicial === c.cantidad && l.costo === c.costo);
         if (loteCompra) {
           await db.lotes.delete(loteCompra.id);
         }
@@ -181,7 +173,7 @@ export const useComprasStore = defineStore('compras', () => {
     const reloadMap = {
       compras: cargarCompras,
       lotes: lotesStore.cargarLotes,
-      asientos: () => {}
+      asientos: () => {},
     };
 
     for (const table of tables) {
@@ -206,7 +198,7 @@ export const useComprasStore = defineStore('compras', () => {
       empaqueId: '',
       precioEmpaque: '',
       cantidadEmpaque: '',
-      usarEmpaque: false
+      usarEmpaque: false,
     };
   }
 
@@ -223,7 +215,7 @@ export const useComprasStore = defineStore('compras', () => {
     guardarCompra,
     anularCompra,
     recargarStores,
-    resetCompra
+    resetCompra,
   };
 });
 

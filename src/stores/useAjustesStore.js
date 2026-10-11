@@ -23,7 +23,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
     cantidad: '',
     costo: '',
     nota: '',
-    fecha: new Date().toISOString().split('T')[0]
+    fecha: new Date().toISOString().split('T')[0],
   });
 
   // ===== GETTERS =====
@@ -32,9 +32,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
    * Ajustes ordenados por fecha (más reciente primero)
    */
   const ajustesOrdenados = computed(() => {
-    return ajustes.value
-      .slice()
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    return ajustes.value.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   });
 
   /**
@@ -78,7 +76,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
         costoPerdida: a.tipo === 'merma' ? Math.abs(cantidad) * costo : 0,
         nota: a.nota?.trim() || '',
         fecha: a.fecha,
-        anulada: false
+        anulada: false,
       };
 
       await db.transaction('rw', db.ajustes, db.lotes, async () => {
@@ -88,7 +86,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
         if (a.tipo === 'merma') {
           // Reducir stock de los lotes más antiguos (FIFO)
           const lotes = lotesStore.lotes
-            .filter(l => l.productoId === a.productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+            .filter((l) => l.productoId === a.productoId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
             .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
           let restante = Math.abs(cantidad);
@@ -103,7 +101,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
         } else if (a.tipo === 'entrada') {
           // Aumentar stock
           const lotes = lotesStore.lotes
-            .filter(l => l.productoId === a.productoId)
+            .filter((l) => l.productoId === a.productoId)
             .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
           if (lotes.length > 0) {
@@ -129,7 +127,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
    * Anula un ajuste
    */
   async function anularAjuste(id) {
-    const a = ajustes.value.find(x => x.id === id);
+    const a = ajustes.value.find((x) => x.id === id);
     if (!a || a.anulada) return { error: 'Ajuste no encontrado o ya anulado' };
 
     try {
@@ -140,7 +138,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
         if (a.tipo === 'merma') {
           // Devolver stock
           const lotes = lotesStore.lotes
-            .filter(l => l.productoId === a.productoId)
+            .filter((l) => l.productoId === a.productoId)
             .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
           if (lotes.length > 0) {
@@ -151,10 +149,10 @@ export const useAjustesStore = defineStore('ajustes', () => {
         } else if (a.tipo === 'entrada') {
           // Reducir stock
           const lotes = lotesStore.lotes
-            .filter(l => l.productoId === a.productoId && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+            .filter((l) => l.productoId === a.productoId && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
             .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
-          let restante = cantidad;
+          let restante = Math.abs(n(a.cantidad));
           for (const lote of lotes) {
             if (restante <= 0) break;
             const disponible = n(lote.cantidadInicial) - n(lote.cantidadVendida);
@@ -182,7 +180,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
   async function recargarStores(tables) {
     const reloadMap = {
       ajustes: cargarAjustes,
-      lotes: lotesStore.cargarLotes
+      lotes: lotesStore.cargarLotes,
     };
 
     for (const table of tables) {
@@ -210,7 +208,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
       cantidad: '',
       costo: '',
       nota: '',
-      fecha: new Date().toISOString().split('T')[0]
+      fecha: new Date().toISOString().split('T')[0],
     };
   }
 
@@ -226,7 +224,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
     anularAjuste,
     recargarStores,
     toggleAjustes,
-    resetAjuste
+    resetAjuste,
   };
 });
 

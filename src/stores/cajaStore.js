@@ -10,10 +10,12 @@ export const useCajaStore = defineStore('caja', {
   getters: {
     saldoCaja: (state) => {
       const utils = useUtilitiesStore();
-      return utils.m(state.movCaja.reduce((acc, mov) => {
-        const delta = mov.tipo === 'ingreso' ? 1 : -1;
-        return acc + utils.n(mov.monto) * delta;
-      }, 0));
+      return utils.m(
+        state.movCaja.reduce((acc, mov) => {
+          const delta = mov.tipo === 'ingreso' ? 1 : -1;
+          return acc + utils.n(mov.monto) * delta;
+        }, 0)
+      );
     },
   },
   actions: {

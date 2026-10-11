@@ -15,7 +15,7 @@ db.version(1).stores({
   retiros: 'id, fecha',
   socios: 'id, nombre, aporte, porcentaje, fecha, activo',
   distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-  config: 'key'
+  config: 'key',
 });
 
 // Version 2: agrega gastos operativos
@@ -33,7 +33,7 @@ db.version(2).stores({
   socios: 'id, nombre, aporte, porcentaje, fecha, activo',
   distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
   gastos: 'id, fecha, categoria',
-  config: 'key'
+  config: 'key',
 });
 
 // Version 3: agrega libro diario
@@ -52,7 +52,7 @@ db.version(3).stores({
   distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
   gastos: 'id, fecha, categoria',
   asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-  config: 'key'
+  config: 'key',
 });
 
 // Version 4: agrega pasivos (deudas)
@@ -72,14 +72,8 @@ db.version(4).stores({
   gastos: 'id, fecha, categoria',
   asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-  config: 'key'
+  config: 'key',
 });
-
-
-
-
-
-
 
 // Version 5: auditorias fisicas
 db.version(5).stores({
@@ -99,7 +93,7 @@ db.version(5).stores({
   asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
   auditorias: 'id, fechaInicio, estado',
-  config: 'key'
+  config: 'key',
 });
 
 // Version 6: indices compuestos para consultas rapidas
@@ -120,7 +114,7 @@ db.version(6).stores({
   asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
   auditorias: 'id, fechaInicio, estado',
-  config: 'key'
+  config: 'key',
 });
 
 // Version 7: cola de backups pendientes
@@ -142,7 +136,7 @@ db.version(7).stores({
   pasivos: 'id, fecha, acreedor, pagado, vencimiento',
   auditorias: 'id, fechaInicio, estado',
   tgQueue: 'id, estado, ts',
-  config: 'key'
+  config: 'key',
 });
 
 // Exponer db en window para debugging (útil con Eruda/F12)
@@ -163,27 +157,34 @@ if (typeof window !== 'undefined') window.db = db;
 //
 // q(): Redondea a 4 decimales para cantidades (kg, gr, litros)
 //
-export const n = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
-export const m = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
-export const q = v => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
+export const n = (v) => {
+  const x = parseFloat(v);
+  return isNaN(x) ? 0 : x;
+};
+export const m = (v) => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
+export const q = (v) => Math.round((n(v) + Number.EPSILON) * 10000) / 10000;
 
 // ID único
-export const genId = prefix => prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+export const genId = (prefix) => prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 // Limpiar objeto (eliminar undefined)
-export const clean = obj => JSON.parse(JSON.stringify(obj));
+export const clean = (obj) => JSON.parse(JSON.stringify(obj));
 
 // Put helper
 export const P = (table, obj) => table.put(clean(obj));
 
 // Vibración
-export const vib = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+export const vib = (ms) => {
+  try {
+    navigator.vibrate && navigator.vibrate(ms);
+  } catch (e) {}
+};
 
 // Formateadores
 export function fmt(v) {
   try {
     return '$' + n(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  } catch(e) {
+  } catch (e) {
     return '$0.00';
   }
 }
@@ -197,7 +198,13 @@ export function fmtCant(v) {
 export function fmtFecha(iso) {
   try {
     const d = new Date(iso);
-    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getFullYear()).slice(2);
+    return (
+      String(d.getDate()).padStart(2, '0') +
+      '/' +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      '/' +
+      String(d.getFullYear()).slice(2)
+    );
   } catch (e) {
     return '';
   }
@@ -233,6 +240,6 @@ export function buildData(state) {
     gastos: state.gastos,
     asientos: state.asientos,
     pasivos: state.pasivos,
-    auditorias: state.auditorias
+    auditorias: state.auditorias,
   });
 }

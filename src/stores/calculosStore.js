@@ -44,7 +44,11 @@ export const useCalculosStore = defineStore('calculos', () => {
     return utils.sumar(
       ...ventas
         .filter((v) => !v.anulada)
-        .map((v) => utils.sumar(...(v.items || []).map((it) => utils.multiplicar(utils.n(it.cantidad), utils.n(it.costoUnitario)))))
+        .map((v) =>
+          utils.sumar(
+            ...(v.items || []).map((it) => utils.multiplicar(utils.n(it.cantidad), utils.n(it.costoUnitario)))
+          )
+        )
     );
   };
 

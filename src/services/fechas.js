@@ -7,7 +7,7 @@ const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
 
 export const Fechas = {
   // ===== FORMATOS =====
-  
+
   /**
    * Formato corto: "15 sep"
    */
@@ -15,28 +15,28 @@ export const Fechas = {
     if (!fecha) return '';
     return new Date(fecha).toLocaleDateString('es-ES', DATE_OPTIONS);
   },
-  
+
   /**
    * Formato largo: "15 de septiembre de 2024"
    */
   formatoLargo(fecha) {
     if (!fecha) return '';
-    return new Date(fecha).toLocaleDateString('es-ES', { 
-      year: 'numeric', month: 'long', day: 'numeric' 
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   },
-  
+
   /**
    * Formato fecha-hora: "15 sep, 14:30"
    */
   formatoFechaHora(fecha) {
     if (!fecha) return '';
     const date = new Date(fecha);
-    return date.toLocaleDateString('es-ES', DATE_OPTIONS) + 
-           ', ' + 
-           date.toLocaleTimeString('es-ES', TIME_OPTIONS);
+    return date.toLocaleDateString('es-ES', DATE_OPTIONS) + ', ' + date.toLocaleTimeString('es-ES', TIME_OPTIONS);
   },
-  
+
   /**
    * Formato para display: "15/09/2024"
    */
@@ -45,9 +45,9 @@ export const Fechas = {
     const d = new Date(fecha);
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   },
-  
+
   // ===== COMPARACIONES =====
-  
+
   /**
    * Verifica si una fecha está dentro de un período
    */
@@ -58,7 +58,7 @@ export const Fechas = {
     const fin = new Date(periodoFin);
     return f >= ini && f <= fin;
   },
-  
+
   /**
    * Verifica si una fecha es hoy
    */
@@ -66,11 +66,9 @@ export const Fechas = {
     if (!fecha) return false;
     const f = new Date(fecha);
     const hoy = new Date();
-    return f.getDate() === hoy.getDate() && 
-           f.getMonth() === hoy.getMonth() && 
-           f.getFullYear() === hoy.getFullYear();
+    return f.getDate() === hoy.getDate() && f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear();
   },
-  
+
   /**
    * Verifica si una fecha es de esta semana
    */
@@ -84,16 +82,16 @@ export const Fechas = {
     finSemana.setDate(inicioSemana.getDate() + 6);
     return f >= inicioSemana && f <= finSemana;
   },
-  
+
   // ===== UTILIDADES =====
-  
+
   /**
    * Fecha actual en ISO
    */
   hoy() {
     return new Date().toISOString();
   },
-  
+
   /**
    * Inicio del día (00:00:00)
    */
@@ -102,7 +100,7 @@ export const Fechas = {
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
   },
-  
+
   /**
    * Fin del día (23:59:59)
    */
@@ -111,7 +109,7 @@ export const Fechas = {
     d.setHours(23, 59, 59, 999);
     return d.toISOString();
   },
-  
+
   /**
    * Diferencia en días entre dos fechas
    */
@@ -120,7 +118,7 @@ export const Fechas = {
     const d2 = new Date(fecha2);
     return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
   },
-  
+
   /**
    * Verifica si una fecha es válida
    */
@@ -128,7 +126,7 @@ export const Fechas = {
     if (!fecha) return false;
     const d = new Date(fecha);
     return !isNaN(d.getTime());
-  }
+  },
 };
 
 export default Fechas;

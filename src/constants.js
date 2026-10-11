@@ -3,7 +3,7 @@
 export const TOAST = {
   OK: 'ok',
   WARN: 'warn',
-  BAD: 'bad'
+  BAD: 'bad',
 };
 
 export const TIPO_ASIENTO = {
@@ -19,17 +19,24 @@ export const TIPO_ASIENTO = {
   CIERRE: 'cierre',
   PAGO_PASIVO: 'pago_pasivo',
   AUDITORIA: 'auditoria',
-  CAPITAL: 'capital'
+  CAPITAL: 'capital',
 };
 
 export const CATEGORIAS_GASTO = [
-  'Luz', 'Agua', 'Alquiler', 'Internet', 'Transporte',
-  'Publicidad', 'Mantenimiento', 'Limpieza', 'Otros'
+  'Luz',
+  'Agua',
+  'Alquiler',
+  'Internet',
+  'Transporte',
+  'Publicidad',
+  'Mantenimiento',
+  'Limpieza',
+  'Otros',
 ];
 
 export const METODOS_PAGO = [
   { value: 'efectivo', label: 'Efectivo' },
   { value: 'transferencia', label: 'Transferencia' },
   { value: 'tarjeta', label: 'Tarjeta' },
-  { value: 'otro', label: 'Otro' }
+  { value: 'otro', label: 'Otro' },
 ];

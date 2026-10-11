@@ -20,13 +20,21 @@ export const useUtilitiesStore = defineStore('utilities', () => {
   const fmtCant = (v, fixed = 4) => {
     const num = Number.parseFloat(v);
     if (!Number.isFinite(num)) return '0';
-    return Number(num).toFixed(fixed).replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1');
+    return Number(num)
+      .toFixed(fixed)
+      .replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1');
   };
 
   const fmtFecha = (iso) => {
     try {
       const d = new Date(iso);
-      return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getFullYear()).slice(2);
+      return (
+        String(d.getDate()).padStart(2, '0') +
+        '/' +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        '/' +
+        String(d.getFullYear()).slice(2)
+      );
     } catch (e) {
       return '';
     }
@@ -35,7 +43,9 @@ export const useUtilitiesStore = defineStore('utilities', () => {
   const fmtFH = (iso) => {
     try {
       const d = new Date(iso);
-      return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return (
+        fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+      );
     } catch (e) {
       return '';
     }

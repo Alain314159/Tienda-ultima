@@ -20,7 +20,9 @@ export const useSociosStore = defineStore('socios', {
     },
     gananciaDisponible: (state) => {
       const utils = useUtilitiesStore();
-      return utils.m(state.capital.reduce((acc, m) => acc + (m.tipo === 'aporte' ? utils.n(m.monto) : -utils.n(m.monto)), 0));
+      return utils.m(
+        state.capital.reduce((acc, m) => acc + (m.tipo === 'aporte' ? utils.n(m.monto) : -utils.n(m.monto)), 0)
+      );
     },
   },
   actions: {

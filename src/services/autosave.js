@@ -91,12 +91,12 @@ export const Autosave = {
       contadorActual: _contadorOps,
       opsParaBackup: OPS_PARA_BACKUP,
       ultimoHash: _ultimoHash,
-      ultimaFecha: await Storage.get(KEY_ULTIMO)
+      ultimaFecha: await Storage.get(KEY_ULTIMO),
     };
   },
 
   // Para probar manualmente
   async forzarBackupManual() {
     await this._guardarSiCambio('manual', true);
-  }
+  },
 };

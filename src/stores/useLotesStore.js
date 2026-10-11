@@ -12,12 +12,12 @@ export const useLotesStore = defineStore('lotes', () => {
   const lotes = ref([]);
 
   // ===== GETTERS =====
-  
+
   /**
    * Lotes activos (con stock disponible)
    */
   const lotesActivos = computed(() => {
-    return lotes.value.filter(l => (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0);
+    return lotes.value.filter((l) => n(l.cantidadInicial) - n(l.cantidadVendida) > 0);
   });
 
   /**
@@ -30,12 +30,12 @@ export const useLotesStore = defineStore('lotes', () => {
       if (!map[pid]) map[pid] = [];
       map[pid].push(l);
     }
-    
+
     // Ordenar por fecha (FIFO)
     for (const pid in map) {
       map[pid].sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
     }
-    
+
     return map;
   });
 
@@ -44,16 +44,16 @@ export const useLotesStore = defineStore('lotes', () => {
    */
   const stockMap = computed(() => {
     const map = {};
-    
+
     // Inicializar con 0 para todos los productos
     // (se actualizará cuando se carguen los productos)
     for (const l of lotes.value) {
       if (map[l.productoId] === undefined) {
         map[l.productoId] = 0;
       }
-      map[l.productoId] += (n(l.cantidadInicial) - n(l.cantidadVendida));
+      map[l.productoId] += n(l.cantidadInicial) - n(l.cantidadVendida);
     }
-    
+
     return map;
   });
 
@@ -61,27 +61,31 @@ export const useLotesStore = defineStore('lotes', () => {
    * Valor total del inventario
    */
   const valorInventario = computed(() => {
-    return m(lotes.value.reduce((sum, l) => {
-      const stock = q(n(l.cantidadInicial) - n(l.cantidadVendida));
-      return sum + (stock * n(l.costo));
-    }, 0));
+    return m(
+      lotes.value.reduce((sum, l) => {
+        const stock = q(n(l.cantidadInicial) - n(l.cantidadVendida));
+        return sum + stock * n(l.costo);
+      }, 0)
+    );
   });
 
   /**
    * Obtiene el stock de un producto específico
    */
   function stock(productoId) {
-    const lotesDelProducto = lotes.value.filter(l => l.productoId === productoId);
-    return m(lotesDelProducto.reduce((sum, l) => {
-      return sum + q(n(l.cantidadInicial) - n(l.cantidadVendida));
-    }, 0));
+    const lotesDelProducto = lotes.value.filter((l) => l.productoId === productoId);
+    return m(
+      lotesDelProducto.reduce((sum, l) => {
+        return sum + q(n(l.cantidadInicial) - n(l.cantidadVendida));
+      }, 0)
+    );
   }
 
   /**
    * Verifica si un lote tiene ventas registradas
    */
   function loteSinVentas(loteId) {
-    const lote = lotes.value.find(l => l.id === loteId);
+    const lote = lotes.value.find((l) => l.id === loteId);
     return lote && n(lote.cantidadVendida) <= 0;
   }
 
@@ -93,7 +97,7 @@ export const useLotesStore = defineStore('lotes', () => {
   }
 
   // ===== ACCIONES =====
-  
+
   /**
    * Carga los lotes desde IndexedDB
    */
@@ -126,7 +130,7 @@ export const useLotesStore = defineStore('lotes', () => {
       if (!loteSinVentas(loteId)) {
         throw new Error('No se puede eliminar: el lote tiene ventas registradas');
       }
-      
+
       await db.lotes.delete(loteId);
       await cargarLotes();
     } catch (e) {
@@ -153,7 +157,7 @@ export const useLotesStore = defineStore('lotes', () => {
    */
   function lotesDeProducto(pid) {
     return lotes.value
-      .filter(l => l.productoId === pid && (n(l.cantidadInicial) - n(l.cantidadVendida)) > 0)
+      .filter((l) => l.productoId === pid && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
       .sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || (a.id < b.id ? -1 : 1));
   }
 
@@ -161,7 +165,7 @@ export const useLotesStore = defineStore('lotes', () => {
    * Valor de lotes de un producto
    */
   function valorLotesProducto(pid) {
-    return m(lotesDeProducto(pid).reduce((s, l) => s + ((n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo)), 0));
+    return m(lotesDeProducto(pid).reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0));
   }
 
   /**
@@ -169,7 +173,7 @@ export const useLotesStore = defineStore('lotes', () => {
    */
   async function recargarStores(tables) {
     const reloadMap = {
-      lotes: cargarLotes
+      lotes: cargarLotes,
     };
 
     for (const table of tables) {
@@ -194,7 +198,7 @@ export const useLotesStore = defineStore('lotes', () => {
     cargarLotes,
     guardarLote,
     eliminarLote,
-    actualizarLotesBatch
+    actualizarLotesBatch,
   };
 });
 

@@ -47,6 +47,10 @@ export const DbAdapter = {
   // Transacciones
   async transaccion(tablas, fn) {
     const t = Array.isArray(tablas) ? tablas : [tablas];
-    return await db.transaction('rw', t.map(x => db.table(x)), fn);
-  }
+    return await db.transaction(
+      'rw',
+      t.map((x) => db.table(x)),
+      fn
+    );
+  },
 };

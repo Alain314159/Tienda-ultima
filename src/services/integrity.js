@@ -4,20 +4,38 @@ export async function verificarIntegridad(db) {
   const errores = [];
   const stats = {};
   const tablas = [
-    'productos','lotes','ventas','compras','ajustes','arqueos','movCaja',
-    'cierres','capital','retiros','socios','distribuciones','gastos'
+    'productos',
+    'lotes',
+    'ventas',
+    'compras',
+    'ajustes',
+    'arqueos',
+    'movCaja',
+    'cierres',
+    'capital',
+    'retiros',
+    'socios',
+    'distribuciones',
+    'gastos',
   ];
 
   // 1. Contar registros
   for (const t of tablas) {
-    try { stats[t] = await db.table(t).count(); }
-    catch { stats[t] = 'error'; }
+    try {
+      stats[t] = await db.table(t).count();
+    } catch {
+      stats[t] = 'error';
+    }
   }
 
   // 2. IDs faltantes o duplicados
   for (const t of tablas) {
     let items;
-    try { items = await db.table(t).toArray(); } catch { continue; }
+    try {
+      items = await db.table(t).toArray();
+    } catch {
+      continue;
+    }
     const ids = new Set();
     for (const it of items) {
       if (!it || !it.id) {
@@ -32,9 +50,10 @@ export async function verificarIntegridad(db) {
   }
 
   // 3. Lotes huérfanos (compraId que no existe, excepto ajustes)
-  let comprasIds = new Set(), lotes = [];
+  let comprasIds = new Set(),
+    lotes = [];
   try {
-    comprasIds = new Set((await db.compras.toArray()).map(c => c.id));
+    comprasIds = new Set((await db.compras.toArray()).map((c) => c.id));
     lotes = await db.lotes.toArray();
   } catch {}
   for (const l of lotes) {
@@ -59,9 +78,11 @@ export async function verificarIntegridad(db) {
   }
 
   // 5. Ventas con lotesUsados huérfanos
-  const lotesIds = new Set(lotes.map(l => l.id));
+  const lotesIds = new Set(lotes.map((l) => l.id));
   let ventas = [];
-  try { ventas = await db.ventas.toArray(); } catch {}
+  try {
+    ventas = await db.ventas.toArray();
+  } catch {}
   for (const v of ventas) {
     if (!Array.isArray(v.items)) continue;
     for (const it of v.items) {
@@ -76,7 +97,7 @@ export async function verificarIntegridad(db) {
 
   // 6. Movimientos de caja de gastos sin gasto asociado
   try {
-    const gastosConMov = new Set((await db.gastos.toArray()).filter(g => g.movId).map(g => g.movId));
+    const gastosConMov = new Set((await db.gastos.toArray()).filter((g) => g.movId).map((g) => g.movId));
     const movCaja = await db.movCaja.toArray();
     for (const m of movCaja) {
       if (m.concepto && /^Gasto:/i.test(m.concepto) && !gastosConMov.has(m.id)) {
@@ -100,7 +121,7 @@ export async function verificarIntegridad(db) {
     errores,
     stats,
     fecha: new Date().toISOString(),
-    totalErrores: errores.length
+    totalErrores: errores.length,
   };
 }
 

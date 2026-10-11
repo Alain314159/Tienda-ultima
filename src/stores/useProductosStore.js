@@ -129,7 +129,7 @@ export const useProductosStore = defineStore('productos', () => {
    */
   async function eliminarProducto(productoId) {
     try {
-      const lotesConVentas = lotesStore.lotes.value.filter(
+      const lotesConVentas = lotesStore.lotes.filter(
         l => l.productoId === productoId && n(l.cantidadVendida) > 0
       );
       

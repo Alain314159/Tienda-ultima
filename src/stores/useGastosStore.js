@@ -23,18 +23,16 @@ export const useGastosStore = defineStore('gastos', () => {
     monto: '',
     nota: '',
     metodoPago: 'efectivo',
-    saleDeCaja: true
+    saleDeCaja: true,
   });
 
   // ===== GETTERS =====
-  
+
   /**
    * Gastos ordenados por fecha (más reciente primero)
    */
   const gastosOrdenadas = computed(() => {
-    return gastos.value
-      .slice()
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    return gastos.value.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   });
 
   const gastosOrdenados = computed(() => gastosOrdenadas.value);
@@ -51,9 +49,7 @@ export const useGastosStore = defineStore('gastos', () => {
    */
   const gastosOpPeriodo = computed(() => {
     const ini = new Date(configStore.periodoInicio);
-    return m(gastos.value
-      .filter(g => new Date(g.fecha) >= ini)
-      .reduce((s, g) => s + n(g.monto), 0));
+    return m(gastos.value.filter((g) => new Date(g.fecha) >= ini).reduce((s, g) => s + n(g.monto), 0));
   });
 
   /**
@@ -61,18 +57,18 @@ export const useGastosStore = defineStore('gastos', () => {
    */
   const gastosPorCategoria = computed(() => {
     const map = {};
-    gastos.value.forEach(g => {
+    gastos.value.forEach((g) => {
       const c = g.categoria || 'Sin categoría';
       if (!map[c]) map[c] = 0;
       map[c] += n(g.monto);
     });
     return Object.keys(map)
-      .map(k => ({ cat: k, monto: m(map[k]) }))
+      .map((k) => ({ cat: k, monto: m(map[k]) }))
       .sort((a, b) => b.monto - a.monto);
   });
 
   // ===== ACCIONES =====
-  
+
   /**
    * Carga los gastos desde IndexedDB
    */
@@ -96,16 +92,16 @@ export const useGastosStore = defineStore('gastos', () => {
       monto: n(gastoForm.value.monto),
       nota: gastoForm.value.nota.trim(),
       metodoPago: gastoForm.value.metodoPago,
-      saleDeCaja: gastoForm.value.saleDeCaja
+      saleDeCaja: gastoForm.value.saleDeCaja,
     };
-    
+
     // Validaciones
     if (!gasto.concepto) throw new Error('Concepto obligatorio');
     if (gasto.monto <= 0) throw new Error('Monto inválido');
-    
+
     await P(db.gastos, gasto);
     await cargarGastos();
-    
+
     gastoForm.value = {
       editId: '',
       fecha: new Date().toISOString().split('T')[0],
@@ -114,9 +110,9 @@ export const useGastosStore = defineStore('gastos', () => {
       monto: '',
       nota: '',
       metodoPago: 'efectivo',
-      saleDeCaja: true
+      saleDeCaja: true,
     };
-    
+
     return gasto;
   }
 
@@ -145,7 +141,7 @@ export const useGastosStore = defineStore('gastos', () => {
       monto: String(gasto.monto),
       nota: gasto.nota || '',
       metodoPago: gasto.metodoPago || 'efectivo',
-      saleDeCaja: gasto.saleDeCaja !== false
+      saleDeCaja: gasto.saleDeCaja !== false,
     };
   }
 
@@ -161,7 +157,7 @@ export const useGastosStore = defineStore('gastos', () => {
       monto: '',
       nota: '',
       metodoPago: 'efectivo',
-      saleDeCaja: true
+      saleDeCaja: true,
     };
   }
 
@@ -172,7 +168,7 @@ export const useGastosStore = defineStore('gastos', () => {
     const reloadMap = {
       gastos: cargarGastos,
       movCaja: () => {},
-      asientos: () => {}
+      asientos: () => {},
     };
 
     for (const table of tables) {
@@ -198,7 +194,7 @@ export const useGastosStore = defineStore('gastos', () => {
     eliminarGasto,
     editarGasto,
     limpiarGastoForm,
-    recargarStores
+    recargarStores,
   };
 });
 

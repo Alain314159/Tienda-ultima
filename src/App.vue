@@ -1744,6 +1744,10 @@ export default {
             _topRentCache: null,
       _invAgrCache: null,
       _busqTimers: {},
+      _bc: null,
+      _tgColaTimer: null,
+      _tgPollTimer: null,
+      _tgProcesandoCola: false,
       umbralesAbierto: false,
             porPagina: 20,
       historial: {
@@ -1876,6 +1880,24 @@ export default {
     prodsActivos() { return this.productosStore.prodsActivos; },
     prodsFiltrados() { return this.productosStore.productosFiltrados; },
     stockMap() { return this.lotesStore.stockMap; },
+    _lotesPorProducto() {
+      const map = {};
+      for (const l of this.lotesStore.lotes) {
+        if (!map[l.productoId]) map[l.productoId] = [];
+        map[l.productoId].push(l);
+      }
+      return map;
+    },
+    lotes() { return this.lotesStore.lotes; },
+    cierres() { return this.cierresStore.cierres; },
+    gastos() { return this.gastosStore.gastos; },
+    productos() { return this.productosStore.productos; },
+    ventas() { return this.ventasStore.ventas; },
+    compras() { return this.comprasStore.compras; },
+    totalCarrito() { return this.ventasStore.totalCarrito; },
+    masActivo() { return this.masAbierto; },
+    patrimonioTotal() { return this.capitalStore.capitalTotal + this.lotesStore.valorInventario; },
+    tgProcesandoCola() { return this._tgProcesandoCola || false; },
     invAgrupado() {
       const sig = this.prodsActivos.length + '|' + this.lotesStore.lotes.length;
       if (this._invAgrCache && this._invAgrCache.sig === sig) return this._invAgrCache.data;
@@ -2327,7 +2349,6 @@ export default {
     },
 
     // ===== PUENTES: metodos delegados a stores =====
-    anularVenta(id) { return this.ventasStore.anularVenta(id); },
     validarPrecio(it) { return this.ventasStore.validarPrecio(it); },
     esPrecioEscalon(it) { return this.ventasStore.esPrecioEscalon(it); },
     tieneEscalones(pid) { return this.productosStore.tieneEscalones(pid); },
@@ -2341,7 +2362,6 @@ export default {
     guardarCfg() { return this.configStore.guardarCfg(); },
     registrarAporte(...a) { return this.capitalStore.registrarAporte(...a); },
     registrarRetiro(...a) { return this.capitalStore.registrarRetiro(...a); },
-    cerrarPeriodo(...a) { return this.cierresStore.cerrarPeriodo(...a); },
 
 
     // Compara dos fechas ignorando hora (mismo dia)
@@ -2603,6 +2623,9 @@ export default {
     anularVenta(id) {
       return this.ventasStore.anularVenta(id);
     },
+    agregarPrimero() {
+      if (this.listaVenta.length > 0) this.agregarCarrito(this.listaVenta[0]);
+    },
 
     // ===== ALERTAS DE PRODUCTOS AGOTADOS =====
     async chequearAgotados() {
@@ -2770,6 +2793,8 @@ export default {
       const costo = f.costoPorEmpaque ? (mult > 0 ? m(costoIngresado / mult) : costoIngresado) : costoIngresado;
       const total = m(cant * costo);
       const empaqueInfo = f.empaqueSel ? { nombre: f.empaqueSel, unidades: mult, cantidad: cantIngresada } : null;
+      const prodSel = this.productosStore.productos.find(p => p.id === f.productoId);
+      const unidadProd = prodSel ? (prodSel.unidad || '') : '';
       const ejecutar = async () => {
         try {
           if (f.editId) {
@@ -2779,11 +2804,11 @@ export default {
             await db.transaction('rw', db.compras, db.lotes, async () => {
               await P(db.compras, Object.assign({}, c, {
                 productoId: f.productoId, productoNombre: f.nombre,
-                productoUnidad: f.unidad, cantidad: cant, costo, total, unidad: f.unidad
+                productoUnidad: unidadProd, cantidad: cant, costo, total, unidad: unidadProd
               }));
               if (l) await P(db.lotes, Object.assign({}, l, {
                 productoId: f.productoId, productoNombre: f.nombre,
-                productoUnidad: f.unidad, cantidadInicial: cant, costo
+                productoUnidad: unidadProd, cantidadInicial: cant, costo
               }));
             });
           } else {
@@ -2812,8 +2837,10 @@ export default {
           this.resetCompra();
           this.toastMsg(`Compra ${fmt(total)}`);
           try { window.Log && window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total }); } catch (e) {}
-        } catch (e) { this.toastMsg(e.message, TOAST.BAD); }
+        } catch (e) {
+          this.toastMsg(e.message, TOAST.BAD);
           try { window.Log && window.Log.evento('compra-error', { mensaje: e.message }); } catch (er) {}
+        }
       };
       if (!f.editId && total > this.cajaStore.saldoCaja) {
         this.confirm = {
@@ -3517,53 +3544,6 @@ export default {
       };
     },
     // ===== CONFIGURACION DE TIENDA =====
-    async verificarNombreTienda() {
-      const nombre = (this.mtForm.nombre || '').toLowerCase().trim();
-      if (!nombre) return;
-      this.mtCheck = { estado: 'verificando', motivo: '', verificando: true };
-      try {
-        const r = await this._tg.tgVerificarNombre(nombre);
-        if (r.disponible) {
-          this.mtCheck = { estado: 'ok', motivo: '', verificando: false };
-        } else {
-          this.mtCheck = { estado: 'ocupado', motivo: r.motivo || 'Nombre ya en uso', verificando: false };
-        }
-      } catch (e) {
-        this.mtCheck = { estado: 'error', motivo: e.message, verificando: false };
-      }
-    },
-
-    async registrarTienda() {
-      if (!this.puedoRegistrar) return;
-      this.mtProcesando = true;
-      try {
-        await this._tg.tgRegistrarTienda(this.mtForm.nombre.toLowerCase().trim(), this.mtForm.password);
-        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
-        this.mtCheck = { estado: 'idle', motivo: '', verificando: false };
-        this.toastMsg('Tienda registrada correctamente');
-        await this.tgListar();
-      } catch (e) {
-        this.toastMsg(e.message, TOAST.BAD);
-      } finally {
-        this.mtProcesando = false;
-      }
-    },
-
-    async loginTienda() {
-      if (!this.mtForm.loginNombre || !this.mtForm.loginPassword) return;
-      this.mtProcesando = true;
-      try {
-        await this._tg.tgLoginTienda(this.mtForm.loginNombre.toLowerCase().trim(), this.mtForm.loginPassword);
-        this.mtForm = { nombre: '', password: '', password2: '', modo: 'register', loginNombre: '', loginPassword: '' };
-        this.toastMsg('Sesión iniciada');
-        await this.tgListar();
-      } catch (e) {
-        this.toastMsg(e.message, TOAST.BAD);
-      } finally {
-        this.mtProcesando = false;
-      }
-    },
-
     // ===== CONFIGURACION DE TIENDA =====
     async verificarNombreTienda() {
       const nombre = (this.mtForm.nombre || '').toLowerCase().trim();
@@ -4662,8 +4642,6 @@ export default {
       }
     },
 
-    
-    _tgPollTimer: null,
     iniciarTgPoll() {
       if (this._tgPollTimer) return;
       this._tgPollTimer = setInterval(async () => {
@@ -4733,9 +4711,9 @@ export default {
     },
 
     async tgProcesarCola() {
-      if (this.tgProcesandoCola) return;
+      if (this._tgProcesandoCola) return;
       if (!this.configStore.cfg.tgChatId) return;
-      this.tgProcesandoCola = true;
+      this._tgProcesandoCola = true;
       try {
         // Limpieza previa: si hay varios 'auto', dejar solo el mas reciente
         const todos = await db.tgQueue.toArray();
@@ -4778,7 +4756,7 @@ export default {
         }
         await this.tgActualizarCola();
       } finally {
-        this.tgProcesandoCola = false;
+        this._tgProcesandoCola = false;
       }
     },
 
@@ -4971,13 +4949,6 @@ export default {
         });
       } catch (e) { console.error('renderChartProductos', e); }
     },
-    setGraficoVista(vista) {
-      if (this.configStore.cfg.graficoVista === vista) return;
-      this.configStore.cfg.graficoVista = vista;
-      this.guardarCfg();
-      this.$nextTick(() => requestAnimationFrame(() => this.renderChart()));
-    },
-
     setGraficoVista(vista) {
       if (this.configStore.cfg.graficoVista === vista) return;
       this.configStore.cfg.graficoVista = vista;

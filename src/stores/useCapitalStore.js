@@ -28,17 +28,17 @@ export const useCapitalStore = defineStore('capital', () => {
   // ===== GETTERS =====
   
   /**
-   * Total de capital (inicial + aportes)
-   */
-  const capitalTotal = computed(() => {
-    return m(n(configStore.capitalInicial) + aportesTotal.value);
-  });
-
-  /**
    * Total de aportes
    */
   const aportesTotal = computed(() => {
     return m(capital.value.reduce((s, x) => s + n(x.monto), 0));
+  });
+
+  /**
+   * Total de capital (inicial + aportes)
+   */
+  const capitalTotal = computed(() => {
+    return m(n(configStore.capitalInicial) + aportesTotal.value);
   });
 
   /**
@@ -77,7 +77,7 @@ export const useCapitalStore = defineStore('capital', () => {
    * Ganancias acumuladas (de cierres + período actual)
    */
   const gananciasAcumuladas = computed(() => {
-    return m(cierresStore.cierres.value.reduce((s, c) => s + n(c.ganancia), 0) + cierresStore.gananciaNetaPeriodo);
+    return m(cierresStore.cierres.reduce((s, c) => s + n(c.ganancia), 0) + cierresStore.gananciaNetaPeriodo);
   });
 
   /**

@@ -59,7 +59,7 @@ export const BackupFolder = {
       path: `${CARPETA}/${nombre}`,
       data: b64,
       directory: Directory.Documents,
-      recursive: true
+      recursive: true,
     });
     return nombre;
   },
@@ -69,11 +69,9 @@ export const BackupFolder = {
     try {
       const r = await Filesystem.readdir({
         path: CARPETA,
-        directory: Directory.Documents
+        directory: Directory.Documents,
       });
-      return (r.files || [])
-        .filter(f => f.name.endsWith('.json.gz'))
-        .sort((a, b) => b.name.localeCompare(a.name));
+      return (r.files || []).filter((f) => f.name.endsWith('.json.gz')).sort((a, b) => b.name.localeCompare(a.name));
     } catch (e) {
       return [];
     }
@@ -84,7 +82,7 @@ export const BackupFolder = {
     try {
       const r = await Filesystem.readFile({
         path: `${CARPETA}/${nombre}`,
-        directory: Directory.Documents
+        directory: Directory.Documents,
       });
       // r.data es base64. Convertir a texto.
       const bin = atob(r.data);
@@ -111,7 +109,7 @@ export const BackupFolder = {
     try {
       await Filesystem.deleteFile({
         path: `${CARPETA}/${nombre}`,
-        directory: Directory.Documents
+        directory: Directory.Documents,
       });
     } catch (e) {}
   },
@@ -130,7 +128,7 @@ export const BackupFolder = {
     return {
       cantidad: archivos.length,
       ultimo: archivos[0] ? archivos[0].name : null,
-      archivos: archivos.map(a => a.name)
+      archivos: archivos.map((a) => a.name),
     };
-  }
+  },
 };

@@ -29,10 +29,14 @@ export const Storage = {
   async getJSON(key) {
     const raw = await this.get(key);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   },
 
   async setJSON(key, value) {
     await this.set(key, JSON.stringify(value));
-  }
+  },
 };

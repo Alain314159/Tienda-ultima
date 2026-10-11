@@ -2,7 +2,7 @@
 // Ahora con nombres de tienda unicos y contrasena.
 
 export const TG_PROXY_URL = 'https://tienda-proxy.tienda-ul5r2q.workers.dev';
-export const TG_APP_KEY  = '317a0d3c90b24b8b74cc1a0dc5369124';
+export const TG_APP_KEY = '317a0d3c90b24b8b74cc1a0dc5369124';
 
 function proxyHeaders(extra) {
   const h = { 'X-App-Key': TG_APP_KEY };
@@ -14,8 +14,11 @@ async function tgJson(path, opts) {
   const r = await fetch(TG_PROXY_URL + path, opts);
   const text = await r.text();
   let d;
-  try { d = JSON.parse(text); }
-  catch (e) { throw new Error('Respuesta no-JSON del proxy: ' + text.slice(0, 120)); }
+  try {
+    d = JSON.parse(text);
+  } catch (e) {
+    throw new Error('Respuesta no-JSON del proxy: ' + text.slice(0, 120));
+  }
   if (!d.ok) throw new Error(d.description || 'Error de Telegram');
   return d.result !== undefined ? d.result : d;
 }
@@ -24,7 +27,8 @@ async function tgJson(path, opts) {
 
 export async function tgCheckName(nombre) {
   const r = await fetch(TG_PROXY_URL + '/api/checkName?nombre=' + encodeURIComponent(nombre), {
-    method: 'GET', headers: proxyHeaders()
+    method: 'GET',
+    headers: proxyHeaders(),
   });
   const d = await r.json();
   return d; // { ok, disponible, nombre?, motivo? }
@@ -34,7 +38,7 @@ export async function tgRegister(nombre, password, chatId) {
   const r = await fetch(TG_PROXY_URL + '/api/register', {
     method: 'POST',
     headers: proxyHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ nombre, password, chatId })
+    body: JSON.stringify({ nombre, password, chatId }),
   });
   const d = await r.json();
   if (!d.ok) throw new Error(d.description || 'Error registrando');
@@ -45,7 +49,7 @@ export async function tgLogin(nombre, password, chatId) {
   const r = await fetch(TG_PROXY_URL + '/api/login', {
     method: 'POST',
     headers: proxyHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ nombre, password, chatId })
+    body: JSON.stringify({ nombre, password, chatId }),
   });
   const d = await r.json();
   if (!d.ok) throw new Error(d.description || 'Error login');
@@ -54,7 +58,8 @@ export async function tgLogin(nombre, password, chatId) {
 
 export async function tgStatus(chatId) {
   const r = await fetch(TG_PROXY_URL + '/api/status?chatId=' + encodeURIComponent(chatId), {
-    method: 'GET', headers: proxyHeaders()
+    method: 'GET',
+    headers: proxyHeaders(),
   });
   const d = await r.json();
   return d; // { ok, chatId, nombre }
@@ -92,7 +97,7 @@ export async function tgSendDocument(chatId, nombre, blob, caption) {
   const r = await fetch(TG_PROXY_URL + '/api/tg/sendDocument', {
     method: 'POST',
     headers: proxyHeaders(),
-    body: form
+    body: form,
   });
   const d = await r.json();
   if (!d.ok) throw new Error(d.description || 'Error subiendo');
@@ -103,7 +108,7 @@ export async function tgGetFile(fileId) {
   return tgJson('/api/tg/getFile', {
     method: 'POST',
     headers: proxyHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ file_id: fileId })
+    body: JSON.stringify({ file_id: fileId }),
   });
 }
 
@@ -116,9 +121,11 @@ export async function tgDeleteMessage(chatId, messageId) {
     return await tgJson('/api/tg/deleteMessage', {
       method: 'POST',
       headers: proxyHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
     });
-  } catch (e) { return false; }
+  } catch (e) {
+    return false;
+  }
 }
 
 export function tgDetectarChatId(updates) {
@@ -129,7 +136,7 @@ export function tgDetectarChatId(updates) {
       return {
         chatId: m.chat.id,
         nombre: (m.chat.first_name || '') + ' ' + (m.chat.last_name || ''),
-        username: m.chat.username || ''
+        username: m.chat.username || '',
       };
     }
   }

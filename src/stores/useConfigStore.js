@@ -13,24 +13,24 @@ export const useConfigStore = defineStore('config', () => {
     nombre: 'Tienda Pro',
     tema: 'light',
     fontScale: 1,
-    
+
     // Seguridad
     pin: '',
     pinActivo: false,
-    
+
     // Finanzas
     capitalInicial: 0,
     periodoInicio: new Date().toISOString(),
-    
+
     // Comportamiento
     calcActiva: true,
     busquedaGlobalActiva: true,
     calcBilletesActiva: false,
-    
+
     // Notificaciones
     notifActivo: false,
     horaArqueo: '',
-    
+
     // Umbrales
     umbralDiasCierre: 30,
     umbralMermasSemana: 3,
@@ -40,37 +40,37 @@ export const useConfigStore = defineStore('config', () => {
     umbralSinMovimientoDias: 60,
     umbralDescuentoPct: 20,
     stockMinDefault: 5,
-    
+
     // Estado
     anomaliasDescartadas: [],
     productosAvisados: [],
-    
+
     // Backup
     tgAutoBackup: false,
     tgUltimoBackup: null,
     tgUltimoHash: '',
     tgFallosConsecutivos: 0,
     tgMantenerN: 10,
-    
+
     // Telegram
     tgToken: '',
     tgChatId: '',
     nombreTienda: '',
     tiendaConfigurada: false,
     tgNombre: '',
-    
+
     // UI
     avisoTiendaDescartado: false,
     tutorialVisto: false,
     mostrarSplash: true,
-    
+
     // Gráficos
     graficoVista: 'mes',
     graficoProdPeriodo: 'mes',
     graficoProdTipo: 'vendidos',
-    
+
     // Modo seguro
-    safeMode: false
+    safeMode: false,
   });
 
   // ===== GETTERS =====
@@ -81,7 +81,7 @@ export const useConfigStore = defineStore('config', () => {
   const periodoInicio = computed(() => cfg.value.periodoInicio);
 
   // ===== ACCIONES =====
-  
+
   /**
    * Guarda la configuración en IndexedDB
    */
@@ -146,7 +146,7 @@ export const useConfigStore = defineStore('config', () => {
     toggleTema,
     cambiarEscalaFont,
     actualizarCfg,
-    cargarCfg
+    cargarCfg,
   };
 });
 
