@@ -75,7 +75,7 @@
       "eslint --fix --quiet",
       "prettier --write"
     ],
-    "*.{css}": [
+    "*.css": [
       "stylelint --fix",
       "prettier --write"
     ],
