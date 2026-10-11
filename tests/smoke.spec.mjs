@@ -93,10 +93,10 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     await esperar(800);
     console.log('  ✅ Seccion Compras');
 
-    grabar('Navegar a Caja');
-    await page.click('nav button:has-text("Caja")');
+    grabar('Navegar a Inventario');
+    await page.click('nav button:has-text("Inventario")');
     await esperar(800);
-    console.log('  ✅ Seccion Caja');
+    console.log('  ✅ Seccion Inventario');
 
     grabar('Abrir menu Mas');
     const masBtn = await page.$('nav button:has-text("Más")') || await page.$('nav button:has-text("Mas")');
@@ -105,18 +105,21 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
       await esperar(800);
       const sheet = await page.$('.sheet');
       console.log(sheet ? '  ✅ Menu Mas abierto' : '  ⚠️  Menu no abrio');
+
+      for (const sec of ['productos', 'gastos', 'socios', 'reportes']) {
+        grabar('Navegar a ' + sec + ' desde sheet');
+        if (!(await page.$('.sheet'))) { await masBtn.click(); await esperar(600); }
+        const btn = await page.$('.sheet button:has-text("' + sec.charAt(0).toUpperCase() + sec.slice(1) + '")');
+        if (btn) {
+          await btn.click();
+          await esperar(1200);
+          console.log('  ✅ Seccion ' + sec);
+        } else {
+          console.log('  ⚠️  Boton ' + sec + ' no encontrado');
+        }
+      }
     } else {
       console.log('  ⚠️  Boton Mas no encontrado');
-    }
-
-    grabar('Navegar a Contabilidad desde sheet');
-    const btnContab = await page.$('.sheet button:has-text("Contabilidad")');
-    if (btnContab) {
-      await btnContab.click();
-      await esperar(1500);
-      console.log('  ✅ Sheet cerro y navego a Contabilidad');
-    } else {
-      console.log('  ⚠️  Boton Contabilidad no encontrado');
     }
 
     grabar('Abrir Ajustes desde header');
