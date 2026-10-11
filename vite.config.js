@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
+import { checker } from 'vite-plugin-checker';
 
 export default defineConfig(({ mode }) => {
   const isCapacitor = process.env.CAPACITOR === '1' || mode === 'capacitor';
@@ -14,6 +15,10 @@ export default defineConfig(({ mode }) => {
     base: isCapacitor ? './' : '/Tienda-ultima/',
     plugins: [
       vue(),
+      !isCapacitor && process.env.NODE_ENV !== 'production' && checker({
+        eslint: { lintCommand: 'eslint \"./src/**/*.{js,vue}\"' },
+        overlay: false,
+      }),
       !isCapacitor && VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],

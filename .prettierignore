@@ -1,0 +1,9 @@
+dist/
+node_modules/
+android/
+public/
+*.bak
+*.bak-*
+*.mjs
+package-lock.json
+src/App.vue.bak*
