@@ -944,13 +944,7 @@
 
     <!-- ONBOARDING -->
     <!-- TOAST -->
-    <AppToast
-      :toast="toast"
-      @accion="
-        toast.accionFn && toast.accionFn();
-        toast.show = false;
-      "
-    />
+    <Toaster position="top-center" :duration="3000" :visible-toasts="3" rich-colors close-button />
     <Calculator :visible="calcAbierto" @close="calcAbierto = false" />
     <BackupPanel v-if="backupPanelAbierto" @close="backupPanelAbierto = false" @restore="onRestoreBackup" />
     <StatusPanel v-if="statusPanelAbierto" @close="statusPanelAbierto = false" />
@@ -983,7 +977,8 @@ import GlobalSearch from './components/GlobalSearch.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
-import AppToast from './components/AppToast.vue';
+import { Toaster, toast } from 'vue-sonner';
+import 'vue-sonner/style.css';
 import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
@@ -1022,7 +1017,6 @@ export default {
     SheetMas,
     ModalConfirm,
     ModalPrompt,
-    AppToast,
     GlobalSearch,
     Calculator,
     BackupPanel,
@@ -1195,7 +1189,6 @@ export default {
       denominaciones: [10, 20, 50, 100, 200, 500, 1000, 2000, 5000],
       confirm: { activo: false, titulo: '', msg: '', onOk: null },
       prompt: { activo: false, titulo: '', msg: '', placeholder: '', type: 'text', value: '', onOk: null },
-      toast: { show: false, msg: '', type: 'ok', accionTxt: '', accionFn: null, timer: null },
 
       ultimoBackup: null,
       procesandoVenta: false,
@@ -1615,15 +1608,11 @@ export default {
     },
 
     toastMsg(msg, type = 'ok', accionTxt = '', accionFn = null) {
-      clearTimeout(this.toast.timer);
-      this.toast = { show: true, msg, type, accionTxt, accionFn, timer: null };
       vib(type === 'ok' ? 20 : 40);
-      this.toast.timer = setTimeout(
-        () => {
-          this.toast.show = false;
-        },
-        accionTxt ? 5000 : 3000
-      );
+      const tipo = type === 'bad' ? 'error' : type === 'warn' ? 'warning' : 'success';
+      const opts = { duration: accionTxt ? 5000 : 3000 };
+      if (accionTxt && accionFn) opts.action = { label: accionTxt, onClick: () => accionFn() };
+      toast[tipo](msg, opts);
     },
 
     async onPullRefresh() {

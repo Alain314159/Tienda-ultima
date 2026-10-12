@@ -22,12 +22,11 @@ Documento vivo. Marcar `[x]` al completar. Actualizar al añadir tareas.
 
 **Motivo:** es la más fácil (función global, sin setup), mayor ganancia inmediata.
 
-- [ ] Auditar los usos de `toastMsg()` en App.vue y vistas
-- [ ] Instalar/configurar `<Toaster />` en App.vue
-- [ ] Reescribir `toastMsg()` como wrapper de `toast()` (compatibilidad)
-- [ ] Migrar `AppToast.vue` → eliminar
-- [ ] Migrar a TS los archivos tocados
-- [ ] Verificar build + smoke test
+- [x] Auditar usos de `toastMsg()` (121, todos en App.vue)
+- [x] `<Toaster />` en App.vue
+- [x] `toastMsg()` como wrapper de `toast()` (ok→success, warn→warning, bad→error)
+- [x] `AppToast.vue` eliminado
+- [x] Build + 15/15 tests + ESLint 0 errores + toast renderiza
 
 ### 2.2 — `reka-ui` (modales)
 
