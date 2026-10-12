@@ -957,6 +957,7 @@
   </div>
 </template>
 <script>
+import { useOnline } from '@vueuse/core';
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
 import { APP_CTX } from './contexts/appContext.js';
 import { Capacitor } from '@capacitor/core';
@@ -1029,6 +1030,9 @@ export default {
   },
 
   setup() {
+    // Composables de VueUse
+    const online = useOnline();
+
     // Inicializar stores de Pinia
     const configStore = useConfigStore();
     const productosStore = useProductosStore();
@@ -1045,6 +1049,7 @@ export default {
       // Alias reactivo para el template (cfg.*); los stores se exponen
       // via computed para que this.X funcione en metodos/computeds.
       cfg: configStore.cfg,
+      online,
     };
   },
 
@@ -1088,7 +1093,6 @@ export default {
 
   data() {
     return {
-      online: navigator.onLine,
       mostrarAvisoTienda: false,
       otraPestana: false,
 
@@ -5541,10 +5545,8 @@ export default {
       this.hayUpdate = true;
     });
     window.addEventListener('online', () => {
-      this.online = true;
       this.tgProcesarCola().catch(() => {});
     });
-    window.addEventListener('offline', () => (this.online = false));
     window.addEventListener('resize', () => {
       if (this.sec === 'dashboard') this.renderChart();
     });
