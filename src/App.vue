@@ -705,141 +705,7 @@
       </section>
 
       <!-- ==================== PRODUCTOS ==================== -->
-      <section v-if="sec === 'productos'" class="fade-up">
-        <div class="card">
-          <div class="card-title">
-            <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon>
-            {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto
-          </div>
-          <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" />
-          <div class="grid2">
-            <input
-              v-model="prodForm.precio"
-              type="number"
-              inputmode="decimal"
-              step="0.01"
-              placeholder="Precio base venta"
-            />
-            <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín." />
-          </div>
-
-          <textarea
-            v-model="prodForm.nota"
-            placeholder="Nota interna (opcional)"
-            rows="2"
-            style="resize: none; font-family: inherit; font-size: 0.85rem"
-          ></textarea>
-
-          <button class="btn pri" @click="guardarProducto()">
-            {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
-          </button>
-          <button v-if="prodForm.editId" class="btn ghost" @click="resetProd()">Cancelar</button>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> Productos
-          </div>
-          <div class="search">
-            <input
-              :value="busqProd"
-              @input="setBusq('busqProd', $event.target.value)"
-              type="text"
-              placeholder="Buscar..."
-            />
-          </div>
-          <div style="text-align: right; margin-bottom: 0.4rem">
-            <button
-              class="btn ghost"
-              style="width: auto; display: inline-block; padding: 0.3rem 0.7rem; font-size: 0.72rem"
-              @click="mostrarArchivados = !mostrarArchivados"
-            >
-              {{ mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
-            </button>
-          </div>
-          <div
-            v-if="filtroStock"
-            class="info-box"
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem"
-          >
-            <span
-              >Filtro: <b>{{ filtroStock === 'agotados' ? 'Agotados' : 'Stock bajo' }}</b></span
-            >
-            <button class="link-btn" @click="limpiarFiltroStock">Quitar filtro</button>
-          </div>
-          <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
-          <div
-            v-for="p in prodsFiltrados"
-            :key="p.id"
-            v-memo="[p.id, p.nombre, p.precio, p.archivado, stockMap[p.id], badgeMap[p.id], prodExpandido[p.id]]"
-            class="prod-wrap"
-            :id="'ref-' + p.id"
-            :class="'prod-' + (badgeMap[p.id] || 'ok')"
-          >
-            <div
-              class="item"
-              :style="p.archivado ? 'opacity:.5' : ''"
-              style="cursor: pointer"
-              @click="prodExpandido[p.id] = !prodExpandido[p.id]"
-            >
-              <div class="info">
-                <div class="nm">
-                  {{ p.nombre }}
-                </div>
-                <div
-                  v-if="p.nota"
-                  class="det"
-                  style="font-size: 0.72rem; font-style: italic; color: var(--mut); margin-top: 0.15rem"
-                >
-                  📝 {{ p.nota }}
-                </div>
-                <div class="stock-line">
-                  <span class="badge" :class="badgeStock(p)">{{ txtBadge(p) }}</span>
-                  <span class="stock-num">Stock: {{ formatStock(p.id, stock(p.id)) }}</span>
-                  <span style="color: var(--mut); font-size: 0.72rem">{{ fmt(p.precio) }}</span>
-                  <span v-if="lotesDeProducto(p.id).length" class="chev" :class="{ open: prodExpandido[p.id] }">
-                    <icon name="chevron" :size="14" :color="mutColor"></icon>
-                  </span>
-                </div>
-              </div>
-              <div class="act-btns" @click.stop>
-                <button class="icon-btn" @click="editarProducto(p.id)" aria-label="Editar">
-                  <icon name="edit" :size="15" :color="txtColor"></icon>
-                </button>
-                <button v-if="!p.archivado" class="icon-btn bad" @click="archivarProducto(p.id)" aria-label="Archivar">
-                  <icon name="trash" :size="15" color="#dc2626"></icon>
-                </button>
-                <button v-else class="icon-btn ok" @click="restaurarProducto(p.id)" aria-label="Restaurar">
-                  <icon name="refresh" :size="15" color="#16a34a"></icon>
-                </button>
-              </div>
-            </div>
-            <div v-if="prodExpandido[p.id]" class="prod-lotes">
-              <div v-if="lotesDeProducto(p.id).length === 0" class="empty" style="padding: 0.6rem; font-size: 0.78rem">
-                Sin lotes activos (stock 0)
-              </div>
-              <div v-for="l in lotesDeProducto(p.id)" :key="l.id" class="inv-lote">
-                <span
-                  >{{ fmtFH(l.fecha) }} · Quedan {{ fmtCant(n(l.cantidadInicial) - n(l.cantidadVendida)) }}/{{
-                    fmtCant(l.cantidadInicial)
-                  }}
-                  {{ p.unidad || '' }}</span
-                >
-                <span
-                  >@{{ fmt(l.costo) }} = <b>{{ fmt((n(l.cantidadInicial) - n(l.cantidadVendida)) * l.costo) }}</b></span
-                >
-              </div>
-              <div
-                v-if="lotesDeProducto(p.id).length"
-                class="det"
-                style="font-size: 0.7rem; color: var(--mut); margin-top: 0.3rem; text-align: right"
-              >
-                Valor total: <b class="pos">{{ fmt(valorLotesProducto(p.id)) }}</b>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProductosView v-if="sec === 'productos'" />
 
       <!-- ==================== INVENTARIO ==================== -->
       <section v-if="sec === 'inventario'" class="fade-up">
@@ -2371,9 +2237,11 @@
 </template>
 <script>
 import { db, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH, buildData } from './db.js';
+import { APP_CTX } from './contexts/appContext.js';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import BottomNav from './components/BottomNav.vue';
+import ProductosView from './views/ProductosView.vue';
 import { generarRecomendaciones } from './insights.js';
 import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import {
@@ -2429,6 +2297,7 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 export default {
   name: 'App',
   components: {
+    ProductosView,
     BottomNav,
     SheetMas,
     ModalConfirm,
@@ -2457,6 +2326,26 @@ export default {
       // Alias reactivo para el template (cfg.*); los stores se exponen
       // via computed para que this.X funcione en metodos/computeds.
       cfg: configStore.cfg,
+    };
+  },
+
+  provide() {
+    // Contexto compartido: los views acceden a metodos/estado de App
+    // via inject(APP_CTX) sin prop drilling.
+    const self = this;
+    return {
+      [APP_CTX]: new Proxy(
+        {},
+        {
+          get(_, prop) {
+            const v = self[prop];
+            return typeof v === 'function' ? v.bind(self) : v;
+          },
+          has(_, prop) {
+            return prop in self;
+          },
+        }
+      ),
     };
   },
 
