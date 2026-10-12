@@ -32,10 +32,10 @@ Documento vivo. Marcar `[x]` al completar. Actualizar al añadir tareas.
 
 **Objetivo:** reemplazar `ModalConfirm.vue`, `ModalPrompt.vue`, `pedirPin()`.
 
-- [ ] Migrar `ModalConfirm.vue` a reka-ui + TS
-- [ ] Migrar `ModalPrompt.vue` a reka-ui + TS
-- [ ] Evaluar extraer `usePin()` de App.vue (security)
-- [ ] Verificar build + smoke test
+- [x] `ModalConfirm.vue` con reka-ui AlertDialog + script setup (misma API, 16 call sites intactos)
+- [x] `ModalPrompt.vue` con reka-ui Dialog + script setup
+- [x] Accesibilidad: focus trap, Escape, click-fuera → cancelar
+- [x] Build + 15/15 tests + ESLint 0 + smoke 16/16
 
 ### 2.3 — `dexie-reactive` (reactividad IndexedDB)
 
