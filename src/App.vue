@@ -125,29 +125,7 @@
     </header>
 
     <main @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
-      <!-- ==================== DASHBOARD ==================== -->
-      <DashboardView v-if="sec === 'dashboard'" />
-
-      <!-- ==================== VENTAS ==================== -->
-      <VentasView v-if="sec === 'ventas'" />
-
-      <!-- ==================== COMPRAS ==================== -->
-      <ComprasView v-if="sec === 'compras'" />
-
-      <!-- ==================== PRODUCTOS ==================== -->
-      <ProductosView v-if="sec === 'productos'" />
-
-      <!-- ==================== INVENTARIO ==================== -->
-      <InventarioView v-if="sec === 'inventario'" />
-
-      <!-- ==================== CAJA ==================== -->
-
-      <!-- ==================== REPORTES (CON CUADRE NUEVO) ==================== -->
-      <ReportesView v-if="sec === 'reportes'" />
-      <!-- ==================== SOCIOS ==================== -->
-      <SociosView v-if="sec === 'socios'" />
-      <!-- ==================== GASTOS ==================== -->
-      <GastosView v-if="sec === 'gastos'" />
+      <router-view />
     </main>
 
     <!-- ==================== BOTTOM NAV ==================== -->
@@ -984,14 +962,6 @@ import { APP_CTX } from './contexts/appContext.js';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import BottomNav from './components/BottomNav.vue';
-import DashboardView from './views/DashboardView.vue';
-import ReportesView from './views/ReportesView.vue';
-import GastosView from './views/GastosView.vue';
-import SociosView from './views/SociosView.vue';
-import ComprasView from './views/ComprasView.vue';
-import VentasView from './views/VentasView.vue';
-import InventarioView from './views/InventarioView.vue';
-import ProductosView from './views/ProductosView.vue';
 import { generarRecomendaciones } from './insights.js';
 import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from './constants.js';
 import {
@@ -1047,14 +1017,6 @@ const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 export default {
   name: 'App',
   components: {
-    DashboardView,
-    VentasView,
-    ComprasView,
-    ProductosView,
-    InventarioView,
-    SociosView,
-    GastosView,
-    ReportesView,
     BottomNav,
     SheetMas,
     ModalConfirm,
@@ -1138,7 +1100,6 @@ export default {
       _aplicando: false,
       _cerrando: false,
       cargando: true,
-      sec: 'dashboard',
       masAbierto: false,
       ajustesAbierto: false,
       retiroAbierto: false,
@@ -1276,6 +1237,10 @@ export default {
   },
 
   computed: {
+    // Seccion actual, derivada de la ruta (Vue Router)
+    sec() {
+      return this.$route.name || 'dashboard';
+    },
     // Stores via computed: setup() solo expone al template, no a this.*
     configStore() {
       return useConfigStore();
@@ -1903,10 +1868,11 @@ export default {
 
     ir(s, refId) {
       this.masAbierto = false;
-      this.sec = s;
-      try {
-        history.pushState({ sec: s }, '', '#' + s);
-      } catch (e) {}
+      if (this.$route.name !== s) {
+        try {
+          this.$router.push({ name: s });
+        } catch (e) {}
+      }
       if (refId) {
         this.$nextTick(() => {
           setTimeout(() => {
@@ -5467,9 +5433,6 @@ export default {
           // Intentar auto-detectar (por si ya le dio Start antes)
           setTimeout(() => this.tgAutoDetectarChat(), 2000);
         }
-        const hash = location.hash.slice(1);
-        const valid = ['dashboard', 'ventas', 'compras', 'productos', 'inventario', 'reportes', 'socios', 'gastos'];
-        if (valid.includes(hash)) this.sec = hash;
       } catch (e) {
         console.error(e);
         this.toastMsg('Error al cargar datos', TOAST.BAD);
@@ -5582,9 +5545,6 @@ export default {
       this.tgProcesarCola().catch(() => {});
     });
     window.addEventListener('offline', () => (this.online = false));
-    window.addEventListener('popstate', (e) => {
-      this.sec = (e.state && e.state.sec) || 'dashboard';
-    });
     window.addEventListener('resize', () => {
       if (this.sec === 'dashboard') this.renderChart();
     });

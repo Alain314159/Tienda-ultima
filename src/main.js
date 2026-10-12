@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
+import router from './router/index.js';
 import AppIcon from './components/AppIcon.vue';
 import './styles.css';
 import { Capacitor } from '@capacitor/core';
@@ -22,6 +23,7 @@ const pinia = createPinia();
 const app = createApp(App);
 
 app.use(pinia);
+app.use(router);
 app.component('icon', AppIcon);
 
 // ============================================================
@@ -119,7 +121,7 @@ if (Capacitor.isNativePlatform()) {
       return;
     }
     if (vm.sec && vm.sec !== 'dashboard') {
-      vm.sec = 'dashboard';
+      vm.ir('dashboard');
       return;
     }
     CapApp.minimizeApp();
