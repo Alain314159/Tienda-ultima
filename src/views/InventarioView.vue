@@ -123,14 +123,8 @@
   </section>
 </template>
 
-<script>
+<script setup>
 import { useApp } from '../contexts/appContext.js';
 
-export default {
-  name: 'InventarioView',
-  setup() {
-    const app = useApp();
-    return { app };
-  },
-};
+const app = useApp();
 </script>
