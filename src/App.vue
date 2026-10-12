@@ -2683,8 +2683,14 @@ export default {
       this.prodForm.empaques.splice(i, 1);
     },
 
-    guardarProducto() {
-      return this.productosStore.guardarProducto(this.prodForm);
+    async guardarProducto() {
+      try {
+        await this.productosStore.guardarProducto(this.prodForm);
+        this.toastMsg(this.prodForm.editId ? 'Producto actualizado' : 'Producto guardado');
+        this.resetProd();
+      } catch (e) {
+        this.toastMsg(e.message, TOAST.BAD);
+      }
     },
 
     editarProducto(id) {

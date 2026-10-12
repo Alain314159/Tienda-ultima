@@ -44,13 +44,17 @@ los stores se instancian fuera de componentes. Los stores ya funcionan con
 `ref` + `cargarXxx()` manual. Alto riesgo, bajo beneficio. Evaluar a futuro
 para vistas específicas, no para los stores.
 
-### 2.4 — `@tanstack/vue-form` + Zod (formularios)
+### 2.4 — Zod (validación) — parcial
 
-**Objetivo:** reemplazar validación manual.
+**Decisión:** `@tanstack/vue-form` necesita setup() (bloqueado en Options API).
+En su lugar, se usó **Zod directo** en los stores (módulos puros, sin composables).
 
-- [ ] Definir schemas Zod para productos, compras, gastos
-- [ ] Migrar formulario piloto (ProductosView)
-- [ ] Verificar build + smoke test
+- [x] `src/schemas/index.js` con schemas Zod (producto, compra, gasto, socio, retiro) + helper `validar()`
+- [x] Validación integrada en `useProductosStore.guardarProducto` (recupera validación perdida)
+- [x] `App.vue.guardarProducto` con manejo de error + toast + reset
+- [x] Test directo en Node: rechaza inválidos, acepta válidos
+- [ ] Integrar en otros stores (cuando se usen desde la UI)
+- [ ] `@tanstack/vue-form` queda pendiente para cuando App.vue migre a script setup
 
 ---
 
