@@ -37,13 +37,12 @@ Documento vivo. Marcar `[x]` al completar. Actualizar al añadir tareas.
 - [x] Accesibilidad: focus trap, Escape, click-fuera → cancelar
 - [x] Build + 15/15 tests + ESLint 0 + smoke 16/16
 
-### 2.3 — `dexie-reactive` (reactividad IndexedDB)
+### 2.3 — `dexie-reactive` (reactividad IndexedDB) — ⏸️ POSTPUESTO
 
-**Objetivo:** reemplazar `cargarXxx()` manuales por `useLiveQuery`.
-
-- [ ] Evaluar impacto en los 13 stores
-- [ ] Migrar un store piloto
-- [ ] Verificar build + smoke test
+**Decisión:** salteado. `useLiveQuery` es un composable que necesita effect scope;
+los stores se instancian fuera de componentes. Los stores ya funcionan con
+`ref` + `cargarXxx()` manual. Alto riesgo, bajo beneficio. Evaluar a futuro
+para vistas específicas, no para los stores.
 
 ### 2.4 — `@tanstack/vue-form` + Zod (formularios)
 
