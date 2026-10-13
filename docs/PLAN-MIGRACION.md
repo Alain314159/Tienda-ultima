@@ -148,6 +148,48 @@ Continuación de la auditoría de ruedas reinventadas con foco en calidad y segu
 
 ---
 
+## 🎯 PULIDO FINAL 190% (2026-10-14) ✅
+
+Ronda de pulido a fondo tras el endurecimiento: cobertura de la lógica nuclear
+y cierre de los TODOs contables que quedaban en el código.
+
+### Tests de la lógica nuclear (+89, total 245)
+
+Módulos antes casi sin cobertura, ahora con tests de comportamiento:
+`useCobro` (11% → transacción FIFO completa, venta con pérdida, conteo de
+billetes, rollback), `useCuadre` (7% → P&G, subfilas por lote, totales),
+`useGraficos`, `storage`, `telegram`, `pdf`, `autosave`, `importacion`,
+`cierres`/`caja`/`mermas`. Cobertura global: 35.7% → **47.1% líneas**
+(trinquete subido a 44/31/41/21).
+
+### TODOs contables conectados (antes siempre en 0)
+
+- `saldoCaja` descuenta las compras del período (no anuladas).
+- `comprasPeriodo` de cierres delega en `comprasStore.comprasPeriodo`.
+- `gananciaNetaPeriodo` resta mermas del período (nuevo `mermasPeriodo`).
+- `cerrarPeriodo` registra compras, mermas y `cajaFinal` reales.
+- `useCuadre` excluye compras anuladas del reporte.
+
+### 3 bugs reales corregidos (destapados por los tests nuevos)
+
+1. **COGS inflado en cada cierre**: `cerrarPeriodo` multiplicaba `it.costo`
+   (costo TOTAL de la línea, así lo guarda `useCobro`) por la cantidad otra
+   vez → cierre con COGS x N y `gananciasAcumuladas` falseadas.
+2. **Efectivo inicial duplicado en caja**: `saldoCaja` sumaba `capitalTotal`
+   (que ya incluye `capitalInicial`) sobre `ini`.
+3. **Retiros y ganancia neta**: documentado por qué NO se restan los retiros
+   de `gananciaNetaPeriodo` (son distribuciones; `gananciaDisponible` ya los
+   descuenta — restarlos ahí sería doble conteo).
+
+### Otras decisiones
+
+- `useCajaStore` se instancia lazy dentro de `cerrarPeriodo` para evitar el
+  ciclo de inicialización capital → cierres → caja → capital.
+- Eliminado `margenPeriodo` muerto de `useComprasStore` (siempre '0.00').
+- `GITHUB_TOKEN` de StatusPanel → `VITE_GITHUB_TOKEN` (+ `.env.example`).
+
+---
+
 ## ✅ Completado (histórico)
 
 - [x] Bugs críticos de render (`.value`, `calcFIFO`, etc.)

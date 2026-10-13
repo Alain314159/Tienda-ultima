@@ -16,12 +16,12 @@ export default defineConfig({
       exclude: ['src/main.ts', 'src/env.d.ts', 'src/shims/**'],
       // Umbrales anti-regresion: ~3pp por debajo de la cobertura actual.
       // Subirlos al mejorar la suite (trinquete).
-      // Actual (2026-10-14, 236 tests): lineas 46.2 / funciones 32.1 /
-      // statements 43.1 / branches 24.0
+      // Actual (2026-10-14, 245 tests): lineas 47.1 / funciones 34.1 /
+      // statements 44.2 / branches 24.8
       thresholds: {
-        lines: 43,
-        functions: 29,
-        statements: 40,
+        lines: 44,
+        functions: 31,
+        statements: 41,
         branches: 21,
       },
     },
