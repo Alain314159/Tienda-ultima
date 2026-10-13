@@ -18,8 +18,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  quality:
+    name: Quality gates
+    uses: ./.github/workflows/quality.yml
+
   build:
     name: Build
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,7 +36,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build

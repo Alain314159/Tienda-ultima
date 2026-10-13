@@ -1,0 +1,15 @@
+name: CI
+
+# Quality gates para ramas de trabajo y PRs.
+# main/master las cubren deploy.yml y android.yml (cada uno con su propio gate).
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  quality:
+    name: Quality gates
+    uses: ./.github/workflows/quality.yml

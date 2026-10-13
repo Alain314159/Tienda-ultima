@@ -7,7 +7,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  quality:
+    name: Quality gates
+    uses: ./.github/workflows/quality.yml
+
   build:
+    needs: quality
     runs-on: ubuntu-latest
     env:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
