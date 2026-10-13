@@ -136,7 +136,7 @@ const resultados = computed(() => {
 
   idsEncontrados(
     idxProductos.value,
-    (s.productos || []).map((p) => ({ id: p.id, texto: String(p.nombre || '') })),
+    (s.productos || []).filter((p) => !p.archivado).map((p) => ({ id: p.id, texto: String(p.nombre || '') })),
     query
   )
     .slice(0, 5)

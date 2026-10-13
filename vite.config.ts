@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 import { checker } from 'vite-plugin-checker';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => {
   const isCapacitor = process.env.CAPACITOR === '1' || mode === 'capacitor';
@@ -88,6 +89,14 @@ export default defineConfig(({ mode }) => {
               },
             ],
           },
+        }),
+      // ANALYZE=1 npm run build -> genera bundle-report.html con el arbol de tamanos
+      process.env.ANALYZE === '1' &&
+        visualizer({
+          filename: 'bundle-report.html',
+          template: 'treemap',
+          gzipSize: true,
+          brotliSize: true,
         }),
     ].filter(Boolean),
     build: {

@@ -96,8 +96,10 @@ shell con `<script setup>`**. Cada responsabilidad tiene un único dueño:
 - [x] `madge --circular src/` — sin dependencias circulares
 - [x] Tests de montaje: app completa + 8 vistas renderizan sin warnings
       (`tests/mount.test.js`, usa happy-dom + fake-indexeddb)
-- [ ] `vitest --coverage` — cobertura de tests (pendiente)
-- [ ] `rollup-plugin-visualizer` — análisis de bundle (pendiente)
+- [x] `vitest --coverage` — cobertura con umbrales anti-regresión (provider v8,
+      `npm run test:coverage`; líneas 33 / branch 17 — subir al mejorar la suite)
+- [x] `rollup-plugin-visualizer` — `npm run build:analisis` genera `bundle-report.html`
+      (pdf 425K, charts 188K y mathjs 137K van en chunks diferidos, no en el arranque)
 
 ---
 
@@ -108,11 +110,41 @@ shell con `<script setup>`**. Cada responsabilidad tiene un único dueño:
 - [x] `src/types/index.ts` — interfaces de dominio
 - [x] `src/db.ts` — Dexie tipado (`TiendaProDB` con `Table<T, string>`)
 - [x] SRP: `db.js` dividido en `utils/numero.ts`, `utils/formato.ts`, `utils/id.ts`
-- [x] tsconfig strict (+ `noImplicitAny: false`, `useUnknownInCatchVariables: false`
-      durante la transición)
+- [x] tsconfig strict COMPLETO (`noImplicitAny: true`, `useUnknownInCatchVariables: true`;
+      382 errores de la transición corregidos — sin `any` ni `@ts-ignore`)
 - [x] `index.html` → `main.ts`
 - [ ] `@tanstack/vue-form` (opcional, ahora posible al estar todo en script setup)
 - [ ] Estructura feature-based `src/features/` (opcional, evaluar)
+
+---
+
+## 🎯 ENDURECIMIENTO POST-AUDITORÍA (2026-10-14) ✅
+
+Continuación de la auditoría de ruedas reinventadas con foco en calidad y seguridad:
+
+- [x] **CI quality gates**: `quality.yml` reutilizable (lint + typecheck + tests
+      con cobertura + build). `deploy.yml` y `android.yml` dependen de él
+      (`needs: quality`); `ci.yml` cubre ramas de trabajo y PRs. Antes un commit
+      roto podía llegar a Pages/APK sin que nada se quejara.
+- [x] **Cobertura con umbrales** (`@vitest/coverage-v8`): líneas 33 / funciones 22 /
+      statements 31 / branch 17 — trinquete anti-regresión.
+- [x] **TypeScript strict total**: `noImplicitAny` + `useUnknownInCatchVariables`
+      activados; 382 errores corregidos sin `any` ni `@ts-ignore`.
+- [x] **BUG CRÍTICO corregido** (destapado por el modo estricto): `guardarProducto`
+      perdió en la división SRP la generación de `id` al crear y la preservación
+      del original al editar → crear/editar producto desde la vista lanzaba
+      `DataError` de IndexedDB. Tests reescritos con la forma real del form
+      (los anteriores pasaban `{id}` y enmascaraban el bug).
+- [x] **BUG corregido**: `GlobalSearch` filtraba archivados en el índice MiniSearch
+      pero no en el fallback por subcadena — los archivados se colaban.
+- [x] **`TG_APP_KEY` fuera del repo público**: `import.meta.env.VITE_TG_APP_KEY`,
+      `.env.example`, secret en GitHub Actions, inyección en los 3 builds.
+      Pendiente para el dueño: rotar la key en el Cloudflare Worker (la actual
+      quedó expuesta en el historial git).
+- [x] **Tests de comportamiento**: 156 tests (antes 121) — servicio calculadora
+      (porcentajes relacionales, lista blanca anti-inyección, carga diferida) y
+      componentes Calculator + GlobalSearch con @vue/test-utils.
+- [x] **Análisis de bundle**: `npm run build:analisis` → `bundle-report.html`.
 
 ---
 
