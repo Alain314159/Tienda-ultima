@@ -146,7 +146,6 @@ import { useCierresStore } from '../stores/useCierresStore';
 import { useInsightsStore } from '../stores/useInsightsStore';
 import { useGraficos } from '../composables/useGraficos';
 import { ir } from '../utils/navegacion';
-import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 
 const router = useRouter();

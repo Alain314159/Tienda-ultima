@@ -6,8 +6,8 @@
  */
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { fmt, fmtFH } from '../utils/formato';
-import { P, genId, clean } from '../utils/id';
+import { fmtFH } from '../utils/formato';
+import { P, clean } from '../utils/id';
 import { db } from '../db';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
@@ -15,7 +15,7 @@ import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
 import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
-import { recargarStores, recargarTodoStores } from './recarga';
+import { recargarTodoStores } from './recarga';
 import { derivarClave, hashContenido } from '../services/backup';
 
 export const useBackupStore = defineStore('backup', () => {
@@ -124,7 +124,7 @@ export const useBackupStore = defineStore('backup', () => {
             const key = await derivarClave(pass, salt);
             const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
             d = JSON.parse(new TextDecoder().decode(json));
-          } catch (err) {
+          } catch {
             return toastMsg('Contrasena incorrecta', TOAST.BAD);
           }
         }
@@ -281,7 +281,7 @@ export const useBackupStore = defineStore('backup', () => {
           }
         });
         throw new Error('Fallo la importacion (rollback aplicado): ' + err.message);
-      } catch (rb) {
+      } catch {
         throw new Error('Fallo la importacion Y el rollback: ' + err.message);
       }
     }
@@ -339,7 +339,7 @@ export const useBackupStore = defineStore('backup', () => {
               try {
                 const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
                 if (viejos.length > 0) await db.tgQueue.bulkDelete(viejos.map((x) => x.id));
-              } catch (e) {}
+              } catch {}
 
               await telegram.tgEncolar(data, 'auto');
               telegram.tgProcesarCola().catch((e) => console.warn('backupAuto cola', e));

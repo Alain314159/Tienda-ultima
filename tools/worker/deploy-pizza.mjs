@@ -38,7 +38,7 @@ console.log('✅ Worker subido');
 try {
   await api('POST', `/accounts/${accountId}/workers/scripts/${WORKER_NAME}/subdomain`, { enabled: true, previews_enabled: false });
   console.log('✅ Subdomain habilitado');
-} catch (e) {}
+} catch  {}
 
 const sub = await api('GET', `/accounts/${accountId}/workers/subdomain`);
 const url = `https://${WORKER_NAME}.${sub.subdomain}.workers.dev`;

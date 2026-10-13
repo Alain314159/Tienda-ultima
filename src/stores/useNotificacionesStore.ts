@@ -5,7 +5,7 @@
  * anomalías críticas, cierre pendiente y fallos de backup.
  */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { n } from '../utils/numero';
@@ -72,7 +72,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
             await conTimeout(reg.showNotification(titulo, opts), 3000);
             return { ok: true, via: 'sw' };
           }
-        } catch (e) {
+        } catch {
           /* fallback */
         }
       }
@@ -289,12 +289,12 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       if ('Notification' in window && Notification.permission === 'granted') {
         await enviarNotif('⚠ Producto agotado', nombre + ' — quedó en 0');
       }
-    } catch (e) {}
+    } catch {}
 
     // 2. Vibracion
     try {
       vib([200, 100, 200]);
-    } catch (e) {}
+    } catch {}
 
     // 3. Toast con accion
     try {

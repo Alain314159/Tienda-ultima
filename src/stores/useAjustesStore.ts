@@ -5,16 +5,12 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Ajuste } from '../types';
-import { n, m, q } from '../utils/numero';
-import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
-import { useConfigStore } from './useConfigStore';
 
 export const useAjustesStore = defineStore('ajustes', () => {
   // ===== STORES DEPENDIENTES =====
   const lotesStore = useLotesStore();
-  const configStore = useConfigStore();
 
   // ===== ESTADO =====
   const ajustes = ref<Ajuste[]>([]);

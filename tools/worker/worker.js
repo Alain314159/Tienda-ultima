@@ -1,11 +1,7 @@
 // Cloudflare Worker - Tienda Pro (multi-tenant)
 // Bot de Telegram compartido + KV de nombres unicos por tienda.
 
-const ALLOWED_ORIGINS = new Set([
-  'https://alain314159.github.io',
-  'http://localhost:5173',
-  'http://localhost:4173',
-]);
+const ALLOWED_ORIGINS = new Set(['https://alain314159.github.io', 'http://localhost:5173', 'http://localhost:4173']);
 
 function corsHeaders(origin) {
   const ok = ALLOWED_ORIGINS.has(origin);
@@ -26,13 +22,12 @@ function json(data, status, cors) {
 
 async function hashPassword(password, saltB64) {
   const enc = new TextEncoder();
-  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
-  );
+  const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    keyMaterial, 256
+    keyMaterial,
+    256
   );
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
@@ -55,7 +50,9 @@ async function verificarChatNombre(KV, chatId, nombre) {
   try {
     const registro = JSON.parse(rec);
     return registro.chatsAutorizados.includes(String(chatId));
-  } catch (e) { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export default {
@@ -91,7 +88,12 @@ export default {
     // ===== CHECK NAME =====
     if (url.pathname === '/api/checkName') {
       const nombre = (url.searchParams.get('nombre') || '').toLowerCase().trim();
-      if (!validarNombre(nombre)) return json({ ok: true, disponible: false, motivo: 'Nombre invalido (3-40 caracteres, a-z, 0-9, guiones)' }, 200, cors);
+      if (!validarNombre(nombre))
+        return json(
+          { ok: true, disponible: false, motivo: 'Nombre invalido (3-40 caracteres, a-z, 0-9, guiones)' },
+          200,
+          cors
+        );
       const existe = await KV.get('name:' + nombre);
       return json({ ok: true, disponible: !existe, nombre }, 200, cors);
     }
@@ -112,15 +114,18 @@ export default {
         const password = body.password || '';
         const chatId = String(body.chatId || '');
 
-        if (!validarNombre(nombre)) return json({ ok: false, description: 'Nombre invalido (3-40 caracteres, a-z, 0-9, guiones)' }, 400, cors);
-        if (!password || password.length < 6) return json({ ok: false, description: 'Contrasena muy corta (min 6 caracteres)' }, 400, cors);
+        if (!validarNombre(nombre))
+          return json({ ok: false, description: 'Nombre invalido (3-40 caracteres, a-z, 0-9, guiones)' }, 400, cors);
+        if (!password || password.length < 6)
+          return json({ ok: false, description: 'Contrasena muy corta (min 6 caracteres)' }, 400, cors);
         if (!chatId) return json({ ok: false, description: 'Falta chatId' }, 400, cors);
 
         const existente = await KV.get('name:' + nombre);
         if (existente) return json({ ok: false, description: 'El nombre ya esta en uso' }, 409, cors);
 
         const chatExistente = await KV.get('chat:' + chatId);
-        if (chatExistente) return json({ ok: false, description: 'Este chat ya tiene nombre asignado: ' + chatExistente }, 409, cors);
+        if (chatExistente)
+          return json({ ok: false, description: 'Este chat ya tiene nombre asignado: ' + chatExistente }, 409, cors);
 
         const salt = genSalt();
         const passwordHash = await hashPassword(password, salt);
@@ -130,7 +135,7 @@ export default {
           salt,
           passwordHash,
           fechaRegistro: new Date().toISOString(),
-          chatsAutorizados: [chatId]
+          chatsAutorizados: [chatId],
         };
         await KV.put('name:' + nombre, JSON.stringify(registro));
         await KV.put('chat:' + chatId, nombre);
@@ -185,7 +190,7 @@ export default {
       const out = [];
       const oldPattern = /^tienda-backup-\d{4}-\d{2}-\d{2}-/;
       const newPrefix = 'tienda-backup-' + nombre + '-';
-      data.result.forEach(u => {
+      data.result.forEach((u) => {
         const msg = u.message || u.channel_post;
         if (!msg || !msg.document) return;
         if (String(msg.chat.id) !== chatId) return;
@@ -198,7 +203,7 @@ export default {
           fileSize: doc.file_size || 0,
           fecha: new Date(msg.date * 1000).toISOString(),
           messageId: msg.message_id,
-          caption: msg.caption || ''
+          caption: msg.caption || '',
         });
       });
       out.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
@@ -214,7 +219,8 @@ export default {
         const blob = form.get('document');
         const caption = form.get('caption') || '';
 
-        if (!chatId || !nombre || !blob) return json({ ok: false, description: 'Faltan chat_id, nombre o document' }, 400, cors);
+        if (!chatId || !nombre || !blob)
+          return json({ ok: false, description: 'Faltan chat_id, nombre o document' }, 400, cors);
         const ok = await verificarChatNombre(KV, chatId, nombre);
         if (!ok) return json({ ok: false, description: 'No autorizado para este nombre' }, 403, cors);
 
@@ -229,7 +235,7 @@ export default {
 
         const r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/sendDocument', {
           method: 'POST',
-          body: tgForm
+          body: tgForm,
         });
         const data = await r.json();
         return json(data, r.status, cors);
@@ -250,7 +256,7 @@ export default {
         const r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/deleteMessage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
         });
         const data = await r.json();
         return json(data, r.status, cors);
@@ -268,7 +274,7 @@ export default {
         const r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/getFile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file_id: fileId })
+          body: JSON.stringify({ file_id: fileId }),
         });
         const data = await r.json();
         return json(data, r.status, cors);
@@ -285,10 +291,10 @@ export default {
       const buf = await r.arrayBuffer();
       return new Response(buf, {
         status: r.status,
-        headers: { 'Content-Type': 'application/octet-stream', ...cors }
+        headers: { 'Content-Type': 'application/octet-stream', ...cors },
       });
     }
 
     return json({ ok: false, description: 'Not found: ' + url.pathname }, 404, cors);
-  }
+  },
 };

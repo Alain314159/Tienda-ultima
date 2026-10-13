@@ -242,7 +242,7 @@ import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
 
 import { n } from './utils/numero';
-import { fmt, fmtFH } from './utils/formato';
+import { fmt } from './utils/formato';
 import { P, genId, clean } from './utils/id';
 import { db } from './db';
 import BottomNav from './components/BottomNav.vue';
@@ -268,7 +268,7 @@ import { useTelegramStore } from './stores/useTelegramStore';
 import { useBackupStore } from './stores/useBackupStore';
 import { useNotificacionesStore } from './stores/useNotificacionesStore';
 import { datosDeStores } from './stores/exportar';
-import { recargarStores, recargarTodoStores } from './stores/recarga';
+import { recargarTodoStores } from './stores/recarga';
 import { cargarCarpetaHandle } from './services/backup';
 import { useGestos } from './composables/useGestos';
 import { ir as irA } from './utils/navegacion';
@@ -324,7 +324,7 @@ function toggleTema() {
   cfg.tema = configStore.tema === 'dark' ? 'light' : 'dark';
   try {
     document.documentElement.setAttribute('data-theme', cfg.tema);
-  } catch (e) {}
+  } catch {}
   configStore.guardarCfg();
 }
 
@@ -336,7 +336,7 @@ async function salirSafeMode() {
     onOk: async () => {
       try {
         await P(db.config, { key: 'safeModeCounter', value: 0 });
-      } catch (e) {}
+      } catch {}
       location.reload();
     },
   });
@@ -379,7 +379,7 @@ watch(
   (t) => {
     try {
       document.documentElement.setAttribute('data-theme', t);
-    } catch (e) {}
+    } catch {}
   }
 );
 
@@ -388,7 +388,7 @@ watch(
   (v) => {
     try {
       document.documentElement.style.setProperty('--font-scale', String(Number(v) || 1));
-    } catch (e) {}
+    } catch {}
   }
 );
 
@@ -412,7 +412,7 @@ watchDebounced(
   (val) => {
     try {
       localStorage.setItem('carritoPro', JSON.stringify(val));
-    } catch (e) {}
+    } catch {}
   },
   { deep: true, debounce: 300 }
 );
@@ -497,7 +497,7 @@ async function inicializar() {
       };
       _bc.postMessage({ tipo: 'hello', tabId: _tabId as string });
     }
-  } catch (e) {}
+  } catch {}
 
   try {
     // SAFE MODE: contar intentos fallidos
@@ -505,24 +505,24 @@ async function inicializar() {
     try {
       const sm = await db.config.get('safeModeCounter');
       intentos = sm && sm.value ? Number(sm.value) : 0;
-    } catch (e) {}
+    } catch {}
     if (intentos >= 3) {
       safeMode.value = true;
       console.warn('SAFE MODE activado (3+ intentos fallidos)');
     }
     try {
       await P(db.config, { key: 'safeModeCounter', value: intentos + 1 });
-    } catch (e) {}
+    } catch {}
 
     const c = await db.config.get('cfg');
     if (c) configStore.cfg = { ...configStore.cfg, ...(c.value as object) };
     else await configStore.guardarCfg();
     try {
       document.documentElement.setAttribute('data-theme', cfg.tema);
-    } catch (e) {}
+    } catch {}
     try {
       document.documentElement.style.setProperty('--font-scale', String(Number(cfg.fontScale) || 1));
-    } catch (e) {}
+    } catch {}
 
     // Limpiar items viejos de la cola de backups
     try {
@@ -608,7 +608,7 @@ async function inicializar() {
     // Si todo fue bien, resetear contador
     try {
       await P(db.config, { key: 'safeModeCounter', value: 0 });
-    } catch (e) {}
+    } catch {}
     cargando.value = false;
     splashVisible.value = false;
     console.log('Inicializacion: ' + (performance.now() - t0).toFixed(1) + 'ms');
@@ -620,7 +620,7 @@ async function inicializar() {
         cfg.tgCarpetaActiva = true;
         cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
       }
-    } catch (e) {}
+    } catch {}
 
     // Actualizar cola pendiente y pre-import info
     await telegram.tgActualizarCola();
@@ -666,7 +666,7 @@ onBeforeUnmount(() => {
   if (_bc) {
     try {
       _bc.close();
-    } catch (e) {}
+    } catch {}
   }
   backup.detenerBackupInterval();
   notificaciones.detenerChequeos();

@@ -32,8 +32,6 @@ export const useCierresStore = defineStore('cierres', () => {
    * Incluye retiros de ganancia del período
    */
   const gananciaNetaPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
-
     // Ganancia bruta de ventas del período
     const bruta = ventasStore.gananciaBrutaPeriodo;
 
@@ -182,22 +180,6 @@ export const useCierresStore = defineStore('cierres', () => {
    */
   async function cargarTodo() {
     await cargarCierres();
-  }
-
-  /**
-   * Recarga datos específicos
-   */
-  async function recargarStores(tables) {
-    const reloadMap = {
-      cierres: cargarCierres,
-      asientos: () => {},
-    };
-
-    for (const table of tables) {
-      if (reloadMap[table]) {
-        await reloadMap[table]();
-      }
-    }
   }
 
   // ===== EXPORTS =====

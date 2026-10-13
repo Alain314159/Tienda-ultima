@@ -7,8 +7,6 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { createApp, h } from 'vue';
 import { createPinia } from 'pinia';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 
 // Silenciar ruido externo (logger, PWA, autosave)
 vi.mock('../src/services/logger.js', () => ({ Log: { init: async () => {}, evento: () => {} } }));
@@ -38,7 +36,7 @@ async function montarApp() {
   const pinia = createPinia();
   app.use(pinia);
   app.use(router);
-  app.component('icon', AppIcon);
+  app.component('Icon', AppIcon);
   app.config.errorHandler = (e) => errores.push('ERROR_HANDLER: ' + (e && e.message));
 
   const contenedor = document.createElement('div');

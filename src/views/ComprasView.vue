@@ -401,12 +401,12 @@ async function guardarCompra() {
       toastMsg(`Compra ${fmt(total)}`);
       try {
         if (window.Log) window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total });
-      } catch (e) {}
+      } catch {}
     } catch (e) {
       toastMsg(e.message, TOAST.BAD);
       try {
         if (window.Log) window.Log.evento('compra-error', { mensaje: e.message });
-      } catch (er) {}
+      } catch {}
     }
   };
 

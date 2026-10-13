@@ -25,13 +25,13 @@ const app = createApp(App);
 
 app.use(pinia);
 app.use(router);
-app.component('icon', AppIcon);
+app.component('Icon', AppIcon);
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue Error:', err, info);
   try {
     if (window.Log) window.Log.evento('vue-error', { message: err instanceof Error ? err.message : String(err), info });
-  } catch (e) {}
+  } catch {}
 };
 
 const vm = app.mount('#app');
@@ -44,7 +44,7 @@ setTimeout(() => {
       nativo: Capacitor.isNativePlatform(),
       userAgent: navigator.userAgent.slice(0, 80),
     });
-  } catch (e) {}
+  } catch {}
 }, 500);
 
 // ============================================================

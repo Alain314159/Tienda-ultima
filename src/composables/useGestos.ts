@@ -75,7 +75,7 @@ export function useGestos(router: Router, secActual: () => string, target: Ref<H
     refrescando.value = true;
     try {
       await recargarTodoStores();
-    } catch (e) {}
+    } catch {}
     setTimeout(() => {
       refrescando.value = false;
       pullDist.value = 0;
@@ -85,13 +85,9 @@ export function useGestos(router: Router, secActual: () => string, target: Ref<H
 
   function onTouchStart(e: TouchEvent) {
     if (_gestoBloqueado()) return;
-    const target = e.target as HTMLElement | null;
+    const el = e.target as HTMLElement | null;
     const esInput =
-      !!target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable);
+      !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
     if (esInput) return;
 
     if (window.scrollY <= 0) {

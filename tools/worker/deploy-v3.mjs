@@ -79,7 +79,7 @@ async function verificarChatNombre(KV, chatId, nombre) {
   try {
     const registro = JSON.parse(rec);
     return registro.chatsAutorizados.includes(String(chatId));
-  } catch (e) { return false; }
+  } catch  { return false; }
 }
 
 export default {
@@ -202,7 +202,7 @@ export default {
       // Leer índice de backups del KV
       const idxStr = await KV.get('backups:' + chatId);
       let idx = [];
-      try { idx = idxStr ? JSON.parse(idxStr) : []; } catch (e) { idx = []; }
+      try { idx = idxStr ? JSON.parse(idxStr) : []; } catch  { idx = []; }
 
       // Filtrar por nombre (por si hubiera cambios de nombre)
       const filtrados = idx.filter(b => b.nombre === nombre);
@@ -256,7 +256,7 @@ export default {
 
         const idxStr = await KV.get('backups:' + chatId);
         let idx = [];
-        try { idx = idxStr ? JSON.parse(idxStr) : []; } catch (e) { idx = []; }
+        try { idx = idxStr ? JSON.parse(idxStr) : []; } catch  { idx = []; }
         idx.push(entrada);
 
         // Rotación: mantener últimos 20
@@ -272,7 +272,7 @@ export default {
                 body: JSON.stringify({ chat_id: chatId, message_id: bk.messageId })
               });
               eliminados.push(bk.messageId);
-            } catch (e) {}
+            } catch  {}
           }
           idx = idx.slice(-mantener);
         }
@@ -305,7 +305,7 @@ export default {
         // Quitar del índice KV
         const idxStr = await KV.get('backups:' + chatId);
         let idx = [];
-        try { idx = idxStr ? JSON.parse(idxStr) : []; } catch (e) { idx = []; }
+        try { idx = idxStr ? JSON.parse(idxStr) : []; } catch  { idx = []; }
         idx = idx.filter(b => b.messageId !== messageId);
         await KV.put('backups:' + chatId, JSON.stringify(idx));
 

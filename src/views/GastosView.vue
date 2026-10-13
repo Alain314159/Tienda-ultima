@@ -93,12 +93,12 @@
           </span>
         </div>
         <div v-if="hist.abierto(g.cierre.id)">
-          <div v-for="g in hist.itemsMostrados(g.items)" :key="g.id" class="item">
+          <div v-for="it in hist.itemsMostrados(g.items)" :key="it.id" class="item">
             <div class="info">
-              <div class="nm">{{ g.categoria }} · {{ g.concepto }}</div>
-              <div class="det">{{ fmtFH(g.fecha) }}</div>
+              <div class="nm">{{ it.categoria }} · {{ it.concepto }}</div>
+              <div class="det">{{ fmtFH(it.fecha) }}</div>
             </div>
-            <b class="neg">-{{ fmt(g.monto) }}</b>
+            <b class="neg">-{{ fmt(it.monto) }}</b>
           </div>
           <div v-if="hist.hayMas(g.items)" class="hist-mas">
             <button class="link-btn" @click="hist.mostrarMas()">Mostrar 20 mas</button>

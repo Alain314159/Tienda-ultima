@@ -316,13 +316,9 @@ import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import { useCapitalStore } from '../stores/useCapitalStore';
-import { useUIStore } from '../stores/useUIStore';
 import { useCuadre } from '../composables/useCuadre';
-import { TOAST } from '../constants';
-import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
-const ui = useUIStore();
 const ventasStore = useVentasStore();
 const cierresStore = useCierresStore();
 const capitalStore = useCapitalStore();

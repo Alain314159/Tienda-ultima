@@ -10,14 +10,12 @@ import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useVentasStore } from './useVentasStore';
 import { useCapitalStore } from './useCapitalStore';
-import { useGastosStore } from './useGastosStore';
 import { useConfigStore } from './useConfigStore';
 
 export const useCajaStore = defineStore('caja', () => {
   // ===== STORES DEPENDIENTES =====
   const ventasStore = useVentasStore();
   const capitalStore = useCapitalStore();
-  const gastosStore = useGastosStore();
   const configStore = useConfigStore();
 
   // ===== ESTADO =====
@@ -44,9 +42,9 @@ export const useCajaStore = defineStore('caja', () => {
    * Calcula el saldo de arqueos (ingresos - egresos)
    */
   function calcularSaldoArqueos() {
-    const ingresos = movCaja.value.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + n(m.monto), 0);
+    const ingresos = movCaja.value.filter((mov) => mov.tipo === 'ingreso').reduce((s, mov) => s + n(mov.monto), 0);
 
-    const egresos = movCaja.value.filter((m) => m.tipo === 'egreso').reduce((s, m) => s + n(m.monto), 0);
+    const egresos = movCaja.value.filter((mov) => mov.tipo === 'egreso').reduce((s, mov) => s + n(mov.monto), 0);
 
     return m(ingresos - egresos);
   }
@@ -158,22 +156,6 @@ export const useCajaStore = defineStore('caja', () => {
    */
   async function cargarTodo() {
     await Promise.all([cargarMovCaja(), cargarArqueos()]);
-  }
-
-  /**
-   * Recarga datos específicos
-   */
-  async function recargarStores(tables) {
-    const reloadMap = {
-      movCaja: cargarMovCaja,
-      arqueos: cargarArqueos,
-    };
-
-    for (const table of tables) {
-      if (reloadMap[table]) {
-        await reloadMap[table]();
-      }
-    }
   }
 
   // ===== EXPORTS =====

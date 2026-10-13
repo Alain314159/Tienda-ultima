@@ -5,7 +5,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Producto } from '../types';
-import { n, m } from '../utils/numero';
+import { n } from '../utils/numero';
 import { fmtCant } from '../utils/formato';
 import { P } from '../utils/id';
 import { db } from '../db';
@@ -82,24 +82,24 @@ export const useProductosStore = defineStore('productos', () => {
    * Verifica si un producto tiene escalones de precio
    */
   function tieneEscalones(productoId) {
-    const p = productos.value.find((p) => p.id === productoId);
-    return p && p.preciosEscalonados && p.preciosEscalonados.length > 0;
+    const prod = productos.value.find((p) => p.id === productoId);
+    return prod && prod.preciosEscalonados && prod.preciosEscalonados.length > 0;
   }
 
   /**
    * Obtiene el precio para una cantidad específica
    */
   function precioParaCantidad(productoId, cantidad) {
-    const p = productos.value.find((p) => p.id === productoId);
-    if (!p) return 0;
+    const prod = productos.value.find((p) => p.id === productoId);
+    if (!prod) return 0;
 
-    if (!p.preciosEscalonados || p.preciosEscalonados.length === 0) {
-      return n(p.precio);
+    if (!prod.preciosEscalonados || prod.preciosEscalonados.length === 0) {
+      return n(prod.precio);
     }
 
     // Buscar el escalón apropiado
     const cant = n(cantidad);
-    const escalones = p.preciosEscalonados.sort((a, b) => n(b.min) - n(a.min));
+    const escalones = prod.preciosEscalonados.sort((a, b) => n(b.min) - n(a.min));
 
     for (const e of escalones) {
       if (cant >= n(e.min)) {
@@ -107,7 +107,7 @@ export const useProductosStore = defineStore('productos', () => {
       }
     }
 
-    return n(p.precio);
+    return n(prod.precio);
   }
 
   /**
@@ -211,9 +211,9 @@ export const useProductosStore = defineStore('productos', () => {
    */
   async function toggleArchivarProducto(productoId) {
     try {
-      const p = productos.value.find((p) => p.id === productoId);
-      if (p) {
-        await P(db.productos, { ...p, archivado: !p.archivado });
+      const prod = productos.value.find((p) => p.id === productoId);
+      if (prod) {
+        await P(db.productos, { ...prod, archivado: !prod.archivado });
         await cargarProductos();
       }
     } catch (e) {
@@ -244,21 +244,6 @@ export const useProductosStore = defineStore('productos', () => {
    */
   function toggleMostrarArchivados() {
     mostrarArchivados.value = !mostrarArchivados.value;
-  }
-
-  /**
-   * Recarga datos específicos
-   */
-  async function recargarStores(tables) {
-    const reloadMap = {
-      productos: cargarProductos,
-    };
-
-    for (const table of tables) {
-      if (reloadMap[table]) {
-        await reloadMap[table]();
-      }
-    }
   }
 
   // ===== EXPORTS =====

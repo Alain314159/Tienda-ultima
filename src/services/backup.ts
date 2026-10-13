@@ -15,7 +15,7 @@ export async function comprimirGzip(blob) {
     const cs = new CompressionStream('gzip');
     const stream = blob.stream().pipeThrough(cs);
     return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/gzip' });
-  } catch (e) {
+  } catch {
     return blob;
   }
 }
@@ -27,7 +27,7 @@ export async function descomprimirGzip(blob) {
     const ds = new DecompressionStream('gzip');
     const stream = blob.stream().pipeThrough(ds);
     return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/json' });
-  } catch (e) {
+  } catch {
     return blob;
   }
 }
@@ -57,7 +57,7 @@ export async function guardarEnCarpeta(fileName, contenidoBlob) {
     try {
       const rec = await db.config.get('carpetaHandle');
       if (rec && rec.value) _carpetaHandle = rec.value as FileSystemDirectoryHandle;
-    } catch (e) {}
+    } catch {}
   }
   if (!_carpetaHandle) return false;
   // 2. Verificar permiso
@@ -71,7 +71,7 @@ export async function guardarEnCarpeta(fileName, contenidoBlob) {
       const req = (await handle.requestPermission?.({ mode: 'readwrite' })) || 'denied';
       if (req !== 'granted') return false;
     }
-  } catch (e) {
+  } catch {
     return false;
   }
   // 3. Escribir archivo
@@ -95,6 +95,6 @@ export async function cargarCarpetaHandle() {
       _carpetaHandle = rec.value as FileSystemDirectoryHandle;
       return rec;
     }
-  } catch (e) {}
+  } catch {}
   return null;
 }

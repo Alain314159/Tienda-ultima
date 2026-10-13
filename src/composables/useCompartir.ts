@@ -32,14 +32,14 @@ export function useCompartir() {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Existencia', text: texto });
-      } catch (e) {
+      } catch {
         /* cancelado */
       }
     } else {
       try {
         await navigator.clipboard.writeText(texto);
         toastMsg('Copiado al portapapeles');
-      } catch (e) {
+      } catch {
         toastMsg('No se pudo compartir', TOAST.WARN);
       }
     }
@@ -119,7 +119,7 @@ export function useCompartir() {
             try {
               await navigator.clipboard.writeText(texto);
               toastMsg('Copiado al portapapeles');
-            } catch (e2) {
+            } catch {
               toastMsg('No se pudo compartir', TOAST.BAD);
             }
           }
@@ -134,7 +134,7 @@ export function useCompartir() {
     try {
       await navigator.clipboard.writeText(texto);
       toastMsg('Lista copiada al portapapeles');
-    } catch (e) {
+    } catch {
       toastMsg('No se pudo copiar', TOAST.BAD);
     }
   }

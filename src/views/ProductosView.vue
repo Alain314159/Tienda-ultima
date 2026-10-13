@@ -209,24 +209,6 @@ function resetProd() {
   };
 }
 
-function agregarEscalon() {
-  if (!prodForm.value.preciosEscalonados) prodForm.value.preciosEscalonados = [];
-  prodForm.value.preciosEscalonados.push({ min: '', precio: '' });
-}
-
-function quitarEscalon(i) {
-  prodForm.value.preciosEscalonados.splice(i, 1);
-}
-
-function agregarEmpaque() {
-  if (!prodForm.value.empaques) prodForm.value.empaques = [];
-  prodForm.value.empaques.push({ nombre: '', unidades: '' });
-}
-
-function quitarEmpaque(i) {
-  prodForm.value.empaques.splice(i, 1);
-}
-
 async function guardarProducto() {
   try {
     await productosStore.guardarProducto(prodForm.value);

@@ -14,7 +14,7 @@ export function ir(router: import('vue-router').Router, s: string, refId?: strin
   if (router.currentRoute.value.name !== s) {
     try {
       router.push({ name: s });
-    } catch (e) {}
+    } catch {}
   }
   if (refId) {
     setTimeout(() => {

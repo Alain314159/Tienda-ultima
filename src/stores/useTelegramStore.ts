@@ -139,7 +139,7 @@ export const useTelegramStore = defineStore('telegram', () => {
         configStore.cfg.tiendaConfigurada = true;
         await configStore.guardarCfg();
       }
-    } catch (e) {
+    } catch {
       /* silencioso */
     }
   }
@@ -151,7 +151,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     }
     try {
       await tgEnviarDatos(datos, 'manual', true);
-    } catch (e) {
+    } catch {
       await tgEncolar(datos, 'manual');
       toastMsg('Sin conexion. Backup en cola.', TOAST.WARN);
     }
@@ -180,9 +180,8 @@ export const useTelegramStore = defineStore('telegram', () => {
       const blobSinComprimir = new Blob([json], { type: 'application/json' });
       const gz = await comprimirGzip(blobSinComprimir);
 
-      // 4. Nombre
+      // 4. Fecha del backup
       const fecha = new Date().toISOString();
-      const fileName = 'tienda-backup-' + fecha.split('T')[0] + '-' + Date.now().toString(36) + '.json.gz';
 
       // 5. Resumen para caption
       const resumen =
@@ -219,7 +218,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       try {
         await tgListar();
         await tgRotarViejos();
-      } catch (e) {}
+      } catch {}
 
       tgProgreso.value = '';
       if (mostrarToast) {
@@ -344,7 +343,7 @@ export const useTelegramStore = defineStore('telegram', () => {
         tgEstado.value = 'conectado';
         try {
           await tgCargarEstadoTienda();
-        } catch (e) {}
+        } catch {}
         toastMsg('Telegram conectado: ' + configStore.cfg.tgNombre);
         return true;
       }
@@ -361,7 +360,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     // 1. Procesar cola pendiente primero
     try {
       await tgProcesarCola();
-    } catch (e) {}
+    } catch {}
     // 2. Auto-backup si esta activo
     if (!configStore.cfg.tgAutoBackup) return;
     if (!configStore.cfg.tgChatId) return;
@@ -435,7 +434,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     try {
       const items = await db.tgQueue.toArray();
       tgColaPendiente.value = items.filter((x) => x.estado === 'pendiente' || x.estado === 'error').length;
-    } catch (e) {
+    } catch {
       tgColaPendiente.value = 0;
     }
   }
@@ -493,14 +492,13 @@ export const useTelegramStore = defineStore('telegram', () => {
     const mantener = n(configStore.cfg.tgMantenerN) || 10;
     if (tgBackups.value.length <= mantener) return 0;
     const sobrantes = tgBackups.value.slice(mantener);
-    const token = tgTokenActual();
     const chatId = configStore.cfg.tgChatId;
     let borrados = 0;
     for (const bk of sobrantes) {
       try {
         await tgDeleteMessage(chatId, bk.messageId);
         borrados++;
-      } catch (e) {}
+      } catch {}
     }
     if (borrados > 0) {
       tgBackups.value = tgBackups.value.slice(0, mantener);

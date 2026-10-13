@@ -5,7 +5,7 @@
  */
 import { ref, reactive } from 'vue';
 import { n, m, q } from '../utils/numero';
-import { fmt, fmtCant } from '../utils/formato';
+import { fmt } from '../utils/formato';
 import { P, genId, clean } from '../utils/id';
 import { db } from '../db';
 import { TOAST } from '../constants';
@@ -154,7 +154,7 @@ export function useCobro() {
       try {
         if (window.Log)
           window.Log.evento('venta-guardada', { id: venta.id, items: items.length, total: tot, ganancia: gan });
-      } catch (e) {}
+      } catch {}
 
       // Notificaciones en background: sin await
       notificaciones.chequearAgotados().catch((e) => console.warn('chequearAgotados', e));
@@ -166,7 +166,7 @@ export function useCobro() {
             mensaje: e.message,
             stack: e.stack && e.stack.split('\n').slice(0, 3).join(' | '),
           });
-      } catch (er) {}
+      } catch {}
     } finally {
       procesandoVenta.value = false;
     }

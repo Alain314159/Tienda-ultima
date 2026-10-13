@@ -308,7 +308,7 @@ function guardarEstado() {
         historial: historial.value.slice(0, 20),
       })
     );
-  } catch (e) {}
+  } catch {}
 }
 
 function cargarEstado() {
@@ -318,7 +318,7 @@ function cargarEstado() {
     const state = JSON.parse(raw);
     if (state && typeof state.expresion === 'string') expresion.value = state.expresion;
     if (Array.isArray(state.historial)) historial.value = state.historial.slice(0, 20);
-  } catch (e) {}
+  } catch {}
 }
 </script>
 

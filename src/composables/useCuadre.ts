@@ -5,7 +5,6 @@
  */
 import { ref, reactive } from 'vue';
 import { n, m, q } from '../utils/numero';
-import { fmt, fmtCant, fmtFH } from '../utils/formato';
 import type { ResultadoCuadre, SubfilaCuadre } from '../types';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';

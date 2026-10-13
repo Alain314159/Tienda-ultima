@@ -16,7 +16,7 @@ async function tgJson(path, opts) {
   let d;
   try {
     d = JSON.parse(text);
-  } catch (e) {
+  } catch {
     throw new Error('Respuesta no-JSON del proxy: ' + text.slice(0, 120));
   }
   if (!d.ok) throw new Error(d.description || 'Error de Telegram');
@@ -123,7 +123,7 @@ export async function tgDeleteMessage(chatId, messageId) {
       headers: proxyHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
     });
-  } catch (e) {
+  } catch {
     return false;
   }
 }

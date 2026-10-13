@@ -56,7 +56,6 @@ export function generarRecomendaciones(state) {
   const totalSemana = ventasSemana.reduce((s, v) => s + (v.total || 0), 0);
   const totalSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.total || 0), 0);
   const gananciaSemana = ventasSemana.reduce((s, v) => s + (v.ganancia || 0), 0);
-  const gananciaSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.ganancia || 0), 0);
 
   const push = (r) => {
     out.push(r);

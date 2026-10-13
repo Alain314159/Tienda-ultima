@@ -66,8 +66,8 @@ export const useLotesStore = defineStore('lotes', () => {
   const valorInventario = computed(() => {
     return m(
       lotes.value.reduce((sum, l) => {
-        const stock = q(n(l.cantidadInicial) - n(l.cantidadVendida));
-        return sum + stock * n(l.costo);
+        const stk = q(n(l.cantidadInicial) - n(l.cantidadVendida));
+        return sum + stk * n(l.costo);
       }, 0)
     );
   });
@@ -169,21 +169,6 @@ export const useLotesStore = defineStore('lotes', () => {
    */
   function valorLotesProducto(pid) {
     return m(lotesDeProducto(pid).reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0));
-  }
-
-  /**
-   * Recarga datos específicos
-   */
-  async function recargarStores(tables) {
-    const reloadMap = {
-      lotes: cargarLotes,
-    };
-
-    for (const table of tables) {
-      if (reloadMap[table]) {
-        await reloadMap[table]();
-      }
-    }
   }
 
   // ===== EXPORTS =====

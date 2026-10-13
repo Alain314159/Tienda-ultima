@@ -80,5 +80,23 @@ export default [
       'vue/html-closing-bracket-newline': 'off',
     },
   },
+  {
+    // En TS/Vue las reglas base duplican a @typescript-eslint (falsos positivos
+    // en posiciones de tipo); se delega a la versión consciente de tipos.
+    files: ['**/*.{ts,mts,cts,tsx,vue}'],
+    rules: {
+      'no-unused-vars': 'off',
+      'no-shadow': 'off',
+      '@typescript-eslint/no-shadow': 'warn',
+    },
+  },
+  {
+    // En JS plano manda la regla base; evitar duplicado con la de TS
+    files: ['**/*.js'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-shadow': 'off',
+    },
+  },
   vuePrettier,
 ];

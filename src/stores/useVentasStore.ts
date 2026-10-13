@@ -32,12 +32,12 @@ export const useVentasStore = defineStore('ventas', () => {
    * Lista de productos para venta (con stock)
    */
   const listaVenta = computed(() => {
-    const q = busqVenta.value.toLowerCase().trim();
+    const busq = busqVenta.value.toLowerCase().trim();
     const stockMap = lotesStore.stockMap;
 
     return productosStore.prodsActivos.filter((p) => {
       if ((stockMap[p.id] || 0) <= 0) return false;
-      if (q && !(p.nombre.toLowerCase().includes(q) || p.codigo?.toLowerCase().includes(q))) return false;
+      if (busq && !(p.nombre.toLowerCase().includes(busq) || p.codigo?.toLowerCase().includes(busq))) return false;
       return true;
     });
   });
@@ -93,8 +93,8 @@ export const useVentasStore = defineStore('ventas', () => {
    */
   const ventasFiltradas = computed(() => {
     let list = ventas.value.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    const q = busqVenta.value.toLowerCase().trim();
-    if (q) list = list.filter((v) => v.items.some((i) => i.nombre.toLowerCase().includes(q)));
+    const busq = busqVenta.value.toLowerCase().trim();
+    if (busq) list = list.filter((v) => v.items.some((i) => i.nombre.toLowerCase().includes(busq)));
     return list;
   });
 

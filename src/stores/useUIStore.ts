@@ -66,7 +66,7 @@ export const useUIStore = defineStore('ui', () => {
         document.body.style.position = '';
         document.body.style.width = '';
       }
-    } catch (e) {}
+    } catch {}
   }
 
   // ===== API DE CONFIRMACIÓN =====

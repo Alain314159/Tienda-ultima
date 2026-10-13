@@ -570,13 +570,12 @@ import { useUIStore } from '../stores/useUIStore';
 import { useTelegramStore } from '../stores/useTelegramStore';
 import { useBackupStore } from '../stores/useBackupStore';
 import { useNotificacionesStore } from '../stores/useNotificacionesStore';
-import { useInsightsStore } from '../stores/useInsightsStore';
 import { useStorageInfo } from '../composables/useStorageInfo';
 import { datosDeStores } from '../stores/exportar';
 
 defineOptions({ name: 'AjustesModal' });
 
-const props = defineProps({
+defineProps({
   otraPestana: { type: Boolean, default: false },
 });
 
@@ -633,7 +632,7 @@ function aplicarEscalaFont() {
   const val = Number(cfg.fontScale) || 1;
   try {
     document.documentElement.style.setProperty('--font-scale', String(val));
-  } catch (e) {}
+  } catch {}
 }
 
 // ===== NOTIFICACIONES =====

@@ -68,8 +68,11 @@ interface EstadoBusqueda {
   formatMoney?: (v: unknown) => string;
 }
 
-const props = defineProps({ abierto: Boolean, state: Object });
-const emit = defineEmits(['cerrar', 'ir']);
+const props = defineProps({
+  abierto: Boolean,
+  state: { type: Object, default: () => ({}) },
+});
+defineEmits(['cerrar', 'ir']);
 
 const q = ref('');
 const input = ref<HTMLInputElement | null>(null);

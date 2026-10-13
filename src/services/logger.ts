@@ -89,7 +89,7 @@ async function escribirLineas(lineas) {
       const prev = localStorage.getItem(key) || '';
       const nuevo = (prev + texto).slice(-500000); // max ~500KB por dia
       localStorage.setItem(key, nuevo);
-    } catch (e) {
+    } catch {
       /* silencioso */
     }
     return;
@@ -110,7 +110,7 @@ async function escribirLineas(lineas) {
         encoding: Encoding.UTF8,
         recursive: true,
       });
-    } catch (e) {
+    } catch {
       // No existe, crear
       await Filesystem.writeFile({
         path,
@@ -120,7 +120,7 @@ async function escribirLineas(lineas) {
         recursive: true,
       });
     }
-  } catch (e) {
+  } catch {
     // Ultimo recurso: silencioso
   }
 }
@@ -132,7 +132,7 @@ async function flush() {
     const lineas = _buffer.slice();
     _buffer = [];
     await escribirLineas(lineas);
-  } catch (e) {
+  } catch {
     // no hacer nada
   } finally {
     _silencioso = false;
@@ -174,8 +174,6 @@ export const Log = {
       error: console.error,
       info: console.info,
     };
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this;
     console.log = (...args) => {
       _originalConsole?.log.apply(console, args);
       agregar('LOG', formatearArgs(args));
@@ -264,7 +262,7 @@ export const Log = {
     try {
       const r = await Filesystem.readdir({ path: CARPETA, directory: Directory.Documents });
       return (r.files || []).filter((f) => f.name.endsWith('.log')).sort((a, b) => b.name.localeCompare(a.name));
-    } catch (e) {
+    } catch {
       return [];
     }
   },
@@ -281,7 +279,7 @@ export const Log = {
         encoding: Encoding.UTF8,
       });
       return typeof r.data === 'string' ? r.data : '';
-    } catch (e) {
+    } catch {
       return '';
     }
   },
@@ -304,10 +302,10 @@ export const Log = {
         if (m && m[1] < limite) {
           try {
             await Filesystem.deleteFile({ path: `${CARPETA}/${f.name}`, directory: Directory.Documents });
-          } catch (e) {}
+          } catch {}
         }
       }
-    } catch (e) {}
+    } catch {}
   },
 
   // Para probar desde la UI

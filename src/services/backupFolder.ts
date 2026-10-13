@@ -72,7 +72,7 @@ export const BackupFolder = {
         directory: Directory.Documents,
       });
       return (r.files || []).filter((f) => f.name.endsWith('.json.gz')).sort((a, b) => b.name.localeCompare(a.name));
-    } catch (e) {
+    } catch {
       return [];
     }
   },
@@ -111,7 +111,7 @@ export const BackupFolder = {
         path: `${CARPETA}/${nombre}`,
         directory: Directory.Documents,
       });
-    } catch (e) {}
+    } catch {}
   },
 
   async rotar(max = MAX_BACKUPS) {

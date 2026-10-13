@@ -11,14 +11,14 @@ const FMT_MONEDA = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, ma
 export const vib = (ms: number | number[]): void => {
   try {
     if (navigator.vibrate) navigator.vibrate(ms);
-  } catch (e) {}
+  } catch {}
 };
 
 /** Formato moneda: $1,234.56 */
 export function fmt(v: unknown): string {
   try {
     return '$' + FMT_MONEDA.format(n(v));
-  } catch (e) {
+  } catch {
     return '$0.00';
   }
 }
@@ -41,7 +41,7 @@ export function fmtFecha(iso: string | Date): string {
       '/' +
       String(d.getFullYear()).slice(2)
     );
-  } catch (e) {
+  } catch {
     return '';
   }
 }
@@ -51,7 +51,7 @@ export function fmtFH(iso: string | Date): string {
   try {
     const d = new Date(iso);
     return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  } catch (e) {
+  } catch {
     return '';
   }
 }

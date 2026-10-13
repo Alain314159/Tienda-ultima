@@ -212,7 +212,7 @@ async function cargarOTA() {
     try {
       const latest = await CapacitorUpdater.getLatest();
       if (latest && latest.version) otaUltima.value = { version: latest.version };
-    } catch (e) {
+    } catch {
       /* sin conexion */
     }
   } catch (e) {
@@ -242,7 +242,7 @@ async function verificarOTA() {
       try {
         const dl = await CapacitorUpdater.download({ url: String(latest.url), version: String(latest.version) });
         await CapacitorUpdater.set({ id: dl.id });
-      } catch (e) {
+      } catch {
         otaMsg.value = 'Descarga iniciada. Se aplicara al reiniciar.';
       }
     }
