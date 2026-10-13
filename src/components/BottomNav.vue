@@ -1,6 +1,6 @@
 <template>
   <nav class="nav no-print">
-    <button :class="{ activo: sec === 'dashboard' }" @click="$emit('ir', 'dashboard')" style="position:relative">
+    <button :class="{ activo: sec === 'dashboard' }" @click="$emit('ir', 'dashboard')" style="position: relative">
       <icon name="home" :size="22" :color="sec === 'dashboard' ? '#2196F3' : '#6b7280'"></icon>
       <span>Inicio</span>
       <span v-if="anomaliasCriticas > 0" class="nav-dot"></span>
@@ -24,14 +24,14 @@
   </nav>
 </template>
 
-<script>
-export default {
-  name: 'BottomNav',
-  props: {
-    sec: { type: String, required: true },
-    masActivo: { type: Boolean, default: false },
-    anomaliasCriticas: { type: Number, default: 0 }
-  },
-  emits: ['ir', 'toggle-mas']
-};
+<script setup>
+defineOptions({ name: 'BottomNav' });
+
+defineProps({
+  sec: { type: String, required: true },
+  masActivo: { type: Boolean, default: false },
+  anomaliasCriticas: { type: Number, default: 0 },
+});
+
+defineEmits(['ir', 'toggle-mas']);
 </script>

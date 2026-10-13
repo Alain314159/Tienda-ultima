@@ -15,7 +15,8 @@
       </div>
 
       <div class="sheet-group">Finanzas y reportes</div>
-      <div class="sheet-grid">        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
+      <div class="sheet-grid">
+        <button class="sheet-btn" :class="{ activo: sec === 'socios' }" @click="$emit('ir', 'socios')">
           <icon name="users" :size="22"></icon>Socios
         </button>
         <button class="sheet-btn" :class="{ activo: sec === 'reportes' }" @click="$emit('ir', 'reportes')">
@@ -25,7 +26,7 @@
 
       <div class="sheet-group">Sistema</div>
       <div class="sheet-grid">
-        <button class="sheet-btn" style="grid-column:1/-1" @click="$emit('abrir-ajustes')">
+        <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-ajustes')">
           <icon name="settings" :size="22"></icon>Ajustes
         </button>
       </div>
@@ -33,13 +34,13 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'SheetMas',
-  props: {
-    abierto: { type: Boolean, default: false },
-    sec: { type: String, required: true }
-  },
-  emits: ['cerrar', 'ir', 'abrir-ajustes']
-};
+<script setup>
+defineOptions({ name: 'SheetMas' });
+
+defineProps({
+  abierto: { type: Boolean, default: false },
+  sec: { type: String, required: true },
+});
+
+defineEmits(['cerrar', 'ir', 'abrir-ajustes']);
 </script>

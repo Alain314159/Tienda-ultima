@@ -4,15 +4,13 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'SkeletonLoader',
-  props: { rows: { type: Number, default: 5 } },
-  methods: {
-    ancho(i) {
-      const patrones = [100, 85, 90, 70, 95, 80];
-      return patrones[(i - 1) % patrones.length];
-    }
-  }
-};
+<script setup>
+defineOptions({ name: 'SkeletonLoader' });
+
+defineProps({ rows: { type: Number, default: 5 } });
+
+function ancho(i) {
+  const patrones = [100, 85, 90, 70, 95, 80];
+  return patrones[(i - 1) % patrones.length];
+}
 </script>
