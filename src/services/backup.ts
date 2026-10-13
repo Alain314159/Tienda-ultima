@@ -4,6 +4,9 @@
  * en carpeta del dispositivo (File System Access API).
  */
 import { db } from '../db';
+import { hashContenido } from './hash';
+
+export { hashContenido };
 
 /** Comprime un Blob con gzip (CompressionStream nativo; sin soporte devuelve el original). */
 export async function comprimirGzip(blob) {
@@ -26,20 +29,6 @@ export async function descomprimirGzip(blob) {
     return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/json' });
   } catch (e) {
     return blob;
-  }
-}
-
-/** Hash corto (16 chars hex) del texto usando SHA-256 si está disponible. */
-export async function hashContenido(texto) {
-  try {
-    const enc = new TextEncoder().encode(texto);
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
-      .slice(0, 16);
-  } catch (e) {
-    return String(texto.length);
   }
 }
 

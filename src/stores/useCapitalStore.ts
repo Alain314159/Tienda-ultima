@@ -10,7 +10,6 @@ import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useConfigStore } from './useConfigStore';
 import { useCierresStore } from './useCierresStore';
-import { Fechas } from '../services/fechas';
 
 export const useCapitalStore = defineStore('capital', () => {
   // ===== STORES DEPENDIENTES =====

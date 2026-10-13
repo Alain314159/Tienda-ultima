@@ -1,6 +1,10 @@
-// Devuelve un hash corto (16 chars hex) del texto.
-// Usa SHA-256 si crypto.subtle esta disponible, sino fallback al tamano.
-export async function hashContenido(texto) {
+/**
+ * Hash de contenido para detectar cambios en los backups.
+ * Usa SHA-256 nativo (crypto.subtle) con fallback defensivo.
+ */
+
+/** Devuelve un hash corto (16 chars hex) del texto. */
+export async function hashContenido(texto: string): Promise<string> {
   try {
     if (typeof crypto !== 'undefined' && crypto.subtle) {
       const enc = new TextEncoder().encode(texto);
@@ -14,13 +18,4 @@ export async function hashContenido(texto) {
     console.warn('hash fallback:', e);
   }
   return 'len_' + String(texto.length);
-}
-
-// Hash rapido (no criptografico) para detectar cambios grandes
-export function hashRapido(texto) {
-  let h = 0;
-  for (let i = 0; i < texto.length; i++) {
-    h = ((h << 5) - h + texto.charCodeAt(i)) | 0;
-  }
-  return 'h_' + Math.abs(h).toString(36) + '_' + texto.length;
 }

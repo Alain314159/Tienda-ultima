@@ -51,3 +51,18 @@ export function fmtFH(iso: string | Date): string {
     return '';
   }
 }
+
+/** Formato fecha completa: dd/mm/yyyy (períodos de cierre). */
+export function formatoDisplay(iso: string | Date): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+/** Diferencia en días entre dos fechas (d2 - d1). Fechas inválidas → 0. */
+export function diasEntre(fecha1: string | Date | undefined, fecha2: string | Date | undefined): number {
+  const d1 = fecha1 === undefined ? NaN : new Date(fecha1).getTime();
+  const d2 = fecha2 === undefined ? NaN : new Date(fecha2).getTime();
+  if (isNaN(d1) || isNaN(d2)) return 0;
+  return Math.floor((d2 - d1) / 86400000);
+}

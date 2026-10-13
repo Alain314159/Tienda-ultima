@@ -11,7 +11,6 @@ import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
-import { Fechas } from '../services/fechas';
 
 export const useVentasStore = defineStore('ventas', () => {
   // ===== ESTORES DEPENDIENTES =====

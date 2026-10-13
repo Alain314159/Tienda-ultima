@@ -12,7 +12,7 @@ import { useVentasStore } from './useVentasStore';
 import { useGastosStore } from './useGastosStore';
 import { useLotesStore } from './useLotesStore';
 import { useConfigStore } from './useConfigStore';
-import { Fechas } from '../services/fechas';
+import { diasEntre, formatoDisplay } from '../utils/formato';
 
 export const useCierresStore = defineStore('cierres', () => {
   // ===== STORES DEPENDIENTES =====
@@ -95,7 +95,7 @@ export const useCierresStore = defineStore('cierres', () => {
    */
   const diasDesdeUltimoCierre = computed(() => {
     if (!ultimoCierre.value) return 0;
-    return Fechas.diasEntre(ultimoCierre.value.fecha, new Date().toISOString());
+    return diasEntre(ultimoCierre.value.fecha, new Date().toISOString());
   });
 
   // ===== ACCIONES =====
@@ -145,7 +145,7 @@ export const useCierresStore = defineStore('cierres', () => {
 
       const cierre = {
         id: genId('c'),
-        periodo: `Período ${Fechas.formatoDisplay(ini)} al ${Fechas.formatoDisplay(f)}`,
+        periodo: `Período ${formatoDisplay(ini)} al ${formatoDisplay(f)}`,
         periodoInicio: ini.toISOString(),
         periodoFin: f.toISOString(),
         fecha: f.toISOString(),

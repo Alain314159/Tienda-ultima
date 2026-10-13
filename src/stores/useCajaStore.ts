@@ -12,7 +12,6 @@ import { useVentasStore } from './useVentasStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useGastosStore } from './useGastosStore';
 import { useConfigStore } from './useConfigStore';
-import { Fechas } from '../services/fechas';
 
 export const useCajaStore = defineStore('caja', () => {
   // ===== STORES DEPENDIENTES =====
