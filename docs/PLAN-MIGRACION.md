@@ -14,89 +14,114 @@ Documento vivo. Marcar `[x]` al completar. Actualizar al añadir tareas.
 
 ---
 
-## 🎯 FASE 2 — Librerías (en orden)
+## 🎯 FASE 2 — Librerías
 
-### 2.1 — `vue-sonner` (toasts)
+### 2.1 — `vue-sonner` (toasts) ✅
 
-**Objetivo:** reemplazar `toastMsg()` + `AppToast.vue` por `vue-sonner`.
-
-**Motivo:** es la más fácil (función global, sin setup), mayor ganancia inmediata.
-
-- [x] Auditar usos de `toastMsg()` (121, todos en App.vue)
+- [x] `toastMsg()` como wrapper de `toast()` (ok→success, warn→warning, bad→error) — ahora en `src/utils/toast.ts`
 - [x] `<Toaster />` en App.vue
-- [x] `toastMsg()` como wrapper de `toast()` (ok→success, warn→warning, bad→error)
 - [x] `AppToast.vue` eliminado
-- [x] Build + 15/15 tests + ESLint 0 errores + toast renderiza
 
-### 2.2 — `reka-ui` (modales)
+### 2.2 — `reka-ui` (modales) ✅
 
-**Objetivo:** reemplazar `ModalConfirm.vue`, `ModalPrompt.vue`, `pedirPin()`.
-
-- [x] `ModalConfirm.vue` con reka-ui AlertDialog + script setup (misma API, 16 call sites intactos)
+- [x] `ModalConfirm.vue` con reka-ui AlertDialog + script setup
 - [x] `ModalPrompt.vue` con reka-ui Dialog + script setup
 - [x] Accesibilidad: focus trap, Escape, click-fuera → cancelar
-- [x] Build + 15/15 tests + ESLint 0 + smoke 16/16
 
-### 2.3 — `dexie-reactive` (reactividad IndexedDB) — ⏸️ POSTPUESTO
+### 2.3 — `dexie-reactive` — ⏸️ POSTPUESTO
 
-**Decisión:** salteado. `useLiveQuery` es un composable que necesita effect scope;
-los stores se instancian fuera de componentes. Los stores ya funcionan con
-`ref` + `cargarXxx()` manual. Alto riesgo, bajo beneficio. Evaluar a futuro
-para vistas específicas, no para los stores.
+**Decisión:** salteado. Los stores funcionan con `ref` + `cargarXxx()` manual.
+Alto riesgo, bajo beneficio. Evaluar a futuro para vistas específicas.
 
 ### 2.4 — Zod (validación) — parcial
 
-**Decisión:** `@tanstack/vue-form` necesita setup() (bloqueado en Options API).
-En su lugar, se usó **Zod directo** en los stores (módulos puros, sin composables).
-
-- [x] `src/schemas/index.js` con schemas Zod (producto, compra, gasto, socio, retiro) + helper `validar()`
-- [x] Validación integrada en `useProductosStore.guardarProducto` (recupera validación perdida)
-- [x] `App.vue.guardarProducto` con manejo de error + toast + reset
-- [x] Test directo en Node: rechaza inválidos, acepta válidos
-- [ ] Integrar en otros stores (cuando se usen desde la UI)
-- [ ] `@tanstack/vue-form` queda pendiente para cuando App.vue migre a script setup
+- [x] `src/schemas/index.ts` con schemas Zod + helper `validar()`
+- [x] Validación integrada en `useProductosStore.guardarProducto`
+- [ ] Integrar en otros stores (compra, gasto, socio, retiro) al tocarlos
 
 ---
 
-## 🎯 FASE 3 — Composables (extraer de App.vue)
+## 🎯 FASE 3 — Composables (extraer de App.vue) ✅ COMPLETADA
 
-Extraer por responsabilidad. Cada uno debe poder describirse en una oración.
+App.vue pasó de **5577 líneas / 167 métodos (Options API)** a **~680 líneas de
+shell con `<script setup>`**. Cada responsabilidad tiene un único dueño:
 
-- [ ] `useHistorial` — paginación/agrupación de historial (9 métodos)
-- [ ] `useGraficos` — Chart.js (6 métodos)
-- [ ] `useNotificaciones` — notificaciones nativas + stock (8 métodos)
-- [ ] `useTelegram` — comunicación con el bot (15 métodos)
-- [ ] `useBackup` — export/import/restore (~10 métodos)
-- [ ] `usePIN` — verificación de PIN
+- [x] `useHistorial` — paginación/agrupación de historial por períodos
+- [x] `useGraficos` — Chart.js (barras + dona, carga dinámica)
+- [x] `useNotificaciones` → `useNotificacionesStore` (nativos + stock)
+- [x] `useTelegram` → `useTelegramStore` (bot, backups, cola, rotación)
+- [x] `useBackup` → `useBackupStore` (export/import/restore/cifrado)
+- [x] `usePIN` → `useUIStore.pedirPin()`
+- [x] `useGestos` — swipe horizontal + pull-to-refresh
+- [x] `useCobro` — modal de cobro + procesamiento FIFO de la venta
+- [x] `useCompartir` — precios/existencia por WhatsApp/clipboard
+- [x] `useStorageInfo` — persistencia y cuota del navegador
+- [x] `useCuadre` — cuadre por período + PDF (`services/pdf.ts`)
+
+### Stores nuevos (Pinia)
+
+- [x] `useUIStore` — modales, confirm/prompt (API promisificada `preguntar()`), PIN, scroll-lock
+- [x] `useInsightsStore` — recomendaciones/anomalías
+- [x] `useTelegramStore`, `useBackupStore`, `useNotificacionesStore`
+
+### Componentes extraídos del template de App.vue
+
+- [x] `AjustesModal.vue` (~550 líneas de ajustes)
+- [x] Cobro/Retiro/Aporte/ShareSheet movidos a sus vistas dueñas
+
+### God-object eliminado
+
+- [x] `APP_CTX` / `useApp()` / Proxy sobre la instancia — ELIMINADOS
+- [x] Las 8 vistas usan stores + composables directamente
+- [x] Cada vista posee sus formularios (compraForm, prodForm, gastoForm, …)
+- [x] `main.js` desacoplado: botón back usa `useUIStore`, autosave usa `datosDeStores()`
+
+### Bugs corregidos durante la división
+
+- [x] `ajustesAbierto` duplicado (App.vue data + useAjustesStore): el scroll-lock
+      revisaba el del store mientras el template usaba el local → nunca se activaba
+- [x] `ventasStore.histVentasMostrados` no existía: el historial de ventas del
+      período actual no renderizaba
+- [x] `f.usados` (undefined) en `procesarVenta` y mermas: el servicio FIFO
+      devuelve `lotesUsados` → registrar una venta lanzaba TypeError
+- [x] Búsqueda del historial de ventas filtraba por `busqVenta` (productos)
+      en vez de `busqHist`
 
 ---
 
-## 🎯 FASE 4 — Calidad
+## 🎯 FASE 4 — Calidad ✅
 
-- [ ] `vue-doctor` — análisis integral
-- [ ] `madge --circular src/` — dependencias circulares
-- [ ] `vitest --coverage` — cobertura de tests
-- [ ] `rollup-plugin-visualizer` — análisis de bundle
-
----
-
-## 🎯 FASE 5 — Opcional / Largo plazo
-
-- [ ] Migrar `App.vue` completo a `<script setup>`
-- [ ] Migrar vistas y stores a TypeScript
-- [ ] Feature-based structure (`src/features/`)
+- [x] ESLint 10 + typescript-eslint + Prettier 3 + Stylelint (0 errores)
+- [x] `vue-tsc --noEmit` — 0 errores (`npm run typecheck`)
+- [x] `madge --circular src/` — sin dependencias circulares
+- [x] Tests de montaje: app completa + 8 vistas renderizan sin warnings
+      (`tests/mount.test.js`, usa happy-dom + fake-indexeddb)
+- [ ] `vitest --coverage` — cobertura de tests (pendiente)
+- [ ] `rollup-plugin-visualizer` — análisis de bundle (pendiente)
 
 ---
 
-## ✅ Completado
+## 🎯 FASE 5 — TypeScript ✅ COMPLETADA
+
+- [x] Todos los módulos `src/**` migrados a `.ts`
+- [x] Todos los SFCs con `lang="ts"`
+- [x] `src/types/index.ts` — interfaces de dominio
+- [x] `src/db.ts` — Dexie tipado (`TiendaProDB` con `Table<T, string>`)
+- [x] SRP: `db.js` dividido en `utils/numero.ts`, `utils/formato.ts`, `utils/id.ts`
+- [x] tsconfig strict (+ `noImplicitAny: false`, `useUnknownInCatchVariables: false`
+      durante la transición)
+- [x] `index.html` → `main.ts`
+- [ ] `@tanstack/vue-form` (opcional, ahora posible al estar todo en script setup)
+- [ ] Estructura feature-based `src/features/` (opcional, evaluar)
+
+---
+
+## ✅ Completado (histórico)
 
 - [x] Bugs críticos de render (`.value`, `calcFIFO`, etc.)
 - [x] ESLint 10 + Prettier 3 + Stylelint
 - [x] Husky + lint-staged + commitlint
-- [x] Dividir App.vue en 8 vistas (`src/views/`)
-- [x] Patrón provide/inject (`appCtx`)
-- [x] Utilidades globales en `main.js`
-- [x] Vue Router 5 con lazy loading
-- [x] Vistas a `<script setup>`
-- [x] Eliminar 10 stores huérfanos
-- [x] Actualizar stack a últimas versiones
+- [x] Dividir App.vue en 8 vistas (`src/views/`) con Vue Router 5 lazy loading
+- [x] Actualizar stack completo (vue 3.5, vite 8, vitest 5, jspdf 4)
+- [x] Limpieza: App.vue.backup/.bak2, 8 servicios muertos, 12 scripts fix-*.mjs,
+      stores duplicados (sociosStore, utilitiesStore, calculosStore)

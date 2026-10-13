@@ -342,9 +342,8 @@ function cargarEstado() {
 .calc-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0 0 0 / 60%);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -357,6 +356,7 @@ function cargarEstado() {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -369,8 +369,8 @@ function cargarEstado() {
   border: 1px solid var(--brd);
   border-radius: 20px;
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    0 24px 80px rgb(0 0 0 / 50%),
+    0 0 0 1px rgb(255 255 255 / 3%) inset;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -382,6 +382,7 @@ function cargarEstado() {
     transform: scale(0.94);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -417,8 +418,9 @@ function cargarEstado() {
 
 .calc-close:hover {
   color: var(--txt);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(255 255 255 / 5%);
 }
+
 .calc-close:active {
   transform: scale(0.9);
 }
@@ -436,7 +438,7 @@ function cargarEstado() {
 }
 
 .calc-display.calc-error {
-  background: rgba(239, 68, 68, 0.08);
+  background: rgb(239 68 68 / 8%);
 }
 
 .calc-expr {
@@ -473,7 +475,7 @@ function cargarEstado() {
 }
 
 .calc-history-head:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(255 255 255 / 3%);
 }
 
 .calc-history-head > span:first-child {
@@ -534,11 +536,13 @@ function cargarEstado() {
 .calc-history-item:last-child {
   border-bottom: none;
 }
+
 .calc-history-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(255 255 255 / 4%);
 }
+
 .calc-history-item:active {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgb(255 255 255 / 7%);
 }
 
 .calc-hist-expr {
@@ -585,7 +589,7 @@ function cargarEstado() {
 
 .calc-btn:active {
   transform: scale(0.94);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(255 255 255 / 8%);
 }
 
 /* Numeros: neutros */
@@ -597,7 +601,7 @@ function cargarEstado() {
 }
 
 .calc-btn.num:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
 }
 
 /* Funciones: sutiles, secundarios */
@@ -610,20 +614,20 @@ function cargarEstado() {
 }
 
 .calc-btn.fn:active {
-  background: rgba(33, 150, 243, 0.12);
+  background: rgb(33 150 243 / 12%);
 }
 
 /* Operadores: destacados, color primario suave */
 .calc-btn.op {
   color: var(--pri);
-  background: rgba(33, 150, 243, 0.08);
-  border-color: rgba(33, 150, 243, 0.25);
+  background: rgb(33 150 243 / 8%);
+  border-color: rgb(33 150 243 / 25%);
   font-size: 1.35rem;
   font-weight: 700;
 }
 
 .calc-btn.op:active {
-  background: rgba(33, 150, 243, 0.18);
+  background: rgb(33 150 243 / 18%);
   transform: scale(0.94);
 }
 
@@ -632,7 +636,7 @@ function cargarEstado() {
   background: var(--pri);
   color: #fff;
   border-color: var(--pri);
-  box-shadow: 0 4px 14px rgba(33, 150, 243, 0.35);
+  box-shadow: 0 4px 14px rgb(33 150 243 / 35%);
 }
 
 .calc-btn.eq:active {

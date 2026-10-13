@@ -96,7 +96,7 @@
 
     <div v-if="aportesSinSocio.length" class="card" style="border: 2px solid var(--warn)">
       <div class="card-title"><icon name="alert" :size="18" :color="'#d97706'"></icon> Aportes sin asignar</div>
-      <div class="info-box" style="background: rgba(217, 119, 6, 0.1); color: var(--warn)">
+      <div class="info-box" style="background: rgb(217 119 6 / 10%); color: var(--warn)">
         Tienes <b>{{ aportesSinSocio.length }}</b> aporte(s) por <b>{{ fmt(aportesSinSocioTotal) }}</b> que no estan
         asignados a ningun socio (son de antes de crear el modulo de socios).
       </div>

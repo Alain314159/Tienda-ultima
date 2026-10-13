@@ -9,6 +9,7 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 ## ✨ Características
 
 ### 📊 Dashboard
+
 - Saldo de caja, valor de inventario, ventas y ganancia del período
 - Gráfico de ventas vs ganancia (últimos 6 meses)
 - Top productos más rentables
@@ -16,6 +17,7 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - Accesos rápidos a las operaciones más usadas
 
 ### 🛒 Ventas
+
 - Búsqueda de productos por nombre o código
 - Carrito con cantidades y precios editables
 - **Costo real por FIFO** (respeta lotes con costos distintos)
@@ -24,12 +26,14 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - Anulación con restauración de stock
 
 ### 📦 Compras
+
 - Registro de compras con costo unitario
 - Creación automática de lotes
 - Edición y eliminación (solo si el lote no tiene ventas)
 - Historial completo
 
 ### 🏷️ Productos e Inventario
+
 - Gestión de productos con unidad de medida (kg, lb, u, etc.)
 - Control de stock por lotes con costo específico
 - Alertas de stock bajo y agotado
@@ -37,30 +41,35 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - Valor del inventario en tiempo real
 
 ### 💰 Caja
+
 - Saldo acumulativo con desglose completo
 - Arqueo con detección de faltantes / sobrantes
 - Movimientos recientes
 - Alertas de caja negativa
 
 ### 💎 Patrimonio
+
 - Capital, aportes y retiros
 - Ganancias acumuladas
 - Disponible para retiro
 - Historial de movimientos
 
 ### 👥 Socios
+
 - CRUD de socios con porcentaje de participación
 - **Reparto de ganancia neta** proporcional al porcentaje
 - Registro automático en retiros y caja
 - Historial de distribuciones
 
 ### 💵 Gastos operativos
+
 - Categorías: Luz, Agua, Alquiler, Internet, Transporte, Publicidad, Mantenimiento, Limpieza, Otros
 - Método de pago: efectivo, transferencia, tarjeta
 - Vinculación automática con caja
 - Afecta la ganancia neta
 
 ### 📈 Contabilidad
+
 - **Balance de situación** (activos, pasivos, patrimonio)
 - **Estado de resultados** (ingresos, COGS, bruta, gastos, mermas, neta)
 - **Balance general** con partida doble
@@ -71,6 +80,7 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - Cierres de período con desglose completo
 
 ### 📄 Reportes
+
 - Cuadre por período personalizable (día / mes / rango)
 - Tabla consolidada por producto **con desglose por costo/precio**
 - Alineación con el dashboard cuando usas "Período actual"
@@ -80,6 +90,7 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
   - Footer en todas las páginas
 
 ### 🔔 Sistema
+
 - **Notificaciones push** (stock bajo, hora de arqueo, anomalías críticas, cierre pendiente)
 - **PWA instalable** con soporte offline
 - Tema claro / oscuro
@@ -91,12 +102,19 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 
 ## 🚀 Tecnologías
 
-- **Vue 3** — framework principal
-- **Vite** — bundler y dev server
-- **Dexie.js** — wrapper de IndexedDB para datos locales
-- **Chart.js** — gráficos interactivos
+- **Vue 3.5 + TypeScript** — framework principal, todo el código en TS
+- **`<script setup>` + Pinia** — Composition API en toda la app
+- **Vite 8** — bundler y dev server
+- **Dexie.js 4** — wrapper de IndexedDB para datos locales (tipado)
+- **Vue Router 5** — navegación con lazy loading (hash history)
+- **vue-sonner** — toasts
+- **reka-ui** — modales accesibles (focus trap, Escape)
+- **Zod** — validación de esquemas
+- **VueUse** — composables utilitarios (online, watchDebounced, …)
+- **Chart.js** — gráficos interactivos (carga dinámica)
 - **jsPDF + autoTable** — generación de PDF
 - **vite-plugin-pwa** — soporte PWA con Service Worker
+- **Capacitor 8** — empaquetado APK Android + notificaciones nativas
 
 Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
 
@@ -132,6 +150,17 @@ npm run build
 
 # Preview del build
 npm run preview
+
+# Tests (unitarios + montaje de la app)
+npm test
+
+# Verificación de tipos (vue-tsc)
+npm run typecheck
+
+# Lint (ESLint + Stylelint) y formato (Prettier)
+npm run lint
+npm run lint:css
+npm run format
 ```
 
 ---
@@ -140,19 +169,37 @@ npm run preview
 
 ```
 Tienda-ultima/
-├── .github/workflows/       # Deploy automático a GitHub Pages
-├── public/
-│   ├── favicon.ico
-│   ├── apple-touch-icon.png
-│   └── icons/               # Iconos PWA 192 y 512
+├── .github/workflows/       # Deploy automático a GitHub Pages + APK
+├── public/                   # Iconos PWA
 ├── src/
-│   ├── App.vue              # Componente principal (toda la app)
-│   ├── db.js                # Configuración Dexie + helpers
-│   ├── main.js              # Entry point + registro Service Worker
-│   └── styles.css           # Estilos globales
-├── index.html
-├── package.json
-└── vite.config.js           # Config Vite + PWA
+│   ├── App.vue               # Shell de la app (script setup)
+│   ├── main.ts               # Entry point + SW + botón back nativo
+│   ├── db.ts                 # Dexie tipado (TiendaProDB, versiones 1-7)
+│   ├── types/                # Interfaces de dominio (Producto, Venta, ...)
+│   ├── constants.ts          # Constantes globales
+│   ├── insights.ts           # Motor de recomendaciones
+│   ├── telegram.ts           # Cliente del bot (via Worker proxy)
+│   ├── router/               # Rutas con lazy loading
+│   ├── stores/               # Pinia: un store por responsabilidad
+│   │   ├── useUIStore        # Modales, confirm/prompt, PIN
+│   │   ├── useConfigStore    # Configuración
+│   │   ├── useProductos/Lotes/Ventas/Compras/Ajustes/
+│   │   ├── useCaja/Capital/Gastos/Cierres
+│   │   ├── useTelegramStore  # Backups en Telegram
+│   │   ├── useBackupStore    # Export/import/cifrado
+│   │   ├── useNotificaciones # Notificaciones nativas
+│   │   └── useInsightsStore  # Recomendaciones
+│   ├── composables/          # useGestos, useHistorial, useGraficos,
+│   │                         # useCobro, useCompartir, useCuadre, ...
+│   ├── components/           # AjustesModal, BottomNav, Calculator, ...
+│   ├── views/                # 8 vistas (dashboard, ventas, compras, ...)
+│   ├── services/             # fifo, fechas, pdf, backup, logger, ...
+│   ├── utils/                # numero, formato, id, toast, navegacion
+│   └── styles.css
+├── tests/                    # vitest (db + montaje completo de la app)
+├── tools/worker/             # Cloudflare Worker (proxy del bot)
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ---
@@ -161,24 +208,24 @@ Tienda-ultima/
 
 La app usa **IndexedDB** a través de Dexie con 15 tablas:
 
-| Tabla | Propósito |
-|-------|-----------|
-| `productos` | Catálogo de productos |
-| `lotes` | Lotes de inventario con costo específico |
-| `ventas` | Ventas con items y lotes usados |
-| `compras` | Compras registradas |
-| `ajustes` | Mermas y sobrantes |
-| `arqueos` | Arqueos de caja |
-| `movCaja` | Movimientos de caja |
-| `cierres` | Cierres de período |
-| `capital` | Aportes de capital |
-| `retiros` | Retiros de ganancia |
-| `socios` | Socios con porcentaje |
-| `distribuciones` | Reparto de ganancias |
-| `gastos` | Gastos operativos con categoría |
-| `asientos` | Libro diario (partida doble) |
-| `pasivos` | Cuentas por pagar |
-| `config` | Configuración y backups |
+| Tabla            | Propósito                                |
+| ---------------- | ---------------------------------------- |
+| `productos`      | Catálogo de productos                    |
+| `lotes`          | Lotes de inventario con costo específico |
+| `ventas`         | Ventas con items y lotes usados          |
+| `compras`        | Compras registradas                      |
+| `ajustes`        | Mermas y sobrantes                       |
+| `arqueos`        | Arqueos de caja                          |
+| `movCaja`        | Movimientos de caja                      |
+| `cierres`        | Cierres de período                       |
+| `capital`        | Aportes de capital                       |
+| `retiros`        | Retiros de ganancia                      |
+| `socios`         | Socios con porcentaje                    |
+| `distribuciones` | Reparto de ganancias                     |
+| `gastos`         | Gastos operativos con categoría          |
+| `asientos`       | Libro diario (partida doble)             |
+| `pasivos`        | Cuentas por pagar                        |
+| `config`         | Configuración y backups                  |
 
 ---
 
@@ -191,6 +238,7 @@ Cada venta descuenta del **lote más antiguo con stock disponible** (First In, F
 - Valor de inventario fiel a la realidad
 
 Ejemplo:
+
 ```
 Compra 1: 10 kg a $5  (lote A)
 Compra 2: 10 kg a $8  (lote B)

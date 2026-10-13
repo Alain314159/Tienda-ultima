@@ -62,7 +62,7 @@
           Actividad en GitHub
         </div>
 
-        <div v-if="ghError" class="info-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--bad)">
+        <div v-if="ghError" class="info-box" style="background: rgb(239 68 68 / 10%); border-color: var(--bad)">
           <b style="color: var(--bad); font-size: 0.8rem">Error: {{ ghError }}</b>
         </div>
 
@@ -380,6 +380,7 @@ async function probarNotif() {
   padding: 1rem 0;
   border-bottom: 1px solid var(--brd);
 }
+
 .status-section:last-child {
   border-bottom: none;
 }
@@ -400,9 +401,11 @@ async function probarNotif() {
   font-size: 0.78rem;
   border-bottom: 1px solid var(--brd);
 }
+
 .status-row:last-child {
   border-bottom: none;
 }
+
 .status-row > span {
   color: var(--mut);
 }
@@ -416,20 +419,24 @@ async function probarNotif() {
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
+
 .status-ok {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgb(34 197 94 / 15%);
   color: var(--ok);
 }
+
 .status-bad {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgb(239 68 68 / 15%);
   color: var(--bad);
 }
+
 .status-run {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgb(245 158 11 / 15%);
   color: var(--warn);
 }
+
 .status-warn {
-  background: rgba(100, 116, 139, 0.15);
+  background: rgb(100 116 139 / 15%);
   color: var(--mut);
 }
 </style>

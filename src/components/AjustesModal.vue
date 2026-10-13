@@ -152,7 +152,7 @@
       <div
         v-if="!soportaNotif"
         class="info-box"
-        style="background: rgba(220, 38, 38, 0.1); color: var(--bad); border-color: var(--bad); font-size: 0.75rem"
+        style="background: rgb(220 38 38 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.75rem"
       >
         Este dispositivo no soporta notificaciones del sistema. En iPhone necesitas instalar la app como PWA (Compartir
         > Agregar a pantalla de inicio).
@@ -202,7 +202,7 @@
         <div
           v-if="tg.tgEstado === 'esperando-start' || tg.tgEstado === 'sin-config'"
           class="info-box"
-          style="background: rgba(59, 130, 246, 0.08); border-color: var(--pri); font-size: 0.78rem"
+          style="background: rgb(59 130 246 / 8%); border-color: var(--pri); font-size: 0.78rem"
         >
           <b>Esperando conexión...</b>
           <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem">
@@ -213,7 +213,7 @@
         <div
           v-else-if="tg.tgEstado === 'error'"
           class="info-box"
-          style="background: rgba(239, 68, 68, 0.1); color: var(--bad); border-color: var(--bad); font-size: 0.78rem"
+          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.78rem"
         >
           Error de conexión. Verifica que el bot esté activo.
         </div>
@@ -223,7 +223,7 @@
       </div>
 
       <div v-else-if="!cfg.tiendaConfigurada">
-        <div class="tg-conectado" style="background: rgba(59, 130, 246, 0.06); border-color: rgba(59, 130, 246, 0.2)">
+        <div class="tg-conectado" style="background: rgb(59 130 246 / 6%); border-color: rgb(59 130 246 / 20%)">
           <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem">
             <div class="tg-dot" style="background: #3b82f6"></div>
             <span style="font-size: 0.8rem"><b>Chat conectado:</b> {{ cfg.tgNombre }}</span>
@@ -245,14 +245,14 @@
         <div
           v-if="tg.mtCheck.estado === 'ok'"
           class="info-box"
-          style="background: rgba(34, 197, 94, 0.1); color: var(--ok-d); border-color: var(--ok); font-size: 0.72rem"
+          style="background: rgb(34 197 94 / 10%); color: var(--ok-d); border-color: var(--ok); font-size: 0.72rem"
         >
           ✓ Nombre disponible
         </div>
         <div
           v-else-if="tg.mtCheck.estado === 'ocupado' || tg.mtCheck.estado === 'error'"
           class="info-box"
-          style="background: rgba(239, 68, 68, 0.1); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
+          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
         >
           ✗ {{ tg.mtCheck.motivo || 'Nombre no disponible' }}
         </div>
@@ -271,14 +271,14 @@
         <div
           v-if="tg.mtForm.password && tg.mtForm.password.length < 6"
           class="info-box"
-          style="background: rgba(239, 68, 68, 0.1); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
+          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
         >
           La contraseña es muy corta
         </div>
         <div
           v-else-if="tg.mtForm.password && tg.mtForm.password2 && tg.mtForm.password !== tg.mtForm.password2"
           class="info-box"
-          style="background: rgba(239, 68, 68, 0.1); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
+          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
         >
           Las contraseñas no coinciden
         </div>
@@ -286,7 +286,7 @@
         <div
           class="info-box"
           style="
-            background: rgba(245, 158, 11, 0.1);
+            background: rgb(245 158 11 / 10%);
             color: var(--warn-d);
             border-color: var(--warn);
             font-size: 0.72rem;
@@ -510,7 +510,7 @@
         v-if="otraPestana"
         class="set-row"
         style="
-          background: rgba(245, 158, 11, 0.12);
+          background: rgb(245 158 11 / 12%);
           border: 1px solid var(--warn);
           border-radius: 8px;
           padding: 0.6rem;

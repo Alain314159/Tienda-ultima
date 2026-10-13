@@ -152,7 +152,7 @@
             <div
               v-if="ventaExpandida === v.id"
               class="venta-items-expand"
-              style="margin-top: 0.4rem; padding: 0.4rem; background: rgba(0, 0, 0, 0.05); border-radius: 0.4rem"
+              style="margin-top: 0.4rem; padding: 0.4rem; background: rgb(0 0 0 / 5%); border-radius: 0.4rem"
             >
               <div
                 v-for="(it, idx) in v.items"
@@ -161,7 +161,7 @@
                   display: flex;
                   justify-content: space-between;
                   padding: 0.2rem 0;
-                  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                  border-bottom: 1px solid rgb(0 0 0 / 10%);
                 "
               >
                 <span>{{ it.nombre }} × {{ fmtCant(it.cantidad) }}</span>
@@ -218,7 +218,7 @@
               <div
                 v-if="ventaExpandida === v.id"
                 class="venta-items-expand"
-                style="margin-top: 0.4rem; padding: 0.4rem; background: rgba(0, 0, 0, 0.05); border-radius: 0.4rem"
+                style="margin-top: 0.4rem; padding: 0.4rem; background: rgb(0 0 0 / 5%); border-radius: 0.4rem"
               >
                 <div
                   v-for="(it, idx) in v.items"
@@ -227,7 +227,7 @@
                     display: flex;
                     justify-content: space-between;
                     padding: 0.2rem 0;
-                    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                    border-bottom: 1px solid rgb(0 0 0 / 10%);
                   "
                 >
                   <span>{{ it.nombre }} × {{ fmtCant(it.cantidad) }}</span>

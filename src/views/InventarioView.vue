@@ -8,7 +8,7 @@
         <button
           @click="ui.shareSheetAbierto = true"
           style="
-            background: rgba(255, 255, 255, 0.22);
+            background: rgb(255 255 255 / 22%);
             border: none;
             color: #fff;
             border-radius: 99px;

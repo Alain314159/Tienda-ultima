@@ -19,7 +19,7 @@
     <div
       v-if="alertaPerdidaDatos"
       class="multi-tab-warn no-print"
-      style="background: rgba(239, 68, 68, 0.15); border: 1px solid var(--bad)"
+      style="background: rgb(239 68 68 / 15%); border: 1px solid var(--bad)"
     >
       <div style="flex: 1">
         <b style="color: var(--bad)">⚠ Tus datos parecen haberse perdido</b><br />
