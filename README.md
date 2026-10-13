@@ -110,8 +110,11 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **vue-sonner** — toasts
 - **reka-ui** — modales accesibles (focus trap, Escape)
 - **Zod** — validación de esquemas
-- **VueUse** — composables utilitarios (online, watchDebounced, …)
-- **Chart.js** — gráficos interactivos (carga dinámica)
+- **VueUse** — composables utilitarios (online, watchDebounced, useSwipe, …)
+- **Chart.js + vue-chartjs** — gráficos declarativos y reactivos (chunks diferidos)
+- **mathjs** — evaluador de la calculadora (sandbox, sin `eval`; carga diferida)
+- **MiniSearch** — búsqueda global con tolerancia a errores de tipeo
+- **lucide-vue-next** — iconos como componentes (tree-shaken, sin `v-html`)
 - **jsPDF + autoTable** — generación de PDF
 - **vite-plugin-pwa** — soporte PWA con Service Worker
 - **Capacitor 8** — empaquetado APK Android + notificaciones nativas
