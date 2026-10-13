@@ -146,12 +146,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { useConfigStore } from '../stores/useConfigStore.js';
+import { useConfigStore } from '../stores/useConfigStore';
 
 defineOptions({ name: 'StatusPanel' });
 
@@ -165,8 +165,8 @@ const configStore = useConfigStore();
 
 // OTA
 const otaActual = ref({ version: '', id: '', native: '' });
-const otaUltima = ref(null);
-const otaCheck = ref(null);
+const otaUltima = ref<{ version: string } | null>(null);
+const otaCheck = ref<string | null>(null);
 const otaBusy = ref(false);
 const otaMsg = ref('');
 const otaMsgTipo = ref('ok');
@@ -174,8 +174,8 @@ const otaMsgTipo = ref('ok');
 // GitHub
 const ghLoading = ref(false);
 const ghError = ref('');
-const ghCommit = ref(null);
-const ghRuns = ref([]);
+const ghCommit = ref<{ msg: string; hash: string; date: string } | null>(null);
+const ghRuns = ref<{ id: number; name: string; date: string; status: string; statusLabel: string }[]>([]);
 
 // Notif
 const notifPermitido = ref(false);
@@ -240,7 +240,7 @@ async function verificarOTA() {
       otaMsg.value = 'Nueva version disponible: ' + latest.version + '. Cierra y abre la app.';
       otaMsgTipo.value = 'ok';
       try {
-        const dl = await CapacitorUpdater.download({ url: latest.url, version: latest.version });
+        const dl = await CapacitorUpdater.download({ url: String(latest.url), version: String(latest.version) });
         await CapacitorUpdater.set({ id: dl.id });
       } catch (e) {
         otaMsg.value = 'Descarga iniciada. Se aplicara al reiniciar.';
@@ -294,7 +294,7 @@ async function cargarGitHub() {
       statusLabel: labelDeRun(r),
     }));
   } catch (e) {
-    ghError.value = e.message || 'Error desconocido';
+    ghError.value = e instanceof Error ? e.message : String(e);
   } finally {
     ghLoading.value = false;
   }

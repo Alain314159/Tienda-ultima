@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { n, m, q, genId, clean, fmt, fmtCant, fmtFecha, fmtFH, buildData } from '../src/db.js';
+import { n, m, q } from '../src/utils/numero';
+import { fmt, fmtCant, fmtFecha, fmtFH } from '../src/utils/formato';
+import { genId, clean } from '../src/utils/id';
 
 describe('n() - parsing numerico', () => {
   it('parsea numeros', () => {
@@ -105,19 +107,17 @@ describe('clean() - limpieza de objetos', () => {
   });
 });
 
-describe('buildData() - exportacion', () => {
-  it('incluye todas las tablas', () => {
-    const state = {
-      cfg: { nombre: 'Test' },
-      productos: [{ id: 1 }],
-      lotes: [], ventas: [], compras: [], ajustes: [],
-      arqueos: [], movCaja: [], cierres: [], capital: [],
-      retiros: [], socios: [], distribuciones: [],
-      gastos: [], asientos: [], pasivos: []
-    };
-    const data = buildData(state);
+describe('datosDeStores() - exportacion', () => {
+  it('incluye todas las tablas leyendo de los stores', async () => {
+    const { setActivePinia, createPinia } = await import('pinia');
+    setActivePinia(createPinia());
+    const { datosDeStores } = await import('../src/stores/exportar');
+    const data = datosDeStores();
     expect(data.version).toBe(9);
-    expect(data.gastos).toEqual([]);
-    expect(data.pasivos).toEqual([]);
+    expect(Array.isArray(data.productos)).toBe(true);
+    expect(Array.isArray(data.ventas)).toBe(true);
+    expect(Array.isArray(data.gastos)).toBe(true);
+    expect(Array.isArray(data.pasivos)).toBe(true);
+    expect(data.fecha).toBeTruthy();
   });
 });

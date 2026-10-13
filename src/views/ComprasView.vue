@@ -166,19 +166,22 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
-import { db, P, n, m, genId, fmt, fmtCant, fmtFH } from '../db.js';
-import { useComprasStore } from '../stores/useComprasStore.js';
-import { useLotesStore } from '../stores/useLotesStore.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useCajaStore } from '../stores/useCajaStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useHistorial } from '../composables/useHistorial.js';
-import { recargarStores } from '../stores/recarga.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n, m } from '../utils/numero';
+import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import { P, genId } from '../utils/id';
+import { db } from '../db';
+import { useComprasStore } from '../stores/useComprasStore';
+import { useLotesStore } from '../stores/useLotesStore';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useCajaStore } from '../stores/useCajaStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useHistorial } from '../composables/useHistorial';
+import { recargarStores } from '../stores/recarga';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -194,7 +197,16 @@ const txtColor = computed(() => (configStore.tema === 'dark' ? '#f1f5f9' : '#111
 // ===== FORMULARIO DE COMPRA (local a la vista) =====
 const busqCompra = ref('');
 const focusCompra = ref(false);
-const compraForm = ref({
+const compraForm = ref<{
+  editId: string;
+  productoId: string;
+  nombre: string;
+  cantidad: string;
+  costo: string;
+  empaqueSel: string;
+  costoPorEmpaque: boolean;
+  unidad?: string;
+}>({
   editId: '',
   productoId: '',
   nombre: '',
@@ -206,7 +218,7 @@ const compraForm = ref({
 
 const listaCompra = computed(() => {
   const q = (busqCompra.value || '').toLowerCase().trim();
-  const out = [];
+  const out: import('../types').Producto[] = [];
   for (const p of productosStore.prodsActivos) {
     if (q && !(p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))) continue;
     out.push(p);
@@ -283,11 +295,13 @@ function editarCompra(id) {
   if (!c || !loteSinVentas(id)) return;
   compraForm.value = {
     editId: id,
-    productoId: c.productoId,
-    nombre: c.productoNombre,
-    cantidad: String(c.cantidad),
-    costo: String(c.costo),
-    unidad: c.unidad || '',
+    productoId: c?.productoId || '',
+    nombre: c?.productoNombre || '',
+    cantidad: String(c?.cantidad || ''),
+    costo: String(c?.costo || ''),
+    empaqueSel: '',
+    costoPorEmpaque: false,
+    unidad: c?.unidad || '',
   };
   window.scrollTo(0, 0);
 }
@@ -297,7 +311,7 @@ function eliminarCompra(id) {
   const c = comprasStore.compras.find((x) => x.id === id);
   ui.confirmar({
     titulo: 'Eliminar compra',
-    msg: '¿Eliminar compra de ' + c.productoNombre + '?',
+    msg: '¿Eliminar compra de ' + (c?.productoNombre || '') + '?',
     onOk: async () => {
       const l = lotesStore.lotes.find((x) => x.compraId === id);
       await db.transaction('rw', db.compras, db.lotes, async () => {
@@ -335,7 +349,7 @@ async function guardarCompra() {
         const c = comprasStore.compras.find((x) => x.id === f.editId);
         await db.transaction('rw', db.compras, db.lotes, async () => {
           await P(db.compras, {
-            ...c,
+            ...(c || ({} as import('../types').Compra)),
             productoId: f.productoId,
             productoNombre: f.nombre,
             productoUnidad: unidadProd,
@@ -378,7 +392,7 @@ async function guardarCompra() {
           empaqueInfo,
         };
         await db.transaction('rw', db.compras, db.lotes, async () => {
-          await P(db.compras, compra);
+          await P(db.compras, compra as import('../types').Compra);
           await P(db.lotes, lote);
         });
       }
@@ -386,12 +400,12 @@ async function guardarCompra() {
       resetCompra();
       toastMsg(`Compra ${fmt(total)}`);
       try {
-        window.Log && window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total });
+        if (window.Log) window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total });
       } catch (e) {}
     } catch (e) {
       toastMsg(e.message, TOAST.BAD);
       try {
-        window.Log && window.Log.evento('compra-error', { mensaje: e.message });
+        if (window.Log) window.Log.evento('compra-error', { mensaje: e.message });
       } catch (er) {}
     }
   };

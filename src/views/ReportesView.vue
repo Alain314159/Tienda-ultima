@@ -47,7 +47,7 @@
           <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
         </div>
         <div class="det" style="font-size: 0.72rem">
-          Cerrado {{ fmtFecha(c.fechaCierre) }}
+          Cerrado {{ fmtFecha(c.fechaCierre || '') }}
           <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
         </div>
         <div
@@ -308,17 +308,18 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
-import { n, fmt, fmtCant, fmtFecha } from '../db.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useVentasStore } from '../stores/useVentasStore.js';
-import { useCierresStore } from '../stores/useCierresStore.js';
-import { useCapitalStore } from '../stores/useCapitalStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useCuadre } from '../composables/useCuadre.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n } from '../utils/numero';
+import { fmt, fmtCant, fmtFecha } from '../utils/formato';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useVentasStore } from '../stores/useVentasStore';
+import { useCierresStore } from '../stores/useCierresStore';
+import { useCapitalStore } from '../stores/useCapitalStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useCuadre } from '../composables/useCuadre';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();

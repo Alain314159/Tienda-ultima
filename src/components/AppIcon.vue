@@ -11,9 +11,9 @@
   ></svg>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
-import { PATHS } from '../icons.js';
+import { PATHS } from '../icons';
 
 defineOptions({ name: 'AppIcon' });
 

@@ -133,7 +133,7 @@
   </Teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 
 defineOptions({ name: 'Calculator' });
@@ -146,7 +146,7 @@ const emit = defineEmits(['close']);
 const expresion = ref('');
 const preview = ref('');
 const error = ref(false);
-const historial = ref([]);
+const historial = ref<{ expr: string; res: string }[]>([]);
 const historialAbierto = ref(false);
 
 watch(

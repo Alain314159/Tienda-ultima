@@ -9,7 +9,7 @@
         </DialogDescription>
         <input
           :value="value"
-          @input="$emit('update:value', $event.target.value)"
+          @input="$emit('update:value', ($event.target as HTMLInputElement).value)"
           :type="type || 'text'"
           :placeholder="placeholder"
           @keyup.enter="$emit('ok', value)"
@@ -24,7 +24,7 @@
   </DialogRoot>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
 
 defineProps({

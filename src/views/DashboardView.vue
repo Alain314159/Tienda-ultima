@@ -134,21 +134,21 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { fmt, fmtFecha } from '../db.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useLotesStore } from '../stores/useLotesStore.js';
-import { useVentasStore } from '../stores/useVentasStore.js';
-import { useCajaStore } from '../stores/useCajaStore.js';
-import { useCierresStore } from '../stores/useCierresStore.js';
-import { useInsightsStore } from '../stores/useInsightsStore.js';
-import { useGraficos } from '../composables/useGraficos.js';
-import { ir } from '../utils/navegacion.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { fmt, fmtFecha } from '../utils/formato';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useLotesStore } from '../stores/useLotesStore';
+import { useVentasStore } from '../stores/useVentasStore';
+import { useCajaStore } from '../stores/useCajaStore';
+import { useCierresStore } from '../stores/useCierresStore';
+import { useInsightsStore } from '../stores/useInsightsStore';
+import { useGraficos } from '../composables/useGraficos';
+import { ir } from '../utils/navegacion';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const router = useRouter();
 const configStore = useConfigStore();

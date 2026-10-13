@@ -206,15 +206,18 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
-import { db, P, n, m, genId, clean, fmt, fmtFH } from '../db.js';
-import { useCapitalStore } from '../stores/useCapitalStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { recargarStores } from '../stores/recarga.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n, m } from '../utils/numero';
+import { fmt, fmtFH } from '../utils/formato';
+import { P, genId, clean } from '../utils/id';
+import { db } from '../db';
+import { useCapitalStore } from '../stores/useCapitalStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
+import { recargarStores } from '../stores/recarga';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -230,7 +233,7 @@ const sociosActivos = computed(() => capitalStore.sociosActivos);
 const sumaPorcentajes = computed(() => capitalStore.sumaPorcentajes);
 const totalDistribuido = computed(() => capitalStore.totalDistribuido);
 const distribucionesOrdenadas = computed(() =>
-  capitalStore.distribuciones.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+  capitalStore.distribuciones.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 );
 const movPatrimonio = computed(() => capitalStore.movPatrimonio);
 

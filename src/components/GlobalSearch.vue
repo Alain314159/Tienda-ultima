@@ -28,7 +28,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 
 defineOptions({ name: 'GlobalSearch' });
@@ -37,13 +37,13 @@ const props = defineProps({ abierto: Boolean, state: Object });
 const emit = defineEmits(['cerrar', 'ir']);
 
 const q = ref('');
-const input = ref(null);
+const input = ref<HTMLInputElement | null>(null);
 
 const resultados = computed(() => {
   const query = q.value.toLowerCase().trim();
   if (!query || query.length < 2) return [];
   const st = props.state || {};
-  const out = [];
+  const out: { tipo: string; titulo: string; detalle: string; sec: string; refId: string }[] = [];
   (st.productos || [])
     .filter((p) => !p.archivado && p.nombre.toLowerCase().includes(query))
     .slice(0, 5)

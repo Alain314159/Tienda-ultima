@@ -18,7 +18,7 @@ vi.mock('../src/services/autosave.js', () => ({
 vi.mock('virtual:pwa-register', () => ({ registerSW: () => {} }), { virtual: true });
 
 import App from '../src/App.vue';
-import router from '../src/router/index.js';
+import router from '../src/router/index';
 import AppIcon from '../src/components/AppIcon.vue';
 
 /** Monta la app y devuelve errores de Vue capturados. */

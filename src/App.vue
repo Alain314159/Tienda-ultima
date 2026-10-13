@@ -234,14 +234,17 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOnline, watchDebounced } from '@vueuse/core';
 import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
 
-import { db, P, n, genId, clean, fmt, fmtFH } from './db.js';
+import { n } from './utils/numero';
+import { fmt, fmtFH } from './utils/formato';
+import { P, genId, clean } from './utils/id';
+import { db } from './db';
 import BottomNav from './components/BottomNav.vue';
 import SheetMas from './components/SheetMas.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
@@ -252,25 +255,25 @@ import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import AjustesModal from './components/AjustesModal.vue';
 
-import { useConfigStore } from './stores/useConfigStore.js';
-import { useProductosStore } from './stores/useProductosStore.js';
-import { useVentasStore } from './stores/useVentasStore.js';
-import { useComprasStore } from './stores/useComprasStore.js';
-import { useCajaStore } from './stores/useCajaStore.js';
-import { useCapitalStore } from './stores/useCapitalStore.js';
-import { useGastosStore } from './stores/useGastosStore.js';
-import { useUIStore } from './stores/useUIStore.js';
-import { useInsightsStore } from './stores/useInsightsStore.js';
-import { useTelegramStore } from './stores/useTelegramStore.js';
-import { useBackupStore } from './stores/useBackupStore.js';
-import { useNotificacionesStore } from './stores/useNotificacionesStore.js';
-import { datosDeStores } from './stores/exportar.js';
-import { recargarStores, recargarTodoStores } from './stores/recarga.js';
-import { cargarCarpetaHandle } from './services/backup.js';
-import { useGestos } from './composables/useGestos.js';
-import { ir as irA } from './utils/navegacion.js';
-import { TOAST } from './constants.js';
-import { toastMsg } from './utils/toast.js';
+import { useConfigStore } from './stores/useConfigStore';
+import { useProductosStore } from './stores/useProductosStore';
+import { useVentasStore } from './stores/useVentasStore';
+import { useComprasStore } from './stores/useComprasStore';
+import { useCajaStore } from './stores/useCajaStore';
+import { useCapitalStore } from './stores/useCapitalStore';
+import { useGastosStore } from './stores/useGastosStore';
+import { useUIStore } from './stores/useUIStore';
+import { useInsightsStore } from './stores/useInsightsStore';
+import { useTelegramStore } from './stores/useTelegramStore';
+import { useBackupStore } from './stores/useBackupStore';
+import { useNotificacionesStore } from './stores/useNotificacionesStore';
+import { datosDeStores } from './stores/exportar';
+import { recargarStores, recargarTodoStores } from './stores/recarga';
+import { cargarCarpetaHandle } from './services/backup';
+import { useGestos } from './composables/useGestos';
+import { ir as irA } from './utils/navegacion';
+import { TOAST } from './constants';
+import { toastMsg } from './utils/toast';
 
 defineOptions({ name: 'App' });
 
@@ -291,7 +294,7 @@ const backup = useBackupStore();
 const notificaciones = useNotificacionesStore();
 
 const cfg = configStore.cfg;
-const sec = computed(() => router.currentRoute.value.name || 'dashboard');
+const sec = computed(() => String(router.currentRoute.value.name || 'dashboard'));
 const anomaliasCriticas = computed(() => insights.recomendacionesUrgentes);
 
 // ===== ESTADO DEL SHELL =====
@@ -303,14 +306,14 @@ const safeMode = ref(false);
 const hayUpdate = ref(false);
 const mostrarAvisoTienda = ref(false);
 
-let _tabId = null;
-let _bc = null;
+let _tabId: string | null = null;
+let _bc: BroadcastChannel | null = null;
 
 // ===== GESTOS (swipe + pull-to-refresh) =====
 const { pullDist, refrescando, onTouchStart, onTouchMove, onTouchEnd } = useGestos(router, () => sec.value);
 
 // ===== NAVEGACIÓN =====
-function ir(s, refId) {
+function ir(s: string, refId?: string) {
   ui.masAbierto = false;
   irA(router, s, refId);
 }
@@ -488,10 +491,10 @@ async function inicializar() {
       _bc.onmessage = (e) => {
         if (e.data && e.data.tipo === 'hello' && e.data.tabId !== _tabId) {
           otraPestana.value = true;
-          _bc.postMessage({ tipo: 'existe', tabId: _tabId });
+          _bc?.postMessage({ tipo: 'existe', tabId: _tabId });
         }
       };
-      _bc.postMessage({ tipo: 'hello', tabId: _tabId });
+      _bc.postMessage({ tipo: 'hello', tabId: _tabId as string });
     }
   } catch (e) {}
 
@@ -500,7 +503,7 @@ async function inicializar() {
     let intentos = 0;
     try {
       const sm = await db.config.get('safeModeCounter');
-      intentos = sm && sm.value ? sm.value : 0;
+      intentos = sm && sm.value ? Number(sm.value) : 0;
     } catch (e) {}
     if (intentos >= 3) {
       safeMode.value = true;
@@ -511,7 +514,7 @@ async function inicializar() {
     } catch (e) {}
 
     const c = await db.config.get('cfg');
-    if (c) configStore.cfg = { ...configStore.cfg, ...c.value };
+    if (c) configStore.cfg = { ...configStore.cfg, ...(c.value as object) };
     else await configStore.guardarCfg();
     try {
       document.documentElement.setAttribute('data-theme', cfg.tema);
@@ -579,14 +582,14 @@ async function inicializar() {
 
     // Backup auto local al arrancar (si pasaron >2h)
     const b = await db.config.get('backupAuto');
-    if (b) backup.ultimoBackup = b;
+    if (b) backup.ultimoBackup = b as { fecha: string; value: unknown };
     const ahora = Date.now();
     if (!cfg.ultimoBackupAuto || ahora - cfg.ultimoBackupAuto > 7200000) {
       await backup.backupAuto();
       cfg.ultimoBackupAuto = ahora;
       await configStore.guardarCfg();
       const b2 = await db.config.get('backupAuto');
-      if (b2) backup.ultimoBackup = b2;
+      if (b2) backup.ultimoBackup = b2 as { fecha: string; value: unknown };
     }
 
     // B13: migrar gastos viejos
@@ -625,14 +628,14 @@ async function inicializar() {
     // Timers de fondo
     backup.iniciarBackupInterval();
     notificaciones.iniciarChequeos();
-    telegram.iniciarTimers(datosDeStores);
+    telegram.iniciarTimers(() => datosDeStores());
 
     // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
     if (!safeMode.value && !cfg.tgChatId) telegram.iniciarTgPoll();
 
     // Auto-backup a Telegram si esta activo (no en safe mode)
     if (!safeMode.value && cfg.tgAutoBackup) {
-      setTimeout(() => telegram.tgAutoBackupCheck(datosDeStores()), 5000);
+      setTimeout(() => telegram.tgAutoBackupCheck(datosDeStores), 5000);
     }
   }
 }

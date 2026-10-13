@@ -4,7 +4,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineOptions({ name: 'SkeletonLoader' });
 
 defineProps({ rows: { type: Number, default: 5 } });

@@ -131,17 +131,20 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { db, P, n, fmt, fmtCant, fmtFH } from '../db.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useLotesStore } from '../stores/useLotesStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { recargarStores } from '../stores/recarga.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n } from '../utils/numero';
+import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import { P } from '../utils/id';
+import { db } from '../db';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useLotesStore } from '../stores/useLotesStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
+import { recargarStores } from '../stores/recarga';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -176,7 +179,15 @@ const badgeMap = computed(() => {
 
 // ===== FORMULARIO DE PRODUCTO (local a la vista) =====
 const prodExpandido = ref({});
-const prodForm = ref({
+const prodForm = ref<{
+  editId: string;
+  nombre: string;
+  precio: string;
+  stockMin: string;
+  preciosEscalonados: { min: string; precio: string }[];
+  empaques: { nombre: string; unidades: string }[];
+  nota: string;
+}>({
   editId: '',
   nombre: '',
   precio: '',
@@ -243,6 +254,7 @@ function editarProducto(id) {
 
 function archivarProducto(id) {
   const p = productosStore.productos.find((x) => x.id === id);
+  if (!p) return;
   if (productosStore.stock(id) > 0) return toastMsg('No archivar con stock > 0', TOAST.BAD);
   ui.confirmar({
     titulo: 'Archivar producto',
@@ -257,6 +269,7 @@ function archivarProducto(id) {
 
 async function restaurarProducto(id) {
   const p = productosStore.productos.find((x) => x.id === id);
+  if (!p) return;
   await P(db.productos, { ...p, archivado: false });
   await recargarStores('productos');
   toastMsg('Restaurado');

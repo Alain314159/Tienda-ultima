@@ -111,18 +111,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { BackupFolder } from '../services/backupFolder.js';
-import { esNativo as esNativoFn } from '../services/platform.js';
-import { datosDeStores } from '../stores/exportar.js';
+import { BackupFolder } from '../services/backupFolder';
+import { esNativo as esNativoFn } from '../services/platform';
+import { datosDeStores } from '../stores/exportar';
 
 defineOptions({ name: 'BackupPanel' });
 
 const emit = defineEmits(['close', 'restore']);
 
-const info = ref({ cantidad: 0, ultimo: null });
-const archivos = ref([]);
+const info = ref<{ cantidad: number; ultimo: string | null }>({ cantidad: 0, ultimo: null });
+const archivos = ref<{ name: string }[]>([]);
 const cargando = ref(false);
 const guardando = ref(false);
 const restaurando = ref(false);

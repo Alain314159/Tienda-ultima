@@ -35,7 +35,7 @@
             type="checkbox"
             :checked="configStore.calcActiva !== false"
             @change="
-              cfg.calcActiva = $event.target.checked;
+              cfg.calcActiva = ($event.target as HTMLInputElement).checked;
               guardarCfg();
             "
           />
@@ -52,7 +52,7 @@
             type="checkbox"
             :checked="configStore.busquedaGlobalActiva !== false"
             @change="
-              cfg.busquedaGlobalActiva = $event.target.checked;
+              cfg.busquedaGlobalActiva = ($event.target as HTMLInputElement).checked;
               guardarCfg();
             "
           />
@@ -558,21 +558,21 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, watch, onMounted } from 'vue';
 import { Capacitor } from '@capacitor/core';
-import { fmtFH } from '../db.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useVentasStore } from '../stores/useVentasStore.js';
-import { useComprasStore } from '../stores/useComprasStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useTelegramStore } from '../stores/useTelegramStore.js';
-import { useBackupStore } from '../stores/useBackupStore.js';
-import { useNotificacionesStore } from '../stores/useNotificacionesStore.js';
-import { useInsightsStore } from '../stores/useInsightsStore.js';
-import { useStorageInfo } from '../composables/useStorageInfo.js';
-import { datosDeStores } from '../stores/exportar.js';
+import { fmtFH } from '../utils/formato';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useVentasStore } from '../stores/useVentasStore';
+import { useComprasStore } from '../stores/useComprasStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useTelegramStore } from '../stores/useTelegramStore';
+import { useBackupStore } from '../stores/useBackupStore';
+import { useNotificacionesStore } from '../stores/useNotificacionesStore';
+import { useInsightsStore } from '../stores/useInsightsStore';
+import { useStorageInfo } from '../composables/useStorageInfo';
+import { datosDeStores } from '../stores/exportar';
 
 defineOptions({ name: 'AjustesModal' });
 

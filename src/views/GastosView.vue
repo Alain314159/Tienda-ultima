@@ -109,16 +109,19 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
-import { db, P, n, genId, fmt, fmtFH } from '../db.js';
-import { useGastosStore } from '../stores/useGastosStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useHistorial } from '../composables/useHistorial.js';
-import { recargarStores } from '../stores/recarga.js';
-import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n } from '../utils/numero';
+import { fmt, fmtFH } from '../utils/formato';
+import { P, genId } from '../utils/id';
+import { db } from '../db';
+import { useGastosStore } from '../stores/useGastosStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useHistorial } from '../composables/useHistorial';
+import { recargarStores } from '../stores/recarga';
+import { TOAST, CATEGORIAS_GASTO, METODOS_PAGO } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -129,7 +132,16 @@ const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7
 const txtColor = computed(() => (configStore.tema === 'dark' ? '#f1f5f9' : '#111827'));
 
 // ===== FORMULARIO DE GASTO (local a la vista) =====
-const gastoForm = ref({
+const gastoForm = ref<{
+  editId: string;
+  fecha: string;
+  categoria: string;
+  concepto: string;
+  monto: string;
+  nota: string;
+  metodoPago: string;
+  saleDeCaja: boolean;
+}>({
   editId: '',
   fecha: new Date().toISOString().split('T')[0],
   categoria: '',
@@ -167,7 +179,7 @@ async function guardarGasto() {
     const o = gastosStore.gastos.find((x) => x.id === f.editId);
     if (!o) return;
     await db.transaction('rw', db.gastos, db.movCaja, async () => {
-      let movId = o.movId || null;
+      let movId: string | null = o.movId || null;
       if (f.saleDeCaja && movId) {
         await P(db.movCaja, {
           id: movId,
@@ -206,7 +218,7 @@ async function guardarGasto() {
     toastMsg('Gasto actualizado');
   } else {
     const id = genId('g');
-    let movId = null;
+    let movId: string | null = null;
     await db.transaction('rw', db.gastos, db.movCaja, async () => {
       if (f.saleDeCaja) {
         movId = genId('mc');

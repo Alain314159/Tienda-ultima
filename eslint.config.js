@@ -1,6 +1,7 @@
 import pluginVue from 'eslint-plugin-vue';
 import vuePrettier from '@vue/eslint-config-prettier';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default [
   {
@@ -12,9 +13,28 @@ export default [
       '**/*.bak',
       '**/*.bak-*',
       '**/*.mjs',
+      'scripts-migrar-ts.py',
     ],
   },
+  ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
+  {
+    files: ['**/*.{ts,mts,cts,tsx,vue}'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        extraFileExtensions: ['.vue'],
+      },
+    },
+    rules: {
+      // TypeScript se valida con vue-tsc; en ESLint solo reglas de bugs
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
+  },
   {
     languageOptions: {
       ecmaVersion: 'latest',

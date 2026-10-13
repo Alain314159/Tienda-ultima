@@ -7,7 +7,7 @@
       <div class="search">
         <input
           v-model="ventasStore.busqVenta"
-          @input="ventasStore.setBusqVenta($event.target.value)"
+          @input="ventasStore.setBusqVenta(($event.target as HTMLInputElement).value)"
           @focus="focusVenta = true"
           type="text"
           placeholder="Buscar producto por nombre o código..."
@@ -61,7 +61,7 @@
                   :value="it.cant"
                   type="text"
                   inputmode="decimal"
-                  @input="ventasStore.actualizarCantidadInput(it, $event.target.value)"
+                  @input="ventasStore.actualizarCantidadInput(it, ($event.target as HTMLInputElement).value)"
                   @blur="ventasStore.validarCant(it)"
                 />
                 <button type="button" @click="ventasStore.cambiarCant(it, 1)" @click.stop>+</button>
@@ -74,7 +74,7 @@
                 :value="it.precio"
                 type="text"
                 inputmode="decimal"
-                @input="it.precio = $event.target.value"
+                @input="it.precio = ($event.target as HTMLInputElement).value"
                 @blur="validarPrecio(it)"
               />
             </div>
@@ -311,18 +311,19 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { n, fmt, fmtCant, fmtFH } from '../db.js';
-import { useVentasStore } from '../stores/useVentasStore.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useCobro } from '../composables/useCobro.js';
-import { useHistorial } from '../composables/useHistorial.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n } from '../utils/numero';
+import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import { useVentasStore } from '../stores/useVentasStore';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useCobro } from '../composables/useCobro';
+import { useHistorial } from '../composables/useHistorial';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -341,7 +342,7 @@ const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7
 const busqHist = ref('');
 const ventasFiltradas = computed(() => {
   const query = (busqHist.value || '').toLowerCase().trim();
-  let list = ventasStore.ventas.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  let list = ventasStore.ventas.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   if (query) list = list.filter((v) => v.items.some((i) => i.nombre.toLowerCase().includes(query)));
   return list;
 });

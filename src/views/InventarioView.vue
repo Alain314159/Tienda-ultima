@@ -178,18 +178,21 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
-import { db, P, n, m, q, genId, clean, fmt, fmtCant, fmtFH } from '../db.js';
-import { useProductosStore } from '../stores/useProductosStore.js';
-import { useLotesStore } from '../stores/useLotesStore.js';
-import { useAjustesStore } from '../stores/useAjustesStore.js';
-import { useConfigStore } from '../stores/useConfigStore.js';
-import { useUIStore } from '../stores/useUIStore.js';
-import { useCompartir } from '../composables/useCompartir.js';
-import { recargarStores } from '../stores/recarga.js';
-import { TOAST } from '../constants.js';
-import { toastMsg } from '../utils/toast.js';
+import { n, m, q } from '../utils/numero';
+import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import { P, genId, clean } from '../utils/id';
+import { db } from '../db';
+import { useProductosStore } from '../stores/useProductosStore';
+import { useLotesStore } from '../stores/useLotesStore';
+import { useAjustesStore } from '../stores/useAjustesStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useCompartir } from '../composables/useCompartir';
+import { recargarStores } from '../stores/recarga';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 
 const configStore = useConfigStore();
 const ui = useUIStore();
@@ -235,16 +238,16 @@ async function registrarAjuste() {
       id: genId('a'),
       fecha: new Date().toISOString(),
       productoId: f.productoId,
-      productoNombre: prod.nombre,
+      productoNombre: prod?.nombre || '',
       cantidad: cant,
       motivo: f.motivo,
       costoPerdida: res.costoTotal,
-      lotesUsados: res.usados,
+      lotesUsados: res.lotesUsados,
     };
     await db.transaction('rw', db.ajustes, db.lotes, async () => {
       await P(db.ajustes, aj);
-      const lotesActualizados = [];
-      for (const u of res.usados) {
+      const lotesActualizados: import('../types').Lote[] = [];
+      for (const u of res.lotesUsados) {
         const l = lotesStore.lotes.find((x) => x.id === u.loteId);
         if (l) {
           l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
@@ -254,7 +257,7 @@ async function registrarAjuste() {
       if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
     });
     await recargarStores('ajustes', 'lotes');
-    toastMsg('Merma registrada · pérdida ' + fmt(res.costoPerdida));
+    toastMsg('Merma registrada · pérdida ' + fmt(res.costoTotal));
   } else {
     const cs = n(f.costoSobrante);
     if (cs < 0) return toastMsg('Costo inválido', TOAST.BAD);
@@ -262,7 +265,7 @@ async function registrarAjuste() {
       id: genId('a'),
       fecha: new Date().toISOString(),
       productoId: f.productoId,
-      productoNombre: prod.nombre,
+      productoNombre: prod?.nombre || '',
       cantidad: cant,
       motivo: f.motivo,
       costoPerdida: 0,
@@ -271,8 +274,8 @@ async function registrarAjuste() {
       id: genId('l'),
       compraId: 'aj-' + aj.id,
       productoId: f.productoId,
-      productoNombre: prod.nombre,
-      productoUnidad: prod.unidad || '',
+      productoNombre: prod?.nombre || '',
+      productoUnidad: prod?.unidad || '',
       cantidadInicial: cant,
       cantidadVendida: 0,
       costo: cs,
