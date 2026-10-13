@@ -998,9 +998,6 @@ import {
   useSociosStore,
 } from './stores';
 
-// Importar servicios
-import { Busqueda, Fechas, Notificaciones, Validaciones } from './services';
-
 // Secciones navegables con swipe horizontal
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
