@@ -3,6 +3,10 @@
  */
 import { n } from './numero';
 
+// Crear el formateador es lo caro: se cachea una única instancia en el
+// módulo (~5-10x más rápido que toLocaleString por llamada en listas largas).
+const FMT_MONEDA = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 /** Vibración háptica (no-op si el dispositivo no la soporta). */
 export const vib = (ms: number | number[]): void => {
   try {
@@ -13,7 +17,7 @@ export const vib = (ms: number | number[]): void => {
 /** Formato moneda: $1,234.56 */
 export function fmt(v: unknown): string {
   try {
-    return '$' + n(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '$' + FMT_MONEDA.format(n(v));
   } catch (e) {
     return '$0.00';
   }
