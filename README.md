@@ -259,6 +259,9 @@ Venta: 15 kg a $12
 - **Sin cuentas.** No hay login.
 - **Sin rastreo.** No hay analytics ni cookies de terceros.
 - **Tus datos son tuyos.** Puedes exportarlos e importarlos cuando quieras.
+- **PIN hasheado.** El PIN de seguridad se guarda como hash PBKDF2-SHA256 (nunca en claro).
+- **Backups cifrados.** AES-256-GCM con derivación PBKDF2 de 600k iteraciones.
+- **Auditoría.** Ver [docs/AUDITORIA-2026-10.md](docs/AUDITORIA-2026-10.md) para el informe completo de seguridad y calidad.
 
 ---
 
