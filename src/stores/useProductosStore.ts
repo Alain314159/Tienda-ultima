@@ -4,10 +4,10 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Producto } from '../types';
+import type { Producto, Escalon, Empaque } from '../types';
 import { n } from '../utils/numero';
 import { fmtCant } from '../utils/formato';
-import { P } from '../utils/id';
+import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
 import { productoSchema, validar } from '../schemas/index';
@@ -74,14 +74,14 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Obtiene el stock de un producto
    */
-  function stock(productoId) {
+  function stock(productoId: string) {
     return lotesStore.stock(productoId);
   }
 
   /**
    * Verifica si un producto tiene escalones de precio
    */
-  function tieneEscalones(productoId) {
+  function tieneEscalones(productoId: string) {
     const prod = productos.value.find((p) => p.id === productoId);
     return prod && prod.preciosEscalonados && prod.preciosEscalonados.length > 0;
   }
@@ -89,7 +89,7 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Obtiene el precio para una cantidad específica
    */
-  function precioParaCantidad(productoId, cantidad) {
+  function precioParaCantidad(productoId: string, cantidad: number | string) {
     const prod = productos.value.find((p) => p.id === productoId);
     if (!prod) return 0;
 
@@ -113,7 +113,7 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Formatea el stock usando empaques (ej: "2 cajas + 5 und + 0.5").
    */
-  function formatStock(prodId, cant) {
+  function formatStock(prodId: string, cant: number | string) {
     const p = productos.value.find((x) => x.id === prodId);
     const total = n(cant);
     // Sin empaques: mostrar la cantidad tal cual (respeta fracciones)
@@ -142,7 +142,7 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Badge de estado de stock para un producto: 'arch' | 'out' | 'low' | 'ok'
    */
-  function badgeStock(p) {
+  function badgeStock(p: Producto) {
     const s = stock(p.id);
     if (p.archivado) return 'arch';
     if (s === 0) return 'out';
@@ -151,7 +151,7 @@ export const useProductosStore = defineStore('productos', () => {
   }
 
   /** Texto del badge de estado de stock. */
-  function txtBadge(p) {
+  function txtBadge(p: Producto) {
     const s = stock(p.id);
     if (p.archivado) return 'ARCHIVADO';
     if (s === 0) return 'AGOTADO';
@@ -175,11 +175,51 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Guarda un producto
    */
-  async function guardarProducto(producto) {
+  async function guardarProducto(producto: {
+    editId?: string;
+    nombre: string;
+    precio: string | number;
+    stockMin?: string | number;
+    preciosEscalonados?: Escalon[];
+    empaques?: Empaque[];
+    nota?: string;
+  }) {
     const v = validar(productoSchema, producto);
     if (!v.ok) throw new Error(v.error);
     try {
-      await P(db.productos, { ...producto, ...v.data });
+      // Anti-duplicados (comportamiento del monolito original)
+      const nombre = v.data.nombre.trim().toLowerCase();
+      const dup = productos.value.find(
+        (x) => x.nombre.toLowerCase() === nombre && x.id !== producto.editId && !x.archivado
+      );
+      if (dup) throw new Error('Ya existe un producto con ese nombre');
+
+      if (producto.editId) {
+        // Edicion: preserva id y campos que el form no edita (codigo, unidad, fechaCreacion)
+        const original = productos.value.find((x) => x.id === producto.editId);
+        if (!original) throw new Error('Producto no encontrado');
+        await P(db.productos, {
+          ...original,
+          nombre: v.data.nombre,
+          precio: v.data.precio,
+          stockMinimo: v.data.stockMin,
+          preciosEscalonados: v.data.preciosEscalonados,
+          empaques: v.data.empaques,
+          nota: v.data.nota,
+        });
+      } else {
+        // Alta: genera id (la tabla no usa autoincrement)
+        await P(db.productos, {
+          id: genId('p'),
+          nombre: v.data.nombre,
+          precio: v.data.precio,
+          stockMinimo: v.data.stockMin,
+          preciosEscalonados: v.data.preciosEscalonados,
+          empaques: v.data.empaques,
+          nota: v.data.nota,
+          archivado: false,
+        });
+      }
       await cargarProductos();
     } catch (e) {
       console.error('Error guardando producto:', e);
@@ -190,7 +230,7 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Elimina un producto (solo si no tiene lotes con ventas)
    */
-  async function eliminarProducto(productoId) {
+  async function eliminarProducto(productoId: string) {
     try {
       const lotesConVentas = lotesStore.lotes.filter((l) => l.productoId === productoId && n(l.cantidadVendida) > 0);
 
@@ -209,7 +249,7 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Archiva/Desarchiva un producto
    */
-  async function toggleArchivarProducto(productoId) {
+  async function toggleArchivarProducto(productoId: string) {
     try {
       const prod = productos.value.find((p) => p.id === productoId);
       if (prod) {
@@ -225,13 +265,13 @@ export const useProductosStore = defineStore('productos', () => {
   /**
    * Actualiza la búsqueda de productos
    */
-  function setBusqProd(termino) {
+  function setBusqProd(termino: string) {
     busqProd.value = termino;
   }
 
   /** Activa el filtro de stock ('agotados' | 'bajos' | null). */
-  function setFiltroStock(filtro) {
-    filtroStock.value = filtro || null;
+  function setFiltroStock(filtro: string) {
+    filtroStock.value = (filtro || null) as 'agotados' | 'bajos' | null;
   }
 
   /** Limpia el filtro de stock. */

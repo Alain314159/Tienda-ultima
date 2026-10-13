@@ -56,36 +56,62 @@ describe('useConfigStore', () => {
 });
 
 describe('useProductosStore', () => {
-  it('guardarProducto valida y persiste', async () => {
+  it('guardarProducto crea con id generado y mapea stockMin a stockMinimo (forma real de la vista)', async () => {
     const s = useProductosStore();
-    await s.guardarProducto({ id: 'p1', nombre: 'Café 500g', precio: 150, stockMin: 3 });
+    // El form de ProductosView NO envia id (solo editId al editar): reproducimos esa forma.
+    await s.guardarProducto({ nombre: 'Café 500g', precio: 150, stockMin: 3 });
     expect(s.productos.length).toBe(1);
-    const enDb = await db.productos.get('p1');
-    expect(enDb.nombre).toBe('Café 500g');
 
-    // persistió también a través de cargarProductos
-    await s.cargarProductos();
-    expect(s.productos[0].id).toBe('p1');
+    const creado = s.productos[0];
+    expect(creado.id).toMatch(/^p_/); // genId('p')
+    expect(creado.stockMinimo).toBe(3); // el dominio usa stockMinimo, no stockMin
+    expect(creado.archivado).toBe(false);
+
+    // persistió en IndexedDB con clave válida
+    const enDb = await db.productos.get(creado.id);
+    expect(enDb.nombre).toBe('Café 500g');
+    expect(enDb.stockMinimo).toBe(3);
+  });
+
+  it('guardarProducto edita via editId preservando id y campos no editables', async () => {
+    const s = useProductosStore();
+    await s.guardarProducto({ nombre: 'Yogur', precio: 20, stockMin: 2 });
+    const creado = s.productos[0];
+
+    await s.guardarProducto({ editId: creado.id, nombre: 'Yogur natural', precio: 24, stockMin: 4 });
+    expect(s.productos.length).toBe(1); // actualiza, no duplica
+    expect(s.productos[0].id).toBe(creado.id);
+    expect(s.productos[0].nombre).toBe('Yogur natural');
+    expect(s.productos[0].precio).toBe(24);
+    expect(s.productos[0].stockMinimo).toBe(4);
+  });
+
+  it('guardarProducto rechaza nombres duplicados activos', async () => {
+    const s = useProductosStore();
+    await s.guardarProducto({ nombre: 'Leche', precio: 20 });
+    await expect(s.guardarProducto({ nombre: 'leche ', precio: 25 })).rejects.toThrow(/Ya existe/);
+    expect(s.productos.length).toBe(1);
   });
 
   it('guardarProducto rechaza datos inválidos (schema Zod)', async () => {
     const s = useProductosStore();
-    await expect(s.guardarProducto({ id: 'p2', nombre: 'X', precio: -5 })).rejects.toThrow();
+    await expect(s.guardarProducto({ nombre: 'X', precio: -5 })).rejects.toThrow();
     expect(s.productos.length).toBe(0);
     expect(await db.productos.count()).toBe(0);
   });
 
   it('toggleArchivarProducto alterna el estado y persiste', async () => {
     const s = useProductosStore();
-    await s.guardarProducto({ id: 'p1', nombre: 'Yogur', precio: 20 });
-    await s.toggleArchivarProducto('p1');
-    expect(s.productos.find((p) => p.id === 'p1').archivado).toBe(true);
+    await s.guardarProducto({ nombre: 'Yogur', precio: 20 });
+    const pid = s.productos[0].id;
+    await s.toggleArchivarProducto(pid);
+    expect(s.productos.find((p) => p.id === pid).archivado).toBe(true);
     expect(s.prodsActivos.length).toBe(0);
 
-    await s.toggleArchivarProducto('p1');
+    await s.toggleArchivarProducto(pid);
     expect(s.prodsActivos.length).toBe(1);
     // persistido
-    expect((await db.productos.get('p1')).archivado).toBe(false);
+    expect((await db.productos.get(pid)).archivado).toBe(false);
   });
 
   it('eliminarProducto bloqueado si el producto tiene lotes con ventas', async () => {
@@ -270,10 +296,11 @@ describe('useVentasStore: carrito con límites de stock', () => {
   async function escena() {
     const productos = useProductosStore();
     const lotes = useLotesStore();
-    await productos.guardarProducto({ id: 'p1', nombre: 'Refresco', precio: 25 });
+    await productos.guardarProducto({ nombre: 'Refresco', precio: 25 });
+    const pid = productos.productos[0].id;
     await lotes.guardarLote({
       id: 'l1',
-      productoId: 'p1',
+      productoId: pid,
       fecha: '2026-01-01',
       cantidadInicial: 3,
       cantidadVendida: 0,
@@ -281,7 +308,7 @@ describe('useVentasStore: carrito con límites de stock', () => {
     });
     await productos.cargarProductos();
     await lotes.cargarLotes();
-    return productos.productos.find((p) => p.id === 'p1');
+    return productos.productos.find((p) => p.id === pid);
   }
 
   it('agregarCarrito añade item con precio del producto', async () => {
@@ -290,15 +317,15 @@ describe('useVentasStore: carrito con límites de stock', () => {
     ventas.agregarCarrito(p);
 
     expect(ventas.carrito.length).toBe(1);
-    expect(ventas.carrito[0]).toMatchObject({ productoId: 'p1', nombre: 'Refresco', cant: '1' });
+    expect(ventas.carrito[0]).toMatchObject({ productoId: p.id, nombre: 'Refresco', cant: '1' });
     expect(Number(ventas.carrito[0].precio)).toBe(25);
   });
 
   it('agregarCarrito lanza sin stock y respeta el máximo', async () => {
     const productos = useProductosStore();
-    await productos.guardarProducto({ id: 'p2', nombre: 'Agua', precio: 10 });
+    await productos.guardarProducto({ nombre: 'Agua', precio: 10 });
     await productos.cargarProductos();
-    const sinStock = productos.productos.find((p) => p.id === 'p2');
+    const sinStock = productos.productos.find((p) => p.nombre === 'Agua');
 
     const ventas = useVentasStore();
     expect(() => ventas.agregarCarrito(sinStock)).toThrow(/Sin stock/);
