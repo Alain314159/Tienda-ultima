@@ -135,6 +135,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { evaluar, evaluarAsync, precargarEvaluador } from '../services/calculadora';
 
 defineOptions({ name: 'Calculator' });
 
@@ -153,6 +154,7 @@ watch(
   () => props.visible,
   (v) => {
     if (v) {
+      precargarEvaluador(); // code-splitting: mathjs listo antes del primer "="
       cargarEstado();
       actualizarPreview();
     } else {
@@ -249,8 +251,8 @@ function signo() {
   actualizarPreview();
 }
 
-function raiz() {
-  const r = evaluar(expresion.value);
+async function raiz() {
+  const r = await evaluarAsync(expresion.value);
   if (r === null || r < 0) {
     error.value = true;
     return;
@@ -274,43 +276,25 @@ function formatear(n) {
   return String(r);
 }
 
-function evaluar(expr) {
-  if (!expr || !expr.trim()) return null;
-  let s = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
-
-  // A ± B% → A ± (A * B / 100)
-  s = s.replace(/(\d+\.?\d*)\s*([+\-])\s*(\d+\.?\d*)%/g, (m, a, op, b) => {
-    return `(${a}) ${op} ((${a}) * (${b}) / 100)`;
-  });
-  s = s.replace(/(\d+\.?\d*)%/g, '(($1)/100)');
-
-  if (!/^[\d+\-*/(). ]+$/.test(s)) return null;
-  try {
-    const r = Function('"use strict"; return (' + s + ')')();
-    return typeof r === 'number' ? r : null;
-  } catch (e) {
-    return null;
-  }
-}
-
 function calcular() {
   if (!expresion.value) return;
-  const r = evaluar(expresion.value);
-  if (r === null || !isFinite(r)) {
-    error.value = true;
-    return;
-  }
-  const res = formatear(r);
-  const expr = expresion.value;
-  historial.value.unshift({ expr, res });
-  if (historial.value.length > 20) historial.value.pop();
-  guardarEstado();
-  expresion.value = res;
-  preview.value = '';
-  error.value = false;
+  evaluarAsync(expresion.value).then((r) => {
+    if (r === null || !isFinite(r)) {
+      error.value = true;
+      return;
+    }
+    const res = formatear(r);
+    const expr = expresion.value;
+    historial.value.unshift({ expr, res });
+    if (historial.value.length > 20) historial.value.pop();
+    guardarEstado();
+    expresion.value = res;
+    preview.value = '';
+    error.value = false;
+  });
 }
 
-function usarHistorial(h) {
+function usarHistorial(h: { expr: string; res: string }) {
   expresion.value = h.res;
   actualizarPreview();
 }
