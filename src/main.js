@@ -11,8 +11,9 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Autosave } from './services/autosave.js';
 import { Log } from './services/logger.js';
-import { buildData, n, m, q, genId, clean, P, vib, fmt, fmtCant, fmtFecha, fmtFH } from './db.js';
 import { db } from './db.js';
+import { datosDeStores } from './stores/exportar.js';
+import { useUIStore } from './stores/useUIStore.js';
 
 // Logger: captura console, errores globales y eventos
 Log.init().catch((e) => console.warn('Log init fallo:', e));
@@ -25,23 +26,6 @@ const app = createApp(App);
 app.use(pinia);
 app.use(router);
 app.component('icon', AppIcon);
-
-// ============================================================
-// UTILIDADES GLOBALES (accesibles en cualquier template via this.X)
-// ============================================================
-Object.assign(app.config.globalProperties, {
-  n,
-  m,
-  q,
-  genId,
-  clean,
-  P,
-  vib,
-  fmt,
-  fmtCant,
-  fmtFecha,
-  fmtFH,
-});
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('Vue Error:', err, info);
@@ -65,6 +49,7 @@ setTimeout(() => {
 
 // ============================================================
 // CAPACITOR: inicializacion nativa (solo en APK)
+// Botón back usando el store de UI (sin acoplarse a App.vue)
 // ============================================================
 if (Capacitor.isNativePlatform()) {
   CapacitorUpdater.notifyAppReady().catch((e) => console.warn('notifyAppReady fallo:', e));
@@ -76,52 +61,60 @@ if (Capacitor.isNativePlatform()) {
   SplashScreen.hide().catch(() => {});
 
   CapApp.addListener('backButton', () => {
-    if (vm.cobroModal && vm.cobroModal.activo) {
-      vm.cobroModal.activo = false;
+    const ui = useUIStore();
+    // Prioridad: cobro > ajustes > mas > retiro > aporte > confirm > prompt >
+    // share > busqueda > calculadora > backup > status > navegar a inicio
+    if (ui.cobroAbierto) {
+      ui.cobroAbierto = false;
       return;
     }
-    if (vm.ajustesAbierto) {
-      vm.ajustesAbierto = false;
+    if (ui.ajustesAbierto) {
+      ui.ajustesAbierto = false;
       return;
     }
-    if (vm.masAbierto) {
-      vm.masAbierto = false;
+    if (ui.masAbierto) {
+      ui.masAbierto = false;
       return;
     }
-    if (vm.retiroAbierto) {
-      vm.retiroAbierto = false;
+    if (ui.retiroAbierto) {
+      ui.retiroAbierto = false;
       return;
     }
-    if (vm.aporteAbierto) {
-      vm.aporteAbierto = false;
+    if (ui.aporteAbierto) {
+      ui.aporteAbierto = false;
       return;
     }
-    if (vm.confirm && vm.confirm.activo) {
-      vm.confirm.activo = false;
+    if (ui.confirm.activo) {
+      ui.confirm.activo = false;
       return;
     }
-    if (vm.prompt && vm.prompt.activo) {
-      vm.prompt.activo = false;
+    if (ui.prompt.activo) {
+      ui.prompt.activo = false;
       return;
     }
-    if (vm.shareSheetAbierto) {
-      vm.shareSheetAbierto = false;
+    if (ui.shareSheetAbierto) {
+      ui.shareSheetAbierto = false;
       return;
     }
-    if (vm.busquedaGlobalAbierta) {
-      vm.busquedaGlobalAbierta = false;
+    if (ui.busquedaGlobalAbierta) {
+      ui.busquedaGlobalAbierta = false;
       return;
     }
-    if (vm.calcAbierto) {
-      vm.calcAbierto = false;
+    if (ui.calcAbierto) {
+      ui.calcAbierto = false;
       return;
     }
-    if (vm.backupPanelAbierto) {
-      vm.backupPanelAbierto = false;
+    if (ui.backupPanelAbierto) {
+      ui.backupPanelAbierto = false;
       return;
     }
-    if (vm.sec && vm.sec !== 'dashboard') {
-      vm.ir('dashboard');
+    if (ui.statusPanelAbierto) {
+      ui.statusPanelAbierto = false;
+      return;
+    }
+    const ruta = router.currentRoute.value.name;
+    if (ruta && ruta !== 'dashboard') {
+      router.push({ name: 'dashboard' });
       return;
     }
     CapApp.minimizeApp();
@@ -133,7 +126,7 @@ if (Capacitor.isNativePlatform()) {
 // ============================================================
 setTimeout(async () => {
   try {
-    await Autosave.init({ getData: () => buildData(window.__app) });
+    await Autosave.init({ getData: datosDeStores });
     await Autosave.verificarAlArrancar();
     db.on('changes', (changes) => {
       const hayEscritura = changes.some((ch) => ch.type === 1 || ch.type === 2 || ch.type === 3);

@@ -1,52 +1,44 @@
 <template>
-  <section v-if="app.sec === 'dashboard'" class="fade-up">
+  <section v-if="sec === 'dashboard'" class="fade-up">
     <div class="balance azul">
       <div class="lbl"><icon name="wallet" :size="14" color="#fff"></icon> Efectivo en Caja</div>
-      <div class="val">{{ app.fmt(app.cajaStore.saldoCaja) }}</div>
+      <div class="val">{{ fmt(cajaStore.saldoCaja) }}</div>
       <div class="sub">
-        Inventario: {{ app.fmt(app.lotesStore.valorInventario) }} · Desde
-        {{ app.fmtFecha(app.configStore.periodoInicio) }}
+        Inventario: {{ fmt(lotesStore.valorInventario) }} · Desde
+        {{ fmtFecha(configStore.periodoInicio) }}
       </div>
     </div>
 
     <div
-      v-if="app.productosStore.productosBajoStock.length || app.productosStore.productosAgotados.length"
+      v-if="productosStore.productosBajoStock.length || productosStore.productosAgotados.length"
       class="alert-box-stock"
     >
-      <div
-        v-if="app.productosStore.productosAgotados.length"
-        class="alert-chip alert-out"
-        @click="app.irAStock('agotados')"
-      >
+      <div v-if="productosStore.productosAgotados.length" class="alert-chip alert-out" @click="irAStock('agotados')">
         <icon name="alert" :size="14" color="#fff"></icon>
-        <b>{{ app.productosStore.productosAgotados.length }}</b> agotado(s)
+        <b>{{ productosStore.productosAgotados.length }}</b> agotado(s)
       </div>
-      <div
-        v-if="app.productosStore.productosBajoStock.length"
-        class="alert-chip alert-low"
-        @click="app.irAStock('bajos')"
-      >
+      <div v-if="productosStore.productosBajoStock.length" class="alert-chip alert-low" @click="irAStock('bajos')">
         <icon name="alert" :size="14" color="#fff"></icon>
-        <b>{{ app.productosStore.productosBajoStock.length }}</b> bajo(s)
+        <b>{{ productosStore.productosBajoStock.length }}</b> bajo(s)
       </div>
     </div>
 
     <div class="grid2">
       <div class="stat">
-        <div class="lbl"><icon name="trend" :size="13" :color="app.mutColor"></icon> Ventas</div>
-        <div class="val" style="color: var(--pri)">{{ app.fmt(app.ventasStore.ventasPeriodo) }}</div>
+        <div class="lbl"><icon name="trend" :size="13" :color="mutColor"></icon> Ventas</div>
+        <div class="val" style="color: var(--pri)">{{ fmt(ventasStore.ventasPeriodo) }}</div>
       </div>
       <div class="stat">
-        <div class="lbl"><icon name="dollar" :size="13" :color="app.mutColor"></icon> Ganancia</div>
-        <div class="val pos">{{ app.fmt(app.cierresStore.gananciaNetaPeriodo) }}</div>
+        <div class="lbl"><icon name="dollar" :size="13" :color="mutColor"></icon> Ganancia</div>
+        <div class="val pos">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</div>
       </div>
       <div class="stat">
-        <div class="lbl"><icon name="bag" :size="13" :color="app.mutColor"></icon> Compras</div>
-        <div class="val neg">{{ app.fmt(app.cierresStore.comprasPeriodo) }}</div>
+        <div class="lbl"><icon name="bag" :size="13" :color="mutColor"></icon> Compras</div>
+        <div class="val neg">{{ fmt(cierresStore.comprasPeriodo) }}</div>
       </div>
       <div class="stat">
-        <div class="lbl"><icon name="chart" :size="13" :color="app.mutColor"></icon> Margen</div>
-        <div class="val" style="color: var(--pri)">{{ app.cierresStore.margenPeriodo }}%</div>
+        <div class="lbl"><icon name="chart" :size="13" :color="mutColor"></icon> Margen</div>
+        <div class="val" style="color: var(--pri)">{{ cierresStore.margenPeriodo }}%</div>
       </div>
     </div>
 
@@ -57,15 +49,13 @@
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem"
       >
         <span style="display: flex; align-items: center; gap: 0.55rem">
-          <icon name="chart" :size="18" :color="app.sec === 'dashboard' ? '#2196F3' : app.mutColor"></icon>
+          <icon name="chart" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
           Ventas vs Ganancia
         </span>
         <span class="chart-toggle">
-          <button :class="{ activo: app.cfg.graficoVista === 'dia' }" @click="app.setGraficoVista('dia')">Días</button>
-          <button :class="{ activo: app.cfg.graficoVista === 'semana' }" @click="app.setGraficoVista('semana')">
-            Semana
-          </button>
-          <button :class="{ activo: app.cfg.graficoVista === 'mes' }" @click="app.setGraficoVista('mes')">Mes</button>
+          <button :class="{ activo: cfg.graficoVista === 'dia' }" @click="setGraficoVista('dia')">Días</button>
+          <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
+          <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
         </span>
       </div>
       <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
@@ -78,17 +68,14 @@
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem"
       >
         <span style="display: flex; align-items: center; gap: 0.55rem">
-          <icon name="package" :size="18" :color="app.sec === 'dashboard' ? '#2196F3' : app.mutColor"></icon>
+          <icon name="package" :size="18" :color="sec === 'dashboard' ? '#2196F3' : mutColor"></icon>
           Top productos
         </span>
         <span class="chart-toggle">
-          <button
-            :class="{ activo: app.cfg.graficoProdPeriodo === 'semana' }"
-            @click="app.setGraficoProdPeriodo('semana')"
-          >
+          <button :class="{ activo: cfg.graficoProdPeriodo === 'semana' }" @click="setGraficoProdPeriodo('semana')">
             Sem
           </button>
-          <button :class="{ activo: app.cfg.graficoProdPeriodo === 'mes' }" @click="app.setGraficoProdPeriodo('mes')">
+          <button :class="{ activo: cfg.graficoProdPeriodo === 'mes' }" @click="setGraficoProdPeriodo('mes')">
             Mes
           </button>
         </span>
@@ -97,50 +84,50 @@
         class="chart-toggle"
         style="display: flex; justify-content: center; margin-bottom: 0.5rem; background: transparent"
       >
-        <button :class="{ activo: app.cfg.graficoProdTipo === 'vendidos' }" @click="app.setGraficoProdTipo('vendidos')">
+        <button :class="{ activo: cfg.graficoProdTipo === 'vendidos' }" @click="setGraficoProdTipo('vendidos')">
           Más vendidos
         </button>
-        <button :class="{ activo: app.cfg.graficoProdTipo === 'margen' }" @click="app.setGraficoProdTipo('margen')">
+        <button :class="{ activo: cfg.graficoProdTipo === 'margen' }" @click="setGraficoProdTipo('margen')">
           Más margen
         </button>
       </div>
-      <div class="chart-wrap" v-if="app._topProductosGrafico().length > 0"><canvas id="chartProductos"></canvas></div>
+      <div class="chart-wrap" v-if="topProductosGrafico().length > 0"><canvas id="chartProductos"></canvas></div>
       <div v-else class="empty" style="padding: 2rem 1rem">Sin ventas en este periodo</div>
     </div>
 
-    <div class="card rec-card" v-if="app.recomendaciones.length">
+    <div class="card rec-card" v-if="recomendaciones.length">
       <div class="card-title">
         <icon name="zap" :size="18" :color="'#D97706'"></icon>
         Recomendaciones
-        <span v-if="app.recomendacionesUrgentes > 0" class="badge out" style="margin-left: auto"
-          >{{ app.recomendacionesUrgentes }} urgente(s)</span
+        <span v-if="recomendacionesUrgentes > 0" class="badge out" style="margin-left: auto"
+          >{{ recomendacionesUrgentes }} urgente(s)</span
         >
       </div>
       <div
-        v-for="(rec, i) in app.recomendaciones"
+        v-for="(rec, i) in recomendaciones"
         :key="i"
         class="rec-row"
         :class="'rec-' + rec.nivel"
-        @click="app.ir(rec.sec, rec.refId)"
+        @click="irSeccion(rec.sec, rec.refId)"
       >
         <div class="rec-icon">
-          <icon :name="rec.icono" :size="16" :color="app.colorNivel(rec.nivel)"></icon>
+          <icon :name="rec.icono" :size="16" :color="colorNivel(rec.nivel)"></icon>
         </div>
         <div class="rec-body">
           <div class="rec-title">{{ rec.titulo }}</div>
           <div class="rec-detail">{{ rec.detalle }}</div>
         </div>
-        <button v-if="rec.clave" class="rec-x" @click.stop="app.descartarAnomalia(rec.clave)" aria-label="Descartar">
-          <icon name="x" :size="12" :color="app.mutColor"></icon>
+        <button v-if="rec.clave" class="rec-x" @click.stop="descartarAnomalia(rec.clave)" aria-label="Descartar">
+          <icon name="x" :size="12" :color="mutColor"></icon>
         </button>
       </div>
       <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap">
         <button
-          v-if="app.cfg.anomaliasDescartadas && app.cfg.anomaliasDescartadas.length"
+          v-if="cfg.anomaliasDescartadas && cfg.anomaliasDescartadas.length"
           class="link-btn"
-          @click="app.restaurarAnomalias"
+          @click="restaurarAnomalias"
         >
-          Restaurar {{ app.cfg.anomaliasDescartadas.length }} descartada(s)
+          Restaurar {{ cfg.anomaliasDescartadas.length }} descartada(s)
         </button>
       </div>
     </div>
@@ -148,7 +135,109 @@
 </template>
 
 <script setup>
-import { useApp } from '../contexts/appContext.js';
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import { fmt, fmtFecha } from '../db.js';
+import { useConfigStore } from '../stores/useConfigStore.js';
+import { useProductosStore } from '../stores/useProductosStore.js';
+import { useLotesStore } from '../stores/useLotesStore.js';
+import { useVentasStore } from '../stores/useVentasStore.js';
+import { useCajaStore } from '../stores/useCajaStore.js';
+import { useCierresStore } from '../stores/useCierresStore.js';
+import { useInsightsStore } from '../stores/useInsightsStore.js';
+import { useGraficos } from '../composables/useGraficos.js';
+import { ir } from '../utils/navegacion.js';
+import { TOAST } from '../constants.js';
+import { toastMsg } from '../utils/toast.js';
 
-const app = useApp();
+const router = useRouter();
+const configStore = useConfigStore();
+const productosStore = useProductosStore();
+const lotesStore = useLotesStore();
+const ventasStore = useVentasStore();
+const cajaStore = useCajaStore();
+const cierresStore = useCierresStore();
+const insights = useInsightsStore();
+
+const sec = 'dashboard';
+const cfg = configStore.cfg;
+const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
+
+// ===== GRÁFICOS (Chart.js con carga dinámica) =====
+const { setGraficoVista, setGraficoProdTipo, setGraficoProdPeriodo, renderChart, renderChartProductos, destruir } =
+  useGraficos();
+
+// Top productos para el gráfico circular (expuesto para el v-if del template)
+function topProductosGrafico() {
+  return ventasStore.ventas.length ? _topProductos() : [];
+}
+// Réplica ligera del cálculo del composable para el estado vacío del template
+function _topProductos() {
+  const ahora = new Date();
+  const periodo = cfg.graficoProdPeriodo || 'mes';
+  let ini;
+  if (periodo === 'semana') {
+    ini = new Date(ahora);
+    ini.setDate(ahora.getDate() - 6);
+    ini.setHours(0, 0, 0, 0);
+  } else {
+    ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  }
+  return ventasStore.ventas.filter((v) => !v.anulada && new Date(v.fecha) >= ini);
+}
+
+onMounted(() => {
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
+  idle(() => {
+    renderChart();
+    renderChartProductos();
+  });
+});
+
+// Repintar al cambiar tema
+watch(
+  () => configStore.tema,
+  () =>
+    requestAnimationFrame(() => {
+      renderChart();
+      renderChartProductos();
+    })
+);
+
+onBeforeUnmount(destruir);
+
+// ===== RECOMENDACIONES =====
+const recomendaciones = computed(() => insights.recomendaciones);
+const recomendacionesUrgentes = computed(() => insights.recomendacionesUrgentes);
+
+function colorNivel(nivel) {
+  if (nivel === 'urgente') return '#DC2626';
+  if (nivel === 'atencion') return '#D97706';
+  if (nivel === 'oportunidad') return '#16A34A';
+  return '#3B82F6';
+}
+
+function descartarAnomalia(clave) {
+  if (!configStore.cfg.anomaliasDescartadas) configStore.cfg.anomaliasDescartadas = [];
+  if (!configStore.cfg.anomaliasDescartadas.includes(clave)) {
+    configStore.cfg.anomaliasDescartadas.push(clave);
+    configStore.guardarCfg();
+    toastMsg('Anomalia descartada');
+  }
+}
+
+function restaurarAnomalias() {
+  configStore.cfg.anomaliasDescartadas = [];
+  configStore.guardarCfg();
+  toastMsg('Anomalias restauradas');
+}
+
+function irAStock(filtro) {
+  productosStore.setFiltroStock(filtro);
+  ir(router, 'productos');
+}
+
+function irSeccion(s, refId) {
+  ir(router, s, refId);
+}
 </script>

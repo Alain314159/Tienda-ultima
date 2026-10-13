@@ -26,7 +26,7 @@ export const useCapitalStore = defineStore('capital', () => {
   const socioForm = ref({ editId: '', nombre: '', porcentaje: '', aporte: '' });
 
   // ===== GETTERS =====
-  
+
   /**
    * Total de aportes
    */
@@ -45,18 +45,16 @@ export const useCapitalStore = defineStore('capital', () => {
    * Total de retiros de capital
    */
   const retirosCapitalTotal = computed(() => {
-    return m(retiros.value
-      .filter(r => r.tipoRetiro === 'capital')
-      .reduce((s, x) => s + n(x.monto), 0));
+    return m(retiros.value.filter((r) => r.tipoRetiro === 'capital').reduce((s, x) => s + n(x.monto), 0));
   });
 
   /**
    * Total de retiros de ganancia
    */
   const retirosGananciaTotal = computed(() => {
-    return m(retiros.value
-      .filter(r => (r.tipoRetiro || 'ganancia') === 'ganancia')
-      .reduce((s, x) => s + n(x.monto), 0));
+    return m(
+      retiros.value.filter((r) => (r.tipoRetiro || 'ganancia') === 'ganancia').reduce((s, x) => s + n(x.monto), 0)
+    );
   });
 
   /**
@@ -91,37 +89,44 @@ export const useCapitalStore = defineStore('capital', () => {
    * Socios ordenados por nombre
    */
   const sociosOrdenados = computed(() => {
-    return socios.value
-      .slice()
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return socios.value.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
   });
+
+  /** Socios activos. */
+  const sociosActivos = computed(() => socios.value.filter((s) => s.activo !== false));
+
+  /** Suma de porcentajes de participación de socios activos. */
+  const sumaPorcentajes = computed(() => m(sociosActivos.value.reduce((acc, s) => acc + n(s.porcentaje), 0)));
+
+  /** Total distribuido entre socios. */
+  const totalDistribuido = computed(() => m(distribuciones.value.reduce((acc, d) => acc + n(d.monto), 0)));
 
   /**
    * Movimientos de patrimonio (aportes + retiros)
    */
   const movPatrimonio = computed(() => {
     const movs = [
-      ...capital.value.map(x => ({ 
-        id: x.id, 
-        tipo: 'Aporte', 
-        fecha: x.fecha, 
-        monto: x.monto, 
-        nota: x.nota 
+      ...capital.value.map((x) => ({
+        id: x.id,
+        tipo: 'Aporte',
+        fecha: x.fecha,
+        monto: x.monto,
+        nota: x.nota,
       })),
-      ...retiros.value.map(x => ({
+      ...retiros.value.map((x) => ({
         id: x.id,
         tipo: x.tipoRetiro === 'capital' ? 'Retiro (capital)' : 'Retiro (ganancia)',
         fecha: x.fecha,
         monto: x.monto,
-        nota: x.concepto
-      }))
+        nota: x.concepto,
+      })),
     ];
-    
+
     return movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   });
 
   // ===== ACCIONES =====
-  
+
   /**
    * Carga el capital desde IndexedDB
    */
@@ -173,25 +178,25 @@ export const useCapitalStore = defineStore('capital', () => {
     const monto = n(retiroForm.value.monto);
     const concepto = (retiroForm.value.concepto || '').trim();
     const tipo = retiroForm.value.tipo || 'ganancia';
-    
+
     if (monto <= 0) throw new Error('Monto inválido');
     if (!concepto) throw new Error('Concepto obligatorio');
-    
+
     const max = tipo === 'capital' ? capitalDisponible.value : gananciaDisponible.value;
     if (monto > max + 0.01) throw new Error(`Máximo ${m(max)}`);
-    
+
     await P(db.retiros, {
       id: genId('r'),
       fecha: new Date().toISOString(),
       monto,
       concepto,
-      tipoRetiro: tipo
+      tipoRetiro: tipo,
     });
-    
+
     await cargarRetiros();
-    
+
     retiroForm.value = { monto: '', concepto: '', tipo: 'ganancia' };
-    
+
     return { exito: true, tipo };
   }
 
@@ -201,19 +206,19 @@ export const useCapitalStore = defineStore('capital', () => {
   async function registrarAporte() {
     const monto = n(aporteForm.value.monto);
     if (monto <= 0) throw new Error('Monto inválido');
-    
+
     await P(db.capital, {
       id: genId('k'),
       fecha: new Date().toISOString(),
       monto,
       nota: aporteForm.value.nota || '',
-      socioId: aporteForm.value.socioId || null
+      socioId: aporteForm.value.socioId || null,
     });
-    
+
     await cargarCapital();
-    
+
     aporteForm.value = { monto: '', nota: '', socioId: '' };
-    
+
     return true;
   }
 
@@ -224,23 +229,23 @@ export const useCapitalStore = defineStore('capital', () => {
     const nombre = (socioForm.value.nombre || '').trim();
     const porcentaje = n(socioForm.value.porcentaje);
     const aporte = n(socioForm.value.aporte);
-    
+
     if (!nombre) throw new Error('Nombre obligatorio');
     if (porcentaje <= 0 || porcentaje > 100) throw new Error('Porcentaje inválido (1-100)');
-    
+
     const socio = {
       id: socioForm.value.editId || genId('s'),
       nombre,
       porcentaje,
       aporte,
-      fecha: socioForm.value.editId ? null : new Date().toISOString()
+      fecha: socioForm.value.editId ? null : new Date().toISOString(),
     };
-    
+
     await P(db.socios, socio);
     await cargarSocios();
-    
+
     socioForm.value = { editId: '', nombre: '', porcentaje: '', aporte: '' };
-    
+
     return socio;
   }
 
@@ -250,26 +255,26 @@ export const useCapitalStore = defineStore('capital', () => {
   async function repartirGanancia(monto, concepto = '') {
     if (n(monto) <= 0) throw new Error('Monto inválido');
     if (socios.value.length === 0) throw new Error('No hay socios configurados');
-    
+
     const totalPorcentaje = socios.value.reduce((acc, so) => acc + n(so.porcentaje), 0);
     if (totalPorcentaje <= 0) throw new Error('Porcentajes de socios inválidos');
-    
+
     const distribucion = {
       id: genId('d'),
       fecha: new Date().toISOString(),
       montoTotal: n(monto),
       concepto,
-      detalles: socios.value.map(s => ({
+      detalles: socios.value.map((s) => ({
         socioId: s.id,
         socioNombre: s.nombre,
         porcentaje: s.porcentaje,
-        monto: m((n(s.porcentaje) / totalPorcentaje) * n(monto))
-      }))
+        monto: m((n(s.porcentaje) / totalPorcentaje) * n(monto)),
+      })),
     };
-    
+
     await P(db.distribuciones, distribucion);
     await cargarDistribuciones();
-    
+
     return distribucion;
   }
 
@@ -277,12 +282,7 @@ export const useCapitalStore = defineStore('capital', () => {
    * Carga todos los datos de capital
    */
   async function cargarTodo() {
-    await Promise.all([
-      cargarCapital(),
-      cargarRetiros(),
-      cargarSocios(),
-      cargarDistribuciones()
-    ]);
+    await Promise.all([cargarCapital(), cargarRetiros(), cargarSocios(), cargarDistribuciones()]);
   }
 
   /**
@@ -293,7 +293,7 @@ export const useCapitalStore = defineStore('capital', () => {
       capital: cargarCapital,
       retiros: cargarRetiros,
       socios: cargarSocios,
-      distribuciones: cargarDistribuciones
+      distribuciones: cargarDistribuciones,
     };
 
     for (const table of tables) {
@@ -321,6 +321,9 @@ export const useCapitalStore = defineStore('capital', () => {
     gananciasAcumuladas,
     gananciaDisponible,
     sociosOrdenados,
+    sociosActivos,
+    sumaPorcentajes,
+    totalDistribuido,
     movPatrimonio,
     cargarCapital,
     cargarRetiros,
@@ -330,7 +333,7 @@ export const useCapitalStore = defineStore('capital', () => {
     registrarAporte,
     registrarSocio,
     repartirGanancia,
-    cargarTodo
+    cargarTodo,
   };
 });
 

@@ -1,88 +1,75 @@
 <template>
-  <section v-if="app.sec === 'productos'" class="fade-up">
+  <section v-if="sec === 'productos'" class="fade-up">
     <div class="card">
       <div class="card-title">
-        <icon name="tag" :size="18" :color="app.sec === 'productos' ? '#2196F3' : app.mutColor"></icon>
-        {{ app.prodForm.editId ? 'Editar' : 'Agregar' }} Producto
+        <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon>
+        {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto
       </div>
-      <input v-model="app.prodForm.nombre" type="text" placeholder="Nombre del producto" />
+      <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" />
       <div class="grid2">
         <input
-          v-model="app.prodForm.precio"
+          v-model="prodForm.precio"
           type="number"
           inputmode="decimal"
           step="0.01"
           placeholder="Precio base venta"
         />
-        <input v-model="app.prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín." />
+        <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín." />
       </div>
 
       <textarea
-        v-model="app.prodForm.nota"
+        v-model="prodForm.nota"
         placeholder="Nota interna (opcional)"
         rows="2"
         style="resize: none; font-family: inherit; font-size: 0.85rem"
       ></textarea>
 
-      <button class="btn pri" @click="app.guardarProducto()">
-        {{ app.prodForm.editId ? 'Actualizar' : 'Guardar' }}
+      <button class="btn pri" @click="guardarProducto()">
+        {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
       </button>
-      <button v-if="app.prodForm.editId" class="btn ghost" @click="app.resetProd()">Cancelar</button>
+      <button v-if="prodForm.editId" class="btn ghost" @click="resetProd()">Cancelar</button>
     </div>
 
     <div class="card">
       <div class="card-title">
-        <icon name="tag" :size="18" :color="app.sec === 'productos' ? '#2196F3' : app.mutColor"></icon> Productos
+        <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> Productos
       </div>
       <div class="search">
-        <input
-          :value="app.busqProd"
-          @input="app.setBusq('busqProd', $event.target.value)"
-          type="text"
-          placeholder="Buscar..."
-        />
+        <input v-model="busqProd" type="text" placeholder="Buscar..." />
       </div>
       <div style="text-align: right; margin-bottom: 0.4rem">
         <button
           class="btn ghost"
           style="width: auto; display: inline-block; padding: 0.3rem 0.7rem; font-size: 0.72rem"
-          @click="app.mostrarArchivados = !app.mostrarArchivados"
+          @click="mostrarArchivados = !mostrarArchivados"
         >
-          {{ app.mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
+          {{ mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
         </button>
       </div>
       <div
-        v-if="app.filtroStock"
+        v-if="filtroStock"
         class="info-box"
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem"
       >
         <span
-          >Filtro: <b>{{ app.filtroStock === 'agotados' ? 'Agotados' : 'Stock bajo' }}</b></span
+          >Filtro: <b>{{ filtroStock === 'agotados' ? 'Agotados' : 'Stock bajo' }}</b></span
         >
-        <button class="link-btn" @click="app.limpiarFiltroStock">Quitar filtro</button>
+        <button class="link-btn" @click="limpiarFiltroStock">Quitar filtro</button>
       </div>
-      <div v-if="app.prodsFiltrados.length === 0" class="empty">Sin productos</div>
+      <div v-if="prodsFiltrados.length === 0" class="empty">Sin productos</div>
       <div
-        v-for="p in app.prodsFiltrados"
+        v-for="p in prodsFiltrados"
         :key="p.id"
-        v-memo="[
-          p.id,
-          p.nombre,
-          p.precio,
-          p.archivado,
-          app.stockMap[p.id],
-          app.badgeMap[p.id],
-          app.prodExpandido[p.id],
-        ]"
+        v-memo="[p.id, p.nombre, p.precio, p.archivado, stockMap[p.id], badgeMap[p.id], prodExpandido[p.id]]"
         class="prod-wrap"
         :id="'ref-' + p.id"
-        :class="'prod-' + (app.badgeMap[p.id] || 'ok')"
+        :class="'prod-' + (badgeMap[p.id] || 'ok')"
       >
         <div
           class="item"
           :style="p.archivado ? 'opacity:.5' : ''"
           style="cursor: pointer"
-          @click="app.prodExpandido[p.id] = !app.prodExpandido[p.id]"
+          @click="prodExpandido[p.id] = !prodExpandido[p.id]"
         >
           <div class="info">
             <div class="nm">
@@ -96,49 +83,47 @@
               📝 {{ p.nota }}
             </div>
             <div class="stock-line">
-              <span class="badge" :class="app.badgeStock(p)">{{ app.txtBadge(p) }}</span>
-              <span class="stock-num">Stock: {{ app.formatStock(p.id, app.stock(p.id)) }}</span>
-              <span style="color: var(--mut); font-size: 0.72rem">{{ app.fmt(p.precio) }}</span>
-              <span v-if="app.lotesDeProducto(p.id).length" class="chev" :class="{ open: app.prodExpandido[p.id] }">
-                <icon name="chevron" :size="14" :color="app.mutColor"></icon>
+              <span class="badge" :class="badgeStock(p)">{{ txtBadge(p) }}</span>
+              <span class="stock-num">Stock: {{ formatStock(p.id, stock(p.id)) }}</span>
+              <span style="color: var(--mut); font-size: 0.72rem">{{ fmt(p.precio) }}</span>
+              <span v-if="lotesDeProducto(p.id).length" class="chev" :class="{ open: prodExpandido[p.id] }">
+                <icon name="chevron" :size="14" :color="mutColor"></icon>
               </span>
             </div>
           </div>
           <div class="act-btns" @click.stop>
-            <button class="icon-btn" @click="app.editarProducto(p.id)" aria-label="Editar">
-              <icon name="edit" :size="15" :color="app.txtColor"></icon>
+            <button class="icon-btn" @click="editarProducto(p.id)" aria-label="Editar">
+              <icon name="edit" :size="15" :color="txtColor"></icon>
             </button>
-            <button v-if="!p.archivado" class="icon-btn bad" @click="app.archivarProducto(p.id)" aria-label="Archivar">
+            <button v-if="!p.archivado" class="icon-btn bad" @click="archivarProducto(p.id)" aria-label="Archivar">
               <icon name="trash" :size="15" color="#dc2626"></icon>
             </button>
-            <button v-else class="icon-btn ok" @click="app.restaurarProducto(p.id)" aria-label="Restaurar">
+            <button v-else class="icon-btn ok" @click="restaurarProducto(p.id)" aria-label="Restaurar">
               <icon name="refresh" :size="15" color="#16a34a"></icon>
             </button>
           </div>
         </div>
-        <div v-if="app.prodExpandido[p.id]" class="prod-lotes">
-          <div v-if="app.lotesDeProducto(p.id).length === 0" class="empty" style="padding: 0.6rem; font-size: 0.78rem">
+        <div v-if="prodExpandido[p.id]" class="prod-lotes">
+          <div v-if="lotesDeProducto(p.id).length === 0" class="empty" style="padding: 0.6rem; font-size: 0.78rem">
             Sin lotes activos (stock 0)
           </div>
-          <div v-for="l in app.lotesDeProducto(p.id)" :key="l.id" class="inv-lote">
+          <div v-for="l in lotesDeProducto(p.id)" :key="l.id" class="inv-lote">
             <span
-              >{{ app.fmtFH(l.fecha) }} · Quedan
-              {{ app.fmtCant(app.n(l.cantidadInicial) - app.n(l.cantidadVendida)) }}/{{
-                app.fmtCant(l.cantidadInicial)
+              >{{ fmtFH(l.fecha) }} · Quedan {{ fmtCant(n(l.cantidadInicial) - n(l.cantidadVendida)) }}/{{
+                fmtCant(l.cantidadInicial)
               }}
               {{ p.unidad || '' }}</span
             >
             <span
-              >@{{ app.fmt(l.costo) }} =
-              <b>{{ app.fmt((app.n(l.cantidadInicial) - app.n(l.cantidadVendida)) * l.costo) }}</b></span
+              >@{{ fmt(l.costo) }} = <b>{{ fmt((n(l.cantidadInicial) - n(l.cantidadVendida)) * l.costo) }}</b></span
             >
           </div>
           <div
-            v-if="app.lotesDeProducto(p.id).length"
+            v-if="lotesDeProducto(p.id).length"
             class="det"
             style="font-size: 0.7rem; color: var(--mut); margin-top: 0.3rem; text-align: right"
           >
-            Valor total: <b class="pos">{{ app.fmt(app.valorLotesProducto(p.id)) }}</b>
+            Valor total: <b class="pos">{{ fmt(valorLotesProducto(p.id)) }}</b>
           </div>
         </div>
       </div>
@@ -147,7 +132,133 @@
 </template>
 
 <script setup>
-import { useApp } from '../contexts/appContext.js';
+import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { db, P, n, fmt, fmtCant, fmtFH } from '../db.js';
+import { useProductosStore } from '../stores/useProductosStore.js';
+import { useLotesStore } from '../stores/useLotesStore.js';
+import { useConfigStore } from '../stores/useConfigStore.js';
+import { useUIStore } from '../stores/useUIStore.js';
+import { recargarStores } from '../stores/recarga.js';
+import { TOAST } from '../constants.js';
+import { toastMsg } from '../utils/toast.js';
 
-const app = useApp();
+const configStore = useConfigStore();
+const ui = useUIStore();
+const productosStore = useProductosStore();
+const lotesStore = useLotesStore();
+
+const { busqProd, mostrarArchivados, filtroStock } = storeToRefs(productosStore);
+const { stock, formatStock, badgeStock, txtBadge, limpiarFiltroStock } = productosStore;
+const { lotesDeProducto, valorLotesProducto, stockMap } = lotesStore;
+
+const sec = 'productos';
+const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
+const txtColor = computed(() => (configStore.tema === 'dark' ? '#f1f5f9' : '#111827'));
+
+const prodsFiltrados = computed(() => productosStore.productosFiltrados);
+
+// Mapa de badges por producto
+const badgeMap = computed(() => {
+  const map = {};
+  const sm = lotesStore.stockMap;
+  for (const p of productosStore.productos) {
+    const s = sm[p.id] || 0;
+    let b;
+    if (p.archivado) b = 'arch';
+    else if (s === 0) b = 'out';
+    else if (s <= Number(p.stockMinimo)) b = 'low';
+    else b = 'ok';
+    map[p.id] = b;
+  }
+  return map;
+});
+
+// ===== FORMULARIO DE PRODUCTO (local a la vista) =====
+const prodExpandido = ref({});
+const prodForm = ref({
+  editId: '',
+  nombre: '',
+  precio: '',
+  stockMin: '5',
+  preciosEscalonados: [],
+  empaques: [],
+  nota: '',
+});
+
+function resetProd() {
+  prodForm.value = {
+    editId: '',
+    nombre: '',
+    precio: '',
+    stockMin: String(configStore.cfg.stockMinDefault || 5),
+    preciosEscalonados: [],
+    empaques: [],
+    nota: '',
+  };
+}
+
+function agregarEscalon() {
+  if (!prodForm.value.preciosEscalonados) prodForm.value.preciosEscalonados = [];
+  prodForm.value.preciosEscalonados.push({ min: '', precio: '' });
+}
+
+function quitarEscalon(i) {
+  prodForm.value.preciosEscalonados.splice(i, 1);
+}
+
+function agregarEmpaque() {
+  if (!prodForm.value.empaques) prodForm.value.empaques = [];
+  prodForm.value.empaques.push({ nombre: '', unidades: '' });
+}
+
+function quitarEmpaque(i) {
+  prodForm.value.empaques.splice(i, 1);
+}
+
+async function guardarProducto() {
+  try {
+    await productosStore.guardarProducto(prodForm.value);
+    toastMsg(prodForm.value.editId ? 'Producto actualizado' : 'Producto guardado');
+    resetProd();
+  } catch (e) {
+    toastMsg(e.message, TOAST.BAD);
+  }
+}
+
+function editarProducto(id) {
+  const p = productosStore.productos.find((x) => x.id === id);
+  if (!p) return;
+  prodForm.value = {
+    editId: id,
+    nombre: p.nombre,
+    precio: String(p.precio),
+    stockMin: String(p.stockMinimo || 5),
+    preciosEscalonados: (p.preciosEscalonados || []).map((e) => ({ min: String(e.min), precio: String(e.precio) })),
+    empaques: (p.empaques || []).map((e) => ({ nombre: e.nombre, unidades: String(e.unidades) })),
+    nota: p.nota || '',
+  };
+  window.scrollTo(0, 0);
+}
+
+function archivarProducto(id) {
+  const p = productosStore.productos.find((x) => x.id === id);
+  if (productosStore.stock(id) > 0) return toastMsg('No archivar con stock > 0', TOAST.BAD);
+  ui.confirmar({
+    titulo: 'Archivar producto',
+    msg: '¿Archivar "' + p.nombre + '"?',
+    onOk: async () => {
+      await P(db.productos, { ...p, archivado: true });
+      await recargarStores('productos');
+      toastMsg('Archivado');
+    },
+  });
+}
+
+async function restaurarProducto(id) {
+  const p = productosStore.productos.find((x) => x.id === id);
+  await P(db.productos, { ...p, archivado: false });
+  await recargarStores('productos');
+  toastMsg('Restaurado');
+}
 </script>

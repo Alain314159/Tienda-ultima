@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { db, P, n, m } from '../db';
+import { db, P, n, m, fmtCant } from '../db';
 import { useLotesStore } from './useLotesStore';
 import { productoSchema, validar } from '../schemas/index.js';
 
@@ -13,6 +13,8 @@ export const useProductosStore = defineStore('productos', () => {
   const productos = ref([]);
   const busqProd = ref('');
   const mostrarArchivados = ref(false);
+  // Filtro de stock compartido entre vistas (dashboard lo activa)
+  const filtroStock = ref(null);
 
   // ===== STORES DEPENDIENTES =====
   const lotesStore = useLotesStore();
@@ -27,7 +29,7 @@ export const useProductosStore = defineStore('productos', () => {
   });
 
   /**
-   * Productos filtrados por búsqueda
+   * Productos filtrados por búsqueda y filtro de stock (agotados/bajos).
    */
   const productosFiltrados = computed(() => {
     const q = busqProd.value.toLowerCase().trim();
@@ -37,6 +39,11 @@ export const useProductosStore = defineStore('productos', () => {
       if (!mostrarArchivados.value && p.archivado) return false;
       if ((stockMap[p.id] || 0) <= 0 && !mostrarArchivados.value) return false;
       if (q && !(p.nombre.toLowerCase().includes(q) || p.codigo?.toLowerCase().includes(q))) return false;
+      if (filtroStock.value === 'agotados' && (stockMap[p.id] || 0) > 0.001) return false;
+      if (filtroStock.value === 'bajos') {
+        const s = stockMap[p.id] || 0;
+        if (!(s > 0 && s <= n(p.stockMinimo || 5))) return false;
+      }
       return true;
     });
   });
@@ -97,6 +104,55 @@ export const useProductosStore = defineStore('productos', () => {
     }
 
     return n(p.precio);
+  }
+
+  /**
+   * Formatea el stock usando empaques (ej: "2 cajas + 5 und + 0.5").
+   */
+  function formatStock(prodId, cant) {
+    const p = productos.value.find((x) => x.id === prodId);
+    const total = n(cant);
+    // Sin empaques: mostrar la cantidad tal cual (respeta fracciones)
+    if (!p || !p.empaques || !p.empaques.length) return fmtCant(total);
+
+    const emps = p.empaques.slice().sort((a, b) => b.unidades - a.unidades);
+    let rest = Math.floor(Math.abs(total));
+    const partes = [];
+    for (const e of emps) {
+      const u = Math.floor(e.unidades);
+      if (u <= 0) continue;
+      const cantEmp = Math.floor(rest / u);
+      if (cantEmp > 0) {
+        partes.push(cantEmp + ' ' + e.nombre + (cantEmp > 1 ? 's' : ''));
+        rest -= cantEmp * u;
+      }
+    }
+    // Residual: entero suelto + fraccion (kg, litros, etc.)
+    const fraccion = Math.abs(total) - Math.floor(Math.abs(total));
+    if (rest > 0) partes.push(rest + ' ' + (p.unidad || 'und'));
+    if (fraccion > 0.0001) partes.push(fmtCant(fraccion));
+    if (partes.length === 0) return fmtCant(total);
+    return partes.join(' + ');
+  }
+
+  /**
+   * Badge de estado de stock para un producto: 'arch' | 'out' | 'low' | 'ok'
+   */
+  function badgeStock(p) {
+    const s = stock(p.id);
+    if (p.archivado) return 'arch';
+    if (s === 0) return 'out';
+    if (s <= n(p.stockMinimo)) return 'low';
+    return 'ok';
+  }
+
+  /** Texto del badge de estado de stock. */
+  function txtBadge(p) {
+    const s = stock(p.id);
+    if (p.archivado) return 'ARCHIVADO';
+    if (s === 0) return 'AGOTADO';
+    if (s <= n(p.stockMinimo)) return 'BAJO';
+    return 'OK';
   }
 
   // ===== ACCIONES =====
@@ -169,6 +225,16 @@ export const useProductosStore = defineStore('productos', () => {
     busqProd.value = termino;
   }
 
+  /** Activa el filtro de stock ('agotados' | 'bajos' | null). */
+  function setFiltroStock(filtro) {
+    filtroStock.value = filtro || null;
+  }
+
+  /** Limpia el filtro de stock. */
+  function limpiarFiltroStock() {
+    filtroStock.value = null;
+  }
+
   /**
    * Toggle para mostrar/ocultar productos archivados
    */
@@ -200,9 +266,15 @@ export const useProductosStore = defineStore('productos', () => {
     productosAgotados,
     busqProd,
     mostrarArchivados,
+    filtroStock,
+    setFiltroStock,
+    limpiarFiltroStock,
     stock,
     tieneEscalones,
     precioParaCantidad,
+    formatStock,
+    badgeStock,
+    txtBadge,
     cargarProductos,
     guardarProducto,
     eliminarProducto,
