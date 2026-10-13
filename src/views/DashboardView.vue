@@ -58,7 +58,7 @@
           <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
         </span>
       </div>
-      <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
+      <div class="chart-wrap"><ChartVentas :dark="isDark" /></div>
     </div>
 
     <!-- GRAFICO_PRODUCTOS_CIRCULAR -->
@@ -91,8 +91,7 @@
           Más margen
         </button>
       </div>
-      <div class="chart-wrap" v-if="topProductosGrafico().length > 0"><canvas id="chartProductos"></canvas></div>
-      <div v-else class="empty" style="padding: 2rem 1rem">Sin ventas en este periodo</div>
+      <div class="chart-wrap"><ChartProductos :dark="isDark" /></div>
     </div>
 
     <div class="card rec-card" v-if="recomendaciones.length">
@@ -135,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { fmt, fmtFecha } from '../utils/formato';
 import { useConfigStore } from '../stores/useConfigStore';
@@ -162,49 +161,12 @@ const insights = useInsightsStore();
 const sec = 'dashboard';
 const cfg = configStore.cfg;
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
+const isDark = computed(() => configStore.tema === 'dark');
 
-// ===== GRÁFICOS (Chart.js con carga dinámica) =====
-const { setGraficoVista, setGraficoProdTipo, setGraficoProdPeriodo, renderChart, renderChartProductos, destruir } =
-  useGraficos();
-
-// Top productos para el gráfico circular (expuesto para el v-if del template)
-function topProductosGrafico() {
-  return ventasStore.ventas.length ? _topProductos() : [];
-}
-// Réplica ligera del cálculo del composable para el estado vacío del template
-function _topProductos() {
-  const ahora = new Date();
-  const periodo = cfg.graficoProdPeriodo || 'mes';
-  let ini;
-  if (periodo === 'semana') {
-    ini = new Date(ahora);
-    ini.setDate(ahora.getDate() - 6);
-    ini.setHours(0, 0, 0, 0);
-  } else {
-    ini = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  }
-  return ventasStore.ventas.filter((v) => !v.anulada && new Date(v.fecha) >= ini);
-}
-
-onMounted(() => {
-  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
-  idle(() => {
-    renderChart();
-    renderChartProductos();
-  });
-});
-
-// Repintar al cambiar tema
-watch(
-  () => configStore.tema,
-  () =>
-    requestAnimationFrame(() => {
-      renderChart();
-      renderChartProductos();
-    })
-);
-
-onBeforeUnmount(destruir);
+// ===== GRÁFICOS (vue-chartjs declarativo, chunks diferidos) =====
+const ChartVentas = defineAsyncComponent(() => import('../components/charts/ChartVentas.vue'));
+const ChartProductos = defineAsyncComponent(() => import('../components/charts/ChartProductos.vue'));
+const { setGraficoVista, setGraficoProdTipo, setGraficoProdPeriodo } = useGraficos();
 
 // ===== RECOMENDACIONES =====
 const recomendaciones = computed(() => insights.recomendaciones);
