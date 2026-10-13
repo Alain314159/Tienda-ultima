@@ -172,6 +172,7 @@ import { n, m } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
+import type { Producto } from '../types';
 import { useComprasStore } from '../stores/useComprasStore';
 import { useLotesStore } from '../stores/useLotesStore';
 import { useProductosStore } from '../stores/useProductosStore';
@@ -227,7 +228,7 @@ const listaCompra = computed(() => {
   return out;
 });
 
-function selCompra(p) {
+function selCompra(p: Producto) {
   compraForm.value = {
     editId: '',
     productoId: p.id,
@@ -285,12 +286,12 @@ const histComprasMostrados = computed(() => hist.itemsMostrados(comprasPorPeriod
 const histComprasHayMas = computed(() => hist.hayMas(comprasPorPeriodo.value.actual));
 const histComprasRestantes = computed(() => hist.restantes(comprasPorPeriodo.value.actual));
 
-function loteSinVentas(cid) {
+function loteSinVentas(cid: string) {
   const l = lotesStore.lotes.find((x) => x.compraId === cid);
   return l ? n(l.cantidadVendida) === 0 : true;
 }
 
-function editarCompra(id) {
+function editarCompra(id: string) {
   const c = comprasStore.compras.find((x) => x.id === id);
   if (!c || !loteSinVentas(id)) return;
   compraForm.value = {
@@ -306,7 +307,7 @@ function editarCompra(id) {
   window.scrollTo(0, 0);
 }
 
-function eliminarCompra(id) {
+function eliminarCompra(id: string) {
   if (!loteSinVentas(id)) return;
   const c = comprasStore.compras.find((x) => x.id === id);
   ui.confirmar({
@@ -403,9 +404,9 @@ async function guardarCompra() {
         if (window.Log) window.Log.evento('compra-guardada', { producto: f.nombre, cantidad: cant, costo, total });
       } catch {}
     } catch (e) {
-      toastMsg(e.message, TOAST.BAD);
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
       try {
-        if (window.Log) window.Log.evento('compra-error', { mensaje: e.message });
+        if (window.Log) window.Log.evento('compra-error', { mensaje: e instanceof Error ? e.message : String(e) });
       } catch {}
     }
   };

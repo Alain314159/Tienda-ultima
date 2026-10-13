@@ -2,7 +2,7 @@ import { Preferences } from '@capacitor/preferences';
 import { esNativo } from './platform';
 
 export const Storage = {
-  async get(key) {
+  async get(key: string) {
     if (esNativo()) {
       const { value } = await Preferences.get({ key });
       return value;
@@ -10,7 +10,7 @@ export const Storage = {
     return localStorage.getItem(key);
   },
 
-  async set(key, value) {
+  async set(key: string, value: string) {
     if (esNativo()) {
       await Preferences.set({ key, value: String(value) });
     } else {
@@ -18,7 +18,7 @@ export const Storage = {
     }
   },
 
-  async remove(key) {
+  async remove(key: string) {
     if (esNativo()) {
       await Preferences.remove({ key });
     } else {
@@ -26,7 +26,7 @@ export const Storage = {
     }
   },
 
-  async getJSON(key) {
+  async getJSON(key: string) {
     const raw = await this.get(key);
     if (!raw) return null;
     try {
@@ -36,7 +36,7 @@ export const Storage = {
     }
   },
 
-  async setJSON(key, value) {
+  async setJSON(key: string, value: unknown) {
     await this.set(key, JSON.stringify(value));
   },
 };

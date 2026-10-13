@@ -292,7 +292,7 @@ async function registrarAjuste() {
 }
 
 // ===== INVENTARIO AGRUPADO =====
-const invExpandido = ref({});
+const invExpandido = ref<Record<string, boolean>>({});
 const invAgrupado = computed(() => {
   return productosStore.prodsActivos
     .map((p) => {

@@ -83,10 +83,13 @@ export default [
   {
     // En TS/Vue las reglas base duplican a @typescript-eslint (falsos positivos
     // en posiciones de tipo); se delega a la versión consciente de tipos.
+    // no-undef: los nombres de tipos DOM (RequestInit, etc.) no son globals
+    // de runtime; vue-tsc ya valida referencias no definidas en TS/Vue.
     files: ['**/*.{ts,mts,cts,tsx,vue}'],
     rules: {
       'no-unused-vars': 'off',
       'no-shadow': 'off',
+      'no-undef': 'off',
       '@typescript-eslint/no-shadow': 'warn',
     },
   },

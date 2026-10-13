@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Cierre } from '../types';
+import type { Cierre, Compra, Ajuste } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
@@ -125,9 +125,9 @@ export const useCierresStore = defineStore('cierres', () => {
       const ventasRango = ventasStore.ventas.filter(
         (v) => !v.anulada && new Date(v.fecha) >= ini && new Date(v.fecha) <= f
       );
-      const comprasRango = []; // TODO: Filtrar compras
+      const comprasRango: Compra[] = []; // TODO: Filtrar compras
       const gastosRango = gastosStore.gastos.filter((g) => new Date(g.fecha) >= ini && new Date(g.fecha) <= f);
-      const mermasRango = []; // TODO: Filtrar ajustes
+      const mermasRango: Ajuste[] = []; // TODO: Filtrar ajustes
 
       // Calcular totales
       const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));

@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Venta, ItemCarrito } from '../types';
+import type { Venta, ItemCarrito, Producto } from '../types';
 import { n, m, q } from '../utils/numero';
 import { P, genId, clean } from '../utils/id';
 import { db } from '../db';
@@ -52,7 +52,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Ganancia por item del carrito
    */
-  function gananciaItem(it) {
+  function gananciaItem(it: ItemCarrito) {
     const f = lotesStore.calcFIFO(it.productoId, n(it.cant));
     if (f.error) return 0;
     return m(n(it.precio) * n(it.cant) - f.costoTotal);
@@ -68,7 +68,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Subtotal de un item del carrito
    */
-  function subTotalItem(it) {
+  function subTotalItem(it: ItemCarrito) {
     return m(n(it.precio) * n(it.cant));
   }
 
@@ -103,7 +103,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Agrega un producto al carrito
    */
-  function agregarCarrito(p) {
+  function agregarCarrito(p: Producto) {
     const s = productosStore.stock(p.id);
     if (s <= 0) {
       throw new Error('Sin stock');
@@ -133,7 +133,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Cambia la cantidad de un item en el carrito
    */
-  function cambiarCant(it, dir) {
+  function cambiarCant(it: ItemCarrito, dir: number) {
     let val = n(it.cant) + dir;
     if (val < 1) val = 1;
 
@@ -148,14 +148,14 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Actualiza la cantidad desde input
    */
-  function actualizarCantidadInput(it, value) {
+  function actualizarCantidadInput(it: ItemCarrito, value: string) {
     it.cant = value;
   }
 
   /**
    * Valida la cantidad de un item
    */
-  function validarCant(it) {
+  function validarCant(it: ItemCarrito) {
     let val = n(it.cant);
     if (isNaN(val) || val < 1) {
       it.cant = '1';
@@ -171,7 +171,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Valida el precio de un item
    */
-  function validarPrecio(it) {
+  function validarPrecio(it: ItemCarrito) {
     const val = n(it.precio);
     if (isNaN(val) || val <= 0) {
       it.precio = String(productosStore.precioParaCantidad(it.productoId, n(it.cant)));
@@ -181,7 +181,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Verifica si un precio es escalonado
    */
-  function esPrecioEscalon(it) {
+  function esPrecioEscalon(it: ItemCarrito) {
     return (
       productosStore.tieneEscalones(it.productoId) &&
       productosStore.precioParaCantidad(it.productoId, n(it.cant)) !== n(it.precio)
@@ -211,7 +211,11 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Registra una venta
    */
-  async function registrarVenta(cobroData) {
+  async function registrarVenta(cobroData: {
+    metodoPago?: string;
+    vuelto?: number;
+    billetes?: Record<string, number | string>;
+  }) {
     if (procesandoVenta.value) return;
 
     procesandoVenta.value = true;
@@ -287,7 +291,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Anula una venta completa
    */
-  async function anularVenta(id) {
+  async function anularVenta(id: string) {
     const v = ventas.value.find((x) => x.id === id);
     if (!v || v.anulada) return;
 
@@ -323,7 +327,7 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Anula un producto individual en una venta
    */
-  async function anularProductoEnVenta(ventaId, itemIndex) {
+  async function anularProductoEnVenta(ventaId: string, itemIndex: number) {
     const v = ventas.value.find((x) => x.id === ventaId);
     if (!v || v.anulada) return;
     const item = v.items[itemIndex];
@@ -370,14 +374,14 @@ export const useVentasStore = defineStore('ventas', () => {
   /**
    * Toggle para expandir/colapsar una venta
    */
-  function toggleExpandirVenta(id) {
+  function toggleExpandirVenta(id: string) {
     ventaExpandida.value = ventaExpandida.value === id ? null : id;
   }
 
   /**
    * Actualiza la búsqueda de productos para venta
    */
-  function setBusqVenta(termino) {
+  function setBusqVenta(termino: string) {
     busqVenta.value = termino;
   }
 

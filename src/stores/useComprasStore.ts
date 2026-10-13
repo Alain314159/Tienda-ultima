@@ -143,7 +143,7 @@ export const useComprasStore = defineStore('compras', () => {
   /**
    * Anula una compra
    */
-  async function anularCompra(id) {
+  async function anularCompra(id: string) {
     const c = compras.value.find((x) => x.id === id);
     if (!c || c.anulada) return { error: 'Compra no encontrada o ya anulada' };
 
@@ -172,8 +172,8 @@ export const useComprasStore = defineStore('compras', () => {
   /**
    * Recarga datos específicos
    */
-  async function recargarStores(tables) {
-    const reloadMap = {
+  async function recargarStores(tables: string[]) {
+    const reloadMap: Record<string, () => Promise<void> | void> = {
       compras: cargarCompras,
       lotes: lotesStore.cargarLotes,
       asientos: () => {},

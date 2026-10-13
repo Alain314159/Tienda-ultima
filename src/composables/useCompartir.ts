@@ -114,7 +114,7 @@ export function useCompartir() {
             toastMsg('Copiado al portapapeles');
           }
         } catch (e) {
-          if (e.name !== 'AbortError') {
+          if (!(e instanceof Error) || e.name !== 'AbortError') {
             // Fallback a clipboard
             try {
               await navigator.clipboard.writeText(texto);

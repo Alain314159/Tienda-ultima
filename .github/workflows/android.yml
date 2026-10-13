@@ -38,6 +38,8 @@ jobs:
 
       - name: Build web (modo Capacitor)
         run: CAPACITOR=1 npm run build
+        env:
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
 
       - name: Sync Capacitor
         run: npx cap sync android

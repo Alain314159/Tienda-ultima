@@ -17,14 +17,14 @@ let _originalConsole: Record<string, (...data: unknown[]) => void> | null = null
 // ============================================================
 // Serializacion segura (evita circular, funciones, etc.)
 // ============================================================
-function serializar(valor, depth = 0) {
+function serializar(valor: unknown, depth = 0): string {
   if (depth > 3) return '[max depth]';
   if (valor === null) return 'null';
   if (valor === undefined) return 'undefined';
   const t = typeof valor;
-  if (t === 'string') return valor;
+  if (t === 'string') return valor as string;
   if (t === 'number' || t === 'boolean') return String(valor);
-  if (t === 'function') return '[Function ' + (valor.name || 'anon') + ']';
+  if (t === 'function') return '[Function ' + ((valor as { name?: string }).name || 'anon') + ']';
   if (valor instanceof Error) {
     return (
       valor.name + ': ' + valor.message + (valor.stack ? '\n' + valor.stack.split('\n').slice(0, 5).join('\n') : '')
@@ -48,7 +48,7 @@ function serializar(valor, depth = 0) {
     const keys = Object.keys(valor).slice(0, 15);
     const partes = keys.map((k) => {
       try {
-        return k + ': ' + serializar(valor[k], depth + 1);
+        return k + ': ' + serializar((valor as Record<string, unknown>)[k], depth + 1);
       } catch {
         return k + ': [error]';
       }
@@ -59,7 +59,7 @@ function serializar(valor, depth = 0) {
   return String(valor);
 }
 
-function formatearArgs(args) {
+function formatearArgs(args: unknown[]) {
   return Array.from(args)
     .map((a) => serializar(a))
     .join(' ');
@@ -67,7 +67,7 @@ function formatearArgs(args) {
 
 function timestamp() {
   const d = new Date();
-  const p = (n, l = 2) => String(n).padStart(l, '0');
+  const p = (n: number, l = 2) => String(n).padStart(l, '0');
   return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p(d.getMilliseconds(), 3);
 }
 
@@ -78,7 +78,7 @@ function fechaISO() {
 // ============================================================
 // Escritura
 // ============================================================
-async function escribirLineas(lineas) {
+async function escribirLineas(lineas: string[]) {
   if (!lineas.length) return;
   const texto = lineas.join('\n') + '\n';
 
@@ -147,7 +147,7 @@ function agendarFlush() {
   }, FLUSH_CADA_MS);
 }
 
-function agregar(nivel, mensaje) {
+function agregar(nivel: string, mensaje: string) {
   if (!_activo) return;
   if (_buffer.length >= MAX_BUFFER) _buffer.shift(); // descartar el mas viejo
   _buffer.push('[' + timestamp() + '] [' + nivel + '] ' + mensaje);
@@ -228,18 +228,18 @@ export const Log = {
   },
 
   // Evento del negocio (ej: venta guardada, error en transaccion)
-  evento(tipo, data) {
+  evento(tipo: string, data?: unknown) {
     agregar('EVENT', tipo + (data ? ' · ' + serializar(data) : ''));
   },
 
   // Log manual
-  info(msg, data) {
+  info(msg: string, data?: unknown) {
     agregar('INFO', msg + (data ? ' · ' + serializar(data) : ''));
   },
-  warn(msg, data) {
+  warn(msg: string, data?: unknown) {
     agregar('WARN', msg + (data ? ' · ' + serializar(data) : ''));
   },
-  error(msg, data) {
+  error(msg: string, data?: unknown) {
     agregar('ERROR', msg + (data ? ' · ' + serializar(data) : ''));
   },
 
@@ -268,7 +268,7 @@ export const Log = {
   },
 
   // Leer el contenido de un archivo de log
-  async leer(nombre) {
+  async leer(nombre: string) {
     if (!esNativo()) {
       return localStorage.getItem('log_' + nombre.replace('.log', '')) || '';
     }

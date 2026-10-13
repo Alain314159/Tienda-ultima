@@ -237,11 +237,11 @@ const distribucionesOrdenadas = computed(() =>
 );
 const movPatrimonio = computed(() => capitalStore.movPatrimonio);
 
-function totalAportesSocio(sid) {
+function totalAportesSocio(sid: string) {
   return m(capitalStore.capital.filter((x) => x.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
 }
 
-function totalPorSocio(sid) {
+function totalPorSocio(sid: string) {
   return m(capitalStore.distribuciones.filter((d) => d.socioId === sid).reduce((s, x) => s + n(x.monto), 0));
 }
 
@@ -269,7 +269,7 @@ function asignarAportesViejos() {
         migrarSocioId.value = '';
         toastMsg(`Asignados ${actualizados.length} aportes`);
       } catch (e) {
-        toastMsg('Error: ' + e.message, TOAST.BAD);
+        toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
       }
     },
   });
@@ -311,7 +311,7 @@ async function guardarSocio() {
   await recargarStores('socios');
 }
 
-function editarSocio(id) {
+function editarSocio(id: string) {
   const s = capitalStore.socios.find((x) => x.id === id);
   if (!s) return;
   socioForm.value = {
@@ -323,7 +323,7 @@ function editarSocio(id) {
   window.scrollTo(0, 0);
 }
 
-function eliminarSocio(id) {
+function eliminarSocio(id: string) {
   const s = capitalStore.socios.find((x) => x.id === id);
   if (!s) return;
   ui.confirmar({
@@ -375,7 +375,7 @@ function repartirGanancia() {
       repartoForm.value = { monto: '', concepto: '' };
       toastMsg(`Repartido ${fmt(monto)}`);
     } catch (e) {
-      toastMsg(e.message, TOAST.BAD);
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
     }
   });
 }
@@ -387,7 +387,7 @@ async function registrarRetiro() {
     ui.retiroAbierto = false;
     toastMsg('Retiro registrado');
   } catch (e) {
-    toastMsg(e.message, TOAST.BAD);
+    toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
   }
 }
 
@@ -397,7 +397,7 @@ async function registrarAporte() {
     ui.aporteAbierto = false;
     toastMsg('Aporte registrado');
   } catch (e) {
-    toastMsg(e.message, TOAST.BAD);
+    toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
   }
 }
 </script>

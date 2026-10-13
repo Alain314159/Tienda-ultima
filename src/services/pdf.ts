@@ -5,13 +5,26 @@
  */
 import { n } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import type { ResultadoCuadre, Socio } from '../types';
+
+/** Contexto financiero de la tienda que necesita el PDF (portada y reparto). */
+interface ContextoPDF {
+  nombreTienda: string;
+  saldoCaja: number;
+  valorInventario: number;
+  capitalTotal: number;
+  gananciasAcumuladas: number;
+  gananciaDisponible: number;
+  patrimonioTotal: number;
+  socios: Socio[];
+}
 
 /**
  * @param {object} r resultado del cuadre (rep.resultado)
  * @param {object} ctx contexto financiero: nombreTienda, saldoCaja, valorInventario,
  *   capitalTotal, gananciasAcumuladas, gananciaDisponible, patrimonioTotal, socios
  */
-export async function generarPDFCuadre(r, ctx) {
+export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
 
@@ -40,7 +53,7 @@ export async function generarPDFCuadre(r, ctx) {
   doc.setFont('helvetica', 'bold');
   doc.text('Resumen financiero', 14, 35);
 
-  const rowHighlight = (label) => {
+  const rowHighlight = (label: string) => {
     if (label === 'GANANCIA BRUTA') return { fontStyle: 'bold', fillColor: [230, 240, 255] };
     if (label === 'GANANCIA NETA') return { fontStyle: 'bold', fillColor: [220, 252, 231] };
     return null;
@@ -64,7 +77,7 @@ export async function generarPDFCuadre(r, ctx) {
     columnStyles: { 0: { cellWidth: 78 }, 1: { cellWidth: 47, halign: 'right' } },
     didParseCell: (data) => {
       if (data.section !== 'body') return;
-      const label = data.row.raw[0];
+      const label = (data.row.raw as string[])[0];
       const hl = rowHighlight(label);
       if (hl) Object.assign(data.cell.styles, hl);
     },
@@ -95,7 +108,7 @@ export async function generarPDFCuadre(r, ctx) {
     columnStyles: { 0: { cellWidth: 78 }, 1: { cellWidth: 47, halign: 'right' } },
     didParseCell: (data) => {
       if (data.section !== 'body') return;
-      const label = data.row.raw[0];
+      const label = (data.row.raw as string[])[0];
       if (label === 'ACTIVOS TOTALES' || label === 'PATRIMONIO') {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [230, 240, 255];
@@ -133,7 +146,7 @@ export async function generarPDFCuadre(r, ctx) {
       },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
-        if (data.row.raw[0] === 'TOTAL') {
+        if ((data.row.raw as string[])[0] === 'TOTAL') {
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.fillColor = [240, 235, 255];
         }

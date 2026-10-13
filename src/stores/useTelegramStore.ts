@@ -28,6 +28,16 @@ import {
   tgDeleteMessage,
   tgDetectarChatId,
 } from '../telegram';
+import type { Respaldo } from '../types';
+
+/** Ítem de la lista de backups de Telegram. */
+interface TgBackupInfo {
+  messageId: number;
+  fecha: string;
+  fileSize: number;
+  fileName: string;
+  fileId: string;
+}
 
 export const useTelegramStore = defineStore('telegram', () => {
   const configStore = useConfigStore();
@@ -35,7 +45,7 @@ export const useTelegramStore = defineStore('telegram', () => {
 
   // ===== ESTADO =====
   const tgEstado = ref('sin-config');
-  const tgBackups = ref<{ messageId: number; fecha: string; fileSize: number; fileName: string; fileId: string }[]>([]);
+  const tgBackups = ref<TgBackupInfo[]>([]);
   const tgCargando = ref(false);
   const tgProgreso = ref('');
   const tgColaPendiente = ref(0);
@@ -77,7 +87,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       if (r.disponible) mtCheck.value = { estado: 'ok', motivo: '', verificando: false };
       else mtCheck.value = { estado: 'ocupado', motivo: r.motivo || 'Nombre ya en uso', verificando: false };
     } catch (e) {
-      mtCheck.value = { estado: 'error', motivo: e.message, verificando: false };
+      mtCheck.value = { estado: 'error', motivo: e instanceof Error ? e.message : String(e), verificando: false };
     }
   }
 
@@ -100,7 +110,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       toastMsg('Tienda registrada correctamente');
       await tgListar();
     } catch (e) {
-      toastMsg(e.message, TOAST.BAD);
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
     } finally {
       mtProcesando.value = false;
     }
@@ -124,7 +134,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       toastMsg('Sesion iniciada');
       await tgListar();
     } catch (e) {
-      toastMsg(e.message, TOAST.BAD);
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
     } finally {
       mtProcesando.value = false;
     }
@@ -145,7 +155,7 @@ export const useTelegramStore = defineStore('telegram', () => {
   }
 
   // ===== BACKUPS EN TELEGRAM =====
-  async function tgBackupAhora(datos) {
+  async function tgBackupAhora(datos: Respaldo) {
     if (!configStore.cfg.tiendaConfigurada || !configStore.cfg.nombreTienda) {
       return toastMsg('Configura un nombre de tienda antes de hacer backups', TOAST.BAD);
     }
@@ -157,7 +167,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     }
   }
 
-  async function tgEnviarDatos(datos, motivo, mostrarToast) {
+  async function tgEnviarDatos(datos: Respaldo, motivo: string, mostrarToast: boolean) {
     const token = tgTokenActual();
     const chatId = configStore.cfg.tgChatId;
     if (!token || !chatId) throw new Error('Sin conexion a Telegram');
@@ -242,13 +252,13 @@ export const useTelegramStore = defineStore('telegram', () => {
       tgBackups.value = await tgListBackups(configStore.cfg.tgChatId, configStore.cfg.nombreTienda);
       toastMsg(tgBackups.value.length + ' backup(s) encontrado(s)');
     } catch (e) {
-      toastMsg('Error: ' + e.message, TOAST.BAD);
+      toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     } finally {
       tgCargando.value = false;
     }
   }
 
-  function tgRestaurar(bk, importarData) {
+  function tgRestaurar(bk: TgBackupInfo, importarData: (d: Respaldo) => Promise<void>) {
     const token = tgTokenActual();
     if (!token) return;
     ui.confirmar({
@@ -281,7 +291,7 @@ export const useTelegramStore = defineStore('telegram', () => {
           await importarData(d);
           toastMsg('Backup restaurado (' + fmtFH(bk.fecha) + ')');
         } catch (e) {
-          toastMsg('Error: ' + e.message, TOAST.BAD);
+          toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
         } finally {
           tgCargando.value = false;
           tgProgreso.value = '';
@@ -290,7 +300,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     });
   }
 
-  function tgEliminar(bk) {
+  function tgEliminar(bk: TgBackupInfo) {
     const token = tgTokenActual();
     const chatId = configStore.cfg.tgChatId;
     if (!token || !chatId) return;
@@ -303,7 +313,7 @@ export const useTelegramStore = defineStore('telegram', () => {
           tgBackups.value = tgBackups.value.filter((x) => x.messageId !== bk.messageId);
           toastMsg('Backup eliminado');
         } catch (e) {
-          toastMsg('Error: ' + e.message, TOAST.BAD);
+          toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
         }
       },
     });
@@ -379,7 +389,10 @@ export const useTelegramStore = defineStore('telegram', () => {
         configStore.cfg.tgFallosConsecutivos = (configStore.cfg.tgFallosConsecutivos || 0) + 1;
         await configStore.guardarCfg();
         await tgEncolar(datos, 'auto');
-        console.warn('Auto-backup fallo (' + configStore.cfg.tgFallosConsecutivos + ' consecutivos):', e.message);
+        console.warn(
+          'Auto-backup fallo (' + configStore.cfg.tgFallosConsecutivos + ' consecutivos):',
+          e instanceof Error ? e.message : String(e)
+        );
       }
     }
   }
@@ -404,7 +417,7 @@ export const useTelegramStore = defineStore('telegram', () => {
   }
 
   // ===== COLA DE BACKUPS =====
-  async function tgEncolar(datos, motivo) {
+  async function tgEncolar(datos: Respaldo, motivo: string) {
     // ANTI-ACUMULACION: solo puede haber UN backup 'auto' en cola.
     if (motivo === 'auto' || !motivo) {
       try {
@@ -478,7 +491,12 @@ export const useTelegramStore = defineStore('telegram', () => {
           await tgEnviarDatos(item.datos, item.motivo, false);
           await db.tgQueue.delete(item.id);
         } catch (e) {
-          await P(db.tgQueue, { ...item, estado: 'error', intentos: (item.intentos || 0) + 1, ultimoError: e.message });
+          await P(db.tgQueue, {
+            ...item,
+            estado: 'error',
+            intentos: (item.intentos || 0) + 1,
+            ultimoError: e instanceof Error ? e.message : String(e),
+          });
         }
       }
       await tgActualizarCola();

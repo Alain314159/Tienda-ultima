@@ -156,7 +156,7 @@
             >
               <div
                 v-for="(it, idx) in v.items"
-                :key="it.id"
+                :key="(it as Record<string, unknown>).id as PropertyKey"
                 style="
                   display: flex;
                   justify-content: space-between;
@@ -222,7 +222,7 @@
               >
                 <div
                   v-for="(it, idx) in v.items"
-                  :key="it.id"
+                  :key="(it as Record<string, unknown>).id as PropertyKey"
                   style="
                     display: flex;
                     justify-content: space-between;
@@ -355,8 +355,8 @@ const histVentasHayMas = computed(() => hist.hayMas(ventasPorPeriodo.value.actua
 const histVentasRestantes = computed(() => hist.restantes(ventasPorPeriodo.value.actual));
 const { itemsMostrados: histItemsMostrados, hayMas: histHayMas } = hist;
 const histMostrarMas = () => hist.mostrarMas();
-const histToggle = (id) => hist.toggle(id);
-const histAbierto = (id) => hist.abierto(id);
+const histToggle = (id: string) => hist.toggle(id);
+const histAbierto = (id: string) => hist.abierto(id);
 
 // ===== CARRITO =====
 function agregarPrimero() {
@@ -364,7 +364,7 @@ function agregarPrimero() {
 }
 
 // ===== ANULACIONES (confirmación + PIN) =====
-function anularProductoEnVenta(ventaId, itemIndex) {
+function anularProductoEnVenta(ventaId: string, itemIndex: number) {
   const v = ventasStore.ventas.find((x) => x.id === ventaId);
   if (!v || v.anulada) return;
   const item = v.items[itemIndex];
@@ -378,14 +378,14 @@ function anularProductoEnVenta(ventaId, itemIndex) {
           await ventasStore.anularProductoEnVenta(ventaId, itemIndex);
           toastMsg('Producto anulado');
         } catch (e) {
-          toastMsg(e.message, TOAST.BAD);
+          toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
         }
       },
     });
   });
 }
 
-function anularVenta(id) {
+function anularVenta(id: string) {
   ui.confirmar({
     titulo: 'Anular venta',
     msg: '¿Anular esta venta por completo? Se restaura el stock de todos sus productos.',
@@ -394,7 +394,7 @@ function anularVenta(id) {
         await ventasStore.anularVenta(id);
         toastMsg('Venta anulada');
       } catch (e) {
-        toastMsg(e.message, TOAST.BAD);
+        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
       }
     },
   });

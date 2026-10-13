@@ -254,7 +254,7 @@ export const useCapitalStore = defineStore('capital', () => {
   /**
    * Reparte ganancia entre socios
    */
-  async function repartirGanancia(monto, concepto = '') {
+  async function repartirGanancia(monto: number, concepto = '') {
     if (n(monto) <= 0) throw new Error('Monto inválido');
     if (socios.value.length === 0) throw new Error('No hay socios configurados');
 

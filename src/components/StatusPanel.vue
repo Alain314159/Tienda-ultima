@@ -247,7 +247,7 @@ async function verificarOTA() {
       }
     }
   } catch (e) {
-    otaMsg.value = 'Error: ' + (e.message || 'sin conexion');
+    otaMsg.value = 'Error: ' + (e instanceof Error && e.message ? e.message : 'sin conexion');
     otaMsgTipo.value = 'warn';
   } finally {
     otaBusy.value = false;
@@ -257,6 +257,15 @@ async function verificarOTA() {
 // ==========================================
 // GITHUB
 // ==========================================
+interface GhWorkflowRun {
+  id: number;
+  name: string;
+  head_branch?: string | null;
+  created_at: string;
+  status: string;
+  conclusion: string | null;
+}
+
 async function cargarGitHub() {
   ghLoading.value = true;
   ghError.value = '';
@@ -286,7 +295,7 @@ async function cargarGitHub() {
     const r2 = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs?per_page=5`, { headers });
     if (!r2.ok) throw new Error('GitHub runs: HTTP ' + r2.status);
     const runs = await r2.json();
-    ghRuns.value = (runs.workflow_runs || []).map((r) => ({
+    ghRuns.value = (runs.workflow_runs || []).map((r: GhWorkflowRun) => ({
       id: r.id,
       name: r.name + ' · ' + (r.head_branch || ''),
       date: new Date(r.created_at).toLocaleString(),
@@ -300,14 +309,14 @@ async function cargarGitHub() {
   }
 }
 
-function statusDeRun(r) {
+function statusDeRun(r: GhWorkflowRun) {
   if (r.status === 'in_progress' || r.status === 'queued') return 'run';
   if (r.conclusion === 'success') return 'ok';
   if (r.conclusion === 'failure') return 'bad';
   return 'warn';
 }
 
-function labelDeRun(r) {
+function labelDeRun(r: GhWorkflowRun) {
   if (r.status === 'in_progress') return 'corriendo';
   if (r.status === 'queued') return 'en cola';
   if (r.conclusion === 'success') return 'OK';
@@ -347,7 +356,7 @@ async function pedirNotif() {
       configStore.guardarCfg();
     }
   } catch (e) {
-    notifMsg.value = 'Error: ' + e.message;
+    notifMsg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -370,7 +379,7 @@ async function probarNotif() {
     }
     notifMsg.value = 'Notificacion enviada';
   } catch (e) {
-    notifMsg.value = 'Error: ' + e.message;
+    notifMsg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
   }
 }
 </script>

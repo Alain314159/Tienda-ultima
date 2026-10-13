@@ -8,6 +8,7 @@ import { useVentasStore } from './useVentasStore';
 import { useComprasStore } from './useComprasStore';
 import { useGastosStore } from './useGastosStore';
 import { useCapitalStore } from './useCapitalStore';
+import type { Respaldo } from '../types';
 
 /** Conteos actuales por tabla (según stores). */
 export function usarStores() {
@@ -22,8 +23,11 @@ export function usarStores() {
 }
 
 /** Construye la estructura de previsualización de importación. */
-export function crearPreview(d, actuales) {
-  const campos = [
+export function crearPreview(d: Respaldo, actuales: ReturnType<typeof usarStores>) {
+  const campos: {
+    key: 'productos' | 'lotes' | 'ventas' | 'compras' | 'gastos' | 'socios' | 'asientos' | 'pasivos';
+    label: string;
+  }[] = [
     { key: 'productos', label: 'Productos' },
     { key: 'lotes', label: 'Lotes' },
     { key: 'ventas', label: 'Ventas' },
@@ -33,7 +37,7 @@ export function crearPreview(d, actuales) {
     { key: 'asientos', label: 'Asientos' },
     { key: 'pasivos', label: 'Pasivos' },
   ];
-  const nuevos = {};
+  const nuevos: Record<string, number> = {};
   campos.forEach((c) => {
     nuevos[c.key] = (d[c.key] || []).length;
   });

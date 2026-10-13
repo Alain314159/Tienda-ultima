@@ -137,6 +137,7 @@
 import { computed, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { fmt, fmtFecha } from '../utils/formato';
+import type { Recomendacion } from '../types';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useProductosStore } from '../stores/useProductosStore';
 import { useLotesStore } from '../stores/useLotesStore';
@@ -171,14 +172,14 @@ const { setGraficoVista, setGraficoProdTipo, setGraficoProdPeriodo } = useGrafic
 const recomendaciones = computed(() => insights.recomendaciones);
 const recomendacionesUrgentes = computed(() => insights.recomendacionesUrgentes);
 
-function colorNivel(nivel) {
+function colorNivel(nivel: Recomendacion['nivel']) {
   if (nivel === 'urgente') return '#DC2626';
   if (nivel === 'atencion') return '#D97706';
   if (nivel === 'oportunidad') return '#16A34A';
   return '#3B82F6';
 }
 
-function descartarAnomalia(clave) {
+function descartarAnomalia(clave: string) {
   if (!configStore.cfg.anomaliasDescartadas) configStore.cfg.anomaliasDescartadas = [];
   if (!configStore.cfg.anomaliasDescartadas.includes(clave)) {
     configStore.cfg.anomaliasDescartadas.push(clave);
@@ -193,12 +194,12 @@ function restaurarAnomalias() {
   toastMsg('Anomalias restauradas');
 }
 
-function irAStock(filtro) {
+function irAStock(filtro: string) {
   productosStore.setFiltroStock(filtro);
   ir(router, 'productos');
 }
 
-function irSeccion(s, refId) {
-  ir(router, s, refId);
+function irSeccion(s?: string | null, refId?: string) {
+  ir(router, s as string, refId);
 }
 </script>

@@ -15,7 +15,7 @@ let _guardando = false;
 let _getDataFn: (() => unknown) | null = null;
 
 export const Autosave = {
-  async init({ getData }) {
+  async init({ getData }: { getData: () => unknown }) {
     if (_initDone) return;
     _initDone = true;
     _getDataFn = getData as () => unknown;
@@ -50,12 +50,12 @@ export const Autosave = {
     }
   },
 
-  async _forzarGuardado(motivo) {
+  async _forzarGuardado(motivo: string) {
     if (_guardando) return;
     await this._guardarSiCambio(motivo, true);
   },
 
-  async _guardarSiCambio(motivo, forzar = false) {
+  async _guardarSiCambio(motivo: string, forzar = false) {
     if (_guardando || !_getDataFn) return;
     _guardando = true;
     try {

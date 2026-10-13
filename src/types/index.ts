@@ -22,6 +22,7 @@ export interface Producto {
   unidad?: string;
   nota?: string;
   archivado?: boolean;
+  fechaCreacion?: string;
   preciosEscalonados?: Escalon[];
   empaques?: Empaque[];
 }
@@ -292,7 +293,7 @@ export interface Recomendacion {
   titulo: string;
   detalle: string;
   icono: string;
-  sec?: string;
+  sec?: string | null;
   refId?: string;
 }
 

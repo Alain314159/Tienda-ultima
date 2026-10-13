@@ -9,7 +9,7 @@ defineOptions({ name: 'SkeletonLoader' });
 
 defineProps({ rows: { type: Number, default: 5 } });
 
-function ancho(i) {
+function ancho(i: number) {
   const patrones = [100, 85, 90, 70, 95, 80];
   return patrones[(i - 1) % patrones.length];
 }

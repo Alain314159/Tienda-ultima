@@ -249,7 +249,7 @@ async function guardarGasto() {
   await recargarStores('gastos', 'movCaja');
 }
 
-function editarGasto(id) {
+function editarGasto(id: string) {
   const g = gastosStore.gastos.find((x) => x.id === id);
   if (!g) return;
   gastoForm.value = {
@@ -265,7 +265,7 @@ function editarGasto(id) {
   window.scrollTo(0, 0);
 }
 
-function eliminarGasto(id) {
+function eliminarGasto(id: string) {
   const g = gastosStore.gastos.find((x) => x.id === id);
   if (!g) return;
   ui.confirmar({

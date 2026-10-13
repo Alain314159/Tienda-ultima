@@ -14,11 +14,14 @@ const POR_PAGINA = 20;
 /**
  * @param {() => Array} getItems getter de los registros (p.ej. () => ventasStore.ventas)
  */
-export function useHistorial<T>(getItems: () => T[]) {
+export function useHistorial<T extends { id: string; fecha: string }>(getItems: () => T[]) {
   const configStore = useConfigStore();
   const cierresStore = useCierresStore();
 
-  const historial = reactive({
+  const historial = reactive<{
+    pagina: number;
+    abiertos: Record<string, boolean>;
+  }>({
     pagina: 1,
     abiertos: {},
   });
@@ -31,7 +34,7 @@ export function useHistorial<T>(getItems: () => T[]) {
    * @param {Array} items
    * @param {string} keyFecha campo de fecha
    */
-  function agrupar(items, keyFecha = 'fecha') {
+  function agrupar(items: T[], keyFecha: 'fecha' = 'fecha') {
     const sig =
       items.length +
       '|' +
@@ -108,15 +111,15 @@ export function useHistorial<T>(getItems: () => T[]) {
     return agrupar(getItems(), 'fecha');
   }
 
-  function itemsMostrados(items) {
+  function itemsMostrados(items: T[]) {
     return items.slice(0, historial.pagina * porPagina.value);
   }
 
-  function hayMas(items) {
+  function hayMas(items: T[]) {
     return items.length > historial.pagina * porPagina.value;
   }
 
-  function restantes(items) {
+  function restantes(items: T[]) {
     return Math.max(0, items.length - historial.pagina * porPagina.value);
   }
 
@@ -124,11 +127,11 @@ export function useHistorial<T>(getItems: () => T[]) {
     historial.pagina++;
   }
 
-  function toggle(id) {
+  function toggle(id: string) {
     historial.abiertos[id] = !historial.abiertos[id];
   }
 
-  function abierto(id) {
+  function abierto(id: string) {
     return !!historial.abiertos[id];
   }
 

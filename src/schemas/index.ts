@@ -2,7 +2,7 @@
  * Schemas Zod para validación de formularios y datos.
  * Vivien en módulos puros → usables desde stores, servicios y componentes.
  */
-import { z } from 'zod';
+import { z, type ZodType } from 'zod';
 
 // ===== PRODUCTO =====
 export const productoSchema = z.object({
@@ -50,7 +50,7 @@ export const retiroSchema = z.object({
 /**
  * Helper: valida con un schema y devuelve {ok, data?, error?}
  */
-export function validar(schema, datos) {
+export function validar<T>(schema: ZodType<T>, datos: unknown): { ok: true; data: T } | { ok: false; error: string } {
   const r = schema.safeParse(datos);
   if (r.success) return { ok: true, data: r.data };
   return { ok: false, error: r.error.issues[0].message };

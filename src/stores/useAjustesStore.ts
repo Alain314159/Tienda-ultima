@@ -47,8 +47,8 @@ export const useAjustesStore = defineStore('ajustes', () => {
   /**
    * Recarga datos específicos
    */
-  async function recargarStores(tables) {
-    const reloadMap = {
+  async function recargarStores(tables: string[]) {
+    const reloadMap: Record<string, () => Promise<void>> = {
       ajustes: cargarAjustes,
       lotes: lotesStore.cargarLotes,
     };

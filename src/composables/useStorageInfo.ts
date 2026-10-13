@@ -61,7 +61,7 @@ export function useStorageInfo() {
     }
   }
 
-  function fmtBytes(b) {
+  function fmtBytes(b: number) {
     if (!b) return '0 B';
     const u = ['B', 'KB', 'MB', 'GB'];
     let i = 0;

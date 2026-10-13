@@ -5,7 +5,7 @@
  */
 import { ref, reactive } from 'vue';
 import { n, m, q } from '../utils/numero';
-import type { ResultadoCuadre, SubfilaCuadre } from '../types';
+import type { Cierre, ResultadoCuadre, SubfilaCuadre } from '../types';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useComprasStore } from '../stores/useComprasStore';
@@ -90,9 +90,9 @@ export function useCuadre() {
     rep.periodoActivo = 'hoy';
   }
 
-  function setPeriodoCierre(c) {
-    const ini = new Date(c.periodoInicio || c.fechaCierre);
-    const fin = new Date(c.periodoFin || c.fechaCierre);
+  function setPeriodoCierre(c: Cierre) {
+    const ini = new Date(c.periodoInicio || c.fechaCierre || '');
+    const fin = new Date(c.periodoFin || c.fechaCierre || '');
     rep.fechaInicio = ini.toISOString().split('T')[0];
     rep.fechaFin = fin.toISOString().split('T')[0];
     rep.isoInicio = ini.toISOString();
@@ -118,7 +118,7 @@ export function useCuadre() {
     rep.periodoActivo = 'actual';
   }
 
-  function toggleCuadreProducto(id) {
+  function toggleCuadreProducto(id: string) {
     cuadreExpandido.value[id] = !cuadreExpandido.value[id];
   }
 
@@ -284,7 +284,10 @@ export function useCuadre() {
       },
       { compras: 0, ventas: 0, ingresos: 0, costo: 0, ganancia: 0, stockFinal: 0, valorInv: 0 }
     );
-    Object.keys(totales).forEach((k) => (totales[k] = m(totales[k])));
+    Object.keys(totales).forEach((k) => {
+      const key = k as keyof typeof totales;
+      totales[key] = m(totales[key]);
+    });
 
     rep.resultado = {
       ingresos: ing,

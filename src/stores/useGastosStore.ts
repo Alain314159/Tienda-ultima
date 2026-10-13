@@ -58,7 +58,7 @@ export const useGastosStore = defineStore('gastos', () => {
    * Gastos por categoría
    */
   const gastosPorCategoria = computed(() => {
-    const map = {};
+    const map: Record<string, number> = {};
     gastos.value.forEach((g) => {
       const c = g.categoria || 'Sin categoría';
       if (!map[c]) map[c] = 0;
@@ -121,7 +121,7 @@ export const useGastosStore = defineStore('gastos', () => {
   /**
    * Elimina un gasto
    */
-  async function eliminarGasto(gastoId) {
+  async function eliminarGasto(gastoId: string) {
     try {
       await db.gastos.delete(gastoId);
       await cargarGastos();
@@ -134,7 +134,7 @@ export const useGastosStore = defineStore('gastos', () => {
   /**
    * Prepara el formulario para editar un gasto
    */
-  function editarGasto(gasto) {
+  function editarGasto(gasto: Gasto) {
     gastoForm.value = {
       editId: gasto.id,
       fecha: gasto.fecha.split('T')[0],
@@ -166,8 +166,8 @@ export const useGastosStore = defineStore('gastos', () => {
   /**
    * Recarga datos específicos
    */
-  async function recargarStores(tables) {
-    const reloadMap = {
+  async function recargarStores(tables: string[]) {
+    const reloadMap: Record<string, () => Promise<void> | void> = {
       gastos: cargarGastos,
       movCaja: () => {},
       asientos: () => {},

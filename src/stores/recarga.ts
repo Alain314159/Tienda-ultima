@@ -18,8 +18,8 @@ import { useCierresStore } from './useCierresStore';
  * @param {...string} tables nombres de tabla: ventas, lotes, compras, productos,
  *   ajustes, cierres, capital, socios, distribuciones, retiros, gastos, movCaja, arqueos
  */
-export async function recargarStores(...tables) {
-  const map = {
+export async function recargarStores(...tables: string[]) {
+  const map: Record<string, () => Promise<void>> = {
     ventas: () => useVentasStore().cargarVentas(),
     lotes: () => useLotesStore().cargarLotes(),
     compras: () => useComprasStore().cargarCompras(),

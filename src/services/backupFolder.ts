@@ -5,7 +5,7 @@ const CARPETA = 'backups';
 const MAX_BACKUPS = 30;
 
 // Comprimir texto a Blob (gzip si el navegador lo soporta)
-async function comprimirGzip(texto) {
+async function comprimirGzip(texto: string) {
   if (typeof CompressionStream !== 'undefined') {
     try {
       const stream = new Blob([texto]).stream().pipeThrough(new CompressionStream('gzip'));
@@ -33,7 +33,7 @@ async function blobABase64(blob: Blob): Promise<string> {
 
 export const BackupFolder = {
   // En web no hay carpeta persistente: usar descarga
-  async guardar(datos, nombrePersonalizado = null) {
+  async guardar(datos: unknown, nombrePersonalizado: string | null = null) {
     const fecha = new Date();
     const iso = fecha.toISOString().slice(0, 10);
     const hora = String(fecha.getHours()).padStart(2, '0') + String(fecha.getMinutes()).padStart(2, '0');
@@ -77,7 +77,7 @@ export const BackupFolder = {
     }
   },
 
-  async leer(nombre) {
+  async leer(nombre: string) {
     if (!esNativo()) return null;
     try {
       const r = await Filesystem.readFile({
@@ -104,7 +104,7 @@ export const BackupFolder = {
     }
   },
 
-  async eliminar(nombre) {
+  async eliminar(nombre: string) {
     if (!esNativo()) return;
     try {
       await Filesystem.deleteFile({

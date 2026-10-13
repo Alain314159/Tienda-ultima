@@ -18,6 +18,7 @@ import { useCajaStore } from './useCajaStore';
 import { useCierresStore } from './useCierresStore';
 import { useInsightsStore } from './useInsightsStore';
 import { useTelegramStore } from './useTelegramStore';
+import type { Producto } from '../types';
 
 export const useNotificacionesStore = defineStore('notificaciones', () => {
   const configStore = useConfigStore();
@@ -33,7 +34,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
   });
 
   // ===== ENVÍO =====
-  async function enviarNotif(titulo, cuerpo) {
+  async function enviarNotif(titulo: string, cuerpo: string) {
     try {
       // NATIVO: usar LocalNotifications
       if (Capacitor.isNativePlatform()) {
@@ -63,8 +64,8 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
         badge: '/Tienda-ultima/icons/icon-192.png',
         tag: 'tienda-' + Date.now(),
       };
-      const conTimeout = (promesa, ms) =>
-        Promise.race([promesa, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+      const conTimeout = <T>(promesa: Promise<T>, ms: number) =>
+        Promise.race([promesa, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
       if ('serviceWorker' in navigator) {
         try {
           const reg = await conTimeout(navigator.serviceWorker.ready, 3000);
@@ -80,11 +81,11 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
         new Notification(titulo, opts);
         return { ok: true, via: 'constructor' };
       } catch (e2) {
-        return { ok: false, motivo: 'constructor-bloqueado', error: e2.message };
+        return { ok: false, motivo: 'constructor-bloqueado', error: e2 instanceof Error ? e2.message : String(e2) };
       }
     } catch (e) {
       console.error('enviarNotif', e);
-      return { ok: false, motivo: 'error', error: e.message };
+      return { ok: false, motivo: 'error', error: e instanceof Error ? e.message : String(e) };
     }
   }
 
@@ -105,7 +106,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
           toastMsg('Permiso denegado', TOAST.BAD);
         }
       } catch (e) {
-        toastMsg('Error: ' + e.message, TOAST.BAD);
+        toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
       }
       return;
     }
@@ -130,7 +131,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
         toastMsg('Permiso denegado', TOAST.BAD);
       }
     } catch (e) {
-      toastMsg('Error: ' + e.message, TOAST.BAD);
+      toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
   }
 
@@ -281,7 +282,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     }
   }
 
-  async function notificarAgotado(prod) {
+  async function notificarAgotado(prod: Producto) {
     const nombre = prod.nombre;
 
     // 1. Notificacion del sistema (con timeout interno, nunca bloquea)

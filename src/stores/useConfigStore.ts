@@ -114,7 +114,7 @@ export const useConfigStore = defineStore('config', () => {
   /**
    * Cambia la escala de fuente
    */
-  function cambiarEscalaFont(delta) {
+  function cambiarEscalaFont(delta: number) {
     const nuevaEscala = Math.max(1, Math.min(2, cfg.value.fontScale + delta));
     if (nuevaEscala !== cfg.value.fontScale) {
       cfg.value.fontScale = nuevaEscala;
@@ -125,7 +125,7 @@ export const useConfigStore = defineStore('config', () => {
   /**
    * Actualiza la configuración
    */
-  function actualizarCfg(nuevosValores) {
+  function actualizarCfg(nuevosValores: Partial<Config>) {
     Object.assign(cfg.value, nuevosValores);
     guardarCfg();
   }

@@ -103,7 +103,7 @@ export const useUIStore = defineStore('ui', () => {
         placeholder: opts.placeholder || '',
         type: opts.type || 'text',
         value: opts.value || '',
-        onOk: (v) => resolve(v ?? null),
+        onOk: (v: string) => resolve(v ?? null),
       });
     });
   }
@@ -137,7 +137,7 @@ export const useUIStore = defineStore('ui', () => {
       placeholder: '••••',
       type: 'password',
       value: '',
-      onOk: async (v) => {
+      onOk: async (v: string) => {
         const ok = await verificarPin(v, configStore.cfg.pin);
         if (ok) cb();
         else toastMsg('PIN incorrecto', TOAST.BAD);

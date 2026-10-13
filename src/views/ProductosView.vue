@@ -153,7 +153,8 @@ const lotesStore = useLotesStore();
 
 const { busqProd, mostrarArchivados, filtroStock } = storeToRefs(productosStore);
 const { stock, formatStock, badgeStock, txtBadge, limpiarFiltroStock } = productosStore;
-const { lotesDeProducto, valorLotesProducto, stockMap } = lotesStore;
+const { lotesDeProducto, valorLotesProducto } = lotesStore;
+const stockMap = lotesStore.stockMap as Record<string, number>;
 
 const sec = 'productos';
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
@@ -163,8 +164,8 @@ const prodsFiltrados = computed(() => productosStore.productosFiltrados);
 
 // Mapa de badges por producto
 const badgeMap = computed(() => {
-  const map = {};
-  const sm = lotesStore.stockMap;
+  const map: Record<string, string> = {};
+  const sm = lotesStore.stockMap as Record<string, number>;
   for (const p of productosStore.productos) {
     const s = sm[p.id] || 0;
     let b;
@@ -178,7 +179,7 @@ const badgeMap = computed(() => {
 });
 
 // ===== FORMULARIO DE PRODUCTO (local a la vista) =====
-const prodExpandido = ref({});
+const prodExpandido = ref<Record<string, boolean>>({});
 const prodForm = ref<{
   editId: string;
   nombre: string;
@@ -215,11 +216,11 @@ async function guardarProducto() {
     toastMsg(prodForm.value.editId ? 'Producto actualizado' : 'Producto guardado');
     resetProd();
   } catch (e) {
-    toastMsg(e.message, TOAST.BAD);
+    toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
   }
 }
 
-function editarProducto(id) {
+function editarProducto(id: string) {
   const p = productosStore.productos.find((x) => x.id === id);
   if (!p) return;
   prodForm.value = {
@@ -234,7 +235,7 @@ function editarProducto(id) {
   window.scrollTo(0, 0);
 }
 
-function archivarProducto(id) {
+function archivarProducto(id: string) {
   const p = productosStore.productos.find((x) => x.id === id);
   if (!p) return;
   if (productosStore.stock(id) > 0) return toastMsg('No archivar con stock > 0', TOAST.BAD);
@@ -249,7 +250,7 @@ function archivarProducto(id) {
   });
 }
 
-async function restaurarProducto(id) {
+async function restaurarProducto(id: string) {
   const p = productosStore.productos.find((x) => x.id === id);
   if (!p) return;
   await P(db.productos, { ...p, archivado: false });

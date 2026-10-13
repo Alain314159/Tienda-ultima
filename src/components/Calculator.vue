@@ -170,7 +170,7 @@ function cerrar() {
   emit('close');
 }
 
-function onKey(e) {
+function onKey(e: KeyboardEvent) {
   if (!props.visible) return;
   const k = e.key;
   if (k >= '0' && k <= '9') {
@@ -212,7 +212,7 @@ function onKey(e) {
   }
 }
 
-function insertar(ch) {
+function insertar(ch: string) {
   error.value = false;
   const ops = ['+', '−', '×', '÷'];
   const last = expresion.value.slice(-1);
@@ -270,7 +270,7 @@ function actualizarPreview() {
   }
 }
 
-function formatear(n) {
+function formatear(n: number) {
   if (!isFinite(n)) return '∞';
   const r = Math.round(n * 1e10) / 1e10;
   return String(r);

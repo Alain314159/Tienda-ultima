@@ -28,7 +28,7 @@ export function useCobro() {
   const cobroModal = reactive({
     total: 0,
     calcAbierta: false,
-    billetes: {},
+    billetes: {} as Record<number, number | string>,
     totalContado: 0,
     falta: 0,
     sobra: 0,
@@ -159,12 +159,12 @@ export function useCobro() {
       // Notificaciones en background: sin await
       notificaciones.chequearAgotados().catch((e) => console.warn('chequearAgotados', e));
     } catch (e) {
-      toastMsg(e.message, TOAST.BAD);
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
       try {
         if (window.Log)
           window.Log.evento('venta-error', {
-            mensaje: e.message,
-            stack: e.stack && e.stack.split('\n').slice(0, 3).join(' | '),
+            mensaje: e instanceof Error ? e.message : String(e),
+            stack: e instanceof Error ? e.stack && e.stack.split('\n').slice(0, 3).join(' | ') : undefined,
           });
       } catch {}
     } finally {

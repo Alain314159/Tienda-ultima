@@ -17,6 +17,23 @@ import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
 import { derivarClave, hashContenido, aBase64, desdeBase64 } from '../services/backup';
+import type { Respaldo } from '../types';
+
+/** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
+type TablaDatos =
+  | 'productos'
+  | 'lotes'
+  | 'ventas'
+  | 'compras'
+  | 'ajustes'
+  | 'arqueos'
+  | 'movCaja'
+  | 'cierres'
+  | 'capital'
+  | 'retiros'
+  | 'socios'
+  | 'distribuciones'
+  | 'gastos';
 
 export const useBackupStore = defineStore('backup', () => {
   const configStore = useConfigStore();
@@ -26,7 +43,7 @@ export const useBackupStore = defineStore('backup', () => {
   // ===== ESTADO =====
   const ultimoBackup = ref<{ fecha: string; value: unknown } | null>(null);
   interface PreviewImportacion {
-    archivo: Record<string, unknown>;
+    archivo: Respaldo;
     campos: { key: string; label: string }[];
     actuales: Record<string, number>;
     nuevos: Record<string, number>;
@@ -41,7 +58,7 @@ export const useBackupStore = defineStore('backup', () => {
   let _backupIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
   // ===== EXPORTAR =====
-  function descargar(blob, name) {
+  function descargar(blob: Blob, name: string) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = name;
@@ -94,7 +111,7 @@ export const useBackupStore = defineStore('backup', () => {
       );
       toastMsg('Respaldo cifrado descargado');
     } catch (e) {
-      toastMsg('Error cifrado: ' + e.message, TOAST.BAD);
+      toastMsg('Error cifrado: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
   }
 
@@ -104,11 +121,11 @@ export const useBackupStore = defineStore('backup', () => {
     if (el) el.click();
   }
 
-  function onImportFile(e) {
-    const file = e.target.files[0];
+  function onImportFile(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
     importFile.value = file;
-    e.target.value = '';
+    (e.target as HTMLInputElement).value = '';
     const rd = new FileReader();
     rd.onload = async (ev) => {
       try {
@@ -156,7 +173,7 @@ export const useBackupStore = defineStore('backup', () => {
 
         ui.confirmar({ titulo: 'Importar datos', msg: adv, onOk: () => ejecutarImport() });
       } catch (err) {
-        toastMsg('Error: ' + err.message, TOAST.BAD);
+        toastMsg('Error: ' + (err instanceof Error ? err.message : String(err)), TOAST.BAD);
       }
     };
     rd.readAsText(file);
@@ -189,14 +206,14 @@ export const useBackupStore = defineStore('backup', () => {
           ui.ajustesAbierto = true;
         });
       } catch (e) {
-        toastMsg('Error: ' + e.message, TOAST.BAD);
+        toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
       }
     };
     rd.readAsText(file);
   }
 
   /** Valida el esquema de un archivo de respaldo. */
-  function validarEsquema(d) {
+  function validarEsquema(d: Respaldo) {
     const errores: string[] = [];
     const avisos: string[] = [];
     if (!d || typeof d !== 'object') {
@@ -205,7 +222,7 @@ export const useBackupStore = defineStore('backup', () => {
     if (!d.productos && !d.ventas) {
       errores.push('Falta productos y ventas (no parece un respaldo)');
     }
-    const tablas = [
+    const tablas: TablaDatos[] = [
       'productos',
       'lotes',
       'ventas',
@@ -243,12 +260,12 @@ export const useBackupStore = defineStore('backup', () => {
   }
 
   /** Reemplaza todos los datos con los del archivo (con rollback automático). */
-  async function importarData(d) {
+  async function importarData(d: Respaldo) {
     const v = validarEsquema(d);
     if (!v.ok) throw new Error('Datos invalidos:\n· ' + v.errores.join('\n· '));
     if (v.avisos && v.avisos.length) console.warn('Import con avisos:', v.avisos);
 
-    const tables = [
+    const tables: TablaDatos[] = [
       'productos',
       'lotes',
       'ventas',
@@ -264,7 +281,7 @@ export const useBackupStore = defineStore('backup', () => {
       'gastos',
     ];
     // Snapshot antes por si falla
-    const respaldo = {};
+    const respaldo: Record<string, unknown[]> = {};
     try {
       for (const t of tables) respaldo[t] = await db.table(t).toArray();
     } catch (e) {
@@ -272,7 +289,7 @@ export const useBackupStore = defineStore('backup', () => {
     }
 
     try {
-      await db.transaction('rw', tables.concat(['config']), async () => {
+      await db.transaction('rw', [...tables, 'config'], async () => {
         for (const t of tables) {
           await db.table(t).clear();
           if (Array.isArray(d[t])) await db.table(t).bulkPut(clean(d[t]));
@@ -287,21 +304,23 @@ export const useBackupStore = defineStore('backup', () => {
             if (respaldo[t] && respaldo[t].length) await db.table(t).bulkPut(respaldo[t]);
           }
         });
-        throw new Error('Fallo la importacion (rollback aplicado): ' + err.message);
+        throw new Error(
+          'Fallo la importacion (rollback aplicado): ' + (err instanceof Error ? err.message : String(err))
+        );
       } catch {
-        throw new Error('Fallo la importacion Y el rollback: ' + err.message);
+        throw new Error('Fallo la importacion Y el rollback: ' + (err instanceof Error ? err.message : String(err)));
       }
     }
     if (d.cfg) configStore.cfg = { ...configStore.cfg, ...d.cfg };
     await recargarTodoStores();
   }
 
-  async function onRestoreBackup(data) {
+  async function onRestoreBackup(data: Respaldo) {
     try {
       await importarData(data);
       toastMsg('Backup restaurado');
     } catch (e) {
-      toastMsg('Error restaurando: ' + e.message, TOAST.BAD);
+      toastMsg('Error restaurando: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
   }
 
@@ -311,7 +330,7 @@ export const useBackupStore = defineStore('backup', () => {
       titulo: 'Restaurar backup',
       msg: '¿Reemplazar los datos con el backup automático del ' + fmtFH(ultimoBackup.value?.fecha || '') + '?',
       onOk: async () => {
-        if (ultimoBackup.value) await importarData(ultimoBackup.value.value);
+        if (ultimoBackup.value) await importarData(ultimoBackup.value.value as Respaldo);
         ui.ajustesAbierto = false;
         toastMsg('Backup restaurado');
       },
@@ -402,12 +421,12 @@ export const useBackupStore = defineStore('backup', () => {
         titulo: 'Deshacer importación',
         msg: '¿Restaurar los datos de antes de la última importación (' + fmtFH(rec.fecha || '') + ')?',
         onOk: async () => {
-          await importarData(rec.value);
+          await importarData(rec.value as Respaldo);
           toastMsg('Datos restaurados');
         },
       });
     } catch (e) {
-      toastMsg('Error: ' + e.message, TOAST.BAD);
+      toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
   }
 
@@ -448,7 +467,7 @@ export const useBackupStore = defineStore('backup', () => {
             toastMsg('Todos los datos eliminados');
             setTimeout(() => location.reload(), 1200);
           } catch (e) {
-            toastMsg('Error: ' + e.message, TOAST.BAD);
+            toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
           }
         });
       },

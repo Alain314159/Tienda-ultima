@@ -154,10 +154,10 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
         onOfflineReady() {
           console.log('✅ PWA lista para uso offline');
         },
-        onRegisteredSW(url, reg) {
+        onRegisteredSW(url: string, reg: ServiceWorkerRegistration | undefined) {
           if (reg) setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
         },
-        onRegisterError(err) {
+        onRegisterError(err: unknown) {
           console.error('❌ SW fallo:', err);
         },
       });

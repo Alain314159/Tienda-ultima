@@ -610,7 +610,7 @@ function guardarCfg() {
   return configStore.guardarCfg();
 }
 
-function cambiarEscalaFont(delta) {
+function cambiarEscalaFont(delta: number) {
   const opciones = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2];
   let idx = opciones.indexOf(Number(cfg.fontScale));
   if (idx < 0) {

@@ -35,7 +35,7 @@ defineProps({
 const emit = defineEmits(['ok', 'cancelar']);
 
 // reka-ui cierra el dialogo con Escape/click-fuera -> lo tratamos como cancelar
-function onOpenChange(open) {
+function onOpenChange(open: boolean) {
   if (!open) emit('cancelar');
 }
 </script>

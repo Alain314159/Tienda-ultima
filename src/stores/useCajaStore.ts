@@ -97,7 +97,7 @@ export const useCajaStore = defineStore('caja', () => {
   /**
    * Registra un movimiento de caja
    */
-  async function registrarMovimiento(tipo, monto, concepto = '', metodoPago = 'efectivo') {
+  async function registrarMovimiento(tipo: MovCaja['tipo'], monto: number, concepto = '', metodoPago = 'efectivo') {
     try {
       await P(db.movCaja, {
         id: genId('mc'),
@@ -118,7 +118,7 @@ export const useCajaStore = defineStore('caja', () => {
   /**
    * Realiza un arqueo de caja
    */
-  async function hacerArqueo(cajaFisica, faltanteSobrante, nota = '') {
+  async function hacerArqueo(cajaFisica: number, faltanteSobrante: number, nota = '') {
     try {
       const arqueo = {
         id: genId('arq'),

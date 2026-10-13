@@ -2,9 +2,34 @@
 // Incluye: alertas de negocio + info + contexto temporal.
 // Sin detecciones de tendencia por producto ni predicciones.
 
-import type { Recomendacion } from './types';
+import type { Ajuste, Compra, Config, Cierre, Gasto, Lote, MovCaja, Producto, Recomendacion, Venta } from './types';
 
-export function generarRecomendaciones(state) {
+/** Estado que inyecta useInsightsStore al motor de recomendaciones. */
+export interface InsightsState {
+  ventas: Venta[];
+  compras: Compra[];
+  gastos: Gasto[];
+  ajustes: Ajuste[];
+  productos: Producto[];
+  lotes: Lote[];
+  cierres: Cierre[];
+  movCaja: MovCaja[];
+  saldoCaja: number;
+  cfg: Config;
+  formatMoney: (n: number) => string;
+  formatNum: (n: number) => string;
+  stockDe: (pid: string) => number;
+}
+
+/** Datos que necesita el contexto temporal. */
+interface ContextoData {
+  ventas: Venta[];
+  totalMes: number;
+  diasSinCierre: number;
+  formatMoney: (n: number) => string;
+}
+
+export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   const out: Recomendacion[] = [];
   const {
     ventas,
@@ -57,7 +82,7 @@ export function generarRecomendaciones(state) {
   const totalSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.total || 0), 0);
   const gananciaSemana = ventasSemana.reduce((s, v) => s + (v.ganancia || 0), 0);
 
-  const push = (r) => {
+  const push = (r: Recomendacion) => {
     out.push(r);
   };
 
@@ -112,9 +137,10 @@ export function generarRecomendaciones(state) {
   // ============ ATENCION (peso 50-79) =========================
   // ============================================================
 
+  const fechasCierre = cierres.map((c) => c.fechaCierre || c.fecha || '').filter(Boolean);
   const ultimoCierre =
-    cierres.length > 0
-      ? Math.max(...cierres.map((c) => new Date(c.fechaCierre).getTime()))
+    fechasCierre.length > 0
+      ? Math.max(...fechasCierre.map((f) => new Date(f).getTime()))
       : new Date(cfg.periodoInicio).getTime();
   const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
   if (diasSinCierre >= Number(cfg.umbralDiasCierre || 30)) {
@@ -383,7 +409,7 @@ export function generarRecomendaciones(state) {
 
   // Racha de dias con ventas (ya existe, dejamos que siga)
 
-  const ganPorProd = {};
+  const ganPorProd: Record<string, number> = {};
   ventasMes.forEach((v) =>
     v.items.forEach((it) => {
       ganPorProd[it.productoId] = (ganPorProd[it.productoId] || 0) + Number(it.ganancia || 0);
@@ -511,7 +537,7 @@ export function generarRecomendaciones(state) {
   });
 }
 
-function contextoDelMomento(ahora, data) {
+function contextoDelMomento(ahora: Date, data: ContextoData): Recomendacion | null {
   const dia = ahora.getDay();
   const hora = ahora.getHours();
   const diaMes = ahora.getDate();

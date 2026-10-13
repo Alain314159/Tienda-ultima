@@ -38,7 +38,7 @@ defineProps({
 
 const emit = defineEmits(['update:value', 'ok', 'cancelar']);
 
-function onOpenChange(open) {
+function onOpenChange(open: boolean) {
   if (!open) emit('cancelar');
 }
 </script>

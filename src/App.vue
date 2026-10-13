@@ -210,7 +210,7 @@
         ventas: ventasStore.ventas,
         socios: capitalStore.socios,
         gastos: gastosStore.gastos,
-        stockDe: (pid) => productosStore.stock(pid),
+        stockDe: (pid: string) => productosStore.stock(pid),
         formatMoney: fmt,
       }"
       @cerrar="ui.busquedaGlobalAbierta = false"

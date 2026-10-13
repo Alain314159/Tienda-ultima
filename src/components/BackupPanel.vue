@@ -142,7 +142,7 @@ async function cargarLista() {
     info.value = await BackupFolder.info();
     archivos.value = await BackupFolder.listar();
   } catch (e) {
-    msg.value = 'Error cargando lista: ' + e.message;
+    msg.value = 'Error cargando lista: ' + (e instanceof Error ? e.message : String(e));
     msgTipo.value = 'error';
   } finally {
     cargando.value = false;
@@ -160,7 +160,7 @@ async function hacerBackupAhora() {
     msgTipo.value = 'ok';
     await cargarLista();
   } catch (e) {
-    msg.value = 'Error: ' + e.message;
+    msg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
     msgTipo.value = 'error';
   } finally {
     guardando.value = false;
@@ -172,7 +172,7 @@ async function restaurarUltimo() {
   await restaurar(archivos.value[0].name);
 }
 
-async function restaurar(nombre) {
+async function restaurar(nombre: string) {
   if (!confirm('¿Restaurar el backup "' + nombre + '"?\nSe reemplazarán TODOS los datos actuales.')) return;
   restaurando.value = true;
   msg.value = '';
@@ -183,7 +183,7 @@ async function restaurar(nombre) {
     msg.value = 'Backup restaurado correctamente';
     msgTipo.value = 'ok';
   } catch (e) {
-    msg.value = 'Error: ' + e.message;
+    msg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
     msgTipo.value = 'error';
   } finally {
     restaurando.value = false;

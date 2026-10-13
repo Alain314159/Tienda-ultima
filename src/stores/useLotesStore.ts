@@ -27,7 +27,7 @@ export const useLotesStore = defineStore('lotes', () => {
    * Lotes por producto (agrupados)
    */
   const lotesPorProducto = computed(() => {
-    const map = {};
+    const map: Record<string, Lote[]> = {};
     for (const l of lotes.value) {
       const pid = l.productoId;
       if (!map[pid]) map[pid] = [];
@@ -46,7 +46,7 @@ export const useLotesStore = defineStore('lotes', () => {
    * Mapa de stock por producto
    */
   const stockMap = computed(() => {
-    const map = {};
+    const map: Record<string, number> = {};
 
     // Inicializar con 0 para todos los productos
     // (se actualizará cuando se carguen los productos)
@@ -75,7 +75,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Obtiene el stock de un producto específico
    */
-  function stock(productoId) {
+  function stock(productoId: string) {
     const lotesDelProducto = lotes.value.filter((l) => l.productoId === productoId);
     return m(
       lotesDelProducto.reduce((sum, l) => {
@@ -87,7 +87,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Verifica si un lote tiene ventas registradas
    */
-  function loteSinVentas(loteId) {
+  function loteSinVentas(loteId: string) {
     const lote = lotes.value.find((l) => l.id === loteId);
     return lote && n(lote.cantidadVendida) <= 0;
   }
@@ -95,7 +95,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Calcula el costo FIFO para una cantidad de producto
    */
-  function calcFIFO(productoId, cantidad) {
+  function calcFIFO(productoId: string, cantidad: number) {
     return _calcFIFOBase(productoId, cantidad, lotes.value);
   }
 
@@ -115,7 +115,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Guarda un lote
    */
-  async function guardarLote(lote) {
+  async function guardarLote(lote: Lote) {
     try {
       await P(db.lotes, lote);
       await cargarLotes();
@@ -128,7 +128,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Elimina un lote (solo si no tiene ventas)
    */
-  async function eliminarLote(loteId) {
+  async function eliminarLote(loteId: string) {
     try {
       if (!loteSinVentas(loteId)) {
         throw new Error('No se puede eliminar: el lote tiene ventas registradas');
@@ -145,7 +145,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Actualiza lotes en batch
    */
-  async function actualizarLotesBatch(lotesActualizados) {
+  async function actualizarLotesBatch(lotesActualizados: Lote[]) {
     try {
       await db.lotes.bulkPut(lotesActualizados);
       await cargarLotes();
@@ -158,7 +158,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Lotes de un producto específico
    */
-  function lotesDeProducto(pid) {
+  function lotesDeProducto(pid: string) {
     return lotes.value
       .filter((l) => l.productoId === pid && n(l.cantidadInicial) - n(l.cantidadVendida) > 0)
       .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime() || (a.id < b.id ? -1 : 1));
@@ -167,7 +167,7 @@ export const useLotesStore = defineStore('lotes', () => {
   /**
    * Valor de lotes de un producto
    */
-  function valorLotesProducto(pid) {
+  function valorLotesProducto(pid: string) {
     return m(lotesDeProducto(pid).reduce((s, l) => s + (n(l.cantidadInicial) - n(l.cantidadVendida)) * n(l.costo), 0));
   }
 
