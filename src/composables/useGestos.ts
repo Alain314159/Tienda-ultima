@@ -1,8 +1,17 @@
 /**
- * Composable de gestos táctiles: swipe horizontal entre secciones
- * y pull-to-refresh. Se crea una sola vez en App.vue (shell).
+ * Composable de gestos táctiles.
+ *
+ * - Swipe horizontal entre secciones: delegado a VueUse `useSwipe`
+ *   (librería ya instalada; listeners, umbral y dirección gestionados).
+ * - Pull-to-refresh: implementación propia (~60 líneas) — no existe
+ *   librería mantenida que lo cubra sin traer un framework UI completo
+ *   (pulltorefresh-js está abandonado; Vant/Ionic son frameworks enteros).
+ *
+ * Se crea una sola vez en App.vue (shell).
  */
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
+import { useSwipe } from '@vueuse/core';
+import type { Router } from 'vue-router';
 import { useUIStore } from '../stores/useUIStore';
 import { recargarTodoStores } from '../stores/recarga';
 import { toastMsg } from '../utils/toast';
@@ -11,10 +20,11 @@ import { toastMsg } from '../utils/toast';
 const SECCIONES_SWIPE = ['dashboard', 'ventas', 'compras', 'inventario'];
 
 /**
- * @param {import('vue-router').Router} router
- * @param {() => string} secActual getter de la sección/ruta actual
+ * @param router router de la app
+ * @param secActual getter de la sección/ruta actual
+ * @param target ref del elemento <main> sobre el que se escuchan los gestos
  */
-export function useGestos(router, secActual) {
+export function useGestos(router: Router, secActual: () => string, target: Ref<HTMLElement | null>) {
   const ui = useUIStore();
 
   const pullDist = ref(0);
@@ -22,11 +32,44 @@ export function useGestos(router, secActual) {
 
   let _pullStartY = 0;
   let _pulling = false;
-  let _swipeStartX = null;
-  let _swipeStartY = null;
   let _swipeStartTime = 0;
-  let _swipeActivo = false;
+  let _inicioEnInput = false;
 
+  // ===== SWIPE HORIZONTAL (VueUse useSwipe, umbral 30px) =====
+  const { isSwiping, direction, lengthX, lengthY } = useSwipe(target, {
+    threshold: 30,
+    onSwipeStart: (e: TouchEvent) => {
+      _swipeStartTime = Date.now();
+      const t = e.target as HTMLElement | null;
+      _inicioEnInput =
+        !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+    },
+    onSwipeEnd: () => {
+      if (_inicioEnInput || _gestoBloqueado()) return;
+      const dx = Math.abs(lengthX.value);
+      const dy = Math.abs(lengthY.value);
+      // Compromiso original: >80px, horizontal dominante (1.5x) y <1s
+      if (dx > 80 && dx > dy * 1.5 && Date.now() - _swipeStartTime < 1000) {
+        if (direction.value === 'left') irSeccionSiguiente();
+        else if (direction.value === 'right') irSeccionAnterior();
+      }
+    },
+  });
+
+  function _gestoBloqueado() {
+    return (
+      ui.ajustesAbierto ||
+      ui.masAbierto ||
+      ui.cobroAbierto ||
+      ui.confirm.activo ||
+      ui.prompt.activo ||
+      ui.retiroAbierto ||
+      ui.aporteAbierto ||
+      ui.shareSheetAbierto
+    );
+  }
+
+  // ===== PULL-TO-REFRESH (propio) =====
   async function onPullRefresh() {
     if (refrescando.value) return;
     refrescando.value = true;
@@ -40,75 +83,37 @@ export function useGestos(router, secActual) {
     toastMsg('Datos actualizados');
   }
 
-  function onTouchStart(e) {
-    const hayModal =
-      ui.ajustesAbierto ||
-      ui.masAbierto ||
-      ui.cobroAbierto ||
-      ui.confirm.activo ||
-      ui.prompt.activo ||
-      ui.retiroAbierto ||
-      ui.aporteAbierto ||
-      ui.shareSheetAbierto;
-
-    const target = e.target;
+  function onTouchStart(e: TouchEvent) {
+    if (_gestoBloqueado()) return;
+    const target = e.target as HTMLElement | null;
     const esInput =
-      target &&
+      !!target &&
       (target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.tagName === 'SELECT' ||
         target.isContentEditable);
-
-    if (hayModal || esInput) {
-      _swipeStartX = null;
-      return;
-    }
-
-    const t = e.touches[0];
+    if (esInput) return;
 
     if (window.scrollY <= 0) {
-      _pullStartY = t.clientY;
+      _pullStartY = e.touches[0].clientY;
       _pulling = true;
     }
-
-    _swipeStartX = t.clientX;
-    _swipeStartY = t.clientY;
-    _swipeStartTime = Date.now();
-    _swipeActivo = false;
   }
 
-  function onTouchMove(e) {
-    const t = e.touches[0];
-
-    if (_swipeStartX !== null) {
-      const dx = t.clientX - _swipeStartX;
-      const dy = t.clientY - (_swipeStartY ?? 0);
-      if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        _swipeActivo = true;
-        _pulling = false;
-        pullDist.value = 0;
-      }
+  function onTouchMove(e: TouchEvent) {
+    // Un swipe horizontal activo (VueUse) cancela el pull
+    if (isSwiping.value && (direction.value === 'left' || direction.value === 'right')) {
+      _pulling = false;
+      pullDist.value = 0;
+      return;
     }
-
-    if (_pulling && !_swipeActivo) {
-      const dy = t.clientY - _pullStartY;
+    if (_pulling) {
+      const dy = e.touches[0].clientY - _pullStartY;
       if (dy > 0) pullDist.value = Math.min(dy, 90);
     }
   }
 
-  function onTouchEnd(e) {
-    if (_swipeActivo && _swipeStartX !== null && e.changedTouches && e.changedTouches.length > 0) {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - _swipeStartX;
-      const tiempo = Date.now() - _swipeStartTime;
-      const umbral = 80;
-
-      if (Math.abs(dx) > umbral && tiempo < 1000) {
-        if (dx < 0) irSeccionSiguiente();
-        else irSeccionAnterior();
-      }
-    }
-
+  function onTouchEnd() {
     if (_pulling) {
       if (pullDist.value >= 70) onPullRefresh();
       _pulling = false;
@@ -116,11 +121,6 @@ export function useGestos(router, secActual) {
         pullDist.value = 0;
       }, 300);
     }
-
-    _swipeStartX = null;
-    _swipeStartY = null;
-    _swipeStartTime = 0;
-    _swipeActivo = false;
   }
 
   function irSeccionSiguiente() {

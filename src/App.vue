@@ -124,7 +124,7 @@
       </div>
     </header>
 
-    <main @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
+    <main ref="mainEl" @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="onTouchEnd">
       <router-view />
     </main>
 
@@ -309,8 +309,9 @@ const mostrarAvisoTienda = ref(false);
 let _tabId: string | null = null;
 let _bc: BroadcastChannel | null = null;
 
-// ===== GESTOS (swipe + pull-to-refresh) =====
-const { pullDist, refrescando, onTouchStart, onTouchMove, onTouchEnd } = useGestos(router, () => sec.value);
+// ===== GESTOS (swipe: VueUse useSwipe + pull-to-refresh propio) =====
+const mainEl = ref<HTMLElement | null>(null);
+const { pullDist, refrescando, onTouchStart, onTouchMove, onTouchEnd } = useGestos(router, () => sec.value, mainEl);
 
 // ===== NAVEGACIÓN =====
 function ir(s: string, refId?: string) {
