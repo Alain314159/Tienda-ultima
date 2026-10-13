@@ -642,27 +642,33 @@ async function inicializar() {
 }
 
 // ===== CICLO DE VIDA =====
+const _onPwaUpdate = () => {
+  hayUpdate.value = true;
+};
+const _onOnline = () => {
+  telegram.tgProcesarCola().catch(() => {});
+};
+const _onVisibility = () => {
+  if (document.visibilityState === 'hidden') _flushPendientes();
+};
+
 onMounted(() => {
   inicializar();
 
-  window.addEventListener('pwa:update', () => {
-    hayUpdate.value = true;
-  });
-  window.addEventListener('online', () => {
-    telegram.tgProcesarCola().catch(() => {});
-  });
-  window.addEventListener('resize', () => {
-    // Los gráficos se repintan solos al re-montar DashboardView
-  });
+  window.addEventListener('pwa:update', _onPwaUpdate);
+  window.addEventListener('online', _onOnline);
   // Flush al cerrar/cambiar de visibilidad (evita perder carrito por debounce)
   window.addEventListener('beforeunload', _flushPendientes);
   window.addEventListener('pagehide', _flushPendientes);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') _flushPendientes();
-  });
+  document.addEventListener('visibilitychange', _onVisibility);
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('pwa:update', _onPwaUpdate);
+  window.removeEventListener('online', _onOnline);
+  window.removeEventListener('beforeunload', _flushPendientes);
+  window.removeEventListener('pagehide', _flushPendientes);
+  document.removeEventListener('visibilitychange', _onVisibility);
   if (_bc) {
     try {
       _bc.close();

@@ -16,7 +16,7 @@ import { useUIStore } from './useUIStore';
 import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
-import { derivarClave, hashContenido } from '../services/backup';
+import { derivarClave, hashContenido, aBase64, desdeBase64 } from '../services/backup';
 
 export const useBackupStore = defineStore('backup', () => {
   const configStore = useConfigStore();
@@ -73,15 +73,20 @@ export const useBackupStore = defineStore('backup', () => {
       const enc = new TextEncoder();
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const iv = crypto.getRandomValues(new Uint8Array(12));
-      const key = await derivarClave(pass, salt);
+      // 600k iteraciones (OWASP 2023+ para PBKDF2-SHA256); el sobre declara
+      // las suyas para que importadores futuros puedan bajar el coste.
+      const ITER = 600000;
+      const key = await derivarClave(pass, salt, ITER);
       const json = enc.encode(JSON.stringify(data));
       const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, json);
       const out = {
-        version: 1,
+        version: 2,
         cifrado: true,
-        salt: btoa(String.fromCharCode(...salt)),
-        iv: btoa(String.fromCharCode(...iv)),
-        data: btoa(String.fromCharCode(...new Uint8Array(cipher))),
+        kdf: { algo: 'PBKDF2-SHA256', iter: ITER },
+        salt: aBase64(salt),
+        iv: aBase64(iv),
+        // Base64 por trozos: el spread ...bytes desbordaba la pila con >64KB
+        data: aBase64(new Uint8Array(cipher)),
       };
       descargar(
         new Blob([JSON.stringify(out)], { type: 'application/json' }),
@@ -118,10 +123,12 @@ export const useBackupStore = defineStore('backup', () => {
           });
           if (!pass) return toastMsg('Cancelado', TOAST.WARN);
           try {
-            const salt = Uint8Array.from(atob(d.salt), (c) => c.charCodeAt(0));
-            const iv = Uint8Array.from(atob(d.iv), (c) => c.charCodeAt(0));
-            const cipher = Uint8Array.from(atob(d.data), (c) => c.charCodeAt(0));
-            const key = await derivarClave(pass, salt);
+            const salt = desdeBase64(d.salt);
+            const iv = desdeBase64(d.iv);
+            const cipher = desdeBase64(d.data);
+            // v1 usaba 100k iteraciones y no lo declaraba; v2+ lo declara
+            const iter = d.kdf?.iter || 100000;
+            const key = await derivarClave(pass, salt, iter);
             const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
             d = JSON.parse(new TextDecoder().decode(json));
           } catch {

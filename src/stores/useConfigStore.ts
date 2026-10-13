@@ -7,6 +7,7 @@ import { ref, computed } from 'vue';
 import type { Config } from '../types';
 import { P } from '../utils/id';
 import { db } from '../db';
+import { esPinHasheado, hashPin } from '../services/pin';
 
 export const useConfigStore = defineStore('config', () => {
   // ===== ESTADO =====
@@ -87,10 +88,15 @@ export const useConfigStore = defineStore('config', () => {
   // ===== ACCIONES =====
 
   /**
-   * Guarda la configuración en IndexedDB
+   * Guarda la configuración en IndexedDB.
+   * El PIN (si existe y no está hasheado) se guarda como hash PBKDF2:
+   * nunca persiste en claro.
    */
   async function guardarCfg() {
     try {
+      if (cfg.value.pin && !esPinHasheado(cfg.value.pin)) {
+        cfg.value.pin = await hashPin(cfg.value.pin);
+      }
       await P(db.config, { key: 'cfg', value: cfg.value });
     } catch (e) {
       console.error('Error guardando configuración:', e);
@@ -125,13 +131,18 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   /**
-   * Carga la configuración desde IndexedDB
+   * Carga la configuración desde IndexedDB. Migra en segundo plano
+   * los PIN legacy en claro a hash PBKDF2.
    */
   async function cargarCfg() {
     try {
       const configGuardada = await db.config.get('cfg');
       if (configGuardada) {
         cfg.value = { ...cfg.value, ...(configGuardada.value as object) };
+        // Migración one-shot: PIN en claro -> hash (no bloquea el arranque)
+        if (cfg.value.pin && cfg.value.pinActivo && !esPinHasheado(cfg.value.pin)) {
+          void guardarCfg();
+        }
       }
     } catch (e) {
       console.error('Error cargando configuración:', e);

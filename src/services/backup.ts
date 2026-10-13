@@ -32,19 +32,41 @@ export async function descomprimirGzip(blob) {
   }
 }
 
-/** Deriva una clave AES-256-GCM desde una contraseña (PBKDF2, 100k iteraciones). */
-export async function derivarClave(password, salt) {
+/**
+ * Deriva una clave AES-256-GCM desde una contraseña (PBKDF2-SHA256).
+ * `iteraciones` por defecto 600k (OWASP 2023+ para SHA-256); los sobres
+ * cifrados v1 usaban 100k y se indican en el campo kdf.iter del sobre.
+ */
+export async function derivarClave(password, salt, iteraciones = 600000) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, [
     'deriveKey',
   ]);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: iteraciones, hash: 'SHA-256' },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt', 'decrypt']
   );
+}
+
+/** Base64 de un Uint8Array en trozos (el spread `...bytes` desborda la pila con >64KB). */
+export function aBase64(bytes) {
+  let bin = '';
+  const TROZO = 0x8000;
+  for (let i = 0; i < bytes.length; i += TROZO) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + TROZO));
+  }
+  return btoa(bin);
+}
+
+/** Uint8Array desde Base64 (simétrico de aBase64). */
+export function desdeBase64(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
 // Handle de carpeta persistido (File System Access API)

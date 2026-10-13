@@ -8,6 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Tienda Pro">
   <meta name="description" content="Gestión de tienda con datos locales">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss: https://tienda-proxy.tienda-ul5r2q.workers.dev https://api.capgo.app; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'"
+  />
   <title>Tienda Pro</title>
   <link rel="icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
@@ -16,17 +20,6 @@
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
   <!-- Eruda: se carga dinamicamente desde Ajustes cuando se activa -->
-  <script>
-    window.__loadEruda = function() {
-      if (window.eruda) { try { window.eruda.init(); } catch(e){} return; }
-      var sc = document.createElement('script');
-      sc.src = 'https://cdn.jsdelivr.net/npm/eruda';
-      sc.onload = function() { try { window.eruda.init(); } catch(e){} };
-      document.head.appendChild(sc);
-    };
-    window.__unloadEruda = function() {
-      if (window.eruda && window.eruda.destroy) { try { window.eruda.destroy(); } catch(e){} }
-    };
-  </script>
+  <script src="./eruda.js"></script>
 </body>
 </html>

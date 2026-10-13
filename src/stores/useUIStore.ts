@@ -9,6 +9,7 @@ import { ref, reactive, computed, watch } from 'vue';
 import { useConfigStore } from './useConfigStore';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
+import { verificarPin } from '../services/pin';
 
 export const useUIStore = defineStore('ui', () => {
   // ===== MODALES / PANELES =====
@@ -136,8 +137,9 @@ export const useUIStore = defineStore('ui', () => {
       placeholder: '••••',
       type: 'password',
       value: '',
-      onOk: (v) => {
-        if (v === configStore.cfg.pin) cb();
+      onOk: async (v) => {
+        const ok = await verificarPin(v, configStore.cfg.pin);
+        if (ok) cb();
         else toastMsg('PIN incorrecto', TOAST.BAD);
       },
     });

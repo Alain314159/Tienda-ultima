@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { comprimirGzip, descomprimirGzip, derivarClave } from '../src/services/backup';
+import { comprimirGzip, descomprimirGzip, derivarClave, aBase64, desdeBase64 } from '../src/services/backup';
 import { hashContenido } from '../src/services/hash';
 
 describe('gzip nativo (backup)', () => {
@@ -57,6 +57,29 @@ describe('hashContenido: SHA-256 truncado', () => {
   });
 });
 
+describe('base64 por trozos (backups grandes)', () => {
+  it('roundtrip con payload de 500KB (el spread ...bytes desbordaba la pila)', () => {
+    const grande = new Uint8Array(500 * 1024);
+    for (let i = 0; i < grande.length; i++) grande[i] = i % 251;
+    const b64 = aBase64(grande);
+    const back = desdeBase64(b64);
+    expect(back.length).toBe(grande.length);
+    expect(back[500000]).toBe(grande[500000]);
+    expect(back.every((v, i) => v === grande[i])).toBe(true);
+  });
+
+  it('coincide con btoa/atob en payloads pequeños', () => {
+    const bytes = new Uint8Array([104, 111, 108, 97]);
+    expect(aBase64(bytes)).toBe(btoa('hola'));
+    expect(Array.from(desdeBase64(btoa('hola')))).toEqual([104, 111, 108, 97]);
+  });
+
+  it('payload vacío produce base64 vacío', () => {
+    expect(aBase64(new Uint8Array(0))).toBe('');
+    expect(desdeBase64('').length).toBe(0);
+  });
+});
+
 describe('derivarClave: PBKDF2 → AES-256-GCM', () => {
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
@@ -90,5 +113,34 @@ describe('derivarClave: PBKDF2 → AES-256-GCM', () => {
     const k2 = await derivarClave('otro-secreto', salt);
     const c = await cifrar(k1, 'x');
     await expect(descifrar(k2, c)).rejects.toThrow();
+  });
+
+  it('iteraciones explícitas: 100k (v1 legacy) y 600k (v2) derivan claves distintas', async () => {
+    const kLegacy = await derivarClave('pass', salt, 100000);
+    const kNueva = await derivarClave('pass', salt, 600000);
+    const c = await cifrar(kNueva, 'dato');
+    // La clave legacy no puede descifrar lo cifrado con 600k
+    await expect(descifrar(kLegacy, c)).rejects.toThrow();
+  });
+
+  it('simulación de sobre v1 legacy: cifrado con 100k se descifra indicando 100k', async () => {
+    // Reproduce el camino de onImportFile con un sobre version:1 (sin kdf)
+    const kLegacy = await derivarClave('pass', salt, 100000);
+    const { iv, buf } = await cifrar(kLegacy, '{"ventas":[]}');
+    const sobre = {
+      version: 1,
+      cifrado: true,
+      salt: aBase64(salt),
+      iv: aBase64(iv),
+      data: aBase64(new Uint8Array(buf)),
+    };
+    const iter = sobre.kdf?.iter || 100000;
+    const k = await derivarClave('pass', desdeBase64(sobre.salt), iter);
+    const json = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: desdeBase64(sobre.iv) },
+      k,
+      desdeBase64(sobre.data)
+    );
+    expect(JSON.parse(new TextDecoder().decode(json))).toEqual({ ventas: [] });
   });
 });
