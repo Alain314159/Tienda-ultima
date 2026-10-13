@@ -5,12 +5,15 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Ajuste } from '../types';
+import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
+import { useConfigStore } from './useConfigStore';
 
 export const useAjustesStore = defineStore('ajustes', () => {
   // ===== STORES DEPENDIENTES =====
   const lotesStore = useLotesStore();
+  const configStore = useConfigStore();
 
   // ===== ESTADO =====
   const ajustes = ref<Ajuste[]>([]);
@@ -29,6 +32,19 @@ export const useAjustesStore = defineStore('ajustes', () => {
    */
   const ajustesRecientes = computed(() => {
     return ajustesOrdenados.value.slice(0, 20);
+  });
+
+  /**
+   * Mermas del período actual: ajustes de salida (cantidad < 0)
+   * desde periodoInicio, valoradas a costoPerdida.
+   */
+  const mermasPeriodo = computed(() => {
+    const ini = new Date(configStore.periodoInicio);
+    return m(
+      ajustes.value
+        .filter((a) => n(a.cantidad) < 0 && new Date(a.fecha) >= ini)
+        .reduce((s, a) => s + n(a.costoPerdida), 0)
+    );
   });
 
   // ===== ACCIONES =====
@@ -65,6 +81,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
     ajustes,
     ajustesOrdenados,
     ajustesRecientes,
+    mermasPeriodo,
     cargarAjustes,
     recargarStores,
   };

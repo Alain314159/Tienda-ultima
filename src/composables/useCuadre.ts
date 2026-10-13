@@ -131,7 +131,8 @@ export function useCuadre() {
     if (i > f) return toastMsg('Fecha inicio > fin', TOAST.BAD);
 
     const vp = ventasStore.ventas.filter((v) => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
-    const cp = comprasStore.compras.filter((c) => new Date(c.fecha) >= i && new Date(c.fecha) <= f);
+    // Las compras anuladas revierten su lote: no deben contar como compras del período
+    const cp = comprasStore.compras.filter((c) => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
     const gp = ajustesStore.ajustes.filter((a) => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
 
     const gastosTotal = m(

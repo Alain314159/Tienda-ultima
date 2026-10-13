@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Cierre, Compra, Ajuste } from '../types';
+import type { Cierre } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
@@ -12,6 +12,9 @@ import { useVentasStore } from './useVentasStore';
 import { useGastosStore } from './useGastosStore';
 import { useLotesStore } from './useLotesStore';
 import { useConfigStore } from './useConfigStore';
+import { useComprasStore } from './useComprasStore';
+import { useAjustesStore } from './useAjustesStore';
+import { useCajaStore } from './useCajaStore';
 import { diasEntre, formatoDisplay } from '../utils/formato';
 
 export const useCierresStore = defineStore('cierres', () => {
@@ -20,6 +23,11 @@ export const useCierresStore = defineStore('cierres', () => {
   const gastosStore = useGastosStore();
   const lotesStore = useLotesStore();
   const configStore = useConfigStore();
+  const comprasStore = useComprasStore();
+  const ajustesStore = useAjustesStore();
+  // NOTA: useCajaStore NO se instancia a nivel de setup: capital → cierres →
+  // caja → capital crearía un ciclo de inicialización. Se usa lazy dentro de
+  // cerrarPeriodo(), cuando todos los stores ya están creados.
 
   // ===== ESTADO =====
   const cierres = ref<Cierre[]>([]);
@@ -29,7 +37,10 @@ export const useCierresStore = defineStore('cierres', () => {
 
   /**
    * Ganancia neta del período actual
-   * Incluye retiros de ganancia del período
+   * Fórmula alineada con el cuadre: bruta - gastos - mermas.
+   * Los retiros de ganancia NO se restan aquí: son distribuciones del
+   * beneficio (no gastos) y ya los descuenta gananciaDisponible en
+   * useCapitalStore; restarlos aquí sería doble conteo.
    */
   const gananciaNetaPeriodo = computed(() => {
     // Ganancia bruta de ventas del período
@@ -38,13 +49,10 @@ export const useCierresStore = defineStore('cierres', () => {
     // Gastos del período
     const gastos = gastosStore.gastosOpPeriodo;
 
-    // Mérmas del período
-    const mermas = 0; // TODO: Conectar con ajustesStore
+    // Mérmas del período (ajustes de salida valorados a costo)
+    const mermas = ajustesStore.mermasPeriodo;
 
-    // Retiros de ganancia del período
-    const retirosPeriodo = 0; // TODO: Conectar con capitalStore
-
-    return m(bruta - gastos - mermas - retirosPeriodo);
+    return m(bruta - gastos - mermas);
   });
 
   /**
@@ -55,11 +63,10 @@ export const useCierresStore = defineStore('cierres', () => {
   });
 
   /**
-   * Compras del período actual
+   * Compras del período actual (no anuladas)
    */
   const comprasPeriodo = computed(() => {
-    // TODO: Conectar con comprasStore
-    return 0;
+    return comprasStore.comprasPeriodo;
   });
 
   /**
@@ -125,21 +132,27 @@ export const useCierresStore = defineStore('cierres', () => {
       const ventasRango = ventasStore.ventas.filter(
         (v) => !v.anulada && new Date(v.fecha) >= ini && new Date(v.fecha) <= f
       );
-      const comprasRango: Compra[] = []; // TODO: Filtrar compras
+      const comprasRango = comprasStore.compras.filter(
+        (c) => !c.anulada && new Date(c.fecha) >= ini && new Date(c.fecha) <= f
+      );
       const gastosRango = gastosStore.gastos.filter((g) => new Date(g.fecha) >= ini && new Date(g.fecha) <= f);
-      const mermasRango: Ajuste[] = []; // TODO: Filtrar ajustes
+      const mermasRango = ajustesStore.ajustes.filter(
+        (a) => a.cantidad < 0 && new Date(a.fecha) >= ini && new Date(a.fecha) <= f
+      );
 
       // Calcular totales
       const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
-      const cogs = m(
-        ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo) * n(it.cantidad), 0), 0)
-      );
+      // it.costo es el costo TOTAL de la línea (así lo guarda useCobro y lo
+      // lee useCuadre): no se multiplica por cantidad otra vez
+      const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
       const bruta = m(totVentas - cogs);
       const totGastos = m(gastosRango.reduce((s, g) => s + n(g.monto), 0));
-      const totMermas = m(mermasRango.reduce((s, a) => s + n((a as { costoPerdida?: number }).costoPerdida || 0), 0));
+      const totMermas = m(mermasRango.reduce((s, a) => s + n(a.costoPerdida), 0));
       const gananciaNeta = m(bruta - totGastos - totMermas);
 
-      const totCompras = m(comprasRango.reduce((s, c) => s + n((c as { total?: number }).total), 0));
+      const totCompras = m(comprasRango.reduce((s, c) => s + n(c.total), 0));
+      // Lazy para evitar el ciclo de stores (ver nota arriba)
+      const cajaFinal = useCajaStore().saldoCaja;
 
       const cierre = {
         id: genId('c'),
@@ -155,7 +168,7 @@ export const useCierresStore = defineStore('cierres', () => {
         mermas: totMermas,
         ganancia: gananciaNeta,
         valorInventario: lotesStore.valorInventario,
-        cajaFinal: 0, // TODO: Calcular saldo de caja al cierre
+        cajaFinal,
       };
 
       await P(db.cierres, cierre);

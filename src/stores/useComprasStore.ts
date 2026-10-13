@@ -59,15 +59,6 @@ export const useComprasStore = defineStore('compras', () => {
     return m(compras.value.filter((c) => !c.anulada).reduce((s, c) => s + n(c.total), 0));
   });
 
-  /**
-   * Margen del período
-   */
-  const margenPeriodo = computed(() => {
-    const ventasPeriodo = 0; // Se obtendrá de ventasStore
-    const gananciaNetaPeriodo = 0; // Se obtendrá de cierresStore
-    return ventasPeriodo > 0 ? ((gananciaNetaPeriodo / ventasPeriodo) * 100).toFixed(2) : '0.00';
-  });
-
   // ===== ACCIONES =====
 
   /**
@@ -213,7 +204,6 @@ export const useComprasStore = defineStore('compras', () => {
     comprasOrdenadas,
     comprasPeriodo,
     comprasTotal,
-    margenPeriodo,
     cargarCompras,
     guardarCompra,
     anularCompra,

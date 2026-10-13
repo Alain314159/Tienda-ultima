@@ -157,8 +157,8 @@ defineOptions({ name: 'StatusPanel' });
 
 defineEmits(['close']);
 
-// TODO: mover a variable de entorno (VITE_GITHUB_TOKEN) — no debe vivir en el codigo
-const GITHUB_TOKEN = '';
+// Token de solo-lectura para la API de GitHub (opcional, via .env.local)
+const GITHUB_TOKEN = import.meta.env.VITE_GITHUB_TOKEN || '';
 const GITHUB_REPO = 'Alain314159/Tienda-ultima';
 
 const configStore = useConfigStore();

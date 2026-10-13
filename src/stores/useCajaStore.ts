@@ -11,12 +11,14 @@ import { db } from '../db';
 import { useVentasStore } from './useVentasStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useConfigStore } from './useConfigStore';
+import { useComprasStore } from './useComprasStore';
 
 export const useCajaStore = defineStore('caja', () => {
   // ===== STORES DEPENDIENTES =====
   const ventasStore = useVentasStore();
   const capitalStore = useCapitalStore();
   const configStore = useConfigStore();
+  const comprasStore = useComprasStore();
 
   // ===== ESTADO =====
   const movCaja = ref<MovCaja[]>([]);
@@ -30,9 +32,12 @@ export const useCajaStore = defineStore('caja', () => {
    */
   const saldoCaja = computed(() => {
     const ini = n(configStore.capitalInicial);
-    const aportes = capitalStore.capitalTotal;
+    // Solo los aportes adicionales: capitalTotal ya incluye capitalInicial
+    // y sumarlo aquí duplicaría el efectivo inicial en caja.
+    const aportes = capitalStore.aportesTotal;
     const retiros = capitalStore.retirosTotal;
-    const compras = 0; // TODO: Conectar con comprasStore
+    // Compras del período no anuladas (mismo criterio que ventasPeriodo)
+    const compras = comprasStore.comprasPeriodo;
     const arq = calcularSaldoArqueos();
 
     return m(ini + aportes + ventasStore.ventasPeriodo - compras - retiros + arq);

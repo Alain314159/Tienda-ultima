@@ -69,7 +69,8 @@ function semillarDatos() {
   ];
   comprasStore.compras = [
     { id: 'c_1', fecha: AHORA(), productoId: 'p_1', cantidad: 10, costo: 10, total: 100 },
-    { id: 'c_2', fecha: HACE(40), productoId: 'p_1', cantidad: 99, costo: 1, total: 99 }, // fuera de rango
+    { id: 'c_2', fecha: AHORA(), productoId: 'p_1', cantidad: 5, costo: 10, total: 50, anulada: true }, // anulada en rango
+    { id: 'c_3', fecha: HACE(45), productoId: 'p_1', cantidad: 99, costo: 1, total: 99 }, // fuera de rango
   ];
   ajustesStore.ajustes = [
     { id: 'a_1', fecha: AHORA(), productoId: 'p_1', cantidad: -2, costoPerdida: 20, motivo: 'rotura' },
@@ -227,7 +228,7 @@ describe('generarReporte', () => {
     const vendida = p1.subfilas[0];
     expect(vendida.costo).toBe(10);
     expect(vendida.precio).toBe(15);
-    expect(vendida.comprasCant).toBe(10); // la compra fuera de rango no cuenta
+    expect(vendida.comprasCant).toBe(10); // la anulada en rango y la fuera de rango no cuentan
     expect(vendida.cantVend).toBe(6);
     expect(vendida.ingresos).toBe(90);
     expect(vendida.costoVend).toBe(60);
