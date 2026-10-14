@@ -14,7 +14,6 @@ import type { Compra } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { useConfigStore } from './useConfigStore';
-import { inicioDiaLocal } from '../utils/fecha';
 
 export const useComprasStore = defineStore('compras', () => {
   // ===== STORES DEPENDIENTES =====

@@ -135,7 +135,17 @@ export interface MovCaja {
 
 /** Tipo de evento de origen de un asiento del libro diario. */
 export type RefTipoAsiento =
-  'capitalInicial' | 'aporteInicial' | 'aporte' | 'compra' | 'venta' | 'costo' | 'gasto' | 'retiro' | 'ajusteCaja' | 'merma' | 'sobrante';
+  | 'capitalInicial'
+  | 'aporteInicial'
+  | 'aporte'
+  | 'compra'
+  | 'venta'
+  | 'costo'
+  | 'gasto'
+  | 'retiro'
+  | 'ajusteCaja'
+  | 'merma'
+  | 'sobrante';
 
 /** Partida del libro diario: cargo a cuentaDebe y abono a cuentaHaber. */
 export interface Asiento {

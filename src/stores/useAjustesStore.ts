@@ -7,13 +7,10 @@ import { ref, computed } from 'vue';
 import type { Ajuste } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
-import { useLotesStore } from './useLotesStore';
 import { useConfigStore } from './useConfigStore';
-import { inicioDiaLocal } from '../utils/fecha';
 
 export const useAjustesStore = defineStore('ajustes', () => {
   // ===== STORES DEPENDIENTES =====
-  const lotesStore = useLotesStore();
   const configStore = useConfigStore();
 
   // ===== ESTADO =====

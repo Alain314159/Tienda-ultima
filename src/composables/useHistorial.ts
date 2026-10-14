@@ -8,7 +8,6 @@ import { reactive, ref } from 'vue';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import type { Cierre } from '../types';
-import { inicioDiaLocal } from '../utils/fecha';
 
 const POR_PAGINA = 20;
 

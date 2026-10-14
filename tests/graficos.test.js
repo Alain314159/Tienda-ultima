@@ -16,8 +16,6 @@ import { useGraficos } from '../src/composables/useGraficos';
 import { useConfigStore } from '../src/stores/useConfigStore';
 import { useVentasStore } from '../src/stores/useVentasStore';
 
-const EN_MS = 1730000000000; // irrelevante, solo para claridad
-
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-14T12:00:00'));

@@ -57,7 +57,16 @@ function semillar() {
       fecha: HACE(1),
       items: [
         { productoId: 'p_1', nombre: 'A', cantidad: 6, precio: 15, costo: 60, ganancia: 30, lotesUsados: [] },
-        { productoId: 'p_1', nombre: 'A', cantidad: 2, precio: 15, costo: 20, ganancia: 10, lotesUsados: [], anulado: true },
+        {
+          productoId: 'p_1',
+          nombre: 'A',
+          cantidad: 2,
+          precio: 15,
+          costo: 20,
+          ganancia: 10,
+          lotesUsados: [],
+          anulado: true,
+        },
       ],
       total: 90,
       ganancia: 30,

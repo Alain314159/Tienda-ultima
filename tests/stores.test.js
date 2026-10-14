@@ -314,7 +314,13 @@ describe('useCapitalStore: aporte inicial de socios', () => {
   it('la caja refleja el aporte inicial del socio (regresión: quedaba en $0)', async () => {
     const s = useCapitalStore();
     const caja = useCajaStore();
-    await db.socios.put({ id: 's1', nombre: 'Alain', porcentaje: 100, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' });
+    await db.socios.put({
+      id: 's1',
+      nombre: 'Alain',
+      porcentaje: 100,
+      aporte: 10000,
+      fecha: '2026-10-01T10:00:00.000Z',
+    });
     await s.cargarTodo();
     expect(caja.saldoCaja).toBe(10000);
   });
@@ -348,7 +354,13 @@ describe('useCapitalStore: aporte inicial de socios', () => {
   });
 
   it('regenerarAsientos incluye los aportes iniciales desde la BD', async () => {
-    await db.socios.put({ id: 's1', nombre: 'Alain', porcentaje: 100, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' });
+    await db.socios.put({
+      id: 's1',
+      nombre: 'Alain',
+      porcentaje: 100,
+      aporte: 10000,
+      fecha: '2026-10-01T10:00:00.000Z',
+    });
     const { regenerarAsientos } = await import('../src/services/libroDiario');
     const total = await regenerarAsientos();
     const guardados = await db.asientos.where('refTipo').equals('aporteInicial').toArray();

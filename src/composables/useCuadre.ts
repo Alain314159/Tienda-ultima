@@ -18,7 +18,6 @@ import { useCapitalStore } from '../stores/useCapitalStore';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 import { generarPDFCuadre as exportarPDF } from '../services/pdf';
-import { inicioDiaLocal } from '../utils/fecha';
 
 export function useCuadre() {
   const configStore = useConfigStore();

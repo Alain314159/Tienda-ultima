@@ -17,20 +17,16 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 
-import { n, m, q } from '../src/utils/numero';
+import { n, m } from '../src/utils/numero';
 import { calcFIFO } from '../src/services/fifo';
 import { generarAsientos, balanzaDeComprobacion, sumaDebe, balanceGeneral, CUENTAS } from '../src/services/libroDiario';
 
 // ===== Generadores =====
 
 /** Dinero razonable: hasta 100k con hasta 2 decimales de entrada. */
-const dinero = fc
-  .double({ min: 0, max: 100000, noNaN: true, next: true })
-  .map((x) => Math.round(x * 100) / 100);
+const dinero = fc.double({ min: 0, max: 100000, noNaN: true, next: true }).map((x) => Math.round(x * 100) / 100);
 
-const dineroChico = fc
-  .double({ min: 0, max: 500, noNaN: true, next: true })
-  .map((x) => Math.round(x * 100) / 100);
+const dineroChico = fc.double({ min: 0, max: 500, noNaN: true, next: true }).map((x) => Math.round(x * 100) / 100);
 
 const fechaIso = fc
   .date({ min: new Date('2020-01-01'), max: new Date('2026-12-31'), noInvalidDate: true })
@@ -124,13 +120,14 @@ const datosLibroArb = fc
     // Espejos movCaja con el contrato real de producción (GastosView):
     // solo gastos con monto > 0 pagados de caja, tipo 'egreso' y mismo monto.
     // El espejo muere con el gasto (eliminarGasto lo borra en la misma tx).
-    const movCaja = d.movCaja.map((m) => ({ ...m }));
+    const movCaja = d.movCaja.map((mv) => ({ ...mv }));
     const gastos = d.gastos.map((g) => {
       if (n(g.monto) > 0 && g.saleDeCaja !== false && d.movCaja.length > 0) {
         const espejo = d.movCaja[Math.floor(Math.random() * d.movCaja.length)];
         return { ...g, movId: espejo.id };
       }
-      const { movId, ...sinMov } = g;
+      const sinMov = { ...g };
+      delete sinMov.movId;
       return sinMov;
     });
     // Los espejos referenciados se alinean con su gasto (monto/tipo reales)
@@ -171,7 +168,7 @@ function resultadoEsperado(d) {
   for (const v of d.ventas) {
     if (v.anulada || n(v.total) <= 0) continue;
     ing += n(v.total);
-    for (const it of v.items) if (!it.anulado) cogs += n(it.costo);
+    for (const item of v.items) if (!item.anulado) cogs += n(item.costo);
   }
   let gastos = 0;
   for (const g of d.gastos) if (n(g.monto) > 0) gastos += n(g.monto);
@@ -514,7 +511,10 @@ describe('property: libro diario de partida doble (services/libroDiario)', () =>
         const antes = generarAsientos(d).length;
         const d2 = {
           ...d,
-          ventas: [...d.ventas, { id: 'v_new', fecha: new Date('2027-06-01').toISOString(), anulada: false, total: tot, items: [] }],
+          ventas: [
+            ...d.ventas,
+            { id: 'v_new', fecha: new Date('2027-06-01').toISOString(), anulada: false, total: tot, items: [] },
+          ],
         };
         const despues = generarAsientos(d2).length;
         return despues === antes + 1; // exactamente un asiento más (costo 0 → no genera partida)

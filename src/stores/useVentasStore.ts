@@ -12,7 +12,6 @@ import { regenerarAsientos } from '../services/libroDiario';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
-import { inicioDiaLocal } from '../utils/fecha';
 
 export const useVentasStore = defineStore('ventas', () => {
   // ===== ESTORES DEPENDIENTES =====

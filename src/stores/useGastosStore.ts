@@ -10,7 +10,6 @@ import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useConfigStore } from './useConfigStore';
 import { CATEGORIAS_GASTO, METODOS_PAGO } from '../constants';
-import { inicioDiaLocal } from '../utils/fecha';
 
 export const useGastosStore = defineStore('gastos', () => {
   // ===== STORES DEPENDIENTES =====

@@ -60,9 +60,7 @@ describe('generarTextoPrecios', () => {
   });
 
   it('incluye el costo de empaques (precio × unidades)', async () => {
-    await sembrar([
-      { id: 'p1', nombre: 'Cerveza', precio: 120, empaques: [{ nombre: 'Caja', unidades: 24 }] },
-    ]);
+    await sembrar([{ id: 'p1', nombre: 'Cerveza', precio: 120, empaques: [{ nombre: 'Caja', unidades: 24 }] }]);
     const { generarTextoPrecios } = useCompartir();
     const texto = generarTextoPrecios();
     expect(texto).toContain('📦 Caja x24');
@@ -120,7 +118,10 @@ describe('compartir/copiar', () => {
   });
 
   it('compartirExistencia lista nombre: stock de cada producto activo', async () => {
-    const p = await sembrar([{ id: 'p1', nombre: 'Pan', precio: 10 }, { id: 'p2', nombre: 'Viejo', archivado: true }]);
+    await sembrar([
+      { id: 'p1', nombre: 'Pan', precio: 10 },
+      { id: 'p2', nombre: 'Viejo', archivado: true },
+    ]);
     const lotes = useLotesStore();
     await db.lotes.put({ id: 'l1', productoId: 'p1', cantidadInicial: 7, cantidadVendida: 2, costo: 5 });
     await lotes.cargarLotes();

@@ -54,16 +54,66 @@ function datosCoherentes() {
         anulada: false,
       },
     ],
-    compras: [{ id: 'c_1', fecha: HACE(2), productoId: 'p_1', productoNombre: 'A', cantidad: 10, costo: 10, total: 100, anulada: false }],
+    compras: [
+      {
+        id: 'c_1',
+        fecha: HACE(2),
+        productoId: 'p_1',
+        productoNombre: 'A',
+        cantidad: 10,
+        costo: 10,
+        total: 100,
+        anulada: false,
+      },
+    ],
     gastos: [
-      { id: 'g_1', fecha: HACE(1), categoria: 'Luz', concepto: 'Recibo', monto: 8, metodoPago: 'efectivo', saleDeCaja: true, movId: 'mc_1' },
-      { id: 'g_2', fecha: HACE(1), categoria: 'Internet', concepto: 'Transferido', monto: 5, metodoPago: 'transferencia', saleDeCaja: false },
+      {
+        id: 'g_1',
+        fecha: HACE(1),
+        categoria: 'Luz',
+        concepto: 'Recibo',
+        monto: 8,
+        metodoPago: 'efectivo',
+        saleDeCaja: true,
+        movId: 'mc_1',
+      },
+      {
+        id: 'g_2',
+        fecha: HACE(1),
+        categoria: 'Internet',
+        concepto: 'Transferido',
+        monto: 5,
+        metodoPago: 'transferencia',
+        saleDeCaja: false,
+      },
     ],
     capital: [{ id: 'k_1', fecha: HACE(3), monto: 50, nota: 'aporte' }],
     retiros: [{ id: 'r_1', fecha: HACE(1), monto: 1, concepto: 'premio', tipoRetiro: 'ganancia' }],
-    movCaja: [{ id: 'mc_1', fecha: HACE(1), tipo: 'egreso', monto: 8, concepto: 'Gasto: Recibo', metodoPago: 'efectivo' }],
-    ajustes: [{ id: 'a_1', fecha: HACE(1), productoId: 'p_1', productoNombre: 'A', cantidad: -2, motivo: 'rotura', costoPerdida: 20 }],
-    lotes: [{ id: 'l_1', compraId: undefined, productoId: 'p_1', cantidadInicial: 10, cantidadVendida: 8, costo: 10, fecha: HACE(2) }],
+    movCaja: [
+      { id: 'mc_1', fecha: HACE(1), tipo: 'egreso', monto: 8, concepto: 'Gasto: Recibo', metodoPago: 'efectivo' },
+    ],
+    ajustes: [
+      {
+        id: 'a_1',
+        fecha: HACE(1),
+        productoId: 'p_1',
+        productoNombre: 'A',
+        cantidad: -2,
+        motivo: 'rotura',
+        costoPerdida: 20,
+      },
+    ],
+    lotes: [
+      {
+        id: 'l_1',
+        compraId: undefined,
+        productoId: 'p_1',
+        cantidadInicial: 10,
+        cantidadVendida: 8,
+        costo: 10,
+        fecha: HACE(2),
+      },
+    ],
   };
 }
 
@@ -131,8 +181,24 @@ describe('generarAsientos (puro)', () => {
 
   it('el sobrante se valora desde su lote origen (aj-<id>)', () => {
     const d = datosCoherentes();
-    d.ajustes.push({ id: 'a_2', fecha: HACE(1), productoId: 'p_1', productoNombre: 'A', cantidad: 3, motivo: 'hallado', costoPerdida: 0 });
-    d.lotes.push({ id: 'l_2', compraId: 'aj-a_2', productoId: 'p_1', cantidadInicial: 3, cantidadVendida: 0, costo: 4, fecha: HACE(1) });
+    d.ajustes.push({
+      id: 'a_2',
+      fecha: HACE(1),
+      productoId: 'p_1',
+      productoNombre: 'A',
+      cantidad: 3,
+      motivo: 'hallado',
+      costoPerdida: 0,
+    });
+    d.lotes.push({
+      id: 'l_2',
+      compraId: 'aj-a_2',
+      productoId: 'p_1',
+      cantidadInicial: 3,
+      cantidadVendida: 0,
+      costo: 4,
+      fecha: HACE(1),
+    });
     const asientos = generarAsientos(d);
     const sobrante = asientos.find((a) => a.refTipo === 'sobrante');
     expect(sobrante.monto).toBe(12); // 3 x 4
@@ -182,7 +248,10 @@ describe('regenerarAsientos + diagnóstico contra el sistema', () => {
     await db.gastos.bulkPut(d.gastos);
     await db.capital.bulkPut(d.capital);
     await db.retiros.bulkPut(d.retiros);
-    await db.movCaja.bulkPut([...d.movCaja, { id: 'mc_2', fecha: HACE(1), tipo: 'egreso', monto: 3, concepto: 'Ajuste por arqueo' }]);
+    await db.movCaja.bulkPut([
+      ...d.movCaja,
+      { id: 'mc_2', fecha: HACE(1), tipo: 'egreso', monto: 3, concepto: 'Ajuste por arqueo' },
+    ]);
     await db.ajustes.bulkPut(d.ajustes);
     await db.lotes.bulkPut(d.lotes);
     await db.config.put({ key: 'cfg', value: { capitalInicial: 100, periodoInicio: HACE(30) } });
@@ -204,7 +273,10 @@ describe('regenerarAsientos + diagnóstico contra el sistema', () => {
     capitalStore.capital = d.capital;
     capitalStore.retiros = d.retiros;
     const cajaStore = useCajaStore();
-    cajaStore.movCaja = [...d.movCaja, { id: 'mc_2', fecha: HACE(1), tipo: 'egreso', monto: 3, concepto: 'Ajuste por arqueo' }];
+    cajaStore.movCaja = [
+      ...d.movCaja,
+      { id: 'mc_2', fecha: HACE(1), tipo: 'egreso', monto: 3, concepto: 'Ajuste por arqueo' },
+    ];
     const ajustesStore = useAjustesStore();
     ajustesStore.ajustes = d.ajustes;
     const lotesStore = useLotesStore();
@@ -225,7 +297,8 @@ describe('regenerarAsientos + diagnóstico contra el sistema', () => {
 
     // Resultado neto histórico del libro: 90 - 60 - 13 - 20 = -3
     // (el gasto fuera de caja también es gasto contable)
-    const resultadoLibro = -saldo(CUENTAS.INGRESOS) - saldo(CUENTAS.COSTO) - saldo(CUENTAS.GASTOS) - saldo(CUENTAS.MERMAS);
+    const resultadoLibro =
+      -saldo(CUENTAS.INGRESOS) - saldo(CUENTAS.COSTO) - saldo(CUENTAS.GASTOS) - saldo(CUENTAS.MERMAS);
     expect(resultadoLibro).toBe(-3);
     // El sistema: ganancia bruta 30 - gastos 13 - mermas 20 = -3
     expect(useCierresStore().gananciaNetaPeriodo).toBe(-3);

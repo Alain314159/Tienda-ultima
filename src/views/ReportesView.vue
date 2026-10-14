@@ -465,7 +465,6 @@ import { useCuadre } from '../composables/useCuadre';
 import { db } from '../db';
 import {
   balanzaDeComprobacion,
-  sumaDebe,
   balanceGeneral,
   CUENTAS,
   type Asiento,
