@@ -123,7 +123,14 @@ export const useGastosStore = defineStore('gastos', () => {
    */
   async function eliminarGasto(gastoId: string) {
     try {
-      await db.gastos.delete(gastoId);
+      const gasto = gastos.value.find((x) => x.id === gastoId);
+      // El espejo en movCaja debe morir con el gasto: si sobrevive, saldoCaja
+      // lo sigue restando mientras el libro diario lo excluye (movIdsDeGastos
+      // solo contiene gastos vivos) → descuadre permanente libro vs sistema.
+      await db.transaction('rw', db.gastos, db.movCaja, async () => {
+        await db.gastos.delete(gastoId);
+        if (gasto?.movId) await db.movCaja.delete(gasto.movId);
+      });
       await cargarGastos();
     } catch (e) {
       console.error('Error eliminando gasto:', e);

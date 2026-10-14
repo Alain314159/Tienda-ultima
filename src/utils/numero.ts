@@ -22,12 +22,23 @@ function redondear(v: unknown, decimales: number): number {
   if (!isFinite(x)) return 0;
   const factor = 10 ** decimales;
   const y = x * factor;
-  // Épsilon positivo sobre el valor absoluto: corrige 1.00005 almacenado
-  // como 1.00049999... y garantiza que los "exactamente mitad" (0.5)
-  // redondeen lejos de cero en ambos signos (convención contable).
-  const eps = Number.EPSILON * Math.abs(y) * 2;
+  const abs = Math.abs(y);
+  // Épsilon relativo a la magnitud: cota del error de representación de x*factor.
+  const eps = Number.EPSILON * abs * 2;
+  const frac = abs % 1;
+  // Solo se corrige lo pegado a la mitad exacta (0.49999… es un 0.5 mal
+  // representado): se lleva a 0.5 y el redondeo half-away-from-zero (convención
+  // contable) decide. La corrección es segura mientras eps < 0.25: por debajo
+  // de ese umbral un "entero mal representado" (frac ≈ 0) nunca puede colarse
+  // en la ventana de la mitad, y el error de ida y vuelta (x→m(x)→m(m(x)),
+  // ≤ 2·eps) queda por debajo de 0.5, garantizando idempotencia.
+  // Con |x| ≳ 5.6e10 la malla de 4 decimales pierde precisión frente a la
+  // representación double y con |x| ≳ 1.1e11 deja de ser idempotente por
+  // física de coma flotante (2·eps ≥ 0.5): mil veces el dominio de la app.
+  const corregir = eps < 0.25 && Math.abs(frac - 0.5) <= eps;
+  const absCorregido = corregir ? Math.floor(abs) + 0.5 : abs;
   // "+ 0" normaliza el -0 que produce round(0) * signo negativo
-  return (Math.round(Math.abs(y) + eps) * Math.sign(y)) / factor + 0;
+  return (Math.round(absCorregido) * Math.sign(y)) / factor + 0;
 }
 
 export const m = (v: unknown): number => redondear(v, 4);
