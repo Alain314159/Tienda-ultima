@@ -199,3 +199,73 @@ billetes, rollback), `useCuadre` (7% → P&G, subfilas por lote, totales),
 - [x] Actualizar stack completo (vue 3.5, vite 8, vitest 5, jspdf 4)
 - [x] Limpieza: App.vue.backup/.bak2, 8 servicios muertos, 12 scripts fix-*.mjs,
       stores duplicados (sociosStore, utilitiesStore, calculosStore)
+
+---
+
+## 🎯 RONDA 190% — CONTABILIDAD COMPLETA + NAVEGADOR REAL (2026-10-14) ✅
+
+Objetivo del dueño: "asegúrate que la contabilidad esté completa, automatiza
+un navegador, haz build web y úsala, más tipos de pruebas, sé creativo".
+
+### Contabilidad
+
+1. **saldoCaja acumulativo (fix crítico)**: mezclaba totales de todo el
+   histórico (capital, aportes, retiros, movCaja) con totales de solo el
+   período (ventas, compras). Tras cada cierre, la caja "perdía" el efectivo
+   del período cerrado → arqueos descuadrados → ajustes fantasma acumulados.
+   Ahora usa `ventasTotal`/`comprasTotal` (histórico no anulado): la caja es
+   un balance de efectivo físico, no un total de período.
+2. **Libro diario de partida doble** (la tabla `asientos` existía en el
+   esquema Dexie desde la v3 pero nunca se escribió): generador puro en
+   `services/libroDiario.ts` que se regenera completo tras cada mutación
+   (auto-reparable, idempotente, excluido de backups). Cuentas: Caja,
+   Inventario, Capital, Ingresos, Costo de ventas, Gastos, Mermas, Retiros
+   de ganancia, Ajustes de caja, Pagos fuera de caja, Sobrantes.
+   UI en Reportes: balanza de comprobación + diagnóstico que cruza los
+   saldos del libro contra el sistema (caja / inventario / resultado).
+3. **PDF**: PATRIMONIO NETO real (capital + ganancias − retiros; antes era
+   capital + inventario, mezcla de conceptos) + filas de retiros
+   acumulados y gastos pagados fuera de caja (partida conciliatoria).
+4. Cierre de período registra `numVentas`; eliminado `registrarVenta`
+   muerto (guardaba costo unitario — esquema divergente del flujo real).
+5. Historial de cierres: leía `c.totalVentas`/`c.fechaCierre` (campos que
+   nunca se guardaron) → mostraba $0.00 y fecha vacía.
+
+### Bug grave de UI (cazado usando la app con navegador automatizado)
+
+`ModalConfirm`/`ModalPrompt` (reka-ui) portalan su Content a `<body>` como
+hermano del overlay → `position: static` al final del flujo del documento →
+**nunca centrados y, en páginas largas, directamente fuera de pantalla**
+(botón Confirmar a y=888 con viewport de 844). Los diálogos de confirmación
+eran invisibles en móvil. Fix: `body > .modal-box { position: fixed;
+inset: 0; margin: auto }`.
+
+### Pruebas (259 → 260 unit + E2E real en verde)
+
+- +12 tests de libro diario (partida doble, balanza, idempotencia,
+  cross-checks contables contra los getters del sistema).
+- +3 tests de caja acumulativa (regresión: cerrar período NO resetea caja;
+  arqueo cuadra tras cierre).
+- Spec funcional E2E resucitado y puesto en verde (20/20): flujo contable
+  completo en Chromium real con validación de IndexedDB y libro balanceado.
+  Fixes del spec: onboarding, placeholders actuales, helper de modales
+  robusto (filter visible + waitFor), fórmula de caja sin doble conteo.
+
+### CI (pruebas que no se pueden hacer a mano)
+
+- `e2e.yml` (reutilizable): E2E smoke+funcional contra `vite preview` +
+  Lighthouse con presupuesto trinquete (perf ≥ 70, a11y ≥ 85, bp ≥ 90).
+- Gates en `deploy.yml` y `android.yml`: nada se publica (web ni APK) sin
+  pasar quality + E2E. El bug del modal solo era detectable así.
+
+### Rendimiento (Lighthouse perf 69 → 76, TBT 350 → 180 ms)
+
+- `modulePreload.resolveDependencies`: pdf-vendor (428 KiB jsPDF) y
+  html2canvas ya no se precargan al arranque.
+- MiniSearch pasa a import dinámico (carga al abrir la búsqueda global,
+  degradación suave a subcadena mientras llega).
+
+### Trinquetes
+
+- Cobertura: líneas 44→48, funciones 31→36, statements 41→45, branches
+  21→25 (actual: 48.6/36.0/45.9/25.8).

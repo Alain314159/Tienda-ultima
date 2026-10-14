@@ -14,15 +14,14 @@ export default defineConfig({
       reportsDirectory: './coverage',
       include: ['src/**'],
       exclude: ['src/main.ts', 'src/env.d.ts', 'src/shims/**'],
-      // Umbrales anti-regresion: ~3pp por debajo de la cobertura actual.
-      // Subirlos al mejorar la suite (trinquete).
-      // Actual (2026-10-14, 245 tests): lineas 47.1 / funciones 34.1 /
-      // statements 44.2 / branches 24.8
+      // Umbrales anti-regresion (trinquete): subir al mejorar la suite,
+      // nunca bajar. Actual (2026-10-14, 260 tests): lineas 48.6 /
+      // funciones 36.0 / statements 45.9 / branches 25.8
       thresholds: {
-        lines: 44,
-        functions: 31,
-        statements: 41,
-        branches: 21,
+        lines: 48,
+        functions: 36,
+        statements: 45,
+        branches: 25,
       },
     },
   },
