@@ -21,6 +21,7 @@ import type {
   MovCaja,
   Ajuste,
   Lote,
+  Socio,
   Asiento,
   RefTipoAsiento,
 } from '../types';
@@ -59,6 +60,7 @@ export interface DatosLibro {
   movCaja: MovCaja[];
   ajustes: Ajuste[];
   lotes: Lote[];
+  socios?: Socio[];
 }
 
 /** Genera todos los asientos a partir del snapshot. Función pura. */
@@ -90,6 +92,23 @@ export function generarAsientos(d: DatosLibro): Asiento[] {
       cuentaDebe: CUENTAS.CAJA,
       cuentaHaber: CUENTAS.CAPITAL,
       monto: m(ini),
+    });
+  }
+
+  // 1b) Aportes iniciales de socios: mismo tratamiento que el capital
+  // inicial (dinero real en caja) — sin esto la ecuación contable se
+  // rompía: la caja lo incluye (aportesTotal) pero el libro no lo registraba.
+  for (const s of d.socios || []) {
+    if (s.activo === false || n(s.aporte) <= 0) continue;
+    out.push({
+      id: 'aporteInicial:' + s.id,
+      fecha: s.fecha || fechaRef,
+      refTipo: 'aporteInicial',
+      refId: s.id,
+      concepto: 'Aporte inicial de socio: ' + s.nombre,
+      cuentaDebe: CUENTAS.CAJA,
+      cuentaHaber: CUENTAS.CAPITAL,
+      monto: m(n(s.aporte)),
     });
   }
 
@@ -332,7 +351,7 @@ export function balanceGeneral(asientos: Asiento[]): BalanceGeneral {
 /** Regenera la tabla asientos en IndexedDB a partir del estado actual.
  * @returns número de asientos escritos */
 export async function regenerarAsientos(): Promise<number> {
-  const [ventas, compras, gastos, capital, retiros, movCaja, ajustes, lotes, cfgRow] = await Promise.all([
+  const [ventas, compras, gastos, capital, retiros, movCaja, ajustes, lotes, socios, cfgRow] = await Promise.all([
     db.ventas.toArray(),
     db.compras.toArray(),
     db.gastos.toArray(),
@@ -341,6 +360,7 @@ export async function regenerarAsientos(): Promise<number> {
     db.movCaja.toArray(),
     db.ajustes.toArray(),
     db.lotes.toArray(),
+    db.socios.toArray(),
     db.config.get('cfg'),
   ]);
 
@@ -354,6 +374,7 @@ export async function regenerarAsientos(): Promise<number> {
     movCaja,
     ajustes,
     lotes,
+    socios,
   });
 
   await db.transaction('rw', db.asientos, async () => {

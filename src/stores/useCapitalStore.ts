@@ -31,10 +31,15 @@ export const useCapitalStore = defineStore('capital', () => {
   // ===== GETTERS =====
 
   /**
-   * Total de aportes
+   * Total de aportes: entradas de capital registradas MÁS los aportes
+   * iniciales de los socios activos (dinero real que entró al negocio).
+   * Antes el "Aporte inicial" del socio era solo metadato invisible: la caja
+   * quedaba en $0 tras registrarlo y la compra saltaba "Caja insuficiente".
    */
   const aportesTotal = computed(() => {
-    return m(capital.value.reduce((s, x) => s + n(x.monto), 0));
+    const capitalSum = capital.value.reduce((s, x) => s + n(x.monto), 0);
+    const sociosSum = socios.value.filter((x) => x.activo !== false).reduce((s, x) => s + n(x.aporte), 0);
+    return m(capitalSum + sociosSum);
   });
 
   /**

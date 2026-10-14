@@ -14,6 +14,8 @@ import { useProductosStore } from '../src/stores/useProductosStore';
 import { useLotesStore } from '../src/stores/useLotesStore';
 import { useCajaStore } from '../src/stores/useCajaStore';
 import { useVentasStore } from '../src/stores/useVentasStore';
+import { useCapitalStore } from '../src/stores/useCapitalStore';
+import { generarAsientos } from '../src/services/libroDiario';
 
 async function limpiarDb() {
   await Promise.all([
@@ -23,6 +25,10 @@ async function limpiarDb() {
     db.arqueos.clear(),
     db.config.clear(),
     db.ventas.clear(),
+    db.socios.clear(),
+    db.capital.clear(),
+    db.asientos.clear(),
+    db.retiros.clear(),
   ]);
 }
 
@@ -289,6 +295,66 @@ describe('useCajaStore', () => {
     await s.hacerArqueo(0, 0, '');
     expect(s.arqueos.length).toBe(1);
     expect(s.movCaja.length).toBe(0);
+  });
+});
+
+describe('useCapitalStore: aporte inicial de socios', () => {
+  it('aportesTotal incluye el aporte inicial de socios ACTIVOS (no solo capital)', async () => {
+    const s = useCapitalStore();
+    await db.socios.bulkPut([
+      { id: 's1', nombre: 'Alain', porcentaje: 60, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' },
+      { id: 's2', nombre: 'Viejo', porcentaje: 40, aporte: 5000, activo: false },
+    ]);
+    await db.capital.put({ id: 'c1', monto: 300, fecha: '2026-10-02T10:00:00.000Z' });
+    await s.cargarTodo();
+    // 300 de capital + 10000 del socio activo (el inactivo NO suma)
+    expect(s.aportesTotal).toBe(10300);
+  });
+
+  it('la caja refleja el aporte inicial del socio (regresión: quedaba en $0)', async () => {
+    const s = useCapitalStore();
+    const caja = useCajaStore();
+    await db.socios.put({ id: 's1', nombre: 'Alain', porcentaje: 100, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' });
+    await s.cargarTodo();
+    expect(caja.saldoCaja).toBe(10000);
+  });
+
+  it('libro diario: asiento de aporte inicial y libro balanceado', () => {
+    const asientos = generarAsientos({
+      capitalInicial: 0,
+      ventas: [],
+      compras: [],
+      gastos: [],
+      capital: [],
+      retiros: [],
+      movCaja: [],
+      ajustes: [],
+      lotes: [],
+      socios: [
+        { id: 's1', nombre: 'Alain', porcentaje: 60, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' },
+        { id: 's2', nombre: 'Rosa', porcentaje: 40, aporte: 5000, fecha: '2026-10-01T11:00:00.000Z' },
+        { id: 's3', nombre: 'Baja', porcentaje: 0, aporte: 999, activo: false },
+        { id: 's4', nombre: 'SinAporte', porcentaje: 0, aporte: 0 },
+      ],
+    });
+    const ini = asientos.filter((a) => a.refTipo === 'aporteInicial');
+    expect(ini).toHaveLength(2); // solo activos con aporte > 0
+    expect(ini.every((a) => a.cuentaDebe === 'Caja' && a.cuentaHaber === 'Capital')).toBe(true);
+    expect(ini.reduce((s, a) => s + a.monto, 0)).toBe(15000);
+    // Partida doble: el libro siempre balancea
+    const debe = asientos.reduce((s, a) => s + a.monto, 0);
+    const haber = asientos.reduce((s, a) => s + a.monto, 0);
+    expect(debe).toBe(haber);
+  });
+
+  it('regenerarAsientos incluye los aportes iniciales desde la BD', async () => {
+    await db.socios.put({ id: 's1', nombre: 'Alain', porcentaje: 100, aporte: 10000, fecha: '2026-10-01T10:00:00.000Z' });
+    const { regenerarAsientos } = await import('../src/services/libroDiario');
+    const total = await regenerarAsientos();
+    const guardados = await db.asientos.where('refTipo').equals('aporteInicial').toArray();
+    expect(guardados).toHaveLength(1);
+    expect(guardados[0].monto).toBe(10000);
+    expect(total).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -40,11 +40,12 @@ export const BackupFolder = {
     const nombre = nombrePersonalizado || `backup-${iso}-${hora}.json.gz`;
 
     const json = JSON.stringify(datos);
-    const blob = await comprimirGzip(json);
 
     if (!esNativo()) {
-      // Web: descargar como archivo
-      const url = URL.createObjectURL(blob);
+      // Web: descargar como JSON PLANO. Antes se descargaba el blob gzip con
+      // el nombre sin ".gz": un .json binario que la propia app no podía
+      // re-importar (readAsText → basura → "Datos invalidos").
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
       a.download = nombre.replace('.gz', '');
@@ -53,7 +54,8 @@ export const BackupFolder = {
       return nombre;
     }
 
-    // Nativo: escribir en Directory.Documents
+    // Nativo: comprimir y escribir en Directory.Documents
+    const blob = await comprimirGzip(json);
     const b64 = await blobABase64(blob);
     await Filesystem.writeFile({
       path: `${CARPETA}/${nombre}`,
