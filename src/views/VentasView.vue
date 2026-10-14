@@ -132,7 +132,16 @@
         <div
           v-for="v in histVentasMostrados"
           :key="v.id"
-          v-memo="[v.id, v.anulada, v.total, v.ganancia]"
+          v-memo="[
+            v.id,
+            v.anulada,
+            v.total,
+            v.ganancia,
+            // sin esto v-memo congela la expansión: ventaExpandida cambia
+            // pero el item no se re-renderiza y el detalle es inalcanzable
+            ventaExpandida === v.id,
+            v.items.filter((i) => i.anulado).length,
+          ]"
           class="item"
           :class="{ anulada: v.anulada }"
           :id="'ref-' + v.id"

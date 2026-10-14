@@ -7,6 +7,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 import Calculator from '../src/components/Calculator.vue';
+import { createPinia, setActivePinia } from 'pinia';
+import VentasView from '../src/views/VentasView.vue';
+import { useVentasStore } from '../src/stores/useVentasStore';
+import { useConfigStore } from '../src/stores/useConfigStore';
+import { useProductosStore } from '../src/stores/useProductosStore';
 import GlobalSearch from '../src/components/GlobalSearch.vue';
 
 // ===== helpers =====
@@ -282,5 +287,50 @@ describe('GlobalSearch.vue', () => {
     const w = montarBusqueda(true);
     await w.find('.modal').trigger('click');
     expect(w.emitted('cerrar')).toHaveLength(1);
+  });
+});
+
+describe('VentasView.vue (regresión v-memo expansión)', () => {
+  it('clic en el encabezado de una venta expande el detalle con botones de anulación por ítem', async () => {
+    setActivePinia(createPinia());
+    const ventasStore = useVentasStore();
+    const configStore = useConfigStore();
+    const productosStore = useProductosStore();
+
+    configStore.cfg.periodoInicio = new Date(Date.now() - 30 * 86400000).toISOString();
+    productosStore.productos = [{ id: 'p_1', nombre: 'A', precio: 25, archivado: false }];
+    ventasStore.ventas = [
+      {
+        id: 'v_multi',
+        fecha: new Date().toISOString(),
+        items: [
+          { productoId: 'p_1', nombre: 'A', cantidad: 3, precio: 25, costo: 45, ganancia: 30, lotesUsados: [] },
+          { productoId: 'p_1', nombre: 'A', cantidad: 2, precio: 10, costo: 8, ganancia: 12, lotesUsados: [] },
+        ],
+        total: 95,
+        ganancia: 42,
+        anulada: false,
+      },
+    ];
+
+    const wrapper = mount(VentasView, { global: { stubs: { teleport: true } } });
+    await flushPromises();
+
+    // El detalle NO está renderizado antes del clic (v-if)
+    expect(wrapper.find('.venta-items-expand').exists()).toBe(false);
+
+    // Clic en el encabezado de la venta
+    const info = wrapper.findAll('.item .info')[0];
+    expect(info).toBeTruthy();
+    await info.trigger('click');
+    await flushPromises();
+
+    // REGRESIÓN v-memo: el item debe re-renderizarse y mostrar el detalle
+    const expand = wrapper.find('.venta-items-expand');
+    expect(expand.exists()).toBe(true);
+    // Ambos ítems con su botón de anulación accesible
+    const botones = expand.findAll('button');
+    expect(botones.length).toBe(2);
+    wrapper.unmount();
   });
 });
