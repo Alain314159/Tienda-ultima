@@ -269,3 +269,77 @@ inset: 0; margin: auto }`.
 
 - Cobertura: líneas 44→48, funciones 31→36, statements 41→45, branches
   21→25 (actual: 48.6/36.0/45.9/25.8).
+
+## 🎯 RONDA 190% (II) — PROPERTY TESTING + BALANCE GENERAL + STRESS CI (2026-10-14) ✅
+
+Continuación de la ronda 190%. Cinco commits: `49545eb`, `2185bb7`, `cc868a6`,
+`9467329`, `adf1788`.
+
+### Contabilidad
+
+- **Bug COGS con ítems anulados**: el P&L de useCuadre, la tabla por
+  (producto, costo, precio) y `cerrarPeriodo` sumaban el costo de ítems
+  anulados dentro de ventas activas (el libro diario sí filtraba): un ítem
+  anulado inflaba el COGS y hundía la ganancia del período. Corregido en los
+  tres sitios + insight "ventas bajo costo" + tests de regresión.
+- **Balance General (estado de situación)**: `balanceGeneral()` pura en
+  libroDiario.ts — Activo (Caja + Inventario) = Capital + Resultado histórico
+  integral − Retiros de ganancia + Pagos fuera de caja, con la identidad
+  exacta Σdeudores = Σacreedores. El "resultado integral" añade al P&L
+  clásico los sobrantes de inventario y los ajustes de arqueo. UI en Reportes
+  con check ✓/✗ de cuadre.
+- **Bug de redondeo no idempotente**: `m(m(x)) ≠ m(x)` en ~3.7% de valores
+  con |x| ≳ 1e11 — el épsilon incondicional empujaba valores ya sobre el
+  punto de malla. Ahora solo se corrige lo pegado a la mitad exacta y solo
+  mientras eps < 0.25 (sin ambigüedad posible). Casado por property testing;
+  verificado con 300k muestras por década de magnitud.
+- **eliminarGasto del store** no borraba el espejo movCaja (la Vista sí):
+  ambos caminos correctos ahora.
+
+### Property-based testing (tipo de prueba nuevo: fast-check)
+
+`tests/property.test.js` — 20 propiedades × 100-200 casos aleatorios:
+
+- **dinero**: idempotencia de m() en el dominio representable (±1e11),
+  simetría half-away-from-zero, cota de error de sumas, medio paso máximo.
+- **FIFO**: conservación de cantidad, costo = Σ(cant×costo), orden por
+  fecha, aislamiento por producto, nunca sobreconsume un lote.
+- **libro diario**: partida doble SIEMPRE balanceada, **ECUACIÓN
+  FUNDAMENTAL** (Caja del libro === caja recalculada de forma independiente
+  de los datos fuente), P&L cruzado, idempotencia, invarianza a
+  permutaciones, exclusión de anulados, monotonicidad, y Balance General
+  Activo = Patrimonio para cualquier libro aleatorio.
+
+### Bug cazado usando la app real (navegador automatizado)
+
+- **v-memo congelaba la expansión del historial de ventas**:
+  `v-memo=[v.id, v.anulada, v.total, v.ganancia]` no incluía
+  `ventaExpandida` → el clic actualizaba el store pero el item jamás se
+  re-renderizaba → **la anulación por ítem era inalcanzable en producción**
+  (solo en períodos cerrados, sin v-memo). Fix + test de regresión montando
+  VentasView (verificado que falla con el v-memo viejo).
+- Sesión completa verificada en vivo: socio+aporte → productos → compras
+  (guard de "Caja insuficiente" validado) → ventas → **anulación parcial**
+  (total 175→75, lote revertido, asientos venta:75/costo:45) → balanza
+  $7,020 balanceada → balance general $5,080 = $5,080 → diagnóstico 3/3 ✓
+  → cuadre P&L COGS $120 (sin los $40 anulados) → PDF → búsqueda difusa,
+  modo oscuro y calculadora — sin errores de consola.
+
+### CI: pruebas imposibles de ejecutar localmente
+
+- `e2e-matrix.yml`: **matriz cross-browser** (chromium / firefox / webkit,
+  viewport móvil) corriendo smoke + funcional completo. No es gate de deploy
+  (flakiness de webkit no debe bloquear): alerta temprana en PRs + cron
+  semanal.
+- `tests/stress.spec.mjs`: dataset de tienda real (30 productos, 90 lotes,
+  1500 ventas, 200 gastos, 100 mermas) vía bulkPut directo; mide arranque,
+  historial paginado, cuadre y libro con umbrales (15s/10s/25s) y partida
+  doble balanceada (3288 asientos en la verificación local: 4.4s/0.09s/0.67s).
+- smoke/funcional refactorizados a multi-navegador (`BROWSER` env).
+
+### Trinquetes
+
+- Cobertura: statements 45→46, branches 25→26 (actual: 49.2 líneas /
+  36.8 funciones / 46.5 statements / 26.8 branches).
+- Tests: 284 unit + 20 propiedades (dentro de las 284) + E2E 22 checks +
+  stress 4 mediciones.
