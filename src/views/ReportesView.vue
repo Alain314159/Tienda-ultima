@@ -120,6 +120,61 @@
           </table>
         </div>
 
+        <!-- Balance general (estado de situación) -->
+        <div class="card-title" style="margin-top: 0.8rem">
+          <icon name="book" :size="16"></icon> Balance general (estado de situación)
+        </div>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Activo</th>
+                <th>Monto</th>
+                <th>Patrimonio</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Caja</td>
+                <td>{{ fmt(libro.bg.caja) }}</td>
+                <td>Capital aportado</td>
+                <td>{{ fmt(libro.bg.capital) }}</td>
+              </tr>
+              <tr>
+                <td>Inventario (FIFO)</td>
+                <td>{{ fmt(libro.bg.inventario) }}</td>
+                <td>Resultado histórico integral</td>
+                <td>{{ fmt(libro.bg.resultado) }}</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td>Retiros de ganancia</td>
+                <td>-{{ fmt(libro.bg.retirosGanancia) }}</td>
+              </tr>
+              <tr v-if="libro.bg.fueraCaja !== 0">
+                <td></td>
+                <td></td>
+                <td>Pagos por fuera de caja</td>
+                <td>{{ fmt(libro.bg.fueraCaja) }}</td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL ACTIVO</td>
+                <td>{{ fmt(libro.bg.totalActivo) }}</td>
+                <td>TOTAL PATRIMONIO</td>
+                <td :class="libro.bg.cuadra ? 'pos' : 'neg'">
+                  {{ fmt(libro.bg.totalPatrimonio) }} {{ libro.bg.cuadra ? '✓' : '✗' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="info-box" style="margin-top: 0.4rem">
+          Ecuación contable: Activo = Capital + Resultado − Retiros de ganancia + partidas fuera de caja. El resultado
+          integral incluye sobrantes de inventario y ajustes de arqueo.
+        </div>
+
         <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
         <div class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</div>
         <div class="row">
@@ -407,7 +462,14 @@ import { useCajaStore } from '../stores/useCajaStore';
 import { useLotesStore } from '../stores/useLotesStore';
 import { useCuadre } from '../composables/useCuadre';
 import { db } from '../db';
-import { balanzaDeComprobacion, sumaDebe, CUENTAS, type Asiento } from '../services/libroDiario';
+import {
+  balanzaDeComprobacion,
+  sumaDebe,
+  balanceGeneral,
+  CUENTAS,
+  type Asiento,
+  type BalanceGeneral,
+} from '../services/libroDiario';
 
 const configStore = useConfigStore();
 const ventasStore = useVentasStore();
@@ -436,6 +498,17 @@ const sociosActivos = computed(() => capitalStore.socios.filter((s) => s.activo 
 const libro = reactive({
   asientos: [] as Asiento[],
   balanza: [] as ReturnType<typeof balanzaDeComprobacion>,
+  bg: {
+    caja: 0,
+    inventario: 0,
+    totalActivo: 0,
+    capital: 0,
+    resultado: 0,
+    retirosGanancia: 0,
+    fueraCaja: 0,
+    totalPatrimonio: 0,
+    cuadra: true,
+  } as BalanceGeneral,
   totalDebe: 0,
   totalHaber: 0,
   balanceado: true,
@@ -461,6 +534,9 @@ function refrescarLibro() {
   libro.totalDebe = m(bal.reduce((s, f) => s + f.debe, 0));
   libro.totalHaber = m(bal.reduce((s, f) => s + f.haber, 0));
   libro.balanceado = Math.abs(libro.totalDebe - libro.totalHaber) < 0.01;
+
+  // Balance general (estado de situación): identidad Σdeudores = Σacreedores
+  libro.bg = balanceGeneral(libro.asientos);
 
   // Diagnóstico: saldos del libro contra los cálculos del sistema
   libro.cajaLibro = saldoDe(CUENTAS.CAJA);

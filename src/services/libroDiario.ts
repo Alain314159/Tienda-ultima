@@ -274,6 +274,61 @@ export function sumaDebe(asientos: Asiento[]): number {
   return m(asientos.reduce((s, a) => s + a.monto, 0));
 }
 
+/** Balance general (estado de situación) derivado de la balanza.
+ *  Identidad contable: Σ saldos deudores = Σ saldos acreedores, luego
+ *  Activo (Caja + Inventario) = Capital + Resultado integral − Retiros de
+ *  ganancia + Pagos fuera de caja. El resultado integral añade al P&L clásico
+ *  los sobrantes de inventario y los ajustes de arqueo (sus cuentas de
+ *  contrapartida). */
+export interface BalanceGeneral {
+  caja: number;
+  inventario: number;
+  totalActivo: number;
+  capital: number;
+  resultado: number;
+  retirosGanancia: number;
+  fueraCaja: number;
+  totalPatrimonio: number;
+  cuadra: boolean;
+}
+
+export function balanceGeneral(asientos: Asiento[]): BalanceGeneral {
+  const saldos = new Map<string, number>();
+  for (const a of asientos) {
+    saldos.set(a.cuentaDebe, m((saldos.get(a.cuentaDebe) || 0) + a.monto));
+    saldos.set(a.cuentaHaber, m((saldos.get(a.cuentaHaber) || 0) - a.monto));
+  }
+  const s = (c: string) => saldos.get(c) || 0;
+
+  const caja = s(CUENTAS.CAJA);
+  const inventario = s(CUENTAS.INVENTARIO);
+  const capital = -s(CUENTAS.CAPITAL);
+  const resultado = m(
+    -s(CUENTAS.INGRESOS) -
+      s(CUENTAS.SOBRANTES) -
+      s(CUENTAS.COSTO) -
+      s(CUENTAS.GASTOS) -
+      s(CUENTAS.MERMAS) -
+      s(CUENTAS.AJUSTES_CAJA)
+  );
+  const retirosGanancia = s(CUENTAS.RETIROS_GANANCIA);
+  const fueraCaja = -s(CUENTAS.FUERA_CAJA);
+
+  const totalActivo = m(caja + inventario);
+  const totalPatrimonio = m(capital + resultado - retirosGanancia + fueraCaja);
+  return {
+    caja,
+    inventario,
+    totalActivo,
+    capital,
+    resultado,
+    retirosGanancia,
+    fueraCaja,
+    totalPatrimonio,
+    cuadra: Math.abs(totalActivo - totalPatrimonio) < 0.01,
+  };
+}
+
 /** Regenera la tabla asientos en IndexedDB a partir del estado actual.
  * @returns número de asientos escritos */
 export async function regenerarAsientos(): Promise<number> {

@@ -19,7 +19,7 @@ import fc from 'fast-check';
 
 import { n, m, q } from '../src/utils/numero';
 import { calcFIFO } from '../src/services/fifo';
-import { generarAsientos, balanzaDeComprobacion, sumaDebe, CUENTAS } from '../src/services/libroDiario';
+import { generarAsientos, balanzaDeComprobacion, sumaDebe, balanceGeneral, CUENTAS } from '../src/services/libroDiario';
 
 // ===== Generadores =====
 
@@ -404,6 +404,20 @@ describe('property: libro diario de partida doble (services/libroDiario)', () =>
         const filas = balanzaDeComprobacion(generarAsientos(d));
         const cajaLibro = saldoDe(filas, CUENTAS.CAJA);
         return Math.abs(cajaLibro - cajaEsperada(d)) < 1e-6;
+      }),
+      { numRuns }
+    );
+  });
+
+  it('BALANCE GENERAL: Activo === Patrimonio para cualquier libro (ecuación contable)', () => {
+    fc.assert(
+      fc.property(datosLibroArb, (d) => {
+        const bg = balanceGeneral(generarAsientos(d));
+        return (
+          bg.cuadra &&
+          Math.abs(bg.totalActivo - (bg.caja + bg.inventario)) < 1e-6 &&
+          Math.abs(bg.totalPatrimonio - (bg.capital + bg.resultado - bg.retirosGanancia + bg.fueraCaja)) < 1e-6
+        );
       }),
       { numRuns }
     );

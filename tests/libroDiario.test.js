@@ -11,7 +11,14 @@ import 'fake-indexeddb/auto';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { db } from '../src/db';
-import { generarAsientos, balanzaDeComprobacion, sumaDebe, regenerarAsientos, CUENTAS } from '../src/services/libroDiario';
+import {
+  generarAsientos,
+  balanzaDeComprobacion,
+  sumaDebe,
+  balanceGeneral,
+  regenerarAsientos,
+  CUENTAS,
+} from '../src/services/libroDiario';
 import { useCajaStore } from '../src/stores/useCajaStore';
 import { useVentasStore } from '../src/stores/useVentasStore';
 import { useComprasStore } from '../src/stores/useComprasStore';
@@ -234,6 +241,31 @@ describe('regenerarAsientos + diagnóstico contra el sistema', () => {
     await regenerarAsientos();
     const segunda = (await db.asientos.toArray()).map((x) => x.id).sort();
     expect(segunda).toEqual(primera);
+  });
+
+  it('balance general (puro): identidad contable con todos los tipos de asiento', () => {
+    // Semilla con arqueo de caja (mc_2, egreso 3): como el 'persiste el libro'
+    const d = datosCoherentes();
+    const asientos = generarAsientos({
+      ...d,
+      movCaja: [...d.movCaja, { id: 'mc_2', fecha: HACE(1), tipo: 'egreso', monto: 3, concepto: 'Ajuste por arqueo' }],
+    });
+    const bg = balanceGeneral(asientos);
+
+    // Activo: caja (100+50+90-100-8-1-3=128) + inventario (100-60-20=20) = 148
+    expect(bg.caja).toBeCloseTo(128, 2);
+    expect(bg.inventario).toBe(20);
+    expect(bg.totalActivo).toBeCloseTo(148, 2);
+
+    // Patrimonio: capital 150 + resultado integral -6 - retiros ganancia 1 + fuera de caja 5 = 148
+    // resultado integral = 90 - 60 - 13 - 20 (merma) - 3 (faltante de arqueo) = -6
+    expect(bg.capital).toBe(150);
+    expect(bg.resultado).toBeCloseTo(-6, 2);
+    expect(bg.retirosGanancia).toBe(1);
+    expect(bg.fueraCaja).toBe(5);
+    expect(bg.totalPatrimonio).toBeCloseTo(148, 2);
+
+    expect(bg.cuadra).toBe(true);
   });
 
   it('con estado vacío el libro queda vacío y sin errores', async () => {

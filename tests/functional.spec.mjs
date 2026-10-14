@@ -330,6 +330,13 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     const cuadreOk = await page.$('text=Ganancia bruta');
     check('Cuadre se genero correctamente', cuadreOk);
 
+    // ============ BALANCE GENERAL ============
+    console.log('\n▶️  TEST: Balance general (estado de situacion)');
+    const bgActivo = await page.$('text=TOTAL ACTIVO');
+    check('Balance general renderizado', bgActivo);
+    const bgPatri = await page.$('text=TOTAL PATRIMONIO');
+    check('Totales de patrimonio presentes', bgPatri);
+
     // ============ RESUMEN ============
     console.log('\n═══════════════════════════════════════════');
     console.log(' RESUMEN');
