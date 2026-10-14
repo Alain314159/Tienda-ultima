@@ -86,12 +86,17 @@ export function useCompartir() {
       lineas.push('');
     });
 
-    lineas.push('📍 Calle 27 #41, entre Manuel Angulo y Adel Calderón. Rpto 26 de Julio.');
-    lineas.push('📞 58154333 · 56763562 · 51438680 · 50102979');
-    lineas.push('☎️ 24429628');
-    lineas.push('');
-    lineas.push('💬 *Únete a nuestro grupo:*');
-    lineas.push('https://chat.whatsapp.com/I9U92wF5PmV7XGsvqbsfQm');
+    // Contacto editable desde Ajustes (antes hardcodeado en el código)
+    const direccion = (configStore.cfg.contactoDireccion || '').trim();
+    const telefonos = (configStore.cfg.contactoTelefonos || '').trim();
+    const grupoWa = (configStore.cfg.contactoGrupoWa || '').trim();
+    if (direccion) lineas.push('📍 ' + direccion);
+    if (telefonos) lineas.push('📞 ' + telefonos);
+    if (grupoWa) {
+      lineas.push('');
+      lineas.push('💬 *Únete a nuestro grupo:*');
+      lineas.push(grupoWa);
+    }
 
     return lineas.join('\n');
   }

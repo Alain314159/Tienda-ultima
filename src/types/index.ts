@@ -246,6 +246,10 @@ export interface Config {
   tgChatId: string;
   nombreTienda: string;
   tiendaConfigurada: boolean;
+  /** Datos de contacto para la lista de precios compartida (editables en Ajustes) */
+  contactoDireccion?: string;
+  contactoTelefonos?: string;
+  contactoGrupoWa?: string;
   tgNombre: string;
   tgCarpetaActiva?: boolean;
   tgCarpetaNombre?: string;

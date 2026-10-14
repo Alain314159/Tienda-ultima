@@ -27,6 +27,36 @@
           @change="guardarCfg"
         />
       </div>
+      <div class="set-row">
+        <span class="lbl"><icon name="map-pin" :size="18"></icon> Dirección (lista de precios)</span>
+        <input
+          v-model="cfg.contactoDireccion"
+          type="text"
+          placeholder="Calle y número"
+          style="width: auto; flex: 1; margin: 0; padding: 0.4rem 0.6rem"
+          @change="guardarCfg"
+        />
+      </div>
+      <div class="set-row">
+        <span class="lbl"><icon name="phone" :size="18"></icon> Teléfonos</span>
+        <input
+          v-model="cfg.contactoTelefonos"
+          type="text"
+          placeholder="58154333 · 56763562"
+          style="width: auto; flex: 1; margin: 0; padding: 0.4rem 0.6rem"
+          @change="guardarCfg"
+        />
+      </div>
+      <div class="set-row">
+        <span class="lbl"><icon name="message-circle" :size="18"></icon> Grupo de WhatsApp</span>
+        <input
+          v-model="cfg.contactoGrupoWa"
+          type="text"
+          placeholder="https://chat.whatsapp.com/..."
+          style="width: auto; flex: 1; margin: 0; padding: 0.4rem 0.6rem"
+          @change="guardarCfg"
+        />
+      </div>
 
       <div class="set-row">
         <span class="lbl"><icon name="calculator" :size="18"></icon> Boton de calculadora</span>

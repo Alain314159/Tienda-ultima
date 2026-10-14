@@ -52,6 +52,9 @@ import {
   Zap,
   Calculator,
   Info,
+  MapPin,
+  Phone,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-vue-next';
 
@@ -102,6 +105,9 @@ const ICONOS: Record<string, LucideIcon> = {
   zap: Zap,
   calculator: Calculator,
   info: Info, // antes no existía en PATHS y renderizaba vacío
+  'map-pin': MapPin,
+  phone: Phone,
+  'message-circle': MessageCircle,
 };
 
 const sRem = computed(() => (parseInt(String(props.size)) || 22) / 15 + 'rem');
