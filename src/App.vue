@@ -113,7 +113,8 @@
         >
           <icon name="calculator" :size="18" color="#fff"></icon>
         </button>
-        <button class="h-btn" @click="toggleTema()" aria-label="Cambiar tema">
+        <!-- WCAG 2.5.3 Label in Name: el nombre accesible contiene el texto visible -->
+        <button class="h-btn" @click="toggleTema()" :aria-label="configStore.tema === 'dark' ? 'Claro' : 'Oscuro'">
           <icon :name="configStore.tema === 'dark' ? 'sun' : 'moon'" :size="18" color="#fff"></icon>
           <span>{{ configStore.tema === 'dark' ? 'Claro' : 'Oscuro' }}</span>
         </button>

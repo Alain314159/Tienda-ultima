@@ -109,7 +109,7 @@ jobs:
           curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
 
       # Umbrales tipo trinquete: se calibraron contra el build actual
-      # (perf 76 / a11y 89 / bp 96 en 4G simulada). Subirlos cuando
+      # (perf 75 / a11y 95 / bp 96 en 4G simulada). Subirlos cuando
       # el build mejore, nunca bajarlos.
       - name: Auditoría Lighthouse con umbrales
         run: |
@@ -119,7 +119,7 @@ jobs:
             --output=json --output-path=/tmp/lh.json --quiet
           node -e "
             const d = require('/tmp/lh.json');
-            const minimo = { performance: 0.70, accessibility: 0.85, 'best-practices': 0.90 };
+            const minimo = { performance: 0.70, accessibility: 0.90, 'best-practices': 0.90 };
             let fallo = [];
             for (const [cat, min] of Object.entries(minimo)) {
               const s = d.categories[cat].score;

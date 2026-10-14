@@ -27,11 +27,12 @@
   --card: #ffffff;
   --card-2: #f8fafc;
 
-  /* Texto */
+  /* Texto. Contraste AA sobre --card/--bg: mut 7.0:1, mut-2 4.8:1
+     (mut-2 era #94a3b8: 2.8:1, fallaba Lighthouse color-contrast) */
   --txt: #0f172a;
   --txt-2: #334155;
-  --mut: #64748b;
-  --mut-2: #94a3b8;
+  --mut: #475569;
+  --mut-2: #64748b;
 
   /* Bordes */
   --brd: #e2e8f0;
@@ -69,8 +70,9 @@
 
   --txt: #f1f5f9;
   --txt-2: #cbd5e1;
+  /* mut-2 era #64748b: 2.8:1 sobre las tarjetas oscuras (fallaba AA) */
   --mut: #94a3b8;
-  --mut-2: #64748b;
+  --mut-2: #94a3b8;
 
   --brd: #334155;
   --brd-2: #475569;
