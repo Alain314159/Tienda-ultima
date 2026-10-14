@@ -161,6 +161,7 @@ export const useCierresStore = defineStore('cierres', () => {
         periodoFin: f.toISOString(),
         fecha: f.toISOString(),
         ventas: totVentas,
+        numVentas: ventasRango.length,
         compras: totCompras,
         cogs,
         gananciaBruta: bruta,

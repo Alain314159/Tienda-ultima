@@ -6,7 +6,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Venta, ItemCarrito, Producto } from '../types';
 import { n, m, q } from '../utils/numero';
-import { P, genId, clean } from '../utils/id';
+import { P, clean } from '../utils/id';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
@@ -24,7 +24,6 @@ export const useVentasStore = defineStore('ventas', () => {
   const busqVenta = ref('');
   const focusVenta = ref(false);
   const ventaExpandida = ref<string | null>(null);
-  const procesandoVenta = ref(false);
 
   // ===== GETTERS =====
 
@@ -78,6 +77,15 @@ export const useVentasStore = defineStore('ventas', () => {
   const ventasPeriodo = computed(() => {
     const ini = new Date(configStore.periodoInicio);
     return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.total), 0));
+  });
+
+  /**
+   * Ventas históricas totales (no anuladas).
+   * Base del saldo de caja: la caja es un saldo ACUMULATIVO que no se
+   * reinicia con los cierres de período (el efectivo físico sigue ahí).
+   */
+  const ventasTotal = computed(() => {
+    return m(ventas.value.filter((v) => !v.anulada).reduce((s, v) => s + n(v.total), 0));
   });
 
   /**
@@ -209,86 +217,6 @@ export const useVentasStore = defineStore('ventas', () => {
   }
 
   /**
-   * Registra una venta
-   */
-  async function registrarVenta(cobroData: {
-    metodoPago?: string;
-    vuelto?: number;
-    billetes?: Record<string, number | string>;
-  }) {
-    if (procesandoVenta.value) return;
-
-    procesandoVenta.value = true;
-
-    try {
-      const items = carrito.value.map((it) => {
-        const cant = n(it.cant);
-        const precio = n(it.precio);
-        const f = lotesStore.calcFIFO(it.productoId, cant);
-
-        return {
-          id: genId('vi'),
-          nombre: it.nombre,
-          productoId: it.productoId,
-          cantidad: cant,
-          precio: precio,
-          costo: f.costoTotal / cant,
-          ganancia: (precio - f.costoTotal / cant) * cant,
-          lotesUsados: f.lotesUsados,
-        };
-      });
-
-      const tot = totalCarrito.value;
-      const gan = gananciaCarrito.value;
-
-      const venta = {
-        id: genId('v'),
-        fecha: new Date().toISOString(),
-        items,
-        total: tot,
-        ganancia: gan,
-        metodoPago: cobroData.metodoPago || 'efectivo',
-        vuelto: cobroData.vuelto || 0,
-        billetes: cobroData.billetes || {},
-        anulada: false,
-      };
-
-      // Transacción: guardar venta + actualizar lotes
-      await db.transaction('rw', db.ventas, db.lotes, async () => {
-        await P(db.ventas, venta);
-
-        const lotesActualizados: import('../types').Lote[] = [];
-        for (const it of carrito.value) {
-          const f = lotesStore.calcFIFO(it.productoId, n(it.cant));
-          for (const u of f.lotesUsados) {
-            const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-            if (l) {
-              l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
-              lotesActualizados.push(clean(l));
-            }
-          }
-        }
-
-        if (lotesActualizados.length > 0) {
-          await db.lotes.bulkPut(lotesActualizados);
-        }
-      });
-
-      await cargarVentas();
-      await lotesStore.cargarLotes();
-
-      limpiarCarrito();
-
-      return { venta, items, tot, gan };
-    } catch (e) {
-      console.error('Error registrando venta:', e);
-      throw e;
-    } finally {
-      procesandoVenta.value = false;
-    }
-  }
-
-  /**
    * Anula una venta completa
    */
   async function anularVenta(id: string) {
@@ -392,7 +320,6 @@ export const useVentasStore = defineStore('ventas', () => {
     busqVenta,
     focusVenta,
     ventaExpandida,
-    procesandoVenta,
     listaVenta,
     ventasFiltradas,
     totalCarrito,
@@ -400,6 +327,7 @@ export const useVentasStore = defineStore('ventas', () => {
     gananciaItem,
     subTotalItem,
     ventasPeriodo,
+    ventasTotal,
     gananciaBrutaPeriodo,
     agregarCarrito,
     cambiarCant,
@@ -409,7 +337,6 @@ export const useVentasStore = defineStore('ventas', () => {
     esPrecioEscalon,
     limpiarCarrito,
     cargarVentas,
-    registrarVenta,
     anularVenta,
     anularProductoEnVenta,
     toggleExpandirVenta,

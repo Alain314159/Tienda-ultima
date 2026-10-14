@@ -16,13 +16,16 @@ interface ContextoPDF {
   gananciasAcumuladas: number;
   gananciaDisponible: number;
   patrimonioTotal: number;
+  retirosAcumulados: number;
+  gastosFueraCaja: number;
   socios: Socio[];
 }
 
 /**
  * @param {object} r resultado del cuadre (rep.resultado)
  * @param {object} ctx contexto financiero: nombreTienda, saldoCaja, valorInventario,
- *   capitalTotal, gananciasAcumuladas, gananciaDisponible, patrimonioTotal, socios
+ *   capitalTotal, gananciasAcumuladas, gananciaDisponible, patrimonioTotal
+ *   (capital + ganancias - retiros), retirosAcumulados, gastosFueraCaja, socios
  */
 export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
   const { jsPDF } = await import('jspdf');
@@ -96,10 +99,12 @@ export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
       ['Caja', fmt(ctx.saldoCaja)],
       ['Valor del inventario', fmt(ctx.valorInventario)],
       ['ACTIVOS TOTALES', fmt(ctx.saldoCaja + ctx.valorInventario)],
-      ['Capital', fmt(ctx.capitalTotal)],
+      ['Capital aportado', fmt(ctx.capitalTotal)],
       ['Ganancias acumuladas', fmt(ctx.gananciasAcumuladas)],
-      ['PATRIMONIO', fmt(ctx.patrimonioTotal)],
+      ['Retiros acumulados', '- ' + fmt(ctx.retirosAcumulados)],
+      ['PATRIMONIO NETO', fmt(ctx.patrimonioTotal)],
       ['Disponible para retiro', fmt(ctx.gananciaDisponible)],
+      ['Gastos pagados fuera de caja', '- ' + fmt(ctx.gastosFueraCaja)],
     ],
     theme: 'grid',
     headStyles: { fillColor: [33, 150, 243], textColor: 255, fontStyle: 'bold', fontSize: 10 },
@@ -109,7 +114,7 @@ export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
     didParseCell: (data) => {
       if (data.section !== 'body') return;
       const label = (data.row.raw as string[])[0];
-      if (label === 'ACTIVOS TOTALES' || label === 'PATRIMONIO') {
+      if (label === 'ACTIVOS TOTALES' || label === 'PATRIMONIO NETO') {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [230, 240, 255];
       }

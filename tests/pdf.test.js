@@ -106,7 +106,9 @@ function ctxBase(socios = []) {
     capitalTotal: 700,
     gananciasAcumuladas: 120,
     gananciaDisponible: 60,
-    patrimonioTotal: 800,
+    patrimonioTotal: 720, // capital 700 + ganancias 120 - retiros 100
+    retirosAcumulados: 100,
+    gastosFueraCaja: 40,
     socios,
   };
 }
@@ -147,13 +149,17 @@ describe('generarPDFCuadre', () => {
       'Caja',
       'Valor del inventario',
       'ACTIVOS TOTALES',
-      'Capital',
+      'Capital aportado',
       'Ganancias acumuladas',
-      'PATRIMONIO',
+      'Retiros acumulados',
+      'PATRIMONIO NETO',
       'Disponible para retiro',
+      'Gastos pagados fuera de caja',
     ]);
     expect(situacion.body[2][1]).toBe('$800.00'); // caja + inventario
-    expect(situacion.body[5][1]).toBe('$800.00'); // patrimonio
+    expect(situacion.body[6][1]).toBe('$720.00'); // capital + ganancias - retiros
+    expect(situacion.body[5][1]).toBe('- $100.00'); // retiros con signo
+    expect(situacion.body[8][1]).toBe('- $40.00'); // gastos fuera de caja
 
     // Portada: nombre de tienda y período
     expect(doc.textos).toContain('La Bodega');

@@ -4,9 +4,11 @@
  * - useCierresStore.gananciaNetaPeriodo: bruta - gastos - mermas (sin retiros:
  *   ya los descuenta gananciaDisponible en capital)
  * - useCierresStore.comprasPeriodo: compras reales del período, anuladas fuera
- * - useCajaStore.saldoCaja: ahora descuenta las compras del período
- * - cerrarPeriodo: cierre completo con compras/mermas/cajaFinal reales,
- *   persistencia y reinicio del período
+ * - useCajaStore.saldoCaja: es un saldo ACUMULATIVO (todo el histórico de
+ *   ventas/compras), no un total de período: el efectivo físico no se reinicia
+ *   al cerrar períodos
+ * - cerrarPeriodo: cierre completo con compras/mermas/cajaFinal/numVentas
+ *   reales, persistencia y reinicio del período
  * - seguridad del ciclo de stores: caja → capital → cierres se inicializa
  *   sin errores instanciando caja primero
  */
@@ -129,10 +131,48 @@ describe('getters de cierres conectados', () => {
     expect(useCierresStore().margenPeriodo).toBe('2.22'); // 2 / 90
   });
 
-  it('saldoCaja descuenta las compras del período', () => {
+  it('saldoCaja es acumulativo: cuenta todo el histórico de ventas y compras', () => {
     semillar();
-    // 100 (capital inicial) + 90 (ventas) - 100 (compras) = 90
-    expect(useCajaStore().saldoCaja).toBe(90);
+    // 100 (capital inicial) + 90 (ventas) - 300 (compras históricas: 100 vigente
+    // + 200 vieja; la anulada no cuenta) = -110. La compra de hace 45 días salió
+    // físicamente del cajón aunque pertenezca a un período anterior.
+    expect(useCajaStore().saldoCaja).toBe(-110);
+  });
+
+  it('regresión crítica: cerrar el período NO resetea la caja (el efectivo sigue ahí)', async () => {
+    semillar();
+    const caja = useCajaStore();
+    const antes = caja.saldoCaja;
+    await useCierresStore().cerrarPeriodo();
+    // La caja física no cambia por el hecho de cerrar el período contable
+    expect(caja.saldoCaja).toBe(antes);
+  });
+
+  it('el arqueo cuadra contra la caja física tras un cierre de período', async () => {
+    semillar();
+    // Venta extra para tener caja positiva: 100 + 490 - 300 = 290
+    const ventasStore = useVentasStore();
+    ventasStore.ventas.push({
+      id: 'v_3',
+      fecha: HACE(1),
+      items: [{ productoId: 'p_1', nombre: 'B', cantidad: 2, precio: 200, costo: 0, ganancia: 400, lotesUsados: [] }],
+      total: 400,
+      ganancia: 400,
+      anulada: false,
+    });
+
+    const caja = useCajaStore();
+    await useCierresStore().cerrarPeriodo();
+
+    expect(caja.saldoCaja).toBe(290);
+    // El dueño cuenta $290 físico: el arqueo no debe registrar ajuste
+    const arqueo = await caja.hacerArqueo(290, 0);
+    expect(arqueo.cajaSistema).toBe(290);
+    expect(arqueo.faltanteSobrante).toBe(0);
+    // Sin diferencia no se crea movimiento de ajuste
+    expect(caja.movCaja).toHaveLength(0);
+    // Y la caja sigue cuadrada tras el arqueo
+    expect(caja.saldoCaja).toBe(290);
   });
 });
 
@@ -145,6 +185,7 @@ describe('cerrarPeriodo: cierre contable completo', () => {
 
     expect(cierre.id).toMatch(/^c_/);
     expect(cierre.ventas).toBe(90);
+    expect(cierre.numVentas).toBe(1); // la anulada no cuenta
     expect(cierre.cogs).toBe(60);
     expect(cierre.gananciaBruta).toBe(30);
     expect(cierre.gastos).toBe(8);
@@ -152,7 +193,7 @@ describe('cerrarPeriodo: cierre contable completo', () => {
     expect(cierre.ganancia).toBe(2);
     expect(cierre.compras).toBe(100);
     expect(cierre.valorInventario).toBe(40);
-    expect(cierre.cajaFinal).toBe(90);
+    expect(cierre.cajaFinal).toBe(-110); // saldo acumulativo, ver test de caja
     expect(cierre.periodoInicio).toBe(INI); // el ISO se preservó exacto
 
     // Persistido y recargado

@@ -28,7 +28,12 @@ export const useCajaStore = defineStore('caja', () => {
 
   /**
    * Saldo actual de caja
-   * Fórmula: ini + aportes + ventas - compras - retiros + arqueos
+   * Fórmula: ini + aportes + ventas - compras - retiros + ajustes de movCaja
+   *
+   * La caja es un saldo ACUMULATIVO (balance de efectivo físico), NO un total
+   * de período: usa ventas/compras de todo el histórico porque el efectivo de
+   * períodos ya cerrados sigue en el cajón. Mezclarlo con totales de período
+   * descuadraría sistemáticamente los arqueos tras cada cierre.
    */
   const saldoCaja = computed(() => {
     const ini = n(configStore.capitalInicial);
@@ -36,11 +41,11 @@ export const useCajaStore = defineStore('caja', () => {
     // y sumarlo aquí duplicaría el efectivo inicial en caja.
     const aportes = capitalStore.aportesTotal;
     const retiros = capitalStore.retirosTotal;
-    // Compras del período no anuladas (mismo criterio que ventasPeriodo)
-    const compras = comprasStore.comprasPeriodo;
+    // Compras históricas no anuladas (mismo criterio que ventasTotal)
+    const compras = comprasStore.comprasTotal;
     const arq = calcularSaldoArqueos();
 
-    return m(ini + aportes + ventasStore.ventasPeriodo - compras - retiros + arq);
+    return m(ini + aportes + ventasStore.ventasTotal - compras - retiros + arq);
   });
 
   /**

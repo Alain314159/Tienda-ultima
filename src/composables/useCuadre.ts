@@ -316,7 +316,12 @@ export function useCuadre() {
       capitalTotal: capitalStore.capitalTotal,
       gananciasAcumuladas: capitalStore.gananciasAcumuladas,
       gananciaDisponible: capitalStore.gananciaDisponible,
-      patrimonioTotal: capitalStore.capitalTotal + lotesStore.valorInventario,
+      // Patrimonio neto contable: capital + ganancias - retiros (neto de lo retirado)
+      patrimonioTotal: capitalStore.capitalTotal + capitalStore.gananciasAcumuladas - capitalStore.retirosTotal,
+      retirosAcumulados: capitalStore.retirosTotal,
+      // Gastos pagados con dinero fuera del cajón (transferencia, bolsillo):
+      // explica la diferencia entre activos (caja + inventario) y patrimonio neto
+      gastosFueraCaja: m(gastosStore.gastos.filter((g) => g.saleDeCaja === false).reduce((s, g) => s + n(g.monto), 0)),
       socios: capitalStore.socios.filter((s) => s.activo !== false),
     });
     toastMsg('PDF generado');
