@@ -1,0 +1,145 @@
+name: E2E Matrix (cross-browser + stress)
+
+# Pruebas que NO se pueden ejecutar en local (no hay binarios de firefox/webkit
+# en la máquina de desarrollo): la suite E2E completa contra los tres motores
+# de render de playwright-core + el stress test con dataset de tienda real.
+#
+# - matrix: smoke + funcional en chromium / firefox / webkit (viewport móvil)
+# - stress: 30 productos, 1500 ventas, 200 gastos → arranque, historial,
+#   cuadre y libro diario con umbrales de tiempo + partida doble balanceada
+#
+# No es gate de deploy (webkit/firefox pueden tener flakiness puntual que no
+# debe bloquear releases): es alerta temprana que corre en cada PR que toca
+# src/tests y semanalmente.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # lunes 06:00 UTC
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/smoke.spec.mjs'
+      - 'tests/functional.spec.mjs'
+      - 'tests/stress.spec.mjs'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/e2e-matrix.yml'
+
+jobs:
+  matrix:
+    name: E2E ${{ matrix.browser }} (móvil)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build de producción
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
+
+      - name: Instalar navegador ${{ matrix.browser }}
+        run: |
+          npx playwright-core install --with-deps ${{ matrix.browser }}
+          if [ "${{ matrix.browser }}" = "chromium" ]; then
+            echo "CHROMIUM_PATH=$(ls $HOME/.cache/ms-playwright/chromium-*/chrome-linux*/chrome | head -1)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Servir build (vite preview)
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 3
+          curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
+
+      - name: Smoke test (${{ matrix.browser }})
+        run: node tests/smoke.spec.mjs
+        env:
+          BASE_URL: http://localhost:4173/Tienda-ultima/
+          BROWSER: ${{ matrix.browser }}
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Test funcional (${{ matrix.browser }})
+        run: node tests/functional.spec.mjs
+        env:
+          BASE_URL: http://localhost:4173/Tienda-ultima/
+          BROWSER: ${{ matrix.browser }}
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Subir capturas si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-matrix-${{ matrix.browser }}-capturas
+          path: '*.png'
+          if-no-files-found: ignore
+          retention-days: 7
+
+  stress:
+    name: Stress (1500 ventas, umbrales de tiempo)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build de producción
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
+
+      - name: Instalar Chromium de playwright
+        run: |
+          npx playwright-core install chromium --with-deps
+          echo "CHROMIUM_PATH=$(ls $HOME/.cache/ms-playwright/chromium-*/chrome-linux*/chrome | head -1)" >> "$GITHUB_ENV"
+
+      - name: Servir build (vite preview)
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 3
+          curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
+
+      # Umbrales calibrados en CI (arranque 15s / historial 10s / cuadre 25s):
+      # cazan regresiones de orden de magnitud (n², re-renders masivos), no
+      # ruido de milisegundos. Local de referencia: 4.4s / 0.1s / 0.7s.
+      - name: Stress test con dataset de tienda real
+        run: node tests/stress.spec.mjs
+        env:
+          BASE_URL: http://localhost:4173/Tienda-ultima/
+          BROWSER: chromium
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Subir capturas si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-capturas-fallo
+          path: '*.png'
+          if-no-files-found: ignore
+          retention-days: 7

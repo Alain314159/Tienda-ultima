@@ -1,8 +1,10 @@
 import 'dotenv/config';
-import { chromium } from 'playwright-core';
+import { chromium, firefox, webkit } from 'playwright-core';
 
 const BASE_URL = process.env.BASE_URL || 'https://alain314159.github.io/Tienda-ultima/';
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH;
+const BROWSER = process.env.BROWSER || 'chromium';
+const ENGINES = { chromium, firefox, webkit };
 
 const errors = [];
 const warnings = [];
@@ -22,10 +24,14 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
   console.log(' URL: ' + BASE_URL);
   console.log('═══════════════════════════════════════════\n');
 
-  const browser = await chromium.launch({
-    executablePath: CHROMIUM_PATH,
+  // Multi-navegador: BROWSER=chromium|firefox|webkit (executablePath solo
+  // si viene en env: los binarios de playwright-core instalados por CI se
+  // autodetectan, CHROMIUM_PATH se mantiene para compatibilidad local)
+  const engine = ENGINES[BROWSER] || chromium;
+  const browser = await engine.launch({
+    ...(CHROMIUM_PATH && BROWSER === 'chromium' ? { executablePath: CHROMIUM_PATH } : {}),
     headless: true,
-    args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+    ...(BROWSER === 'chromium' ? { args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] } : {})
   });
 
   const context = await browser.newContext({
