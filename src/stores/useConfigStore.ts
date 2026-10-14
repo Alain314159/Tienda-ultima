@@ -8,6 +8,7 @@ import type { Config } from '../types';
 import { P } from '../utils/id';
 import { db } from '../db';
 import { esPinHasheado, hashPin } from '../services/pin';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useConfigStore = defineStore('config', () => {
   // ===== ESTADO =====
@@ -23,7 +24,10 @@ export const useConfigStore = defineStore('config', () => {
 
     // Finanzas
     capitalInicial: 0,
-    periodoInicio: new Date().toISOString(),
+    // El primer período arranca a MEDIANOCCHE local del día de alta:
+    // los registros guardan fecha local-mediodía y un arranque con hora
+    // exacta los dejaba fuera de los totales del período
+    periodoInicio: inicioDiaLocal(new Date()).toISOString(),
 
     // Comportamiento
     calcActiva: true,

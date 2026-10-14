@@ -51,7 +51,7 @@ export const useGastosStore = defineStore('gastos', () => {
    * Gastos del período actual
    */
   const gastosOpPeriodo = computed(() => {
-    const ini = inicioDiaLocal(configStore.periodoInicio);
+    const ini = new Date(configStore.periodoInicio);
     return m(gastos.value.filter((g) => new Date(g.fecha) >= ini).reduce((s, g) => s + n(g.monto), 0));
   });
 

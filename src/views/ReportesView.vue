@@ -459,6 +459,7 @@ import { useVentasStore } from '../stores/useVentasStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import { useCapitalStore } from '../stores/useCapitalStore';
 import { useCajaStore } from '../stores/useCajaStore';
+import { useUIStore } from '../stores/useUIStore';
 import { useLotesStore } from '../stores/useLotesStore';
 import { useCuadre } from '../composables/useCuadre';
 import { db } from '../db';
@@ -472,6 +473,7 @@ import {
 } from '../services/libroDiario';
 
 const configStore = useConfigStore();
+const ui = useUIStore();
 const ventasStore = useVentasStore();
 const cierresStore = useCierresStore();
 const capitalStore = useCapitalStore();
@@ -488,7 +490,13 @@ const cierresOrdenados = computed(() => cierresStore.cierresOrdenados);
 const gananciaNetaPeriodo = computed(() => cierresStore.gananciaNetaPeriodo);
 
 function cerrarPeriodo() {
-  return cierresStore.cerrarPeriodo();
+  // Acción irreversible (reinicia contadores del período): confirmar como
+  // el resto de operaciones destructivas de la app
+  ui.confirmar({
+    titulo: 'Cerrar período',
+    msg: 'Se acumulará la ganancia del período y los contadores empezarán de cero. El historial se conserva. ¿Continuar?',
+    onOk: () => cierresStore.cerrarPeriodo(),
+  });
 }
 
 // ===== SOCIOS (para el reparto del PDF) =====

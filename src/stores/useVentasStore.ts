@@ -77,7 +77,7 @@ export const useVentasStore = defineStore('ventas', () => {
    * Ventas del período actual
    */
   const ventasPeriodo = computed(() => {
-    const ini = inicioDiaLocal(configStore.periodoInicio);
+    const ini = new Date(configStore.periodoInicio);
     return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.total), 0));
   });
 
@@ -94,7 +94,7 @@ export const useVentasStore = defineStore('ventas', () => {
    * Ganancia bruta del período
    */
   const gananciaBrutaPeriodo = computed(() => {
-    const ini = inicioDiaLocal(configStore.periodoInicio);
+    const ini = new Date(configStore.periodoInicio);
     return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.ganancia), 0));
   });
 

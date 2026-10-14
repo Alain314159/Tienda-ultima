@@ -115,6 +115,18 @@ export const useCierresStore = defineStore('cierres', () => {
     } catch (e) {
       console.error('Error cargando cierres:', e);
     }
+    // Migración one-shot para BDs creadas antes de la normalización: sin
+    // cierres, el período inicial debe arrancar a medianoche local del día
+    // de alta (con la hora exacta de instalación, los registros de ese día
+    // con fecha local-mediodía quedaban fuera de los totales). Con cierres,
+    // periodoInicio es el momento exacto del último cierre y NO se toca.
+    if (cierres.value.length === 0 && configStore.cfg.periodoInicio) {
+      const norm = inicioDiaLocal(configStore.cfg.periodoInicio);
+      if (new Date(configStore.cfg.periodoInicio).getTime() !== norm.getTime()) {
+        configStore.actualizarCfg({ periodoInicio: norm.toISOString() });
+        void configStore.guardarCfg();
+      }
+    }
   }
 
   /**
@@ -128,7 +140,7 @@ export const useCierresStore = defineStore('cierres', () => {
     try {
       // Filtros del período: desde la MEDIANOCHE local del día de inicio
       // (los registros de ese día guardan fecha local-mediodía)
-      const ini = inicioDiaLocal(configStore.periodoInicio);
+      const ini = new Date(configStore.periodoInicio);
       // El cierre preserva el ISO EXACTO del arranque del período (contrato
       // testeado); la normalización a día aplica solo al filtrar
       const iniExacta = new Date(configStore.periodoInicio);

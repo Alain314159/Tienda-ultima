@@ -92,7 +92,7 @@ export function useCuadre() {
   }
 
   function setPeriodoCierre(c: Cierre) {
-    const ini = inicioDiaLocal(c.periodoInicio || c.fechaCierre || '');
+    const ini = new Date(c.periodoInicio || c.fechaCierre || '');
     const fin = new Date(c.periodoFin || c.fechaCierre || '');
     rep.fechaInicio = ini.toISOString().split('T')[0];
     rep.fechaFin = fin.toISOString().split('T')[0];

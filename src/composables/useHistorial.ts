@@ -42,10 +42,10 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
   function agrupar(items: T[], keyFecha: 'fecha' = 'fecha') {
     const cierresProc = cierresStore.cierres.map((c) => ({
       cierre: c,
-      ci: inicioDiaLocal(c.periodoInicio || c.fechaCierre || '').getTime(),
+      ci: new Date(c.periodoInicio || c.fechaCierre || '').getTime(),
       cf: new Date(c.periodoFin || c.fechaCierre || '').getTime(),
     }));
-    const ini = inicioDiaLocal(configStore.cfg.periodoInicio).getTime();
+    const ini = new Date(configStore.cfg.periodoInicio).getTime();
     const actual: T[] = [];
     const cerradosMap: Record<string, { cierre: Cierre; items: T[] }> = {};
     const cerrados: { cierre: Cierre; items: T[] }[] = [];

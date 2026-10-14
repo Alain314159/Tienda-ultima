@@ -36,7 +36,7 @@ export const useComprasStore = defineStore('compras', () => {
    * Compras del período actual
    */
   const comprasPeriodo = computed(() => {
-    const ini = inicioDiaLocal(configStore.periodoInicio);
+    const ini = new Date(configStore.periodoInicio);
     return m(compras.value.filter((c) => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
   });
 

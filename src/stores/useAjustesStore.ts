@@ -40,7 +40,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
    * desde periodoInicio, valoradas a costoPerdida.
    */
   const mermasPeriodo = computed(() => {
-    const ini = inicioDiaLocal(configStore.periodoInicio);
+    const ini = new Date(configStore.periodoInicio);
     return m(
       ajustes.value
         .filter((a) => n(a.cantidad) < 0 && new Date(a.fecha) >= ini)

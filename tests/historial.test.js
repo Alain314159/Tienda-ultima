@@ -41,9 +41,11 @@ describe('useHistorial.agrupar', () => {
     expect(despues.actual[0]).toBe(items.value[0]);
   });
 
-  it('registros del día de inicio del período van al grupo actual (medianoche local)', () => {
+  it('registros del día de inicio del período van al grupo actual (primer período = medianoche)', () => {
+    const config = useConfigStore();
+    config.cfg.periodoInicio = '2026-10-01T00:00:00.000Z'; // medianoche (default/migración)
     const items = ref([
-      { id: 'v1', fecha: '2026-10-01T12:00:00.000Z' }, // mismo día que periodoInicio 16:09
+      { id: 'v1', fecha: '2026-10-01T12:00:00.000Z' }, // mismo día, local-mediodía
       { id: 'v2', fecha: '2026-09-20T12:00:00.000Z' }, // antes: sin cierre → antiguos
     ]);
     const hist = useHistorial(() => items.value);
@@ -52,6 +54,31 @@ describe('useHistorial.agrupar', () => {
     expect(g.cerrados).toHaveLength(1);
     expect(g.cerrados[0].cierre.id).toBe('__antiguos__');
     expect(g.cerrados[0].items.map((x) => x.id)).toEqual(['v2']);
+  });
+
+  it('tras un cierre, registros anteriores al momento exacto van al grupo CERRADO', async () => {
+    const config = useConfigStore();
+    config.cfg.periodoInicio = '2026-10-14T17:20:00.000Z'; // momento del último cierre
+    const cierres = useCierresStore();
+    await db.cierres.put({
+      id: 'cieHoy',
+      periodo: 'Período de hoy',
+      periodoInicio: '2026-10-14T00:00:00.000Z',
+      periodoFin: '2026-10-14T17:20:00.000Z',
+      fechaCierre: '2026-10-14T17:20:00.000Z',
+      ganancia: 10,
+    });
+    await cierres.cargarCierres();
+    const items = ref([
+      { id: 'v1', fecha: '2026-10-14T16:23:00.000Z' }, // antes del cierre → CERRADO
+      { id: 'v2', fecha: '2026-10-14T18:00:00.000Z' }, // después: actual
+    ]);
+    const hist = useHistorial(() => items.value);
+    const g = hist.agruparActual();
+    expect(g.actual.map((x) => x.id)).toEqual(['v2']);
+    expect(g.cerrados).toHaveLength(1);
+    expect(g.cerrados[0].cierre.id).toBe('cieHoy');
+    expect(g.cerrados[0].items.map((x) => x.id)).toEqual(['v1']);
   });
 
   it('registros fuera del período actual se agrupan bajo su cierre', async () => {
