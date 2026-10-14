@@ -256,7 +256,7 @@ async function registrarAjuste() {
       }
       if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
     });
-    await recargarStores('ajustes', 'lotes');
+    await recargarStores('ajustes', 'lotes', 'asientos');
     toastMsg('Merma registrada · pérdida ' + fmt(res.costoTotal));
   } else {
     const cs = n(f.costoSobrante);
@@ -285,7 +285,7 @@ async function registrarAjuste() {
       await P(db.ajustes, aj);
       await P(db.lotes, lote);
     });
-    await recargarStores('ajustes', 'lotes');
+    await recargarStores('ajustes', 'lotes', 'asientos');
     toastMsg('Sobrante registrado');
   }
   ajusteForm.value = { productoId: '', cantidad: '', motivo: '', costoSobrante: '' };

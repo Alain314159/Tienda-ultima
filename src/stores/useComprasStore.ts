@@ -8,6 +8,7 @@ import type { Compra } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { regenerarAsientos } from '../services/libroDiario';
 import { useConfigStore } from './useConfigStore';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
@@ -123,6 +124,8 @@ export const useComprasStore = defineStore('compras', () => {
 
       await cargarCompras();
       await lotesStore.cargarLotes();
+      // La compra entra al libro diario: regenerarlo en background
+      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
 
       return { compra, success: true };
     } catch (e) {
@@ -152,6 +155,8 @@ export const useComprasStore = defineStore('compras', () => {
 
       await cargarCompras();
       await lotesStore.cargarLotes();
+      // La compra anulada sale del libro diario
+      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
 
       return { success: true };
     } catch (e) {

@@ -371,7 +371,7 @@ function repartirGanancia() {
           socios: dists.map((d) => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto })),
         });
       });
-      await recargarStores('distribuciones', 'retiros');
+      await recargarStores('distribuciones', 'retiros', 'asientos');
       repartoForm.value = { monto: '', concepto: '' };
       toastMsg(`Repartido ${fmt(monto)}`);
     } catch (e) {

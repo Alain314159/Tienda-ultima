@@ -8,6 +8,7 @@ import type { Venta, ItemCarrito, Producto } from '../types';
 import { n, m, q } from '../utils/numero';
 import { P, clean } from '../utils/id';
 import { db } from '../db';
+import { regenerarAsientos } from '../services/libroDiario';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
@@ -246,6 +247,8 @@ export const useVentasStore = defineStore('ventas', () => {
 
       await cargarVentas();
       await lotesStore.cargarLotes();
+      // El libro diario excluye ventas anuladas: regenerarlo en background
+      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
       console.error('Error anulantdo venta:', e);
       throw e;
@@ -293,6 +296,8 @@ export const useVentasStore = defineStore('ventas', () => {
 
       await cargarVentas();
       await lotesStore.cargarLotes();
+      // La anulación parcial cambia totales y COGS: regenerar libro
+      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
       console.error('Error anulantdo producto:', e);
       throw e;

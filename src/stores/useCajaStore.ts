@@ -8,6 +8,7 @@ import type { Arqueo, MovCaja } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { regenerarAsientos } from '../services/libroDiario';
 import { useVentasStore } from './useVentasStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useConfigStore } from './useConfigStore';
@@ -153,6 +154,8 @@ export const useCajaStore = defineStore('caja', () => {
 
       await cargarArqueos();
       await cargarMovCaja();
+      // El ajuste de arqueo entra al libro diario
+      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
 
       return arqueo;
     } catch (e) {

@@ -8,6 +8,7 @@ import type { MovCapital, Retiro, Socio, Distribucion } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { regenerarAsientos } from '../services/libroDiario';
 import { useConfigStore } from './useConfigStore';
 import { useCierresStore } from './useCierresStore';
 
@@ -196,6 +197,8 @@ export const useCapitalStore = defineStore('capital', () => {
     });
 
     await cargarRetiros();
+    // Los retiros entran al libro diario
+    regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
 
     retiroForm.value = { monto: '', concepto: '', tipo: 'ganancia' };
 
@@ -218,6 +221,8 @@ export const useCapitalStore = defineStore('capital', () => {
     });
 
     await cargarCapital();
+    // Los aportes entran al libro diario
+    regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
 
     aporteForm.value = { monto: '', nota: '', socioId: '' };
 

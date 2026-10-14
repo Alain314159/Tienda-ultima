@@ -11,6 +11,7 @@ import type {
   Ajuste,
   Arqueo,
   MovCaja,
+  Asiento,
   Cierre,
   MovCapital,
   Retiro,
@@ -42,7 +43,7 @@ class TiendaProDB extends Dexie {
   socios!: Table<Socio, string>;
   distribuciones!: Table<Distribucion, string>;
   gastos!: Table<Gasto, string>;
-  asientos!: Table<Record<string, unknown>, string>;
+  asientos!: Table<Asiento, string>;
   pasivos!: Table<Record<string, unknown>, string>;
   auditorias!: Table<Record<string, unknown>, string>;
   tgQueue!: Table<ItemCola, string>;

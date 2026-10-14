@@ -47,7 +47,7 @@
           <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
         </div>
         <div class="det" style="font-size: 0.72rem">
-          Cerrado {{ fmtFecha(c.fechaCierre || '') }}
+          Cerrado {{ fmtFecha(c.fechaCierre || c.fecha || '') }}
           <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
         </div>
         <div
@@ -55,7 +55,7 @@
           style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.7rem; margin-top: 0.2rem"
         >
           <div style="color: var(--mut)">
-            Ventas: <b style="color: var(--ok)">{{ fmt(c.totalVentas) }}</b>
+            Ventas: <b style="color: var(--ok)">{{ fmt(c.ventas) }}</b>
           </div>
           <div style="color: var(--mut)">
             COGS: <b style="color: var(--bad)">-{{ fmt(c.cogs) }}</b>
@@ -68,6 +68,93 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- LIBRO DIARIO (PARTIDA DOBLE) -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="book" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Libro Diario
+      </div>
+      <div class="info-box" style="margin-bottom: 0.6rem">
+        Contabilidad de partida doble generada automáticamente: cada operación produce un cargo y un abono por el mismo
+        monto.
+      </div>
+
+      <div v-if="libro.asientos.length === 0" class="empty">Sin movimientos aún</div>
+
+      <template v-else>
+        <!-- Balanza de comprobación -->
+        <div class="card-title" style="margin-top: 0">
+          <icon name="chart" :size="16"></icon> Balanza de comprobación
+        </div>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Cuenta</th>
+                <th>Debe</th>
+                <th>Haber</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in libro.balanza" :key="f.cuenta">
+                <td>
+                  <b>{{ f.cuenta }}</b>
+                </td>
+                <td>{{ fmt(f.debe) }}</td>
+                <td>{{ fmt(f.haber) }}</td>
+                <td :class="f.saldo >= 0 ? 'pos' : 'neg'">
+                  <b>{{ fmt(f.saldo) }}</b>
+                </td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td>{{ fmt(libro.totalDebe) }}</td>
+                <td>{{ fmt(libro.totalHaber) }}</td>
+                <td :class="libro.balanceado ? 'pos' : 'neg'">
+                  {{ libro.balanceado ? '✓ Balanceado' : '✗ Descuadre' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
+        <div class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</div>
+        <div class="row">
+          <span>Caja según libro vs sistema</span>
+          <b :class="libro.cajaOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.cajaLibro) }} {{ libro.cajaOk ? '✓' : '≠ ' + fmt(libro.cajaSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Inventario según libro vs lotes</span>
+          <b :class="libro.invOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.invLibro) }} {{ libro.invOk ? '✓' : '≠ ' + fmt(libro.invSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Resultado neto histórico vs acumulado</span>
+          <b :class="libro.resOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.resultado) }} {{ libro.resOk ? '✓' : '≠ ' + fmt(libro.acumuladas) }}</b
+          >
+        </div>
+
+        <!-- Últimos asientos -->
+        <div class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</div>
+        <div v-for="a in libro.ultimos" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="nm">{{ a.concepto }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                {{ fmtFecha(a.fecha) }} · {{ a.cuentaDebe }} ← {{ a.cuentaHaber }}
+              </div>
+            </div>
+            <b>{{ fmt(a.monto) }}</b>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
@@ -309,19 +396,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { n } from '../utils/numero';
+import { computed, reactive, onMounted } from 'vue';
+import { n, m } from '../utils/numero';
 import { fmt, fmtCant, fmtFecha } from '../utils/formato';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import { useCapitalStore } from '../stores/useCapitalStore';
+import { useCajaStore } from '../stores/useCajaStore';
+import { useLotesStore } from '../stores/useLotesStore';
 import { useCuadre } from '../composables/useCuadre';
+import { db } from '../db';
+import { balanzaDeComprobacion, sumaDebe, CUENTAS, type Asiento } from '../services/libroDiario';
 
 const configStore = useConfigStore();
 const ventasStore = useVentasStore();
 const cierresStore = useCierresStore();
 const capitalStore = useCapitalStore();
+const cajaStore = useCajaStore();
+const lotesStore = useLotesStore();
 
 const sec = 'reportes';
 const cfg = configStore.cfg;
@@ -338,6 +431,67 @@ function cerrarPeriodo() {
 
 // ===== SOCIOS (para el reparto del PDF) =====
 const sociosActivos = computed(() => capitalStore.socios.filter((s) => s.activo !== false));
+
+// ===== LIBRO DIARIO =====
+const libro = reactive({
+  asientos: [] as Asiento[],
+  balanza: [] as ReturnType<typeof balanzaDeComprobacion>,
+  totalDebe: 0,
+  totalHaber: 0,
+  balanceado: true,
+  cajaLibro: 0,
+  cajaSistema: 0,
+  cajaOk: true,
+  invLibro: 0,
+  invSistema: 0,
+  invOk: true,
+  resultado: 0,
+  acumuladas: 0,
+  resOk: true,
+  ultimos: [] as Asiento[],
+});
+
+function saldoDe(cuenta: string): number {
+  const f = libro.balanza.find((x) => x.cuenta === cuenta);
+  return f ? f.saldo : 0;
+}
+
+function refrescarLibro() {
+  const bal = libro.balanza;
+  libro.totalDebe = m(bal.reduce((s, f) => s + f.debe, 0));
+  libro.totalHaber = m(bal.reduce((s, f) => s + f.haber, 0));
+  libro.balanceado = Math.abs(libro.totalDebe - libro.totalHaber) < 0.01;
+
+  // Diagnóstico: saldos del libro contra los cálculos del sistema
+  libro.cajaLibro = saldoDe(CUENTAS.CAJA);
+  libro.cajaSistema = cajaStore.saldoCaja;
+  libro.cajaOk = Math.abs(libro.cajaLibro - libro.cajaSistema) < 0.01;
+
+  libro.invLibro = saldoDe(CUENTAS.INVENTARIO);
+  libro.invSistema = lotesStore.valorInventario;
+  libro.invOk = Math.abs(libro.invLibro - libro.invSistema) < 0.01;
+
+  // Resultado neto histórico según el libro: ingresos - costo - gastos - mermas
+  // (los saldos de COSTO/GASTOS/MERMAS son deudores: +; el de INGRESOS acreedor: -)
+  libro.resultado = m(
+    -saldoDe(CUENTAS.INGRESOS) - saldoDe(CUENTAS.COSTO) - saldoDe(CUENTAS.GASTOS) - saldoDe(CUENTAS.MERMAS)
+  );
+  libro.acumuladas = capitalStore.gananciasAcumuladas;
+  libro.resOk = Math.abs(libro.resultado - libro.acumuladas) < 0.01;
+
+  libro.ultimos = libro.asientos.slice(-30).reverse();
+}
+
+onMounted(async () => {
+  try {
+    const filas = await db.asientos.toArray();
+    libro.asientos = filas.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    libro.balanza = balanzaDeComprobacion(libro.asientos);
+    refrescarLibro();
+  } catch (e) {
+    console.warn('libro diario', e);
+  }
+});
 
 // ===== CUADRE POR PERÍODO =====
 const {

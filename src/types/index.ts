@@ -133,6 +133,22 @@ export interface MovCaja {
   metodoPago?: string;
 }
 
+/** Tipo de evento de origen de un asiento del libro diario. */
+export type RefTipoAsiento =
+  'capitalInicial' | 'aporte' | 'compra' | 'venta' | 'costo' | 'gasto' | 'retiro' | 'ajusteCaja' | 'merma' | 'sobrante';
+
+/** Partida del libro diario: cargo a cuentaDebe y abono a cuentaHaber. */
+export interface Asiento {
+  id: string;
+  fecha: string;
+  refTipo: RefTipoAsiento;
+  refId: string;
+  concepto: string;
+  cuentaDebe: string;
+  cuentaHaber: string;
+  monto: number;
+}
+
 export interface Arqueo {
   id: string;
   fecha: string;

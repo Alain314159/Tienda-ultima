@@ -397,7 +397,7 @@ async function guardarCompra() {
           await P(db.lotes, lote);
         });
       }
-      await recargarStores('compras', 'lotes');
+      await recargarStores('compras', 'lotes', 'asientos');
       resetCompra();
       toastMsg(`Compra ${fmt(total)}`);
       try {

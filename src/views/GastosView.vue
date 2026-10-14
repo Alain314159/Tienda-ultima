@@ -246,7 +246,7 @@ async function guardarGasto() {
     toastMsg(`Gasto registrado: ${fmt(monto)}`);
   }
   resetGasto();
-  await recargarStores('gastos', 'movCaja');
+  await recargarStores('gastos', 'movCaja', 'asientos');
 }
 
 function editarGasto(id: string) {

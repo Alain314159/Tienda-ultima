@@ -142,7 +142,7 @@ export function useCobro() {
         })
       );
 
-      await recargarStores('ventas', 'lotes');
+      await recargarStores('ventas', 'lotes', 'asientos');
 
       // Liberar la UI de inmediato (evita "Procesando..." si una
       // notificacion se queda colgada por red lenta o SW no listo)

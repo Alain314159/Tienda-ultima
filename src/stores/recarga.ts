@@ -12,6 +12,7 @@ import { useCajaStore } from './useCajaStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useGastosStore } from './useGastosStore';
 import { useCierresStore } from './useCierresStore';
+import { regenerarAsientos } from '../services/libroDiario';
 
 /**
  * Recarga solo los stores cuyas tablas cambiaron.
@@ -33,7 +34,8 @@ export async function recargarStores(...tables: string[]) {
     gastos: () => useGastosStore().cargarGastos(),
     movCaja: () => useCajaStore().cargarMovCaja(),
     arqueos: () => useCajaStore().cargarArqueos(),
-    asientos: () => Promise.resolve(),
+    // El libro diario se reconstruye completo desde las tablas fuente
+    asientos: () => regenerarAsientos().then(() => undefined),
   };
   await Promise.all(tables.filter((t) => map[t]).map((t) => map[t]()));
 }
@@ -53,7 +55,8 @@ export function recargarTodoStores() {
     'retiros',
     'gastos',
     'movCaja',
-    'arqueos'
+    'arqueos',
+    'asientos'
   );
 }
 

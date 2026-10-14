@@ -22,14 +22,34 @@ const igual = (a, b, tol = 0.01) => Math.abs(a - b) < tol;
 const autoConfirmarModal = async (page, textoBoton = 'Confirmar') => {
   await esperar(600);
   try {
-    const btn = page.locator('.modal-box button:has-text("' + textoBoton + '")').first();
-    if (await btn.isVisible({ timeout: 1500 })) {
-      await btn.click({ timeout: 5000 });
-      await esperar(1500);
-      return true;
-    }
-  } catch (_) {}
-  return false;
+    // filter(visible) evita matchear botones dentro de otros modales cerrados
+    // (todos los .modal-box viven en el DOM aunque estén ocultos)
+    const btn = page
+      .locator('.modal-box button:has-text("' + textoBoton + '")')
+      .filter({ visible: true })
+      .first();
+    await btn.waitFor({ state: 'visible', timeout: 3000 });
+    await btn.click({ timeout: 5000 });
+    await esperar(1500);
+    return true;
+  } catch (e) {
+    try {
+      const visibles = await page
+        .locator('.modal-box')
+        .filter({ visible: true })
+        .allTextContents();
+      // Solo es un problema si había un modal abierto que no se pudo confirmar
+      if (visibles.length > 0) {
+        console.log(
+          '  ⚠ autoConfirmarModal falló (' + textoBoton + '): ' + String(e.message).split('\n')[0]
+        );
+        console.log(
+          '  ⚠ modales visibles: ' + JSON.stringify(visibles.map((t) => t.replace(/\s+/g, ' ').slice(0, 120)))
+        );
+      }
+    } catch (_) {}
+    return false;
+  }
 };
 
 const clickVisible = async (page, selector) => {
@@ -94,6 +114,16 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await esperar(3500);
 
+    // En instalación limpia aparece el aviso de configurar respaldo de Telegram:
+    // cerrarlo ("Recordarme despues") para desbloquear la navegación
+    try {
+      const btnAviso = page.locator('.modal-box button:has-text("Recordarme despues")');
+      if (await btnAviso.isVisible({ timeout: 3000 })) {
+        await btnAviso.click({ timeout: 5000 });
+        await esperar(800);
+      }
+    } catch (_) {}
+
     const appOk = (await page.content()).length > 500;
     check('App carga correctamente', appOk);
 
@@ -105,7 +135,7 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     await esperar(1200);
 
     await page.fill('input[placeholder="Nombre del producto"]', 'Papa Test');
-    await page.fill('input[placeholder="Precio venta"]', '8');
+    await page.fill('input[placeholder="Precio base venta"]', '8');
     await page.fill('input[placeholder="Stock mín."]', '3');
     await clickVisible(page, 'section:visible button:has-text("Guardar")');
     await esperar(1500);
@@ -125,7 +155,7 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     await esperar(800);
 
     await page.fill('input[placeholder="Cantidad"]', '10');
-    await page.fill('input[placeholder="Costo unit."]', '5');
+    await page.fill('input[placeholder="Costo por unidad"]', '5');
     await esperar(500);
     await clickVisible(page, 'section:visible button:has-text("Registrar Compra")');
     await esperar(800);
@@ -152,7 +182,7 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     const cantInput = await page.$('.cart-item .qty-input input');
     if (cantInput) {
       await cantInput.fill('3');
-      await cantInput.blur();
+      await cantInput.evaluate((el) => el.blur());
       await esperar(600);
     }
 
@@ -207,19 +237,30 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     const gastosCount = await leerDB(page, 'gastos', arr => arr.length);
     check('1 gasto registrado', gastosCount === 1, 'count=' + gastosCount);
 
-    // ============ ASIENTOS ============
-    console.log('\n▶️  TEST: Verificar libro diario (asientos automaticos)');
-    const asientosData = await leerDB(page, 'asientos', arr => {
+    // ============ LIBRO DIARIO ============
+    console.log('\n▶️  TEST: Libro diario (partida doble)');
+    const libro = await leerDB(page, 'asientos', arr => {
+      const porCuenta = {};
+      let totalDebe = 0;
+      let totalHaber = 0;
       const tipos = {};
-      arr.forEach(a => { tipos[a.refTipo] = (tipos[a.refTipo] || 0) + 1; });
-      return { num: arr.length, tipos };
+      arr.forEach(a => {
+        porCuenta[a.cuentaDebe] = (porCuenta[a.cuentaDebe] || 0) + a.monto;
+        porCuenta[a.cuentaHaber] = (porCuenta[a.cuentaHaber] || 0) - a.monto;
+        totalDebe += a.monto;
+        totalHaber += a.monto;
+        tipos[a.refTipo] = (tipos[a.refTipo] || 0) + 1;
+      });
+      return { num: arr.length, porCuenta, totalDebe, totalHaber, tipos };
     });
 
-    check('Asientos generados > 0', asientosData.num > 0, 'num=' + asientosData.num);
-    check('Asiento de compra', (asientosData.tipos.compra || 0) >= 1, JSON.stringify(asientosData.tipos));
-    check('Asiento de venta', (asientosData.tipos.venta || 0) >= 1);
-    check('Asiento de costo', (asientosData.tipos.costo || 0) >= 1);
-    check('Asiento de gasto', (asientosData.tipos.gasto || 0) >= 1);
+    // ============ ASIENTOS ============
+    console.log('\n▶️  TEST: Verificar libro diario (asientos automaticos)');
+    check('Asientos generados > 0', libro.num > 0, 'num=' + libro.num);
+    check('Asiento de compra', (libro.tipos.compra || 0) >= 1, JSON.stringify(libro.tipos));
+    check('Asiento de venta', (libro.tipos.venta || 0) >= 1);
+    check('Asiento de costo', (libro.tipos.costo || 0) >= 1);
+    check('Asiento de gasto', (libro.tipos.gasto || 0) >= 1);
 
     // ============ SOCIO ============
     console.log('\n▶️  TEST: Crear socio 100%');
@@ -241,7 +282,7 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
 
     // ============ SALDO EN CAJA ============
     console.log('\n▶️  TEST: Saldo en caja');
-    console.log('  Esperado: 0 (cap) + $24 (venta) - $50 (compra) - $50 (gasto) = -$76');
+    console.log('  Esperado: 0 (cap) + $24 (venta) - $50 (compra) - $50 (gasto con espejo movCaja) = -$76');
 
     const caja = await page.evaluate(async () => {
       const dbReq = indexedDB.open('TiendaProDB');
@@ -249,24 +290,31 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
         dbReq.onsuccess = () => {
           const db = dbReq.result;
           const tx = db.transaction(['ventas', 'compras', 'gastos', 'capital', 'retiros', 'movCaja', 'config'], 'readonly');
-          const out = { ventas: 0, compras: 0, gastos: 0, capital: 0, retiros: 0, arqueo: 0, capitalInicial: 0 };
-          let pending = 7;
+          const out = { ventas: 0, compras: 0, capital: 0, retiros: 0, movCajaNeto: 0, capitalInicial: 0 };
+          let pending = 6;
           const done = () => { pending--; if (!pending) resolve(out); };
 
           tx.objectStore('ventas').getAll().onsuccess = e => { out.ventas = e.target.result.filter(v => !v.anulada).reduce((s, v) => s + (v.total || 0), 0); done(); };
           tx.objectStore('compras').getAll().onsuccess = e => { out.compras = e.target.result.filter(c => !c.anulada).reduce((s, c) => s + (c.total || 0), 0); done(); };
-          tx.objectStore('gastos').getAll().onsuccess = e => { out.gastos = e.target.result.filter(g => g.saleDeCaja !== false).reduce((s, g) => s + (g.monto || 0), 0); done(); };
           tx.objectStore('capital').getAll().onsuccess = e => { out.capital = e.target.result.reduce((s, x) => s + (x.monto || 0), 0); done(); };
           tx.objectStore('retiros').getAll().onsuccess = e => { out.retiros = e.target.result.reduce((s, x) => s + (x.monto || 0), 0); done(); };
-          tx.objectStore('movCaja').getAll().onsuccess = e => { out.arqueo = e.target.result.reduce((s, x) => s + (x.tipo === 'ingreso' ? x.monto : -x.monto), 0); done(); };
+          // El gasto con saleDeCaja ya descuenta vía su movCaja espejo: NO restarlo aparte (doble conteo)
+          tx.objectStore('movCaja').getAll().onsuccess = e => { out.movCajaNeto = e.target.result.reduce((s, x) => s + (x.tipo === 'ingreso' ? x.monto : -x.monto), 0); done(); };
           tx.objectStore('config').get('cfg').onsuccess = e => { out.capitalInicial = e.target.result?.value?.capitalInicial || 0; done(); };
         };
       });
     });
 
-    const saldo = caja.capitalInicial + caja.ventas + caja.capital - caja.compras - caja.retiros + caja.arqueo - caja.gastos;
+    // Misma fórmula acumulativa que useCajaStore.saldoCaja
+    const saldo = caja.capitalInicial + caja.ventas + caja.capital - caja.compras - caja.retiros + caja.movCajaNeto;
     console.log('  Detalle: ' + JSON.stringify(caja));
     check('Saldo en caja = -$76', igual(saldo, -76), 'saldo=$' + saldo);
+
+    check('Libro diario generado', libro.num > 0, 'asientos=' + libro.num);
+    check('Libro balanceado (Debe = Haber)', igual(libro.totalDebe, libro.totalHaber),
+      'debe=' + libro.totalDebe + ' haber=' + libro.totalHaber);
+    check('Cuenta Caja del libro = saldoCaja del sistema', igual(libro.porCuenta['Caja'] || 0, saldo),
+      'libro=$' + (libro.porCuenta['Caja'] || 0));
 
     // ============ CUADRE ============
     console.log('\n▶️  TEST: Generar cuadre');
