@@ -13,3 +13,7 @@ jobs:
   quality:
     name: Quality gates
     uses: ./.github/workflows/quality.yml
+
+  e2e:
+    name: E2E + Lighthouse
+    uses: ./.github/workflows/e2e.yml

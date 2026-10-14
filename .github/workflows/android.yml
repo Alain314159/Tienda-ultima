@@ -11,8 +11,12 @@ jobs:
     name: Quality gates
     uses: ./.github/workflows/quality.yml
 
+  e2e:
+    name: E2E + Lighthouse
+    uses: ./.github/workflows/e2e.yml
+
   build:
-    needs: quality
+    needs: [quality, e2e]
     runs-on: ubuntu-latest
     env:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk

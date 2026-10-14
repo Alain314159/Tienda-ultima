@@ -219,9 +219,22 @@ describe('GlobalSearch.vue', () => {
 
   it('búsqueda difusa tolera un error de tipeo (fuzzy de MiniSearch)', async () => {
     const w = montarBusqueda(true);
+    // MiniSearch ahora se carga bajo demanda: esperar a que el módulo
+    // dinámico se resuelva y el ctor reactivo reconstruya los índices
+    await flushPromises();
+    await flushPromises();
     // 'electricidad' tiene 12 letras: tolerancia ~2 ediciones
     await escribir(w, 'electicidad');
+    await flushPromises();
     expect(w.text()).toContain('Servicios: Pago electricidad');
+  });
+
+  it('mientras MiniSearch carga, la subcadena sigue funcionando (degradación suave)', async () => {
+    const w = montarBusqueda(true);
+    // Sin esperas: el módulo puede no estar aún, pero la búsqueda por
+    // subcadena exacta debe devolver resultados igualmente
+    await escribir(w, 'coca');
+    expect(w.text()).toContain('Coca Cola 2L');
   });
 
   it('subcadena también matchea (comportamiento previo preservado)', async () => {

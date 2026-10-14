@@ -108,6 +108,14 @@ export default defineConfig(({ mode }) => {
           drop_debugger: true,
         },
       },
+      // El bundler emite <link rel=modulepreload> para dependencias del entry:
+      // sin esto, pdf-vendor (428 KiB de jsPDF) se descarga en cada arranque
+      // aunque el PDF solo se exporte desde Reportes y bajo demanda.
+      modulePreload: {
+        resolveDependencies(_filename, deps) {
+          return deps.filter((d) => !/(pdf-vendor|html2canvas)/.test(d));
+        },
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {

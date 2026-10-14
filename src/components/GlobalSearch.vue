@@ -30,7 +30,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import MiniSearch from 'minisearch';
 
 defineOptions({ name: 'GlobalSearch' });
 
@@ -77,6 +76,21 @@ defineEmits(['cerrar', 'ir']);
 const q = ref('');
 const input = ref<HTMLInputElement | null>(null);
 
+// MiniSearch se carga bajo demanda (code-splitting): el chunk no forma parte
+// del arranque. Mientras carga, la búsqueda funciona por subcadena (el
+// comportamiento difuso/fuzzy se suma en cuanto el módulo está listo).
+type MiniSearchCtor = new (opts: { fields: string[] }) => {
+  addAll: (docs: unknown[]) => void;
+  search: (q: string, opts: unknown) => { id: string }[];
+};
+const MSCtor = ref<MiniSearchCtor | null>(null);
+
+function crearIndice(fields: string[]) {
+  if (!MSCtor.value) return null;
+  const ms = new MSCtor.value({ fields });
+  return ms as unknown as { addAll: (docs: unknown[]) => void; search: (q: string, opts: unknown) => { id: string }[] };
+}
+
 const st = computed<EstadoBusqueda>(() => (props.state as EstadoBusqueda) || {});
 
 // Opciones de búsqueda: prefijo ("coc" → "coca") + fuzzy ("cocacola" → "coca cola")
@@ -84,7 +98,8 @@ const OPCIONES = { fuzzy: 0.2, prefix: true };
 
 // ===== Índices MiniSearch (se reconstruyen solo cuando cambia la data) =====
 const idxProductos = computed(() => {
-  const ms = new MiniSearch({ fields: ['nombre'] });
+  const ms = crearIndice(['nombre']);
+  if (!ms) return null;
   ms.addAll(
     (st.value.productos || []).filter((p) => !p.archivado).map((p) => ({ id: p.id, nombre: String(p.nombre || '') }))
   );
@@ -92,7 +107,8 @@ const idxProductos = computed(() => {
 });
 
 const idxVentas = computed(() => {
-  const ms = new MiniSearch({ fields: ['nombres'] });
+  const ms = crearIndice(['nombres']);
+  if (!ms) return null;
   ms.addAll(
     (st.value.ventas || [])
       .filter((v) => !v.anulada)
@@ -102,13 +118,15 @@ const idxVentas = computed(() => {
 });
 
 const idxSocios = computed(() => {
-  const ms = new MiniSearch({ fields: ['nombre'] });
+  const ms = crearIndice(['nombre']);
+  if (!ms) return null;
   ms.addAll((st.value.socios || []).map((s) => ({ id: s.id, nombre: String(s.nombre || '') })));
   return ms;
 });
 
 const idxGastos = computed(() => {
-  const ms = new MiniSearch({ fields: ['concepto', 'categoria'] });
+  const ms = crearIndice(['concepto', 'categoria']);
+  if (!ms) return null;
   ms.addAll(
     (st.value.gastos || []).map((g) => ({
       id: g.id,
@@ -119,9 +137,14 @@ const idxGastos = computed(() => {
   return ms;
 });
 
-/** IDs que matchean por índice difuso O por subcadena (comportamiento previo). */
-function idsEncontrados(ms: MiniSearch, docs: { id: string; texto: string }[], query: string): string[] {
-  const ids: string[] = ms.search(query, OPCIONES).map((r) => String(r.id));
+/** IDs que matchean por índice difuso O por subcadena (comportamiento previo).
+ *  Sin índice (MiniSearch aún cargando) queda solo la subcadena. */
+function idsEncontrados(
+  ms: { search: (q: string, opts: unknown) => { id: string }[] } | null,
+  docs: { id: string; texto: string }[],
+  query: string
+): string[] {
+  const ids: string[] = ms ? ms.search(query, OPCIONES).map((r) => String(r.id)) : [];
   for (const d of docs) {
     if (d.texto.toLowerCase().includes(query) && !ids.includes(d.id)) ids.push(d.id);
   }
@@ -219,7 +242,18 @@ const resultados = computed(() => {
 watch(
   () => props.abierto,
   (v) => {
-    if (v) nextTick(() => input.value?.focus());
-  }
+    if (v) {
+      nextTick(() => input.value?.focus());
+      // Cargar MiniSearch la primera vez que se abre la búsqueda
+      if (!MSCtor.value) {
+        import('minisearch')
+          .then((m) => {
+            MSCtor.value = m.default as unknown as MiniSearchCtor;
+          })
+          .catch((e) => console.warn('minisearch', e));
+      }
+    }
+  },
+  { immediate: true }
 );
 </script>
