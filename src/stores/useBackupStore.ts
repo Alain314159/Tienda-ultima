@@ -216,11 +216,16 @@ export const useBackupStore = defineStore('backup', () => {
   function validarEsquema(d: Respaldo) {
     const errores: string[] = [];
     const avisos: string[] = [];
-    if (!d || typeof d !== 'object') {
+    if (!d || typeof d !== 'object' || Array.isArray(d)) {
+      // Array.isArray: un array también es typeof 'object' y escapaba del
+      // check, produciendo errores confusos aguas abajo
       return { ok: false, errores: ['El archivo no es un objeto valido'] };
     }
     if (!d.productos && !d.ventas) {
       errores.push('Falta productos y ventas (no parece un respaldo)');
+    }
+    if (d.cfg !== undefined && (typeof d.cfg !== 'object' || d.cfg === null || Array.isArray(d.cfg))) {
+      errores.push('"cfg" no es un objeto');
     }
     const tablas: TablaDatos[] = [
       'productos',
@@ -311,7 +316,8 @@ export const useBackupStore = defineStore('backup', () => {
         throw new Error('Fallo la importacion Y el rollback: ' + (err instanceof Error ? err.message : String(err)));
       }
     }
-    if (d.cfg) configStore.cfg = { ...configStore.cfg, ...d.cfg };
+    // Object.assign IN-PLACE (no spread): mantener vivas las referencias capturadas
+    if (d.cfg) Object.assign(configStore.cfg, d.cfg);
     await recargarTodoStores();
   }
 

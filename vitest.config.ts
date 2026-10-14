@@ -8,6 +8,10 @@ export default defineConfig({
     globals: true,
     include: ['tests/**/*.test.js'],
     setupFiles: ['./tests/setup.js'],
+    // mathjs/MiniSearch y happy-dom son lentos en runners CI fríos o FS lento:
+    // 15s evita falsos positivos por timeout sin enmascarar cuelgos reales.
+    testTimeout: 15000,
+    hookTimeout: 15000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

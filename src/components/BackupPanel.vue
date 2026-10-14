@@ -116,10 +116,12 @@ import { ref, computed, onMounted } from 'vue';
 import { BackupFolder } from '../services/backupFolder';
 import { esNativo as esNativoFn } from '../services/platform';
 import { datosDeStores } from '../stores/exportar';
+import { useUIStore } from '../stores/useUIStore';
 
 defineOptions({ name: 'BackupPanel' });
 
 const emit = defineEmits(['close', 'restore']);
+const ui = useUIStore();
 
 const info = ref<{ cantidad: number; ultimo: string | null }>({ cantidad: 0, ultimo: null });
 const archivos = ref<{ name: string }[]>([]);
@@ -173,20 +175,27 @@ async function restaurarUltimo() {
 }
 
 async function restaurar(nombre: string) {
-  if (!confirm('¿Restaurar el backup "' + nombre + '"?\nSe reemplazarán TODOS los datos actuales.')) return;
-  restaurando.value = true;
-  msg.value = '';
-  try {
-    const data = await BackupFolder.leer(nombre);
-    if (!data) throw new Error('No se pudo leer el archivo');
-    emit('restore', data);
-    msg.value = 'Backup restaurado correctamente';
-    msgTipo.value = 'ok';
-  } catch (e) {
-    msg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
-    msgTipo.value = 'error';
-  } finally {
-    restaurando.value = false;
-  }
+  // confirm() nativo bloquea el hilo, no existe en WebView de Capacitor y
+  // es incompatible con tests/E2E — usar el modal propio de la app
+  ui.confirmar({
+    titulo: 'Restaurar backup',
+    msg: `¿Restaurar el backup "${nombre}"?\nSe reemplazarán TODOS los datos actuales.`,
+    onOk: async () => {
+      restaurando.value = true;
+      msg.value = '';
+      try {
+        const data = await BackupFolder.leer(nombre);
+        if (!data) throw new Error('No se pudo leer el archivo');
+        emit('restore', data);
+        msg.value = 'Backup restaurado correctamente';
+        msgTipo.value = 'ok';
+      } catch (e) {
+        msg.value = 'Error: ' + (e instanceof Error ? e.message : String(e));
+        msgTipo.value = 'error';
+      } finally {
+        restaurando.value = false;
+      }
+    },
+  });
 }
 </script>

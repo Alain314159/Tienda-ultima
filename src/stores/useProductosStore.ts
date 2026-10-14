@@ -41,7 +41,9 @@ export const useProductosStore = defineStore('productos', () => {
 
     return productos.value.filter((p) => {
       if (!mostrarArchivados.value && p.archivado) return false;
-      if ((stockMap[p.id] || 0) <= 0 && !mostrarArchivados.value) return false;
+      // NO ocultar productos con stock 0: un producto recién creado (antes de
+      // su primera compra) parecía "alta fallida" y llevaba a re-agregarlo y
+      // duplicarlo. El filtro explícito 'agotados' existe para ese uso.
       if (q && !(p.nombre.toLowerCase().includes(q) || p.codigo?.toLowerCase().includes(q))) return false;
       if (filtroStock.value === 'agotados' && (stockMap[p.id] || 0) > 0.001) return false;
       if (filtroStock.value === 'bajos') {

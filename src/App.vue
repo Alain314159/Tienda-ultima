@@ -357,6 +357,10 @@ function cerrarAvisoTienda() {
 
 function recordarAvisoTienda() {
   mostrarAvisoTienda.value = false;
+  // Posponer 3 días (antes solo se ocultaba en la sesión y reaparecía
+  // en CADA arranque, bloqueando el uso normal de la app)
+  cfg.avisoTiendaSnoozeHasta = Date.now() + 3 * 24 * 60 * 60 * 1000;
+  configStore.guardarCfg();
 }
 
 // ===== PWA UPDATE =====
@@ -516,8 +520,12 @@ async function inicializar() {
     } catch {}
 
     const c = await db.config.get('cfg');
-    if (c) configStore.cfg = { ...configStore.cfg, ...(c.value as object) };
-    else await configStore.guardarCfg();
+    // Object.assign IN-PLACE (no spread): no crear un objeto nuevo que deje
+    // huérfanas las referencias ya capturadas de configStore.cfg.
+    // El guard evita contaminar cfg si el valor quedó corrupto en la BD.
+    const cv = c?.value;
+    if (cv && typeof cv === 'object' && !Array.isArray(cv)) Object.assign(configStore.cfg, cv);
+    else if (!c) await configStore.guardarCfg();
     try {
       document.documentElement.setAttribute('data-theme', cfg.tema);
     } catch {}
@@ -537,8 +545,9 @@ async function inicializar() {
       console.error('limpiar tgQueue', e);
     }
 
-    // Aviso de configuracion inicial
-    if (!cfg.tiendaConfigurada && !cfg.avisoTiendaDescartado) {
+    // Aviso de configuracion inicial (respeta el snooze de 3 días)
+    const snoozed = Number(cfg.avisoTiendaSnoozeHasta) > Date.now();
+    if (!cfg.tiendaConfigurada && !cfg.avisoTiendaDescartado && !snoozed) {
       setTimeout(() => {
         mostrarAvisoTienda.value = true;
       }, 800);

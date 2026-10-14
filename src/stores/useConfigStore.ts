@@ -137,8 +137,14 @@ export const useConfigStore = defineStore('config', () => {
   async function cargarCfg() {
     try {
       const configGuardada = await db.config.get('cfg');
-      if (configGuardada) {
-        cfg.value = { ...cfg.value, ...(configGuardada.value as object) };
+      // Object.assign IN-PLACE: reemplazar cfg.value con un objeto nuevo
+      // dejaría huérfanas las referencias ya capturadas (storeToRefs,
+      // watch, App.vue) y los cambios posteriores no se persistirían.
+      // El guard de tipo evita que un valor corrupto (string/array de una
+      // escritura antigua o truncada) contamine cfg con claves basura.
+      const v = configGuardada?.value;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        Object.assign(cfg.value, v);
         // Migración one-shot: PIN en claro -> hash (no bloquea el arranque)
         if (cfg.value.pin && cfg.value.pinActivo && !esPinHasheado(cfg.value.pin)) {
           void guardarCfg();

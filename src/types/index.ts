@@ -250,6 +250,8 @@ export interface Config {
   tgCarpetaActiva?: boolean;
   tgCarpetaNombre?: string;
   avisoTiendaDescartado: boolean;
+  /** Epoch-ms hasta el que el aviso de configuración queda pospuesto ("Recordarme después") */
+  avisoTiendaSnoozeHasta?: number;
   tutorialVisto: boolean;
   mostrarSplash: boolean;
   graficoVista: string;

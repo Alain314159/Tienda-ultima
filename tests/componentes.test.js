@@ -3,7 +3,7 @@
  *  - Calculator.vue: UI de la calculadora (display, preview, historial, AC, error)
  *  - GlobalSearch.vue: búsqueda global con MiniSearch (fuzzy/prefijo, exclusiones, emisión de navegación)
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 import Calculator from '../src/components/Calculator.vue';
@@ -224,14 +224,11 @@ describe('GlobalSearch.vue', () => {
 
   it('búsqueda difusa tolera un error de tipeo (fuzzy de MiniSearch)', async () => {
     const w = montarBusqueda(true);
-    // MiniSearch ahora se carga bajo demanda: esperar a que el módulo
-    // dinámico se resuelva y el ctor reactivo reconstruya los índices
-    await flushPromises();
-    await flushPromises();
+    // MiniSearch se carga bajo demanda (import() dinámico): los microtask
+    // flush no bastan — vi.waitFor sondea hasta que el índice se construye.
     // 'electricidad' tiene 12 letras: tolerancia ~2 ediciones
     await escribir(w, 'electicidad');
-    await flushPromises();
-    expect(w.text()).toContain('Servicios: Pago electricidad');
+    await vi.waitFor(() => expect(w.text()).toContain('Servicios: Pago electricidad'), { timeout: 10000 });
   });
 
   it('mientras MiniSearch carga, la subcadena sigue funcionando (degradación suave)', async () => {
