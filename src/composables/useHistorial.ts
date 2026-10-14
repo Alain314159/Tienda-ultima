@@ -8,6 +8,7 @@ import { reactive, ref } from 'vue';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import type { Cierre } from '../types';
+import { inicioDiaLocal } from '../utils/fecha';
 
 const POR_PAGINA = 20;
 
@@ -27,7 +28,11 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
   });
   const porPagina = ref(POR_PAGINA);
 
-  let _agrupCache: { sig: string; data: { actual: T[]; cerrados: { cierre: Cierre; items: T[] }[] } } | null = null;
+  // NOTA: hubo aquí una caché por firma (length + id primero/último) que
+  // devolvía grupos con referencias VIEJAS tras mutaciones que no cambian
+  // la firma (anular venta, editar compra/gasto): la UI quedaba congelada
+  // hasta recargar. El computed que llama a agruparActual() ya evita
+  // recomputar sin necesidad, así que la caché se eliminó.
 
   /**
    * Agrupa registros por período (actual + cerrados).
@@ -35,26 +40,12 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
    * @param {string} keyFecha campo de fecha
    */
   function agrupar(items: T[], keyFecha: 'fecha' = 'fecha') {
-    const sig =
-      items.length +
-      '|' +
-      (items[0]?.id || '') +
-      '|' +
-      (items[items.length - 1]?.id || '') +
-      '|' +
-      configStore.cfg.periodoInicio +
-      '|' +
-      cierresStore.cierres.length +
-      '|' +
-      keyFecha;
-    if (_agrupCache && _agrupCache.sig === sig) return _agrupCache.data;
-
     const cierresProc = cierresStore.cierres.map((c) => ({
       cierre: c,
-      ci: new Date(c.periodoInicio || c.fechaCierre || '').getTime(),
+      ci: inicioDiaLocal(c.periodoInicio || c.fechaCierre || '').getTime(),
       cf: new Date(c.periodoFin || c.fechaCierre || '').getTime(),
     }));
-    const ini = new Date(configStore.cfg.periodoInicio).getTime();
+    const ini = inicioDiaLocal(configStore.cfg.periodoInicio).getTime();
     const actual: T[] = [];
     const cerradosMap: Record<string, { cierre: Cierre; items: T[] }> = {};
     const cerrados: { cierre: Cierre; items: T[] }[] = [];
@@ -102,7 +93,6 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
     });
 
     const data = { actual, cerrados };
-    _agrupCache = { sig, data };
     return data;
   }
 
@@ -138,7 +128,6 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
   function reset() {
     historial.pagina = 1;
     historial.abiertos = {};
-    _agrupCache = null;
   }
 
   return {

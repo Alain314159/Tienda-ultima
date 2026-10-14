@@ -16,6 +16,7 @@ import { useComprasStore } from './useComprasStore';
 import { useAjustesStore } from './useAjustesStore';
 import { useCajaStore } from './useCajaStore';
 import { diasEntre, formatoDisplay } from '../utils/formato';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useCierresStore = defineStore('cierres', () => {
   // ===== STORES DEPENDIENTES =====
@@ -125,7 +126,12 @@ export const useCierresStore = defineStore('cierres', () => {
     _cerrando.value = true;
 
     try {
-      const ini = new Date(configStore.periodoInicio);
+      // Filtros del período: desde la MEDIANOCHE local del día de inicio
+      // (los registros de ese día guardan fecha local-mediodía)
+      const ini = inicioDiaLocal(configStore.periodoInicio);
+      // El cierre preserva el ISO EXACTO del arranque del período (contrato
+      // testeado); la normalización a día aplica solo al filtrar
+      const iniExacta = new Date(configStore.periodoInicio);
       const f = new Date();
 
       // Filtrar datos del período
@@ -160,7 +166,7 @@ export const useCierresStore = defineStore('cierres', () => {
       const cierre = {
         id: genId('c'),
         periodo: `Período ${formatoDisplay(ini)} al ${formatoDisplay(f)}`,
-        periodoInicio: ini.toISOString(),
+        periodoInicio: (isNaN(iniExacta.getTime()) ? ini : iniExacta).toISOString(),
         periodoFin: f.toISOString(),
         fecha: f.toISOString(),
         ventas: totVentas,

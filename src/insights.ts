@@ -3,6 +3,7 @@
 // Sin detecciones de tendencia por producto ni predicciones.
 
 import type { Ajuste, Compra, Config, Cierre, Gasto, Lote, MovCaja, Producto, Recomendacion, Venta } from './types';
+import { inicioDiaLocal } from './utils/fecha';
 
 /** Estado que inyecta useInsightsStore al motor de recomendaciones. */
 export interface InsightsState {
@@ -143,7 +144,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   const ultimoCierre =
     fechasCierre.length > 0
       ? Math.max(...fechasCierre.map((f) => new Date(f).getTime()))
-      : new Date(cfg.periodoInicio).getTime();
+      : inicioDiaLocal(cfg.periodoInicio).getTime();
   const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
   if (diasSinCierre >= Number(cfg.umbralDiasCierre || 30)) {
     push({

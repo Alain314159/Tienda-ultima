@@ -19,6 +19,7 @@ import { useCierresStore } from './useCierresStore';
 import { useInsightsStore } from './useInsightsStore';
 import { useTelegramStore } from './useTelegramStore';
 import type { Producto } from '../types';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useNotificacionesStore = defineStore('notificaciones', () => {
   const configStore = useConfigStore();
@@ -216,7 +217,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     const ultimoCierre =
       cierresStore.cierres.length > 0
         ? Math.max(...cierresStore.cierres.map((c) => new Date(c.fechaCierre || c.fecha || '').getTime()))
-        : new Date(configStore.cfg.periodoInicio).getTime();
+        : inicioDiaLocal(configStore.cfg.periodoInicio).getTime();
     const dias = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
     if (dias >= n(configStore.cfg.umbralDiasCierre || 30) && configStore.cfg.ultimaNotifCierre !== hoy) {
       enviarNotif('Cierre pendiente', dias + ' dias sin cerrar periodo');

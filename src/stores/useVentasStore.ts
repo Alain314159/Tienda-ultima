@@ -12,6 +12,7 @@ import { regenerarAsientos } from '../services/libroDiario';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useVentasStore = defineStore('ventas', () => {
   // ===== ESTORES DEPENDIENTES =====
@@ -76,7 +77,7 @@ export const useVentasStore = defineStore('ventas', () => {
    * Ventas del período actual
    */
   const ventasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const ini = inicioDiaLocal(configStore.periodoInicio);
     return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.total), 0));
   });
 
@@ -93,7 +94,7 @@ export const useVentasStore = defineStore('ventas', () => {
    * Ganancia bruta del período
    */
   const gananciaBrutaPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const ini = inicioDiaLocal(configStore.periodoInicio);
     return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.ganancia), 0));
   });
 

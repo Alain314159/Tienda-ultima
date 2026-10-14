@@ -9,6 +9,7 @@ import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
 import { useConfigStore } from './useConfigStore';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useAjustesStore = defineStore('ajustes', () => {
   // ===== STORES DEPENDIENTES =====
@@ -39,7 +40,7 @@ export const useAjustesStore = defineStore('ajustes', () => {
    * desde periodoInicio, valoradas a costoPerdida.
    */
   const mermasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const ini = inicioDiaLocal(configStore.periodoInicio);
     return m(
       ajustes.value
         .filter((a) => n(a.cantidad) < 0 && new Date(a.fecha) >= ini)

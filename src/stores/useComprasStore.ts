@@ -14,6 +14,7 @@ import type { Compra } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { useConfigStore } from './useConfigStore';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useComprasStore = defineStore('compras', () => {
   // ===== STORES DEPENDIENTES =====
@@ -35,7 +36,7 @@ export const useComprasStore = defineStore('compras', () => {
    * Compras del período actual
    */
   const comprasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const ini = inicioDiaLocal(configStore.periodoInicio);
     return m(compras.value.filter((c) => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
   });
 

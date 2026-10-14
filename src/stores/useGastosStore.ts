@@ -10,6 +10,7 @@ import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useConfigStore } from './useConfigStore';
 import { CATEGORIAS_GASTO, METODOS_PAGO } from '../constants';
+import { inicioDiaLocal } from '../utils/fecha';
 
 export const useGastosStore = defineStore('gastos', () => {
   // ===== STORES DEPENDIENTES =====
@@ -50,7 +51,7 @@ export const useGastosStore = defineStore('gastos', () => {
    * Gastos del período actual
    */
   const gastosOpPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const ini = inicioDiaLocal(configStore.periodoInicio);
     return m(gastos.value.filter((g) => new Date(g.fecha) >= ini).reduce((s, g) => s + n(g.monto), 0));
   });
 
