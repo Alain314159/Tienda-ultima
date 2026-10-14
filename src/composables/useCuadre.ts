@@ -142,7 +142,9 @@ export function useCuadre() {
     );
 
     const ing = m(vp.reduce((s, v) => s + n(v.total), 0));
-    const cogs = m(vp.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
+    // Los ítems anulados se revierten en los lotes: el COGS real excluye su costo
+    // (mismo criterio que el libro diario, que también filtra it.anulado)
+    const cogs = m(vp.reduce((s, v) => s + v.items.reduce((ss, it) => ss + (it.anulado ? 0 : n(it.costo)), 0), 0));
     const bruta = m(ing - cogs);
     const mermas = m(gp.reduce((s, a) => s + n(a.costoPerdida), 0));
     const neta = m(bruta - mermas - gastosTotal);
@@ -154,6 +156,7 @@ export function useCuadre() {
     > = {};
     vp.forEach((v) => {
       v.items.forEach((it) => {
+        if (it.anulado) return; // ítem anulado: ni cantidad ni ingreso ni costo
         if (!it.lotesUsados) return;
         it.lotesUsados.forEach((u) => {
           const costo = n(u.costo);

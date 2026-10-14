@@ -60,22 +60,6 @@ export const useAjustesStore = defineStore('ajustes', () => {
     }
   }
 
-  /**
-   * Recarga datos específicos
-   */
-  async function recargarStores(tables: string[]) {
-    const reloadMap: Record<string, () => Promise<void>> = {
-      ajustes: cargarAjustes,
-      lotes: lotesStore.cargarLotes,
-    };
-
-    for (const table of tables) {
-      if (reloadMap[table]) {
-        await reloadMap[table]();
-      }
-    }
-  }
-
   // ===== EXPORTS =====
   return {
     ajustes,
@@ -83,7 +67,6 @@ export const useAjustesStore = defineStore('ajustes', () => {
     ajustesRecientes,
     mermasPeriodo,
     cargarAjustes,
-    recargarStores,
   };
 });
 

@@ -119,7 +119,9 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
 
   const ventasBajoCosto = ventas
     .filter((v) => !v.anulada && new Date(v.fecha) >= hace30d)
-    .flatMap((v) => v.items.filter((it) => Number(it.ganancia) < -0.01).map((it) => ({ venta: v, item: it })));
+    .flatMap((v) =>
+      v.items.filter((it) => !it.anulado && Number(it.ganancia) < -0.01).map((it) => ({ venta: v, item: it }))
+    );
   if (ventasBajoCosto.length > 0) {
     const perdida = ventasBajoCosto.reduce((s, x) => s + Number(x.item.ganancia), 0);
     push({

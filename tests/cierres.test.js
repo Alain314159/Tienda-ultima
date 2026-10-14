@@ -37,7 +37,7 @@ const INI = new Date(Date.now() - 30 * 86400000).toISOString();
 // estrictamente ANTES del instante del cierre (evita el empate de milisegundos
 // con periodoFin, que haría flotante la prueba).
 
-/** Datos coherentes del período: venta 90 (ganancia 30, COGS 60),
+/** Datos coherentes del período: venta 90 (ganancia 30, COGS 60; ítem anulado de costo 20 que NO cuenta),
  *  compra 100 vigente + 999 anulada + 200 fuera de período, gasto 8,
  *  merma 20 (ajuste -2) + ajuste positivo ignorado, lote con stock 4 x 10. */
 function semillar() {
@@ -55,7 +55,10 @@ function semillar() {
     {
       id: 'v_1',
       fecha: HACE(1),
-      items: [{ productoId: 'p_1', nombre: 'A', cantidad: 6, precio: 15, costo: 60, ganancia: 30, lotesUsados: [] }],
+      items: [
+        { productoId: 'p_1', nombre: 'A', cantidad: 6, precio: 15, costo: 60, ganancia: 30, lotesUsados: [] },
+        { productoId: 'p_1', nombre: 'A', cantidad: 2, precio: 15, costo: 20, ganancia: 10, lotesUsados: [], anulado: true },
+      ],
       total: 90,
       ganancia: 30,
       anulada: false,

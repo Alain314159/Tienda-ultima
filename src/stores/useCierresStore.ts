@@ -143,8 +143,11 @@ export const useCierresStore = defineStore('cierres', () => {
       // Calcular totales
       const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));
       // it.costo es el costo TOTAL de la línea (así lo guarda useCobro y lo
-      // lee useCuadre): no se multiplica por cantidad otra vez
-      const cogs = m(ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + n(it.costo), 0), 0));
+      // lee useCuadre): no se multiplica por cantidad otra vez.
+      // Los ítems anulados se revierten en lotes: excluidos del COGS (idem libro diario)
+      const cogs = m(
+        ventasRango.reduce((s, v) => s + v.items.reduce((ss, it) => ss + (it.anulado ? 0 : n(it.costo)), 0), 0)
+      );
       const bruta = m(totVentas - cogs);
       const totGastos = m(gastosRango.reduce((s, g) => s + n(g.monto), 0));
       const totMermas = m(mermasRango.reduce((s, a) => s + n(a.costoPerdida), 0));

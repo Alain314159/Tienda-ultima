@@ -304,3 +304,78 @@ describe('generarReporte', () => {
     expect(cuadreExpandido.value.p_1).toBe(false);
   });
 });
+
+describe('ítems anulados dentro de ventas activas (regresión bug COGS)', () => {
+  /** Venta con 2 ítems, uno anulado: el COGS/ingresos/cantidad deben excluirlo
+   *  exactamente igual que lo excluye el libro diario. */
+  function semillarConAnulado() {
+    const productosStore = useProductosStore();
+    const lotesStore = useLotesStore();
+    const ventasStore = useVentasStore();
+
+    productosStore.productos = [{ id: 'p_1', nombre: 'Prod A', precio: 15, archivado: false }];
+    lotesStore.lotes = [
+      { id: 'l_1', productoId: 'p_1', cantidadInicial: 10, cantidadVendida: 4, costo: 10, fecha: HACE(2) },
+    ];
+    ventasStore.ventas = [
+      {
+        id: 'v_a',
+        fecha: AHORA(),
+        items: [
+          {
+            productoId: 'p_1',
+            nombre: 'Prod A',
+            cantidad: 3,
+            precio: 15,
+            costo: 30, // 3 x 10
+            ganancia: 15,
+            lotesUsados: [{ loteId: 'l_1', cantidad: 3, costo: 10 }],
+          },
+          {
+            productoId: 'p_1',
+            nombre: 'Prod A',
+            cantidad: 2,
+            precio: 15,
+            costo: 20, // 2 x 10
+            ganancia: 10,
+            lotesUsados: [{ loteId: 'l_1', cantidad: 2, costo: 10 }],
+            anulado: true, // ← ítem anulado: NO cuenta para nada
+          },
+        ],
+        // total recalculado por anularProductoEnVenta excluyendo el ítem anulado
+        total: 45,
+        ganancia: 15,
+        anulada: false,
+      },
+    ];
+  }
+
+  it('P&L: ingresos 45 y COGS 30 (el ítem anulado no infla el costo)', () => {
+    semillarConAnulado();
+    const { rep, setHoy, generarReporte } = useCuadre();
+    setHoy();
+    generarReporte();
+
+    expect(rep.resultado.ingresos).toBe(45);
+    expect(rep.resultado.cogs).toBe(30);
+    expect(rep.resultado.bruta).toBe(15);
+  });
+
+  it('filas por producto: ventas 3, ingresos 45, costo 30 (el anulado fuera)', () => {
+    semillarConAnulado();
+    const { rep, setHoy, generarReporte } = useCuadre();
+    setHoy();
+    generarReporte();
+
+    const p1 = rep.resultado.cuadre.find((x) => x.id === 'p_1');
+    expect(p1).toBeTruthy();
+    expect(p1.ventas).toBe(3);
+    expect(p1.ingresos).toBe(45);
+    expect(p1.costo).toBe(30);
+    expect(p1.ganancia).toBe(15);
+
+    const sub = p1.subfilas.find((x) => x.precio === 15);
+    expect(sub.cantVend).toBe(3);
+    expect(sub.costoVend).toBe(30);
+  });
+});
