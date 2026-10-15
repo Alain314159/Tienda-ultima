@@ -203,9 +203,16 @@ export function generarAsientos(d: DatosLibro): Asiento[] {
   // 7) Movimientos de caja que NO son espejo de un gasto (ajustes de arqueo
   //    y movimientos manuales). Los gastos con saleDeCaja ya se contabilizaron
   //    en (5) y su movCaja es su espejo: identificarlos por movId.
+  //    Fallback por concepto: los respaldos de versiones anteriores a la
+  //    migración traían gastos CON su movCaja espejo PERO sin el enlace movId
+  //    — sin este fallback cada gasto viejo restaba DOS veces de la caja del
+  //    libro (una en (5) y otra aquí como "ajuste de caja"). Ningún flujo
+  //    actual crea movCaja con concepto libre (solo gastos y arqueos), así
+  //    que el prefijo 'Gasto: ' es un identificador seguro del espejo.
   const movIdsDeGastos = new Set(d.gastos.map((g) => g.movId).filter(Boolean) as string[]);
   for (const mov of d.movCaja) {
     if (movIdsDeGastos.has(mov.id) || n(mov.monto) <= 0) continue;
+    if ((mov.concepto || '').startsWith('Gasto: ')) continue; // espejo viejo sin enlace movId
     const ingreso = mov.tipo === 'ingreso';
     out.push({
       id: 'ajusteCaja:' + mov.id,

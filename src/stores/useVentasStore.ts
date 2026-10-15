@@ -250,6 +250,10 @@ export const useVentasStore = defineStore('ventas', () => {
       // El libro diario excluye ventas anuladas: regenerarlo en background
       regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
+      // La transacción revirtió la BD, pero los lotes reactivos ya fueron
+      // mutados dentro del callback: resincronizar para que la UI no muestre
+      // un stock restaurado que no existe
+      await Promise.allSettled([cargarVentas(), lotesStore.cargarLotes()]);
       console.error('Error anulantdo venta:', e);
       throw e;
     }
@@ -299,6 +303,8 @@ export const useVentasStore = defineStore('ventas', () => {
       // La anulación parcial cambia totales y COGS: regenerar libro
       regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
+      // Ídem anularVenta: resync si la transacción revirtió
+      await Promise.allSettled([cargarVentas(), lotesStore.cargarLotes()]);
       console.error('Error anulantdo producto:', e);
       throw e;
     }

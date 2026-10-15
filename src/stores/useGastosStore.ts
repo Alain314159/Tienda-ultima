@@ -8,6 +8,7 @@ import type { Gasto } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { hoyLocal, fechaLocal } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
 import { CATEGORIAS_GASTO, METODOS_PAGO } from '../constants';
 
@@ -19,7 +20,7 @@ export const useGastosStore = defineStore('gastos', () => {
   const gastos = ref<Gasto[]>([]);
   const gastoForm = ref({
     editId: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: hoyLocal(),
     categoria: '',
     concepto: '',
     monto: '',
@@ -106,7 +107,7 @@ export const useGastosStore = defineStore('gastos', () => {
 
     gastoForm.value = {
       editId: '',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: hoyLocal(),
       categoria: '',
       concepto: '',
       monto: '',
@@ -144,7 +145,7 @@ export const useGastosStore = defineStore('gastos', () => {
   function editarGasto(gasto: Gasto) {
     gastoForm.value = {
       editId: gasto.id,
-      fecha: gasto.fecha.split('T')[0],
+      fecha: fechaLocal(gasto.fecha),
       categoria: gasto.categoria,
       concepto: gasto.concepto,
       monto: String(gasto.monto),
@@ -160,7 +161,7 @@ export const useGastosStore = defineStore('gastos', () => {
   function limpiarGastoForm() {
     gastoForm.value = {
       editId: '',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: hoyLocal(),
       categoria: '',
       concepto: '',
       monto: '',

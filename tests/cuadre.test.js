@@ -21,6 +21,7 @@ import { useLotesStore } from '../src/stores/useLotesStore';
 import { useProductosStore } from '../src/stores/useProductosStore';
 import { toastMsg } from '../src/utils/toast';
 import { TOAST } from '../src/constants';
+import { hoyLocal, diaLocal } from '../src/utils/fecha';
 
 const AHORA = () => new Date().toISOString();
 const HACE = (dias) => new Date(Date.now() - dias * 86400000).toISOString();
@@ -104,31 +105,35 @@ beforeEach(() => {
 });
 
 describe('selectores de período', () => {
-  it('setHoy: rango completo del día actual', () => {
+  it('setHoy: rango completo del día actual (fechas locales, isos null)', () => {
     const { rep, setHoy } = useCuadre();
     setHoy();
     expect(rep.periodoActivo).toBe('hoy');
-    const hoy = new Date().toISOString().split('T')[0];
-    expect(rep.fechaInicio).toBe(hoy);
-    expect(rep.fechaFin).toBe(hoy);
-    expect(new Date(rep.isoInicio).getHours()).toBe(0);
-    expect(new Date(rep.isoFin).getHours()).toBe(23);
+    expect(rep.fechaInicio).toBe(hoyLocal());
+    expect(rep.fechaFin).toBe(hoyLocal());
+    // El día completo lo resuelve el parse local de generarReporte
+    expect(rep.isoInicio).toBeNull();
+    expect(rep.isoFin).toBeNull();
+    expect(diaLocal(rep.fechaInicio).getHours()).toBe(0);
+    expect(diaLocal(rep.fechaFin, true).getHours()).toBe(23);
   });
 
-  it('setSemana: últimos 7 días', () => {
+  it('setSemana: últimos 7 días desde medianoche local', () => {
     const { rep, setSemana } = useCuadre();
     setSemana();
     expect(rep.periodoActivo).toBe('semana');
-    const dias = Math.round((new Date(rep.isoFin) - new Date(rep.isoInicio)) / 86400000);
+    // Medianoche a medianoche: hoy − 7 días exactos
+    const dias = Math.round((diaLocal(rep.fechaFin) - diaLocal(rep.fechaInicio)) / 86400000);
     expect(dias).toBe(7);
+    expect(diaLocal(rep.fechaInicio).getHours()).toBe(0); // la mañana del primer día cuenta
   });
 
   it('setMesAnterior: primer a último día del mes previo', () => {
     const { rep, setMesAnterior } = useCuadre();
     setMesAnterior();
     expect(rep.periodoActivo).toBe('mes-ant');
-    const ini = new Date(rep.isoInicio);
-    const fin = new Date(rep.isoFin);
+    const ini = diaLocal(rep.fechaInicio);
+    const fin = diaLocal(rep.fechaFin, true);
     const ahora = new Date();
     expect(ini.getDate()).toBe(1);
     expect(ini.getMonth()).toBe(ahora.getMonth() === 0 ? 11 : ahora.getMonth() - 1);
@@ -140,7 +145,7 @@ describe('selectores de período', () => {
     const { rep, setAnio } = useCuadre();
     setAnio();
     expect(rep.periodoActivo).toBe('anio');
-    const ini = new Date(rep.isoInicio);
+    const ini = diaLocal(rep.fechaInicio);
     expect(ini.getMonth()).toBe(0);
     expect(ini.getDate()).toBe(1);
   });
@@ -151,7 +156,7 @@ describe('selectores de período', () => {
     expect(rep.periodoActivo).toBe('mes');
     expect(rep.isoInicio).toBeNull();
     expect(rep.isoFin).toBeNull();
-    expect(new Date(rep.fechaInicio).getDate()).toBe(1);
+    expect(diaLocal(rep.fechaInicio).getDate()).toBe(1);
   });
 
   it('setPeriodoActual: usa periodoInicio de la config', () => {
@@ -213,7 +218,7 @@ describe('generarReporte', () => {
     expect(r.neta).toBe(2);
     expect(r.margenB).toBe('33.33');
     expect(r.margenN).toBe('2.22');
-    expect(r._fechaI).toBe(new Date().toISOString().split('T')[0]);
+    expect(r._fechaI).toBe(hoyLocal());
   });
 
   it('subfilas por (costo, precio): fila vendida + fila solo-stock del costo 12', () => {

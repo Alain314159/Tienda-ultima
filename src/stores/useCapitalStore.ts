@@ -26,7 +26,10 @@ export const useCapitalStore = defineStore('capital', () => {
   // Formularios
   const retiroForm = ref({ monto: '', concepto: '', tipo: 'ganancia' });
   const aporteForm = ref({ monto: '', nota: '', socioId: '' });
-  const socioForm = ref({ editId: '', nombre: '', porcentaje: '', aporte: '' });
+  // NOTA: el alta/edición de socios vive en SociosView (guardarSocio): el
+  // aporte inicial es un hecho contable (Caja↔Capital) y la vista lo protege.
+  // La vieja registrarSocio/socioForm de aquí estaba sin usar y permitía
+  // editar el aporte libremente (descuadraba la caja en silencio).
 
   // ===== GETTERS =====
 
@@ -235,60 +238,31 @@ export const useCapitalStore = defineStore('capital', () => {
   }
 
   /**
-   * Registra un socio
+   * Elimina un socio CONSERVANDO su aporte como movimiento de capital.
+   *
+   * El aporte inicial es dinero que ya entró al negocio (está en la caja o
+   * convertido en inventario): borrar el socio sin más lo hacía desaparecer
+   * de aportesTotal y descuadraba saldoCaja en silencio. Se materializa como
+   * movimiento de capital con nota explicativa: la caja no cambia.
    */
-  async function registrarSocio() {
-    const nombre = (socioForm.value.nombre || '').trim();
-    const porcentaje = n(socioForm.value.porcentaje);
-    const aporte = n(socioForm.value.aporte);
-
-    if (!nombre) throw new Error('Nombre obligatorio');
-    if (porcentaje <= 0 || porcentaje > 100) throw new Error('Porcentaje inválido (1-100)');
-
-    const socio = {
-      id: socioForm.value.editId || genId('s'),
-      nombre,
-      porcentaje,
-      aporte,
-      fecha: socioForm.value.editId ? null : new Date().toISOString(),
-    };
-
-    await P(db.socios, socio);
-    await cargarSocios();
-
-    socioForm.value = { editId: '', nombre: '', porcentaje: '', aporte: '' };
-
-    return socio;
-  }
-
-  /**
-   * Reparte ganancia entre socios
-   */
-  async function repartirGanancia(monto: number, concepto = '') {
-    if (n(monto) <= 0) throw new Error('Monto inválido');
-    if (socios.value.length === 0) throw new Error('No hay socios configurados');
-
-    const totalPorcentaje = socios.value.reduce((acc, so) => acc + n(so.porcentaje), 0);
-    if (totalPorcentaje <= 0) throw new Error('Porcentajes de socios inválidos');
-
-    const distribucion: Distribucion = {
-      id: genId('d'),
-      fecha: new Date().toISOString(),
-      montoTotal: n(monto),
-      monto: n(monto),
-      concepto,
-      detalles: socios.value.map((s) => ({
-        socioId: s.id,
-        socioNombre: s.nombre,
-        porcentaje: s.porcentaje,
-        monto: m((n(s.porcentaje) / totalPorcentaje) * n(monto)),
-      })),
-    };
-
-    await P(db.distribuciones, distribucion);
-    await cargarDistribuciones();
-
-    return distribucion;
+  async function eliminarSocio(id: string) {
+    const s = socios.value.find((x) => x.id === id);
+    if (!s) throw new Error('Socio no encontrado');
+    const aporte = n(s.aporte);
+    await db.transaction('rw', db.socios, db.capital, async () => {
+      if (aporte > 0)
+        await P(db.capital, {
+          id: genId('k'),
+          fecha: new Date().toISOString(),
+          monto: aporte,
+          nota: 'Aporte conservado (socio eliminado): ' + s.nombre,
+        });
+      await db.socios.delete(id);
+    });
+    // Import dinámico: recarga.ts importa este store (ciclo)
+    const { recargarStores } = await import('./recarga.js');
+    await recargarStores('socios', 'capital', 'asientos');
+    return aporte;
   }
 
   /**
@@ -306,7 +280,6 @@ export const useCapitalStore = defineStore('capital', () => {
     distribuciones,
     retiroForm,
     aporteForm,
-    socioForm,
     capitalTotal,
     aportesTotal,
     retirosCapitalTotal,
@@ -326,8 +299,7 @@ export const useCapitalStore = defineStore('capital', () => {
     cargarDistribuciones,
     registrarRetiro,
     registrarAporte,
-    registrarSocio,
-    repartirGanancia,
+    eliminarSocio,
     cargarTodo,
   };
 });

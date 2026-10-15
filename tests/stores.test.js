@@ -119,21 +119,6 @@ describe('useProductosStore', () => {
     // persistido
     expect((await db.productos.get(pid)).archivado).toBe(false);
   });
-
-  it('eliminarProducto bloqueado si el producto tiene lotes con ventas', async () => {
-    const lotes = useLotesStore();
-    await lotes.guardarLote({
-      id: 'l1',
-      productoId: 'p1',
-      fecha: '2026-01-01',
-      cantidadInicial: 5,
-      cantidadVendida: 2,
-      costo: 10,
-    });
-
-    const s = useProductosStore();
-    await expect(s.eliminarProducto('p1')).rejects.toThrow(/ventas registradas/);
-  });
 });
 
 describe('useLotesStore', () => {

@@ -230,25 +230,6 @@ export const useProductosStore = defineStore('productos', () => {
   }
 
   /**
-   * Elimina un producto (solo si no tiene lotes con ventas)
-   */
-  async function eliminarProducto(productoId: string) {
-    try {
-      const lotesConVentas = lotesStore.lotes.filter((l) => l.productoId === productoId && n(l.cantidadVendida) > 0);
-
-      if (lotesConVentas.length > 0) {
-        throw new Error('No se puede eliminar: el producto tiene ventas registradas');
-      }
-
-      await db.productos.delete(productoId);
-      await cargarProductos();
-    } catch (e) {
-      console.error('Error eliminando producto:', e);
-      throw e;
-    }
-  }
-
-  /**
    * Archiva/Desarchiva un producto
    */
   async function toggleArchivarProducto(productoId: string) {
@@ -308,7 +289,6 @@ export const useProductosStore = defineStore('productos', () => {
     txtBadge,
     cargarProductos,
     guardarProducto,
-    eliminarProducto,
     toggleArchivarProducto,
     setBusqProd,
     toggleMostrarArchivados,

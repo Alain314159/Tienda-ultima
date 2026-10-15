@@ -112,6 +112,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { n } from '../utils/numero';
+import { hoyLocal, fechaLocal } from '../utils/fecha';
 import { fmt, fmtFH } from '../utils/formato';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
@@ -143,7 +144,7 @@ const gastoForm = ref<{
   saleDeCaja: boolean;
 }>({
   editId: '',
-  fecha: new Date().toISOString().split('T')[0],
+  fecha: hoyLocal(),
   categoria: '',
   concepto: '',
   monto: '',
@@ -155,7 +156,7 @@ const gastoForm = ref<{
 function resetGasto() {
   gastoForm.value = {
     editId: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: hoyLocal(),
     categoria: '',
     concepto: '',
     monto: '',
@@ -254,7 +255,7 @@ function editarGasto(id: string) {
   if (!g) return;
   gastoForm.value = {
     editId: g.id,
-    fecha: g.fecha ? g.fecha.split('T')[0] : new Date().toISOString().split('T')[0],
+    fecha: g.fecha ? fechaLocal(g.fecha) : hoyLocal(),
     categoria: g.categoria || '',
     concepto: g.concepto || '',
     monto: String(g.monto || ''),

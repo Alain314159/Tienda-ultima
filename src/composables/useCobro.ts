@@ -159,6 +159,9 @@ export function useCobro() {
       // Notificaciones en background: sin await
       notificaciones.chequearAgotados().catch((e) => console.warn('chequearAgotados', e));
     } catch (e) {
+      // La transacción revirtió la BD pero los lotes reactivos ya fueron
+      // mutados dentro del callback: resincronizar (stock mostrado = stock real)
+      await recargarStores('lotes').catch(() => {});
       toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
       try {
         if (window.Log)

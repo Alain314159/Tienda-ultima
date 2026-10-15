@@ -294,6 +294,14 @@ async function guardarSocio() {
   if (dup) return toastMsg('Ya existe ese socio', TOAST.BAD);
   if (f.editId) {
     const o = capitalStore.socios.find((x) => x.id === f.editId);
+    // El aporte inicial es un hecho contable (Caja↔Capital): editarlo movería
+    // el saldo de caja sin que entre o salga un peso. Para ajustar capital
+    // existe "Aporte adicional" (o un retiro de capital).
+    if (o && Math.abs(n(o.aporte) - aporte) > 0.009)
+      return toastMsg(
+        'El aporte inicial no se puede editar (afecta la caja). Registra un aporte adicional o elimina y crea el socio de nuevo.',
+        TOAST.BAD
+      );
     await P(db.socios, { ...o, nombre, porcentaje: pct, aporte });
     toastMsg('Socio actualizado');
   } else {
@@ -326,13 +334,25 @@ function editarSocio(id: string) {
 function eliminarSocio(id: string) {
   const s = capitalStore.socios.find((x) => x.id === id);
   if (!s) return;
+  const aporte = n(s.aporte);
   ui.confirmar({
     titulo: 'Eliminar socio',
-    msg: 'Eliminar a "' + s.nombre + '"? Las distribuciones previas se conservan.',
+    msg:
+      aporte > 0
+        ? 'Eliminar a "' +
+          s.nombre +
+          '"? Su aporte de ' +
+          fmt(aporte) +
+          ' queda en el negocio como capital (la caja NO cambia). Las distribuciones previas se conservan.'
+        : 'Eliminar a "' + s.nombre + '"? Las distribuciones previas se conservan.',
     onOk: async () => {
-      await db.socios.delete(id);
-      await recargarStores('socios');
-      toastMsg('Socio eliminado');
+      try {
+        // El store conserva el aporte como movimiento de capital (caja intacta)
+        await capitalStore.eliminarSocio(id);
+        toastMsg('Socio eliminado');
+      } catch (e) {
+        toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+      }
     },
   });
 }

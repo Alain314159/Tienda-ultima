@@ -244,18 +244,24 @@ async function registrarAjuste() {
       costoPerdida: res.costoTotal,
       lotesUsados: res.lotesUsados,
     };
-    await db.transaction('rw', db.ajustes, db.lotes, async () => {
-      await P(db.ajustes, aj);
-      const lotesActualizados: import('../types').Lote[] = [];
-      for (const u of res.lotesUsados) {
-        const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-        if (l) {
-          l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
-          lotesActualizados.push(l);
+    await db
+      .transaction('rw', db.ajustes, db.lotes, async () => {
+        await P(db.ajustes, aj);
+        const lotesActualizados: import('../types').Lote[] = [];
+        for (const u of res.lotesUsados) {
+          const l = lotesStore.lotes.find((x) => x.id === u.loteId);
+          if (l) {
+            l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
+            lotesActualizados.push(l);
+          }
         }
-      }
-      if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
-    });
+        if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
+      })
+      .catch(async (e) => {
+        // La BD revirtió pero los lotes reactivos ya mutaron: resincronizar
+        await recargarStores('lotes').catch(() => {});
+        throw e;
+      });
     await recargarStores('ajustes', 'lotes', 'asientos');
     toastMsg('Merma registrada · pérdida ' + fmt(res.costoTotal));
   } else {

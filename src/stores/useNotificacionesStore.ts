@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { n } from '../utils/numero';
+import { hoyLocal, fechaLocal } from '../utils/fecha';
 import { vib } from '../utils/formato';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
@@ -176,7 +177,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
     }
     const ahora = new Date();
-    const hoy = ahora.toISOString().split('T')[0];
+    const hoy = hoyLocal();
     let cambio = false;
 
     // 1. Stock bajo
@@ -195,7 +196,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       const horaArq = new Date();
       horaArq.setHours(hh, mm, 0, 0);
       if (ahora >= horaArq) {
-        const hayArqueoHoy = cajaStore.arqueos.some((a) => a.fecha && a.fecha.split('T')[0] === hoy);
+        const hayArqueoHoy = cajaStore.arqueos.some((a) => a.fecha && fechaLocal(a.fecha) === hoy);
         if (!hayArqueoHoy && configStore.cfg.ultimaNotifArqueo !== hoy) {
           enviarNotif('Arqueo pendiente', 'No hay arqueo registrado hoy');
           configStore.cfg.ultimaNotifArqueo = hoy;

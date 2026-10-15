@@ -8,6 +8,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { fmtFH } from '../utils/formato';
+import { hoyLocal } from '../utils/fecha';
 import { P, clean } from '../utils/id';
 import { db } from '../db';
 import { TOAST } from '../constants';
@@ -107,7 +108,7 @@ export const useBackupStore = defineStore('backup', () => {
       try {
         const destino = await entregarArchivoTexto(
           JSON.stringify(d, null, 2),
-          'respaldo-tienda-' + new Date().toISOString().split('T')[0] + '.json'
+          'respaldo-tienda-' + hoyLocal() + '.json'
         );
         toastMsg(destino ? 'Respaldo guardado en ' + destino : 'Respaldo descargado');
       } catch (e) {
@@ -146,10 +147,7 @@ export const useBackupStore = defineStore('backup', () => {
         // Base64 por trozos: el spread ...bytes desbordaba la pila con >64KB
         data: aBase64(new Uint8Array(cipher)),
       };
-      const destino = await entregarArchivoTexto(
-        JSON.stringify(out),
-        'respaldo-cifrado-' + new Date().toISOString().split('T')[0] + '.json'
-      );
+      const destino = await entregarArchivoTexto(JSON.stringify(out), 'respaldo-cifrado-' + hoyLocal() + '.json');
       toastMsg(destino ? 'Respaldo cifrado guardado en ' + destino : 'Respaldo cifrado descargado');
     } catch (e) {
       toastMsg('Error cifrado: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);

@@ -5,6 +5,7 @@
  */
 import { ref, reactive } from 'vue';
 import { n, m, q } from '../utils/numero';
+import { hoyLocal, diaLocal, fechaLocal } from '../utils/fecha';
 import type { Cierre, ResultadoCuadre, SubfilaCuadre } from '../types';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
@@ -38,8 +39,9 @@ export function useCuadre() {
     resultado: ResultadoCuadre | null;
     periodoActivo: string | null;
   }>({
-    fechaInicio: new Date().toISOString().split('T')[0],
-    fechaFin: new Date().toISOString().split('T')[0],
+    // hoyLocal(): toISOString() da la fecha UTC ("mañana" por la noche en Cuba)
+    fechaInicio: hoyLocal(),
+    fechaFin: hoyLocal(),
     isoInicio: null,
     isoFin: null,
     resultado: null,
@@ -49,52 +51,50 @@ export function useCuadre() {
 
   // ===== SELECTORE DE PERIODO =====
   function setSemana() {
-    const now = new Date();
-    const ini = new Date(now);
-    ini.setDate(now.getDate() - 7);
-    rep.fechaInicio = ini.toISOString().split('T')[0];
-    rep.fechaFin = now.toISOString().split('T')[0];
-    rep.isoInicio = ini.toISOString();
-    rep.isoFin = now.toISOString();
+    const ini = new Date();
+    ini.setDate(ini.getDate() - 7);
+    ini.setHours(0, 0, 0, 0); // medianoche LOCAL: la mañana del primer día cuenta
+    // Solo fecha: el parse local de generarReporte hace el resto (día completo)
+    rep.fechaInicio = fechaLocal(ini);
+    rep.fechaFin = hoyLocal();
+    rep.isoInicio = null;
+    rep.isoFin = null;
     rep.periodoActivo = 'semana';
   }
 
   function setMesAnterior() {
     const now = new Date();
     const ini = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const fin = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-    rep.fechaInicio = ini.toISOString().split('T')[0];
-    rep.fechaFin = fin.toISOString().split('T')[0];
-    rep.isoInicio = ini.toISOString();
-    rep.isoFin = fin.toISOString();
+    const fin = new Date(now.getFullYear(), now.getMonth(), 0);
+    rep.fechaInicio = fechaLocal(ini);
+    rep.fechaFin = fechaLocal(fin);
+    rep.isoInicio = null;
+    rep.isoFin = null;
     rep.periodoActivo = 'mes-ant';
   }
 
   function setAnio() {
     const now = new Date();
     const ini = new Date(now.getFullYear(), 0, 1);
-    rep.fechaInicio = ini.toISOString().split('T')[0];
-    rep.fechaFin = now.toISOString().split('T')[0];
-    rep.isoInicio = ini.toISOString();
-    rep.isoFin = now.toISOString();
+    rep.fechaInicio = fechaLocal(ini);
+    rep.fechaFin = hoyLocal();
+    rep.isoInicio = null;
+    rep.isoFin = null;
     rep.periodoActivo = 'anio';
   }
 
   function setHoy() {
-    const now = new Date();
-    const inicio = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const fin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    rep.fechaInicio = rep.fechaFin = now.toISOString().split('T')[0];
-    rep.isoInicio = inicio.toISOString();
-    rep.isoFin = fin.toISOString();
+    rep.fechaInicio = rep.fechaFin = hoyLocal();
+    rep.isoInicio = null;
+    rep.isoFin = null;
     rep.periodoActivo = 'hoy';
   }
 
   function setPeriodoCierre(c: Cierre) {
     const ini = new Date(c.periodoInicio || c.fechaCierre || '');
     const fin = new Date(c.periodoFin || c.fechaCierre || '');
-    rep.fechaInicio = ini.toISOString().split('T')[0];
-    rep.fechaFin = fin.toISOString().split('T')[0];
+    rep.fechaInicio = fechaLocal(ini);
+    rep.fechaFin = fechaLocal(fin);
     rep.isoInicio = ini.toISOString();
     rep.isoFin = fin.toISOString();
     rep.periodoActivo = c.id;
@@ -103,16 +103,19 @@ export function useCuadre() {
   function setMesActual() {
     const now = new Date();
     const inicio = new Date(now.getFullYear(), now.getMonth(), 1);
-    rep.fechaInicio = inicio.toISOString().split('T')[0];
-    rep.fechaFin = now.toISOString().split('T')[0];
+    rep.fechaInicio = fechaLocal(inicio);
+    rep.fechaFin = hoyLocal();
     rep.isoInicio = null;
     rep.isoFin = null;
     rep.periodoActivo = 'mes';
   }
 
   function setPeriodoActual() {
-    rep.fechaInicio = configStore.cfg.periodoInicio.split('T')[0];
-    rep.fechaFin = new Date().toISOString().split('T')[0];
+    // Momento EXACTO del período (contrato del ciclo 9); el display en fecha
+    // local del mismo momento (split('T') daría la fecha UTC)
+    const ini = new Date(configStore.cfg.periodoInicio);
+    rep.fechaInicio = fechaLocal(ini);
+    rep.fechaFin = hoyLocal();
     rep.isoInicio = configStore.cfg.periodoInicio;
     rep.isoFin = new Date().toISOString();
     rep.periodoActivo = 'actual';
@@ -125,9 +128,12 @@ export function useCuadre() {
   // ===== GENERACIÓN DEL CUADRE =====
   function generarReporte() {
     if (!rep.fechaInicio || !rep.fechaFin) return toastMsg('Selecciona fechas', TOAST.BAD);
-    const i = rep.isoInicio ? new Date(rep.isoInicio) : new Date(rep.fechaInicio);
-    const f = rep.isoFin ? new Date(rep.isoFin) : new Date(rep.fechaFin);
-    if (!rep.isoFin) f.setHours(23, 59, 59, 999);
+    // isoInicio/isoFin (período actual, períodos de cierre) son momentos EXACTOS
+    // (contrato del ciclo 9). Las fechas del input se parsean como días LOCALES:
+    // new Date('YYYY-MM-DD') es medianoche UTC y en Cuba desplazaba el rango
+    // 4-5 horas (el último día quedaba entero fuera del cuadre).
+    const i = rep.isoInicio ? new Date(rep.isoInicio) : diaLocal(rep.fechaInicio);
+    const f = rep.isoFin ? new Date(rep.isoFin) : diaLocal(rep.fechaFin, true);
     if (i > f) return toastMsg('Fecha inicio > fin', TOAST.BAD);
 
     const vp = ventasStore.ventas.filter((v) => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);

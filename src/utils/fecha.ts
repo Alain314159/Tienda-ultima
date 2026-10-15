@@ -18,3 +18,40 @@ export function inicioDiaLocal(iso: string | number | Date): Date {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+/**
+ * Fecha (YYYY-MM-DD) del calendario LOCAL de un momento cualquiera.
+ *
+ * `toISOString().split('T')[0]` da la fecha UTC: en zonas con desfase
+ * negativo (Cuba UTC-4/-5) por la tarde/noche devuelve "mañana".
+ * Todo prefill de formularios, display e input type=date debe usar esta.
+ */
+export function fechaLocal(d: string | number | Date): string {
+  const x = new Date(d);
+  if (isNaN(x.getTime())) return '';
+  const mm = String(x.getMonth() + 1).padStart(2, '0');
+  const dd = String(x.getDate()).padStart(2, '0');
+  return x.getFullYear() + '-' + mm + '-' + dd;
+}
+
+/** Fecha de HOY (YYYY-MM-DD) según el calendario local. */
+export function hoyLocal(): string {
+  return fechaLocal(new Date());
+}
+
+/**
+ * Interpreta un 'YYYY-MM-DD' (input type=date) como día del calendario
+ * LOCAL: medianoche local si `fin` es falso, 23:59:59.999 local si es true.
+ *
+ * `new Date('YYYY-MM-DD')` parsea como medianoche UTC: en Cuba (UTC-4/-5)
+ * el "fin del día" caía en el día anterior al elegido y el reporte
+ * perdía el último día entero. Este parse es el contrato del input.
+ */
+export function diaLocal(fecha: string, fin = false): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((fecha || '').trim());
+  if (!m) return fin ? new Date(23, 59, 59) : new Date(0);
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (isNaN(d.getTime())) return fin ? new Date(23, 59, 59) : new Date(0);
+  if (fin) d.setHours(23, 59, 59, 999);
+  return d;
+}
