@@ -4,10 +4,11 @@
  * Instanciado por VentasView.
  */
 import { ref, reactive } from 'vue';
-import { n, m, q } from '../utils/numero';
+import { n, m } from '../utils/numero';
 import { fmt } from '../utils/formato';
-import { P, genId, clean } from '../utils/id';
+import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { aplicarLotesEnBD } from '../services/fifo';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 import { conWatchdog } from '../utils/watchdog';
@@ -137,17 +138,11 @@ export function useCobro() {
         'venta',
         db.transaction('rw', db.ventas, db.lotes, async () => {
           await P(db.ventas, venta);
-          const lotesActualizados: import('../types').Lote[] = [];
-          for (const u of todos) {
-            const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-            if (l) {
-              l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
-              lotesActualizados.push(l);
-            }
-          }
-          if (lotesActualizados.length > 0) {
-            await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
-          }
+          // Consumo de lotes leyendo estado FRESCO de la BD + validación de
+          // sobreventa (aborta la transacción): antes se leía del store
+          // reactivo y el bulkPut del objeto entero pisaba ventas de otra
+          // pestaña (last-writer-wins → stock corrupto en silencio)
+          await aplicarLotesEnBD(todos, 1);
         })
       );
 

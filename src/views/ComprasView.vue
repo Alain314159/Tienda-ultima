@@ -314,13 +314,22 @@ function eliminarCompra(id: string) {
     titulo: 'Eliminar compra',
     msg: '¿Eliminar compra de ' + (c?.productoNombre || '') + '?',
     onOk: async () => {
-      const l = lotesStore.lotes.find((x) => x.compraId === id);
-      await db.transaction('rw', db.compras, db.lotes, async () => {
-        await db.compras.delete(id);
-        if (l) await db.lotes.delete(l.id);
-      });
-      await recargarStores('compras', 'lotes', 'asientos');
-      toastMsg('Compra eliminada');
+      try {
+        await db.transaction('rw', db.compras, db.lotes, async () => {
+          // Revalidación CONTRA LA BD dentro de la transacción: el check
+          // reactivo (loteSinVentas) corrió antes del modal y una venta en
+          // otra pestaña pudo consumir el lote mientras tanto → lotes
+          // huérfanos referenciados por ventas con lotesUsados rotos
+          const l = await db.lotes.where('compraId').equals(id).first();
+          if (l && n(l.cantidadVendida) > 0) throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
+          await db.compras.delete(id);
+          if (l) await db.lotes.delete(l.id);
+        });
+        await recargarStores('compras', 'lotes', 'asientos');
+        toastMsg('Compra eliminada');
+      } catch (e) {
+        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+      }
     },
   });
 }
@@ -347,12 +356,17 @@ async function guardarCompra() {
   const ejecutar = async () => {
     try {
       if (f.editId) {
-        const l = lotesStore.lotes.find((x) => x.compraId === f.editId);
-        if (l && n(l.cantidadVendida) > 0) return toastMsg('Lote con ventas: no editable', TOAST.BAD);
-        const c = comprasStore.compras.find((x) => x.id === f.editId);
         await db.transaction('rw', db.compras, db.lotes, async () => {
+          // Lectura FRESCA de compra y lote: validar contra el store reactivo
+          // FUERA de la transacción permitía editar un lote ya vendido en
+          // otra pestaña, y el spread del lote obsoleto PISABA su
+          // cantidadVendida (stock inflado en silencio)
+          const c = await db.compras.get(f.editId);
+          if (!c) throw new Error('La compra ya no existe');
+          const l = await db.lotes.where('compraId').equals(f.editId).first();
+          if (l && n(l.cantidadVendida) > 0) throw new Error('Lote con ventas: no editable');
           await P(db.compras, {
-            ...(c || ({} as import('../types').Compra)),
+            ...c,
             productoId: f.productoId,
             productoNombre: f.nombre,
             productoUnidad: unidadProd,

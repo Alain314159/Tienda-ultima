@@ -5,10 +5,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Venta, ItemCarrito, Producto } from '../types';
-import { n, m, q } from '../utils/numero';
-import { P, clean } from '../utils/id';
+import { n, m } from '../utils/numero';
+import { P } from '../utils/id';
 import { db } from '../db';
 import { regenerarAsientos } from '../services/libroDiario';
+import { aplicarLotesEnBD } from '../services/fifo';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
@@ -237,23 +238,17 @@ export const useVentasStore = defineStore('ventas', () => {
 
     try {
       await db.transaction('rw', db.ventas, db.lotes, async () => {
-        await P(db.ventas, { ...v, anulada: true, fechaAnulacion: new Date().toISOString() });
-
-        const lotesActualizados: import('../types').Lote[] = [];
-        for (const it of v.items) {
-          if (!it.lotesUsados) continue;
-          for (const u of it.lotesUsados) {
-            const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-            if (l) {
-              l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
-              lotesActualizados.push(clean(l));
-            }
-          }
-        }
-
-        if (lotesActualizados.length > 0) {
-          await db.lotes.bulkPut(lotesActualizados);
-        }
+        // Lectura FRESCA de la BD: la venta pudo cambiar en otra pestaña
+        // (ítem anulado, anulación total) y escribir el objeto obsoleto
+        // pisaba esos cambios (last-writer-wins)
+        const vDB = await db.ventas.get(id);
+        if (!vDB || vDB.anulada) throw new Error('La venta ya está anulada');
+        // Solo restauran los ítems ACTIVOS: los anulados por ítem ya tienen
+        // su stock restituido en su momento — restaurarlos otra vez inflaba
+        // el inventario en silencio (doble restauración)
+        const usos = vDB.items.flatMap((it) => (it.anulado || !it.lotesUsados ? [] : it.lotesUsados));
+        await P(db.ventas, { ...vDB, anulada: true, fechaAnulacion: new Date().toISOString() });
+        await aplicarLotesEnBD(usos, -1);
       });
 
       await cargarVentas();
@@ -261,11 +256,10 @@ export const useVentasStore = defineStore('ventas', () => {
       // El libro diario excluye ventas anuladas: regenerarlo en background
       regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
-      // La transacción revirtió la BD, pero los lotes reactivos ya fueron
-      // mutados dentro del callback: resincronizar para que la UI no muestre
-      // un stock restaurado que no existe
+      // La transacción revirtió la BD, pero el flag optimista del guard
+      // anti doble-tap quedó puesto: resincronizar desde la BD
       await Promise.allSettled([cargarVentas(), lotesStore.cargarLotes()]);
-      console.error('Error anulantdo venta:', e);
+      console.error('Error anulando venta:', e);
       throw e;
     }
   }
@@ -285,31 +279,29 @@ export const useVentasStore = defineStore('ventas', () => {
 
     try {
       await db.transaction('rw', db.ventas, db.lotes, async () => {
-        const itemsActualizados = v.items.map((it, idx) => (idx === itemIndex ? { ...it, anulado: true } : it));
+        // Lectura FRESCA: el objeto reactivo pudo quedar obsoleto (otra
+        // pestaña anuló el ítem o la venta completa) y escribirlo tal cual
+        // reviviría ítems ya anulados → stock restaurado dos veces
+        const vDB = await db.ventas.get(ventaId);
+        if (!vDB || vDB.anulada) throw new Error('La venta está anulada');
+        const itemDB = vDB.items[itemIndex];
+        if (!itemDB) throw new Error('El ítem ya no existe en la venta');
+        if (itemDB.anulado) throw new Error('El ítem ya está anulado');
+
+        const itemsActualizados = vDB.items.map((it, idx) => (idx === itemIndex ? { ...it, anulado: true } : it));
 
         const nuevoTotal = itemsActualizados.reduce((s, it) => s + (it.anulado ? 0 : n(it.precio) * n(it.cantidad)), 0);
         const nuevaGanancia = itemsActualizados.reduce((s, it) => s + (it.anulado ? 0 : n(it.ganancia)), 0);
 
         await P(db.ventas, {
-          ...v,
+          ...vDB,
           items: itemsActualizados,
           total: m(nuevoTotal),
           ganancia: m(nuevaGanancia),
         });
 
-        const lotesActualizados: import('../types').Lote[] = [];
-        if (item.lotesUsados) {
-          for (const u of item.lotesUsados) {
-            const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-            if (l) {
-              l.cantidadVendida = Math.max(0, q(n(l.cantidadVendida) - u.cantidad));
-              lotesActualizados.push(clean(l));
-            }
-          }
-        }
-
-        if (lotesActualizados.length > 0) {
-          await db.lotes.bulkPut(lotesActualizados);
+        if (itemDB.lotesUsados) {
+          await aplicarLotesEnBD(itemDB.lotesUsados, -1);
         }
       });
 
@@ -320,7 +312,7 @@ export const useVentasStore = defineStore('ventas', () => {
     } catch (e) {
       // Ídem anularVenta: resync si la transacción revirtió
       await Promise.allSettled([cargarVentas(), lotesStore.cargarLotes()]);
-      console.error('Error anulantdo producto:', e);
+      console.error('Error anulando producto:', e);
       throw e;
     }
   }

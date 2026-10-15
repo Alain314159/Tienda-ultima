@@ -11,7 +11,7 @@
  *  6. Arqueo con valores no finitos
  *  7. Schemas Zod permeables a Infinity
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { db } from '../src/db';
 import { n } from '../src/utils/numero';
@@ -24,15 +24,6 @@ import { useCapitalStore } from '../src/stores/useCapitalStore';
 import { useCajaStore } from '../src/stores/useCajaStore';
 import { useGastosStore } from '../src/stores/useGastosStore';
 import { useBackupStore } from '../src/stores/useBackupStore';
-
-// happy-dom no trae DecompressionStream en todas las versiones: simulamos
-// el stream por trozos con un ReadableStream gzip-like controlado
-class FakeDecompressionStream {
-  constructor() {}
-  get readable() {
-    return null;
-  }
-}
 
 beforeEach(async () => {
   setActivePinia(createPinia());
@@ -128,14 +119,14 @@ describe('red-team: carrito neutraliza precios y cantidades infinitas', () => {
     await productos.cargarProductos();
 
     ventas.agregarCarrito({ id: 'p1', nombre: 'Leche', precio: 3.5 });
-    const it = ventas.carrito[0];
-    it.precio = '1e999';
-    ventas.validarPrecio(it);
-    expect(n(it.precio)).toBe(3.5);
+    const fila = ventas.carrito[0];
+    fila.precio = '1e999';
+    ventas.validarPrecio(fila);
+    expect(n(fila.precio)).toBe(3.5);
 
-    it.precio = 'Infinity';
-    ventas.validarPrecio(it);
-    expect(n(it.precio)).toBe(3.5);
+    fila.precio = 'Infinity';
+    ventas.validarPrecio(fila);
+    expect(n(fila.precio)).toBe(3.5);
   });
 
   it('validarCant resetea una cantidad "1e999" (antes el clamp por stock la frenaba solo de casualidad)', async () => {
@@ -149,11 +140,11 @@ describe('red-team: carrito neutraliza precios y cantidades infinitas', () => {
     await productos.cargarProductos();
 
     ventas.agregarCarrito({ id: 'p1', nombre: 'Leche', precio: 3.5 });
-    const it = ventas.carrito[0];
-    it.cant = '1e999';
-    ventas.validarCant(it);
-    expect(n(it.cant)).toBeLessThanOrEqual(100);
-    expect(isFinite(n(it.cant))).toBe(true);
+    const fila = ventas.carrito[0];
+    fila.cant = '1e999';
+    ventas.validarCant(fila);
+    expect(n(fila.cant)).toBeLessThanOrEqual(100);
+    expect(isFinite(n(fila.cant))).toBe(true);
   });
 
   it('precioParaCantidad ignora escalones corruptos (precio negativo editado a mano en la BD)', async () => {

@@ -180,10 +180,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { n, m, q } from '../utils/numero';
+import { n, m } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
-import { P, genId, clean } from '../utils/id';
+import { P, genId } from '../utils/id';
 import { db } from '../db';
+import { aplicarLotesEnBD } from '../services/fifo';
 import { useProductosStore } from '../stores/useProductosStore';
 import { useLotesStore } from '../stores/useLotesStore';
 import { useAjustesStore } from '../stores/useAjustesStore';
@@ -249,18 +250,13 @@ async function registrarAjuste() {
     await db
       .transaction('rw', db.ajustes, db.lotes, async () => {
         await P(db.ajustes, aj);
-        const lotesActualizados: import('../types').Lote[] = [];
-        for (const u of res.lotesUsados) {
-          const l = lotesStore.lotes.find((x) => x.id === u.loteId);
-          if (l) {
-            l.cantidadVendida = q(n(l.cantidadVendida) + u.cantidad);
-            lotesActualizados.push(l);
-          }
-        }
-        if (lotesActualizados.length > 0) await db.lotes.bulkPut(lotesActualizados.map((l) => clean(l)));
+        // Consumo con lectura FRESCA de la BD + validación de sobreventa
+        // (antes: lote reactivo obsoleto → bulkPut pisaba ventas de otra
+        // pestaña; una venta entre el check y la transacción pasaba de largo)
+        await aplicarLotesEnBD(res.lotesUsados, 1);
       })
       .catch(async (e) => {
-        // La BD revirtió pero los lotes reactivos ya mutaron: resincronizar
+        // La BD revirtió: resincronizar por si el store quedó desfasado
         await recargarStores('lotes').catch(() => {});
         throw e;
       });
