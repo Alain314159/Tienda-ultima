@@ -98,9 +98,9 @@ export const useGastosStore = defineStore('gastos', () => {
       saleDeCaja: gastoForm.value.saleDeCaja,
     };
 
-    // Validaciones
+    // Validaciones (isFinite: "1e999" colaba y dejaba la caja en -∞)
     if (!gasto.concepto) throw new Error('Concepto obligatorio');
-    if (gasto.monto <= 0) throw new Error('Monto inválido');
+    if (!isFinite(gasto.monto) || gasto.monto <= 0) throw new Error('Monto inválido');
 
     await P(db.gastos, gasto);
     await cargarGastos();

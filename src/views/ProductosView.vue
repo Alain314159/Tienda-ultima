@@ -5,7 +5,7 @@
         <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon>
         {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto
       </div>
-      <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" />
+      <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" maxlength="120" />
       <div class="grid2">
         <input
           v-model="prodForm.precio"
@@ -16,11 +16,73 @@
         />
         <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín." />
       </div>
+      <input
+        v-model="prodForm.unidad"
+        type="text"
+        placeholder="Unidad (opcional: und, kg, lt...)"
+        maxlength="20"
+        style="margin-bottom: 0.5rem"
+      />
+
+      <!-- Empaques: para comprar "1 caja = 24 unidades" -->
+      <div class="prod-subform">
+        <div class="prod-subform-title">
+          <span>📦 Empaques (para compras)</span>
+          <button type="button" class="link-btn" style="font-size: 0.72rem" @click="agregarEmpaque">+ Agregar</button>
+        </div>
+        <div v-if="!prodForm.empaques.length" class="det" style="font-size: 0.72rem; color: var(--mut)">
+          Ej: "caja" = 24 unidades, "bandeja" = 30. Aparecen al registrar compras.
+        </div>
+        <div v-for="(e, i) in prodForm.empaques" :key="'emp' + i" class="prod-subform-row">
+          <input v-model="e.nombre" type="text" placeholder="Nombre (caja...)" maxlength="40" />
+          <input
+            v-model="e.unidades"
+            type="text"
+            inputmode="decimal"
+            placeholder="Unidades"
+            @blur="e.unidades = String(n(e.unidades) || '')"
+          />
+          <button type="button" class="icon-btn bad" @click="quitarEmpaque(i)" aria-label="Quitar">
+            <icon name="x" :size="14" color="#dc2626"></icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Precios escalonados: "desde 12 unidades, $X c/u" -->
+      <div class="prod-subform">
+        <div class="prod-subform-title">
+          <span>🏷️ Precio por cantidad</span>
+          <button type="button" class="link-btn" style="font-size: 0.72rem" @click="agregarEscalon">+ Agregar</button>
+        </div>
+        <div v-if="!prodForm.preciosEscalonados.length" class="det" style="font-size: 0.72rem; color: var(--mut)">
+          Ej: desde 12 unidades a $85 c/u (precio mayorista). El precio base aplica por debajo.
+        </div>
+        <div v-for="(e, i) in prodForm.preciosEscalonados" :key="'esc' + i" class="prod-subform-row">
+          <input
+            v-model="e.min"
+            type="text"
+            inputmode="decimal"
+            placeholder="Desde (cant)"
+            @blur="e.min = String(n(e.min) || '')"
+          />
+          <input
+            v-model="e.precio"
+            type="text"
+            inputmode="decimal"
+            placeholder="Precio c/u"
+            @blur="e.precio = String(n(e.precio) || '')"
+          />
+          <button type="button" class="icon-btn bad" @click="quitarEscalon(i)" aria-label="Quitar">
+            <icon name="x" :size="14" color="#dc2626"></icon>
+          </button>
+        </div>
+      </div>
 
       <textarea
         v-model="prodForm.nota"
         placeholder="Nota interna (opcional)"
         rows="2"
+        maxlength="500"
         style="resize: none; font-family: inherit; font-size: 0.85rem"
       ></textarea>
 
@@ -185,6 +247,7 @@ const prodForm = ref<{
   nombre: string;
   precio: string;
   stockMin: string;
+  unidad: string;
   preciosEscalonados: { min: string; precio: string }[];
   empaques: { nombre: string; unidades: string }[];
   nota: string;
@@ -193,6 +256,7 @@ const prodForm = ref<{
   nombre: '',
   precio: '',
   stockMin: '5',
+  unidad: '',
   preciosEscalonados: [],
   empaques: [],
   nota: '',
@@ -204,10 +268,27 @@ function resetProd() {
     nombre: '',
     precio: '',
     stockMin: String(configStore.cfg.stockMinDefault || 5),
+    unidad: '',
     preciosEscalonados: [],
     empaques: [],
     nota: '',
   };
+}
+
+function agregarEscalon() {
+  prodForm.value.preciosEscalonados.push({ min: '', precio: '' });
+}
+
+function quitarEscalon(i: number) {
+  prodForm.value.preciosEscalonados.splice(i, 1);
+}
+
+function agregarEmpaque() {
+  prodForm.value.empaques.push({ nombre: '', unidades: '' });
+}
+
+function quitarEmpaque(i: number) {
+  prodForm.value.empaques.splice(i, 1);
 }
 
 async function guardarProducto() {
@@ -228,6 +309,7 @@ function editarProducto(id: string) {
     nombre: p.nombre,
     precio: String(p.precio),
     stockMin: String(p.stockMinimo || 5),
+    unidad: p.unidad || '',
     preciosEscalonados: (p.preciosEscalonados || []).map((e) => ({ min: String(e.min), precio: String(e.precio) })),
     empaques: (p.empaques || []).map((e) => ({ nombre: e.nombre, unidades: String(e.unidades) })),
     nota: p.nota || '',

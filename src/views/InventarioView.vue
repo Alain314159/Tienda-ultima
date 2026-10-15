@@ -226,7 +226,9 @@ async function registrarAjuste() {
   const f = ajusteForm.value;
   const cant = n(f.cantidad);
   if (!f.productoId) return toastMsg('Selecciona producto', TOAST.BAD);
-  if (cant === 0) return toastMsg('Cantidad no puede ser 0', TOAST.BAD);
+  // isFinite: "1e999" creaba un lote con cantidadInicial = ∞ crudo → stock
+  // infinito vendible (merma negativa ya estaba protegida por el clamp)
+  if (!isFinite(cant) || cant === 0) return toastMsg('Cantidad no puede ser 0 (ni infinita)', TOAST.BAD);
   if (!f.motivo) return toastMsg('Selecciona motivo', TOAST.BAD);
   const prod = productosStore.productos.find((p) => p.id === f.productoId);
   if (cant < 0 && Math.abs(cant) > productosStore.stock(f.productoId))
@@ -266,7 +268,7 @@ async function registrarAjuste() {
     toastMsg('Merma registrada · pérdida ' + fmt(res.costoTotal));
   } else {
     const cs = n(f.costoSobrante);
-    if (cs < 0) return toastMsg('Costo inválido', TOAST.BAD);
+    if (!isFinite(cs) || cs < 0) return toastMsg('Costo inválido', TOAST.BAD);
     const aj = {
       id: genId('a'),
       fecha: new Date().toISOString(),

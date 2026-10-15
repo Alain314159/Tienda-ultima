@@ -136,9 +136,11 @@ describe('importarData', () => {
     // OJO: importarData usa db.table(t), que es una instancia DISTINTA a
     // db.productos (dos wrappers del mismo IDB). Espiar la que se usa.
     const spy = vi.spyOn(db.table('productos'), 'bulkPut').mockRejectedValueOnce(new Error('boom'));
-    await expect(b.importarData({ productos: [{ id: 'p_nuevo' }], ventas: [{ id: 'v_1' }] })).rejects.toThrow(
-      'rollback'
-    );
+    // items: [] — desde la auditoría red-team, validarEsquema exige que toda
+    // venta traiga items como array (una venta sin items reventaba el render)
+    await expect(
+      b.importarData({ productos: [{ id: 'p_nuevo' }], ventas: [{ id: 'v_1', items: [] }] })
+    ).rejects.toThrow('rollback');
     expect(spy).toHaveBeenCalled();
     // El snapshot pre-import se restauró: el producto original sigue y el nuevo no entró
     expect(await db.productos.get('p_real')).toBeTruthy();

@@ -10,7 +10,7 @@
         <icon name="plus" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon>
         {{ socioForm.editId ? 'Editar' : 'Agregar' }} Socio
       </div>
-      <input v-model="socioForm.nombre" type="text" placeholder="Nombre del socio" />
+      <input v-model="socioForm.nombre" type="text" maxlength="80" placeholder="Nombre del socio" />
       <div class="grid2">
         <input
           v-model="socioForm.porcentaje"
@@ -64,7 +64,7 @@
 
       <div class="sheet-group" style="margin-top: 0">Repartir ganancia entre socios</div>
       <input v-model="repartoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a repartir" />
-      <input v-model="repartoForm.concepto" type="text" placeholder="Concepto (ej: Reparto mensual)" />
+      <input v-model="repartoForm.concepto" type="text" maxlength="120" placeholder="Concepto (ej: Reparto mensual)" />
       <div v-if="n(repartoForm.monto) > 0 && sociosActivos.length" class="info-box" style="margin-bottom: 0.5rem">
         <div
           v-for="s in sociosActivos"

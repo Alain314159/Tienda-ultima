@@ -38,7 +38,13 @@ export async function descomprimirGzip(blob: Blob) {
  * (y no por la extensión del archivo) cubre TAMBIÉN los .json "disfrazados"
  * que exportaban las versiones anteriores a la migración: el nombre decía
  * .json pero el contenido era un blob gzip (bug del exportador viejo).
+ *
+ * Anti zip-bomb: la descompresión se lee POR TROZOS y se aborta si supera
+ * LIMITE_DESPLIEGUE (un gzip malicioso/corrupto de 1MB puede expandir a
+ * gigas y matar la pestaña por OOM antes de poder mostrar error alguno).
  */
+export const LIMITE_DESPLIEGUE = 256 * 1024 * 1024; // 256 MB de JSON expandido
+
 export async function textoDesdeBytes(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const esGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
   if (!esGzip) return new TextDecoder().decode(bytes);
@@ -46,7 +52,29 @@ export async function textoDesdeBytes(bytes: Uint8Array<ArrayBuffer>): Promise<s
     throw new Error('El respaldo esta comprimido (gzip) y este navegador no puede descomprimirlo');
   }
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).text();
+  const reader = stream.getReader();
+  const trozos: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      trozos.push(value);
+      total += value.length;
+      if (total > LIMITE_DESPLIEGUE) {
+        await reader.cancel().catch(() => {});
+        throw new Error('El respaldo descomprime a mas de 256MB: archivo corrupto o malicioso');
+      }
+    }
+  }
+  // Concatenar trozos en un solo buffer y decodificar
+  const out = new Uint8Array(total);
+  let pos = 0;
+  for (const t of trozos) {
+    out.set(t, pos);
+    pos += t.length;
+  }
+  return new TextDecoder().decode(out);
 }
 
 /**

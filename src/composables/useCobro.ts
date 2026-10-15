@@ -91,6 +91,15 @@ export function useCobro() {
   async function procesarVenta() {
     procesandoVenta.value = true;
     try {
+      // Revalidación en el momento de cobrar (defensa en profundidad):
+      // el blur del input puede no haber corrido (foco nunca tocado) y un
+      // precio ∞ / negativo aquí corrompía la contabilidad
+      for (const it of ventasStore.carrito) {
+        const c = n(it.cant);
+        const pr = n(it.precio);
+        if (!isFinite(c) || c <= 0) throw new Error('Cantidad inválida en ' + it.nombre);
+        if (!isFinite(pr) || pr <= 0) throw new Error('Precio inválido en ' + it.nombre);
+      }
       const items: import('../types').ItemVenta[] = [];
       let tot = 0;
       let gan = 0;
@@ -179,5 +188,36 @@ export function useCobro() {
     ui.cobroAbierto = false;
   }
 
-  return { cobroModal, denominaciones, procesandoVenta, iniciarCobro, calcBilletes, procesarVenta, cerrarCobro };
+  /**
+   * Confirmar Pago: si el conteo de billetes está abierto y falta dinero,
+   * pedir confirmación explícita antes de procesar (antes el botón procesaba
+   * la venta completa aunque el contador gritara "Falta $X" en rojo)
+   */
+  function confirmarPago() {
+    if (cobroModal.calcAbierta && cobroModal.falta > 0.01) {
+      ui.confirmar({
+        titulo: '⚠ Falta dinero',
+        msg:
+          'El conteo indica que faltan ' +
+          fmt(cobroModal.falta) +
+          ' para completar el total de ' +
+          fmt(cobroModal.total) +
+          '.\n\n¿Confirmar el cobro completo de todos modos?',
+        onOk: () => void procesarVenta(),
+      });
+      return;
+    }
+    void procesarVenta();
+  }
+
+  return {
+    cobroModal,
+    denominaciones,
+    procesandoVenta,
+    iniciarCobro,
+    calcBilletes,
+    procesarVenta,
+    confirmarPago,
+    cerrarCobro,
+  };
 }

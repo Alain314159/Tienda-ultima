@@ -131,6 +131,10 @@ export const useCajaStore = defineStore('caja', () => {
    */
   async function hacerArqueo(cajaFisica: number, faltanteSobrante: number, nota = '') {
     try {
+      // isFinite: valores ∞ en el conteo físico corromperían caja/arqueos
+      if (!isFinite(n(cajaFisica)) || !isFinite(n(faltanteSobrante))) {
+        throw new Error('Valores de arqueo inválidos');
+      }
       const arqueo = {
         id: genId('arq'),
         fecha: new Date().toISOString(),

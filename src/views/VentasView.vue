@@ -311,7 +311,7 @@
           </div>
         </div>
 
-        <button class="btn ok" @click="procesarVenta" :disabled="procesandoVenta">
+        <button class="btn ok" @click="confirmarPago" :disabled="procesandoVenta">
           {{ procesandoVenta ? 'Procesando...' : 'Confirmar Pago' }}
         </button>
         <button class="btn ghost" @click="ui.cobroAbierto = false">Cancelar</button>
@@ -410,5 +410,5 @@ function anularVenta(id: string) {
 }
 
 // ===== COBRO =====
-const { cobroModal, denominaciones, procesandoVenta, iniciarCobro, calcBilletes, procesarVenta } = useCobro();
+const { cobroModal, denominaciones, procesandoVenta, iniciarCobro, calcBilletes, confirmarPago } = useCobro();
 </script>

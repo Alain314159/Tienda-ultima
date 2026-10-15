@@ -212,6 +212,49 @@
       </template>
     </div>
 
+    <!-- ARQUEO DE CAJA (restaurado: la notificación diaria existía pero la UI
+         se perdió al eliminar la vista Caja) -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="dollar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Arqueo de Caja
+      </div>
+      <div class="row">
+        <span>Caja según sistema</span>
+        <b>{{ fmt(cajaStore.saldoCaja) }}</b>
+      </div>
+      <div class="grid2" style="margin-top: 0.4rem">
+        <input v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
+        <input v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
+      </div>
+      <div v-if="arqueoDiff !== null" class="row" style="margin-top: 0.4rem">
+        <span>Diferencia (físico − sistema)</span>
+        <b :class="Math.abs(arqueoDiff) < 0.01 ? 'pos' : 'neg'">
+          {{
+            Math.abs(arqueoDiff) < 0.01
+              ? 'Cuadra ✓'
+              : (arqueoDiff > 0 ? 'Sobra ' : 'Falta ') + fmt(Math.abs(arqueoDiff))
+          }}
+        </b>
+      </div>
+      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI">Registrar arqueo</button>
+      <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
+        <div class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</div>
+        <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="det">{{ fmtFH(a.fecha) }} · sistema {{ fmt(a.cajaSistema) }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                físico {{ fmt(a.cajaFisica) }}<span v-if="a.nota"> · {{ a.nota }}</span>
+              </div>
+            </div>
+            <b :class="Math.abs(n(a.faltanteSobrante)) < 0.01 ? 'pos' : 'neg'">{{
+              Math.abs(n(a.faltanteSobrante)) < 0.01 ? '✓' : fmt(a.faltanteSobrante)
+            }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
     <div class="card">
       <div class="card-title">
@@ -451,9 +494,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, onMounted } from 'vue';
+import { computed, reactive, onMounted, ref } from 'vue';
 import { n, m } from '../utils/numero';
-import { fmt, fmtCant, fmtFecha } from '../utils/formato';
+import { fmt, fmtCant, fmtFecha, fmtFH } from '../utils/formato';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useCierresStore } from '../stores/useCierresStore';
@@ -500,6 +545,41 @@ function cerrarPeriodo() {
 
 // ===== SOCIOS (para el reparto del PDF) =====
 const sociosActivos = computed(() => capitalStore.socios.filter((s) => s.activo !== false));
+
+// ===== ARQUEO DE CAJA =====
+const arqueoForm = ref({ fisico: '', nota: '' });
+const arqueoDiff = computed(() => {
+  const f = n(arqueoForm.value.fisico);
+  if (arqueoForm.value.fisico.trim() === '' || isNaN(f)) return null;
+  return m(f - cajaStore.saldoCaja);
+});
+
+function hacerArqueoUI() {
+  const f = n(arqueoForm.value.fisico);
+  if (arqueoForm.value.fisico.trim() === '' || isNaN(f) || !isFinite(f) || f < 0) {
+    return toastMsg('Ingresa el efectivo contado', TOAST.BAD);
+  }
+  const diff = m(f - cajaStore.saldoCaja);
+  const msg =
+    Math.abs(diff) < 0.01
+      ? 'El conteo cuadra con el saldo del sistema (' + fmt(cajaStore.saldoCaja) + ').'
+      : diff > 0
+        ? 'El conteo SOBRA ' + fmt(diff) + ' respecto al sistema. Se registrará como ingreso.'
+        : 'El conteo FALTA ' + fmt(Math.abs(diff)) + ' respecto al sistema. Se registrará como egreso.';
+  ui.confirmar({
+    titulo: 'Registrar arqueo',
+    msg: msg + '\n\n¿Confirmar?',
+    onOk: async () => {
+      try {
+        await cajaStore.hacerArqueo(f, diff, arqueoForm.value.nota.trim());
+        arqueoForm.value = { fisico: '', nota: '' };
+        toastMsg('Arqueo registrado');
+      } catch (e) {
+        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+      }
+    },
+  });
+}
 
 // ===== LIBRO DIARIO =====
 const libro = reactive({

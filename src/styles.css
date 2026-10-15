@@ -3166,3 +3166,37 @@ html {
   background: rgba(100, 116, 139, 0.15);
   color: var(--mut);
 }
+
+/* ===== Subformularios del formulario de producto (empaques / escalones) ===== */
+.prod-subform {
+  border: 1px solid var(--bg-2);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg);
+}
+.prod-subform-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.prod-subform-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+.prod-subform-row input {
+  margin-bottom: 0;
+}
+.prod-subform-row .icon-btn {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

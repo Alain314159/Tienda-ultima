@@ -190,7 +190,7 @@ export const useCapitalStore = defineStore('capital', () => {
     const concepto = (retiroForm.value.concepto || '').trim();
     const tipo = retiroForm.value.tipo || 'ganancia';
 
-    if (monto <= 0) throw new Error('Monto inválido');
+    if (!isFinite(monto) || monto <= 0) throw new Error('Monto inválido');
     if (!concepto) throw new Error('Concepto obligatorio');
 
     const max = tipo === 'capital' ? capitalDisponible.value : gananciaDisponible.value;
@@ -218,7 +218,10 @@ export const useCapitalStore = defineStore('capital', () => {
    */
   async function registrarAporte() {
     const monto = n(aporteForm.value.monto);
-    if (monto <= 0) throw new Error('Monto inválido');
+    // isFinite: un aporte "1e999" se guardaba crudo → aportesTotal ∞ →
+    // saldoCaja ∞ → NaN en todos los reportes, y el backup lo serializaba
+    // como null (al restaurar valía 0: descuadre asimétrico)
+    if (!isFinite(monto) || monto <= 0) throw new Error('Monto inválido');
 
     await P(db.capital, {
       id: genId('k'),

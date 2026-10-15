@@ -330,8 +330,10 @@ async function guardarCompra() {
   const cantIngresada = n(f.cantidad);
   const costoIngresado = n(f.costo);
   if (!f.productoId) return toastMsg('Selecciona producto', TOAST.BAD);
-  if (cantIngresada <= 0) return toastMsg('Cantidad debe ser > 0', TOAST.BAD);
-  if (costoIngresado < 0) return toastMsg('Costo inválido', TOAST.BAD);
+  // isFinite: "1e999"/"Infinity" no son ≤ 0 y colaban (lote con costo ∞ crudo
+  // → valoración ∞ y ganancia 0 en todas las ventas del lote)
+  if (!isFinite(cantIngresada) || cantIngresada <= 0) return toastMsg('Cantidad debe ser > 0', TOAST.BAD);
+  if (!isFinite(costoIngresado) || costoIngresado < 0) return toastMsg('Costo inválido', TOAST.BAD);
 
   // Convertir a unidades base
   const mult = multiplicadorEmpaque.value;

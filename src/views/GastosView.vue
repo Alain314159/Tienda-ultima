@@ -18,14 +18,19 @@
           <option v-for="c in CATEGORIAS_GASTO" :key="c" :value="c">{{ c }}</option>
         </select>
       </div>
-      <input v-model="gastoForm.concepto" type="text" placeholder="Concepto (ej: Recibo de luz agosto)" />
+      <input
+        v-model="gastoForm.concepto"
+        type="text"
+        maxlength="120"
+        placeholder="Concepto (ej: Recibo de luz agosto)"
+      />
       <div class="grid2">
         <input v-model="gastoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto" />
         <select v-model="gastoForm.metodoPago">
           <option v-for="mp in METODOS_PAGO" :key="mp.value" :value="mp.value">{{ mp.label }}</option>
         </select>
       </div>
-      <input v-model="gastoForm.nota" type="text" placeholder="Nota (opcional)" />
+      <input v-model="gastoForm.nota" type="text" maxlength="300" placeholder="Nota (opcional)" />
       <div class="set-row">
         <span class="lbl"><icon name="wallet" :size="18"></icon> Sale de caja</span>
         <label class="switch">

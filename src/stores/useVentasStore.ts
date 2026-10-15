@@ -166,7 +166,9 @@ export const useVentasStore = defineStore('ventas', () => {
    */
   function validarCant(it: ItemCarrito) {
     let val = n(it.cant);
-    if (isNaN(val) || val < 1) {
+    // "1e999" parsea a Infinity: no es NaN ni < 1 y colaba el check
+    // (el clamp por stock lo detenía, pero mejor ser explícito)
+    if (isNaN(val) || !isFinite(val) || val < 1) {
       it.cant = '1';
       val = 1;
     }
@@ -182,7 +184,10 @@ export const useVentasStore = defineStore('ventas', () => {
    */
   function validarPrecio(it: ItemCarrito) {
     const val = n(it.precio);
-    if (isNaN(val) || val <= 0) {
+    // Infinity pasaba los dos checks (no es NaN, no es ≤ 0) y la venta se
+    // guardaba con precio ∞ crudo + total $0 (m() satura a 0): mercancía
+    // saliendo sin registrar el dinero
+    if (isNaN(val) || !isFinite(val) || val <= 0) {
       it.precio = String(productosStore.precioParaCantidad(it.productoId, n(it.cant)));
     }
   }
@@ -223,6 +228,12 @@ export const useVentasStore = defineStore('ventas', () => {
   async function anularVenta(id: string) {
     const v = ventas.value.find((x) => x.id === id);
     if (!v || v.anulada) return;
+
+    // Guard anti doble-tap: se marca ANTES de la transacción para que una
+    // segunda llamada (dedo rápido en Android lento, antes de que cargueVentas
+    // refresque la UI) salga por el check de arriba. Si la transacción falla,
+    // el catch recarga desde la BD y el flag optimista se revierte.
+    v.anulada = true;
 
     try {
       await db.transaction('rw', db.ventas, db.lotes, async () => {
@@ -267,6 +278,10 @@ export const useVentasStore = defineStore('ventas', () => {
     if (!v || v.anulada) return;
     const item = v.items[itemIndex];
     if (!item) return;
+    // Guard anti doble-tap (ídem anularVenta): sin esto, dos toques seguidos
+    // restaban cantidadVendida DOS veces → stock fantasma
+    if (item.anulado) return;
+    item.anulado = true;
 
     try {
       await db.transaction('rw', db.ventas, db.lotes, async () => {

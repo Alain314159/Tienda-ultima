@@ -9,6 +9,7 @@ import { ref } from 'vue';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { fmtFH } from '../utils/formato';
 import { hoyLocal } from '../utils/fecha';
+import { n } from '../utils/numero';
 import { P, clean } from '../utils/id';
 import { db } from '../db';
 import { TOAST } from '../constants';
@@ -288,12 +289,30 @@ export const useBackupStore = defineStore('backup', () => {
       if (sinId.length > 0) errores.push('"' + t + '": ' + sinId.length + ' item(s) sin id');
     });
     if (Array.isArray(d.ventas)) {
-      const ventasMalas = d.ventas.filter((v) => v && v.items && !Array.isArray(v.items));
+      // items es OBLIGATORIO y array: antes solo se validaba si existía, y una
+      // venta SIN items colaba la validación → v.items.length reventaba el
+      // render de VentasView en CADA arranque (pantalla en blanco permanente)
+      const ventasMalas = d.ventas.filter((v) => !v || !Array.isArray(v.items));
       if (ventasMalas.length > 0) errores.push(ventasMalas.length + ' venta(s) con items invalidos');
+      // Números no finitos: se serializan como null en JSON y al restaurar
+      // valen 0 → descuadre asimétrico silencioso entre respaldo y restauración
+      const noFinitas = d.ventas.filter(
+        (v) =>
+          v &&
+          Array.isArray(v.items) &&
+          v.items.some(
+            (i) => (i && !isFinite(n(i.precio))) || (i && !isFinite(n(i.cantidad))) || (i && !isFinite(n(i.costo)))
+          )
+      );
+      if (noFinitas.length > 0) errores.push(noFinitas.length + ' venta(s) con montos no finitos');
     }
     if (Array.isArray(d.lotes)) {
       const lotesMalos = d.lotes.filter((l) => l && (l.cantidadInicial === undefined || l.costo === undefined));
       if (lotesMalos.length > 0) avisos.push(lotesMalos.length + ' lote(s) sin cantidadInicial/costo');
+      const lotesInfinitos = d.lotes.filter(
+        (l) => l && (!isFinite(n(l.cantidadInicial)) || !isFinite(n(l.costo)) || !isFinite(n(l.cantidadVendida)))
+      );
+      if (lotesInfinitos.length > 0) errores.push(lotesInfinitos.length + ' lote(s) con cantidades/costos no finitos');
     }
     const json = JSON.stringify(d);
     if (json.length > 50 * 1024 * 1024) errores.push('Archivo demasiado grande (>50MB)');

@@ -99,9 +99,15 @@ export const useProductosStore = defineStore('productos', () => {
       return n(prod.precio);
     }
 
-    // Buscar el escalón apropiado
+    // Buscar el escalón apropiado. Copia ANTES de ordenar: sort() muta el
+    // array reactivo del store in situ (efecto colateral en cada llamada) y
+    // se descartan escalones corruptos (precio ≤ 0 o no finito: un respaldo
+    // editado a mano o una versión vieja podían colar precios negativos que
+    // aquí se traducían en ventas con total negativo)
     const cant = n(cantidad);
-    const escalones = prod.preciosEscalonados.sort((a, b) => n(b.min) - n(a.min));
+    const escalones = prod.preciosEscalonados
+      .filter((e) => e && isFinite(n(e.min)) && isFinite(n(e.precio)) && n(e.precio) > 0 && n(e.min) >= 1)
+      .sort((a, b) => n(b.min) - n(a.min));
 
     for (const e of escalones) {
       if (cant >= n(e.min)) {
@@ -182,6 +188,7 @@ export const useProductosStore = defineStore('productos', () => {
     nombre: string;
     precio: string | number;
     stockMin?: string | number;
+    unidad?: string;
     preciosEscalonados?: Escalon[];
     empaques?: Empaque[];
     nota?: string;
@@ -197,7 +204,7 @@ export const useProductosStore = defineStore('productos', () => {
       if (dup) throw new Error('Ya existe un producto con ese nombre');
 
       if (producto.editId) {
-        // Edicion: preserva id y campos que el form no edita (codigo, unidad, fechaCreacion)
+        // Edicion: preserva id y campos que el form no edita (codigo, fechaCreacion)
         const original = productos.value.find((x) => x.id === producto.editId);
         if (!original) throw new Error('Producto no encontrado');
         await P(db.productos, {
@@ -205,6 +212,7 @@ export const useProductosStore = defineStore('productos', () => {
           nombre: v.data.nombre,
           precio: v.data.precio,
           stockMinimo: v.data.stockMin,
+          unidad: v.data.unidad || original.unidad,
           preciosEscalonados: v.data.preciosEscalonados,
           empaques: v.data.empaques,
           nota: v.data.nota,
@@ -216,6 +224,7 @@ export const useProductosStore = defineStore('productos', () => {
           nombre: v.data.nombre,
           precio: v.data.precio,
           stockMinimo: v.data.stockMin,
+          unidad: v.data.unidad,
           preciosEscalonados: v.data.preciosEscalonados,
           empaques: v.data.empaques,
           nota: v.data.nota,
