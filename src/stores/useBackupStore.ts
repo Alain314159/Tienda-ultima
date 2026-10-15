@@ -306,6 +306,20 @@ export const useBackupStore = defineStore('backup', () => {
       const sinId = d[t].filter((x) => !x || typeof x !== 'object' || !x.id);
       if (sinId.length > 0) errores.push('"' + t + '": ' + sinId.length + ' item(s) sin id');
     });
+    // --- IDs duplicados (#4 red-team): bulkPut es last-wins — un respaldo
+    // editado a mano (o un copy-paste) con la misma clave dos veces perdía
+    // registros EN SILENCIO al importar, sin error ni aviso
+    tablas.forEach((t) => {
+      if (!Array.isArray(d[t])) return;
+      const vistos = new Set();
+      let dups = 0;
+      for (const x of d[t]) {
+        if (!x || typeof x !== 'object' || !x.id) continue;
+        if (vistos.has(x.id)) dups++;
+        else vistos.add(x.id);
+      }
+      if (dups > 0) errores.push(dups + ' registro(s) con id duplicado en "' + t + '"');
+    });
     if (Array.isArray(d.ventas)) {
       // items es OBLIGATORIO y array: antes solo se validaba si existía, y una
       // venta SIN items colaba la validación → v.items.length reventaba el
@@ -345,6 +359,20 @@ export const useBackupStore = defineStore('backup', () => {
     /** true si hay fecha presente pero no parsea ('' o 'garbage' → true). */
     const fechaMala = (x: unknown) =>
       x !== undefined && x !== null && isNaN(new Date(x as string | number | Date).getTime());
+    /**
+     * true si la fecha parsea pero está fuera del rango plausible de la app
+     * (#7/#28 red-team): una venta del año 9999 o un lote de 1969 pasaban la
+     * validación (solo se miraba NaN) y quedaban mal agrupadas PARA SIEMPRE:
+     * inflan el período actual, que ya nunca cierra. 2000–2100 cubre con
+     * holgura la vida real del negocio (app creada en 2025).
+     */
+    const fechaExtrema = (x: unknown) => {
+      if (x === undefined || x === null || x === '') return false;
+      const t = new Date(x as string | number | Date).getTime();
+      if (isNaN(t)) return false; // ya lo reporta fechaMala
+      const anio = new Date(t).getUTCFullYear();
+      return anio < 2000 || anio > 2100;
+    };
     /** Registros con campo fecha inválido en una tabla (0 si la tabla no viene). */
     const conFechaMala = (tabla: TablaDatos, campo = 'fecha') => {
       const arr = d[tabla];
@@ -353,6 +381,17 @@ export const useBackupStore = defineStore('backup', () => {
     };
     const pushFecha = (tabla: TablaDatos, total: number, campo = 'fecha') => {
       if (total > 0) errores.push(total + ' registro(s) de "' + tabla + '" con ' + campo + ' inválida');
+    };
+    /** Registros con campo fecha fuera del rango 2000–2100 en una tabla. */
+    const conFechaExtrema = (tabla: TablaDatos, campo = 'fecha') => {
+      const arr = d[tabla];
+      if (!Array.isArray(arr)) return 0;
+      return arr.filter((x) => x && typeof x === 'object' && fechaExtrema((x as Record<string, unknown>)[campo]))
+        .length;
+    };
+    const pushFechaExtrema = (tabla: TablaDatos, total: number, campo = 'fecha') => {
+      if (total > 0)
+        errores.push(total + ' registro(s) de "' + tabla + '" con ' + campo + ' fuera de rango (año <2000 o >2100)');
     };
 
     // --- Montos NEGATIVOS (contable) ---
@@ -437,12 +476,38 @@ export const useBackupStore = defineStore('backup', () => {
         'arqueos',
       ] as TablaDatos[]
     ).forEach((t) => pushFecha(t, conFechaMala(t)));
+    // Fechas extremas: mismo recorrido que las inválidas
+    if (Array.isArray(d.ventas)) pushFechaExtrema('ventas', conFechaExtrema('ventas'));
+    (
+      [
+        'compras',
+        'gastos',
+        'lotes',
+        'ajustes',
+        'movCaja',
+        'capital',
+        'retiros',
+        'socios',
+        'distribuciones',
+        'arqueos',
+      ] as TablaDatos[]
+    ).forEach((t) => pushFechaExtrema(t, conFechaExtrema(t)));
     if (Array.isArray(d.cierres)) {
       const malos = d.cierres.filter(
         (c) =>
           c && (fechaMala(c.fechaCierre) || fechaMala(c.periodoInicio) || fechaMala(c.periodoFin) || fechaMala(c.fecha))
       );
       if (malos.length > 0) errores.push(malos.length + ' cierre(s) con fechas inválidas');
+      const extremos = d.cierres.filter(
+        (c) =>
+          c &&
+          (fechaExtrema(c.fechaCierre) ||
+            fechaExtrema(c.periodoInicio) ||
+            fechaExtrema(c.periodoFin) ||
+            fechaExtrema(c.fecha))
+      );
+      if (extremos.length > 0)
+        errores.push(extremos.length + ' cierre(s) con fechas fuera de rango (año <2000 o >2100)');
     }
 
     const json = JSON.stringify(d);

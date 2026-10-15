@@ -6,7 +6,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { MovCapital, Retiro, Socio, Distribucion } from '../types';
 import { n, m } from '../utils/numero';
-import { P, genId } from '../utils/id';
+import { P, genId, clean } from '../utils/id';
 import { db } from '../db';
 import { regenerarAsientos } from '../services/libroDiario';
 import { useConfigStore } from './useConfigStore';
@@ -185,7 +185,13 @@ export const useCapitalStore = defineStore('capital', () => {
   }
 
   /**
-   * Registra un retiro
+   * Registra un retiro.
+   *
+   * La validación contra `gananciaDisponible`/`capitalDisponible` (snapshot
+   * reactivo) es solo UX: la re-validación autoritativa ocurre DENTRO de la
+   * transacción con los retiros FRESCOS de la BD. Sin esto, dos pestañas
+   * (o una restauración a mitad de camino) validaban contra el mismo
+   * snapshot viejo y ambas pasaban → sobregiro (#16 red-team).
    */
   async function registrarRetiro() {
     const monto = n(retiroForm.value.monto);
@@ -198,12 +204,27 @@ export const useCapitalStore = defineStore('capital', () => {
     const max = tipo === 'capital' ? capitalDisponible.value : gananciaDisponible.value;
     if (monto > max + 0.01) throw new Error(`Máximo ${m(max)}`);
 
-    await P(db.retiros, {
-      id: genId('r'),
-      fecha: new Date().toISOString(),
-      monto,
-      concepto,
-      tipoRetiro: tipo,
+    await db.transaction('rw', db.retiros, async () => {
+      // Retiros FRESCOS: lo que la otra pestaña retiró después del snapshot
+      const frescos = await db.retiros.toArray();
+      const yaRetirado = m(
+        frescos
+          .filter((r) =>
+            tipo === 'capital' ? r.tipoRetiro === 'capital' : (r.tipoRetiro || 'ganancia') === 'ganancia'
+          )
+          .reduce((s, r) => s + n(r.monto), 0)
+      );
+      const acumulado = tipo === 'capital' ? capitalTotal.value : gananciasAcumuladas.value;
+      const disponibleReal = m(acumulado - yaRetirado);
+      if (monto > disponibleReal + 0.01) throw new Error(`Máximo ${m(disponibleReal)}`);
+
+      await P(db.retiros, {
+        id: genId('r'),
+        fecha: new Date().toISOString(),
+        monto,
+        concepto,
+        tipoRetiro: tipo,
+      });
     });
 
     await cargarRetiros();
@@ -240,6 +261,63 @@ export const useCapitalStore = defineStore('capital', () => {
     aporteForm.value = { monto: '', nota: '', socioId: '' };
 
     return true;
+  }
+
+  /**
+   * Reparte ganancia entre socios activos según su porcentaje.
+   *
+   * Movida desde SociosView (ronda 4 red-team, #16): la vista validaba
+   * contra el snapshot reactivo (porcentajes y disponible) FUERA de la
+   * transacción y luego escribía — otra pestaña que editara socios o
+   * retirara en el medio producía repartos mal divididos o sobregiros.
+   * Aquí todo se re-valida con datos FRESCOS dentro de la transacción.
+   */
+  async function registrarReparto(montoNum: number, conceptoTxt: string) {
+    const monto = n(montoNum);
+    const concepto = (conceptoTxt || '').trim() || 'Reparto de ganancia';
+    if (!isFinite(monto) || monto <= 0) throw new Error('Monto inválido');
+
+    let repartido = 0;
+    await db.transaction('rw', db.distribuciones, db.retiros, db.socios, async () => {
+      // Socios FRESCOS: otra pestaña pudo editar porcentajes/activo
+      const sociosFrescos = (await db.socios.toArray()).filter((s) => s && s.activo !== false);
+      if (!sociosFrescos.length) throw new Error('Sin socios activos');
+      const suma = m(sociosFrescos.reduce((acc, s) => acc + n(s.porcentaje), 0));
+      if (Math.abs(suma - 100) > 0.01) throw new Error(`Los porcentajes deben sumar 100% (actual: ${suma}%)`);
+
+      // Retiros de ganancia FRESCOS: otra pestaña pudo retirar
+      const frescos = await db.retiros.toArray();
+      const yaRetirado = m(
+        frescos.filter((r) => (r.tipoRetiro || 'ganancia') === 'ganancia').reduce((s, r) => s + n(r.monto), 0)
+      );
+      const disponibleReal = m(gananciasAcumuladas.value - yaRetirado);
+      if (monto > disponibleReal + 0.01) throw new Error(`Máximo ${m(disponibleReal)}`);
+
+      const dists = sociosFrescos.map((s) => ({
+        id: genId('di'),
+        fecha: new Date().toISOString(),
+        socioId: s.id,
+        socioNombre: s.nombre,
+        montoTotal: monto,
+        monto: m((monto * n(s.porcentaje)) / 100),
+        porcentaje: n(s.porcentaje),
+        concepto,
+      }));
+      await db.distribuciones.bulkPut(dists.map((x) => clean(x)));
+      await P(db.retiros, {
+        id: genId('r'),
+        fecha: new Date().toISOString(),
+        monto,
+        concepto: 'Reparto a socios: ' + concepto,
+        socios: dists.map((d) => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto })),
+      });
+      repartido = dists.length;
+    });
+
+    // Import dinámico: recarga.ts importa este store (ciclo)
+    const { recargarStores } = await import('./recarga.js');
+    await recargarStores('distribuciones', 'retiros', 'asientos');
+    return repartido;
   }
 
   /**
@@ -303,6 +381,7 @@ export const useCapitalStore = defineStore('capital', () => {
     cargarSocios,
     cargarDistribuciones,
     registrarRetiro,
+    registrarReparto,
     registrarAporte,
     eliminarSocio,
     cargarTodo,

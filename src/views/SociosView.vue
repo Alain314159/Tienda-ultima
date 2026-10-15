@@ -365,6 +365,10 @@ const repartoForm = ref({ monto: '', concepto: '' });
 function repartirGanancia() {
   const monto = n(repartoForm.value.monto);
   const concepto = (repartoForm.value.concepto || '').trim() || 'Reparto de ganancia';
+  // Pre-checks de UX contra el snapshot (feedback inmediato); la validación
+  // autoritativa con datos FRESCOS vive en capitalStore.registrarReparto
+  // DENTRO de la transacción (#16 red-team: otra pestaña podía editar
+  // socios/retirar entre este check y la escritura)
   if (monto <= 0) return toastMsg('Monto invalido', TOAST.BAD);
   if (!sociosActivos.value.length) return toastMsg('Sin socios activos', TOAST.BAD);
   if (monto > capitalStore.gananciaDisponible + 0.01)
@@ -373,27 +377,7 @@ function repartirGanancia() {
     return toastMsg('Los porcentajes deben sumar 100% (actual: ' + sumaPorcentajes.value + '%)', TOAST.BAD);
   ui.pedirPin(async () => {
     try {
-      const dists = sociosActivos.value.map((s) => ({
-        id: genId('di'),
-        fecha: new Date().toISOString(),
-        socioId: s.id,
-        socioNombre: s.nombre,
-        montoTotal: monto,
-        monto: m((monto * n(s.porcentaje)) / 100),
-        porcentaje: n(s.porcentaje),
-        concepto,
-      }));
-      await db.transaction('rw', db.distribuciones, db.retiros, async () => {
-        await db.distribuciones.bulkPut(dists.map((x) => clean(x)));
-        await P(db.retiros, {
-          id: genId('r'),
-          fecha: new Date().toISOString(),
-          monto,
-          concepto: 'Reparto a socios: ' + concepto,
-          socios: dists.map((d) => ({ socioId: d.socioId, nombre: d.socioNombre, monto: d.monto })),
-        });
-      });
-      await recargarStores('distribuciones', 'retiros', 'asientos');
+      await capitalStore.registrarReparto(monto, concepto);
       repartoForm.value = { monto: '', concepto: '' };
       toastMsg(`Repartido ${fmt(monto)}`);
     } catch (e) {
