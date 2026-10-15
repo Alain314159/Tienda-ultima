@@ -30,10 +30,13 @@ export function fmtCant(v: unknown): string {
   return num % 1 === 0 ? String(num) : num.toFixed(4).replace(/\.?0+$/, '');
 }
 
-/** Formato fecha corta: dd/mm/aa */
+/** Formato fecha corta: dd/mm/aa. Fecha corrupta → '' (antes "NaN/NaN/NaN"). */
 export function fmtFecha(iso: string | Date): string {
   try {
     const d = new Date(iso);
+    // Invalid Date NO lanza: getDate() devuelve NaN y el catch nunca
+    // disparaba → la UI mostraba "NaN/NaN/aNaN" en cada registro corrupto
+    if (isNaN(d.getTime())) return '';
     return (
       String(d.getDate()).padStart(2, '0') +
       '/' +
@@ -46,10 +49,11 @@ export function fmtFecha(iso: string | Date): string {
   }
 }
 
-/** Formato fecha y hora: dd/mm/aa HH:mm */
+/** Formato fecha y hora: dd/mm/aa HH:mm. Fecha corrupta → '' (ídem). */
 export function fmtFH(iso: string | Date): string {
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
     return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   } catch {
     return '';

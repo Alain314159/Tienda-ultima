@@ -194,9 +194,15 @@ export const useBackupStore = defineStore('backup', () => {
           }
         }
         if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
+        // Validación profunda ANTES de la preview: un archivo editado a mano
+        // con negativos/strings/fechas hostiles ni siquiera se ofrece a
+        // importar (antes el modal salía y el rechazo llegaba al confirmar)
+        const val = validarEsquema(d as unknown as Respaldo);
+        if (!val.ok) return toastMsg('Archivo con datos invalidos:\n· ' + val.errores.join('\n· '), TOAST.BAD);
+        if (val.avisos && val.avisos.length) console.warn('Import con avisos:', val.avisos);
         _datosImport = d as unknown as Respaldo;
 
-        const { usarStores, crearPreview } = await import('./importacion.js');
+        const { usarStores, crearPreview, tablasAusentes } = await import('./importacion.js');
         importPreview.value = crearPreview(d as unknown as Respaldo, usarStores());
 
         let adv = '';
@@ -211,6 +217,18 @@ export const useBackupStore = defineStore('backup', () => {
           adv = '⚠ El archivo tiene MUCHOS MENOS datos que los actuales. Podrias perder informacion.';
         } else if (totalActual > 0) {
           adv = 'Se reemplazaran TODOS los datos actuales con los del archivo.';
+        }
+        // #53 red-team: un archivo RECORTADO a mano (p.ej. solo productos) sin
+        // esta clave no mostraba aviso alguno — el import borraba ventas/
+        // compras/gastos con un "se reemplazarán todos los datos" genérico.
+        // Un [] explícito sí es una decisión; una clave ausente, un recorte.
+        const ausentes = tablasAusentes(d as unknown as Record<string, unknown>);
+        if (ausentes.length > 0) {
+          adv =
+            '⚠ El archivo NO trae: ' +
+            ausentes.join(', ') +
+            '.\nEsas tablas quedarán VACÍAS al importar.' +
+            (adv ? '\n\n' + adv : '');
         }
 
         ui.confirmar({ titulo: 'Importar datos', msg: adv, onOk: () => ejecutarImport() });
@@ -314,6 +332,119 @@ export const useBackupStore = defineStore('backup', () => {
       );
       if (lotesInfinitos.length > 0) errores.push(lotesInfinitos.length + ' lote(s) con cantidades/costos no finitos');
     }
+
+    // ===== Ronda 3 red-team: respaldo editado a mano / datos hostiles =====
+    // La vía UI bloquea todo esto (schemas + isFinite + formularios), pero un
+    // archivo editado a mano lo colaba por el import y corrompía la
+    // contabilidad EN SILENCIO (ganancias infladas, caja negativa, vistas
+    // muertas). La integridad se protege RUIDOSO: se rechaza el archivo y se
+    // dice exactamente qué trae.
+
+    /** true si el valor es un número finito NEGATIVO (undefined/null → false). */
+    const esNegativo = (x: unknown) => isFinite(n(x)) && n(x) < 0;
+    /** true si hay fecha presente pero no parsea ('' o 'garbage' → true). */
+    const fechaMala = (x: unknown) =>
+      x !== undefined && x !== null && isNaN(new Date(x as string | number | Date).getTime());
+    /** Registros con campo fecha inválido en una tabla (0 si la tabla no viene). */
+    const conFechaMala = (tabla: TablaDatos, campo = 'fecha') => {
+      const arr = d[tabla];
+      if (!Array.isArray(arr)) return 0;
+      return arr.filter((x) => x && typeof x === 'object' && fechaMala((x as Record<string, unknown>)[campo])).length;
+    };
+    const pushFecha = (tabla: TablaDatos, total: number, campo = 'fecha') => {
+      if (total > 0) errores.push(total + ' registro(s) de "' + tabla + '" con ' + campo + ' inválida');
+    };
+
+    // --- Montos NEGATIVOS (contable) ---
+    if (Array.isArray(d.ventas)) {
+      const itemsNeg = d.ventas.filter(
+        (v) =>
+          v &&
+          Array.isArray(v.items) &&
+          v.items.some((i) => i && (esNegativo(i.precio) || esNegativo(i.cantidad) || esNegativo(i.costo)))
+      );
+      if (itemsNeg.length > 0) errores.push(itemsNeg.length + ' venta(s) con precio/cantidad/costo negativos');
+      const totalNeg = d.ventas.filter((v) => v && esNegativo(v.total));
+      if (totalNeg.length > 0) errores.push(totalNeg.length + ' venta(s) con total negativo');
+    }
+    if (Array.isArray(d.lotes)) {
+      const lotesNeg = d.lotes.filter(
+        (l) => l && (esNegativo(l.costo) || esNegativo(l.cantidadInicial) || esNegativo(l.cantidadVendida))
+      );
+      if (lotesNeg.length > 0) errores.push(lotesNeg.length + ' lote(s) con costo/cantidades negativos');
+    }
+    if (Array.isArray(d.compras)) {
+      const malas = d.compras.filter(
+        (c) => c && (esNegativo(c.cantidad) || esNegativo(c.costo) || esNegativo(c.total))
+      );
+      if (malas.length > 0) errores.push(malas.length + ' compra(s) con cantidad/costo/total negativos');
+    }
+    if (Array.isArray(d.gastos)) {
+      const malos = d.gastos.filter((g) => g && esNegativo(g.monto));
+      if (malos.length > 0) errores.push(malos.length + ' gasto(s) con monto negativo');
+    }
+    if (Array.isArray(d.socios)) {
+      const malos = d.socios.filter(
+        (s) => s && (esNegativo(s.aporte) || esNegativo(s.porcentaje) || n(s.porcentaje) > 100)
+      );
+      if (malos.length > 0) errores.push(malos.length + ' socio(s) con aporte/porcentaje inválidos');
+    }
+    const montosCapital = ['capital', 'retiros', 'distribuciones'] as TablaDatos[];
+    montosCapital.forEach((t) => {
+      if (!Array.isArray(d[t])) return;
+      const malos = (d[t] as Record<string, unknown>[]).filter((x) => x && esNegativo(x.monto));
+      if (malos.length > 0) errores.push(malos.length + ' registro(s) de "' + t + '" con monto negativo');
+    });
+    // NOTA: ajuste.cantidad negativo es LEGÍTIMO (merma −/sobrante +).
+
+    // --- Strings OBLIGATORIAS (sin ellas revientan sorts/búsquedas/render) ---
+    const sinNombreProductos = Array.isArray(d.productos)
+      ? d.productos.filter((p) => !p || !String(p.nombre || '').trim())
+      : [];
+    if (sinNombreProductos.length > 0) errores.push(sinNombreProductos.length + ' producto(s) sin nombre');
+    const sinNombreSocios = Array.isArray(d.socios) ? d.socios.filter((s) => !s || !String(s.nombre || '').trim()) : [];
+    if (sinNombreSocios.length > 0) errores.push(sinNombreSocios.length + ' socio(s) sin nombre');
+    if (Array.isArray(d.ventas)) {
+      const sinNombreItems = d.ventas.filter(
+        (v) => v && Array.isArray(v.items) && v.items.some((i) => i && !String(i.nombre || '').trim())
+      );
+      if (sinNombreItems.length > 0) errores.push(sinNombreItems.length + ' venta(s) con ítems sin nombre');
+    }
+    if (Array.isArray(d.productos)) {
+      const codigosMalos = d.productos.filter((p) => p && p.codigo !== undefined && typeof p.codigo !== 'string');
+      if (codigosMalos.length > 0) errores.push(codigosMalos.length + ' producto(s) con código no-string');
+    }
+
+    // --- FECHAS inválidas (agrupación/períodos dependen de ellas) ---
+    if (Array.isArray(d.ventas)) {
+      const sinFecha = d.ventas.filter(
+        (v) => v && (v.fecha === undefined || v.fecha === null || String(v.fecha) === '')
+      );
+      if (sinFecha.length > 0) errores.push(sinFecha.length + ' venta(s) sin fecha');
+      pushFecha('ventas', conFechaMala('ventas'));
+    }
+    (
+      [
+        'compras',
+        'gastos',
+        'lotes',
+        'ajustes',
+        'movCaja',
+        'capital',
+        'retiros',
+        'socios',
+        'distribuciones',
+        'arqueos',
+      ] as TablaDatos[]
+    ).forEach((t) => pushFecha(t, conFechaMala(t)));
+    if (Array.isArray(d.cierres)) {
+      const malos = d.cierres.filter(
+        (c) =>
+          c && (fechaMala(c.fechaCierre) || fechaMala(c.periodoInicio) || fechaMala(c.periodoFin) || fechaMala(c.fecha))
+      );
+      if (malos.length > 0) errores.push(malos.length + ' cierre(s) con fechas inválidas');
+    }
+
     const json = JSON.stringify(d);
     if (json.length > 50 * 1024 * 1024) errores.push('Archivo demasiado grande (>50MB)');
     if (d.version && d.version < 6) avisos.push('Respaldo de version antigua (v' + d.version + ')');

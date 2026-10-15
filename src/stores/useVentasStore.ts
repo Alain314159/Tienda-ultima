@@ -38,7 +38,18 @@ export const useVentasStore = defineStore('ventas', () => {
 
     return productosStore.prodsActivos.filter((p) => {
       if ((stockMap[p.id] || 0) <= 0) return false;
-      if (busq && !(p.nombre.toLowerCase().includes(busq) || p.codigo?.toLowerCase().includes(busq))) return false;
+      // Render defensivo: nombre/codigo corruptos (inyeccion BD) no deben
+      // matar la vista — se comparan como cadena vacia
+      if (
+        busq &&
+        !(
+          (p.nombre || '').toLowerCase().includes(busq) ||
+          String(p.codigo ?? '')
+            .toLowerCase()
+            .includes(busq)
+        )
+      )
+        return false;
       return true;
     });
   });
@@ -104,7 +115,7 @@ export const useVentasStore = defineStore('ventas', () => {
   const ventasFiltradas = computed(() => {
     let list = ventas.value.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
     const busq = busqVenta.value.toLowerCase().trim();
-    if (busq) list = list.filter((v) => v.items.some((i) => i.nombre.toLowerCase().includes(busq)));
+    if (busq) list = list.filter((v) => v.items.some((i) => (i.nombre || '').toLowerCase().includes(busq)));
     return list;
   });
 

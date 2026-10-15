@@ -221,7 +221,16 @@ const listaCompra = computed(() => {
   const q = (busqCompra.value || '').toLowerCase().trim();
   const out: import('../types').Producto[] = [];
   for (const p of productosStore.prodsActivos) {
-    if (q && !(p.nombre.toLowerCase().includes(q) || (p.codigo && p.codigo.toLowerCase().includes(q)))) continue;
+    if (
+      q &&
+      !(
+        (p.nombre || '').toLowerCase().includes(q) ||
+        String(p.codigo ?? '')
+          .toLowerCase()
+          .includes(q)
+      )
+    )
+      continue;
     out.push(p);
     if (out.length >= 20) break;
   }

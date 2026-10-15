@@ -290,7 +290,9 @@ async function guardarSocio() {
   if (!nombre) return toastMsg('Nombre obligatorio', TOAST.BAD);
   if (pct < 0 || pct > 100) return toastMsg('Porcentaje entre 0 y 100', TOAST.BAD);
   if (aporte < 0) return toastMsg('Aporte invalido', TOAST.BAD);
-  const dup = capitalStore.socios.find((x) => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== f.editId);
+  const dup = capitalStore.socios.find(
+    (x) => (x.nombre || '').toLowerCase() === nombre.toLowerCase() && x.id !== f.editId
+  );
   if (dup) return toastMsg('Ya existe ese socio', TOAST.BAD);
   if (f.editId) {
     const o = capitalStore.socios.find((x) => x.id === f.editId);

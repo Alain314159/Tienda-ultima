@@ -48,7 +48,7 @@ export function useCompartir() {
   function generarTextoPrecios() {
     const nombre = configStore.cfg.nombre || 'Tienda Pro';
     const fecha = fmtFecha(new Date().toISOString());
-    const prods = productosStore.prodsActivos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const prods = productosStore.prodsActivos.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
     if (prods.length === 0) return null;
 
     const lineas: string[] = [];

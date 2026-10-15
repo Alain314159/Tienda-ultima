@@ -352,7 +352,7 @@ const busqHist = ref('');
 const ventasFiltradas = computed(() => {
   const query = (busqHist.value || '').toLowerCase().trim();
   let list = ventasStore.ventas.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  if (query) list = list.filter((v) => v.items.some((i) => i.nombre.toLowerCase().includes(query)));
+  if (query) list = list.filter((v) => v.items.some((i) => (i.nombre || '').toLowerCase().includes(query)));
   return list;
 });
 

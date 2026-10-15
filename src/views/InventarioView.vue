@@ -298,20 +298,24 @@ async function registrarAjuste() {
 // ===== INVENTARIO AGRUPADO =====
 const invExpandido = ref<Record<string, boolean>>({});
 const invAgrupado = computed(() => {
-  return productosStore.prodsActivos
-    .map((p) => {
-      const lts = lotesStore.lotesDeProducto(p.id);
-      return {
-        id: p.id,
-        nombre: p.nombre,
-        unidad: p.unidad,
-        stockTotal: productosStore.stock(p.id),
-        valorTotal: lotesStore.valorLotesProducto ? lotesStore.valorLotesProducto(p.id) : 0,
-        lotes: lts,
-      };
-    })
-    .filter((g) => g.stockTotal > 0 || g.lotes.length > 0)
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return (
+    productosStore.prodsActivos
+      .map((p) => {
+        const lts = lotesStore.lotesDeProducto(p.id);
+        return {
+          id: p.id,
+          nombre: p.nombre,
+          unidad: p.unidad,
+          stockTotal: productosStore.stock(p.id),
+          valorTotal: lotesStore.valorLotesProducto ? lotesStore.valorLotesProducto(p.id) : 0,
+          lotes: lts,
+        };
+      })
+      .filter((g) => g.stockTotal > 0 || g.lotes.length > 0)
+      // (nombre || ''): producto inyectado sin nombre mataba el sort (y con el
+      // errorHandler global de main.ts, pantalla en blanco SILENCIOSA)
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+  );
 });
 
 const ajustesRecientes = computed(() => ajustesStore.ajustesRecientes);

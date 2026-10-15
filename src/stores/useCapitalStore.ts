@@ -100,7 +100,9 @@ export const useCapitalStore = defineStore('capital', () => {
    * Socios ordenados por nombre
    */
   const sociosOrdenados = computed(() => {
-    return socios.value.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    // (nombre || ''): un socio inyectado/imports sin nombre reventaba
+    // localeCompare y mataba SociosView completa (render defensivo)
+    return socios.value.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   });
 
   /** Socios activos. */

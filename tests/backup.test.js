@@ -53,12 +53,12 @@ describe('validarEsquema', () => {
   it('rechaza cfg que no es un objeto plano', () => {
     const b = useBackupStore();
     for (const cfgMala of ['x', 7, [{ a: 1 }]]) {
-      const r = b.validarEsquema({ productos: [{ id: 'p1' }], cfg: cfgMala });
+      const r = b.validarEsquema({ productos: [{ id: 'p1', nombre: 'X' }], cfg: cfgMala });
       expect(r.ok).toBe(false);
       expect(r.errores.join(' ')).toContain('"cfg" no es un objeto');
     }
     // cfg ausente o objeto válido: sin ese error
-    expect(b.validarEsquema({ productos: [{ id: 'p1' }] }).ok).toBe(true);
+    expect(b.validarEsquema({ productos: [{ id: 'p1', nombre: 'X' }] }).ok).toBe(true);
     expect(b.validarEsquema({ productos: [], cfg: { nombre: 'X' } }).ok).toBe(true);
   });
 
@@ -81,11 +81,11 @@ describe('validarEsquema', () => {
 
   it('acepta un respaldo mínimo válido y avisa versiones antiguas', () => {
     const b = useBackupStore();
-    const ok = b.validarEsquema({ productos: [{ id: 'p1' }], version: 9 });
+    const ok = b.validarEsquema({ productos: [{ id: 'p1', nombre: 'X' }], version: 9 });
     expect(ok.ok).toBe(true);
     expect(ok.errores).toHaveLength(0);
 
-    const viejo = b.validarEsquema({ productos: [{ id: 'p1' }], version: 4 });
+    const viejo = b.validarEsquema({ productos: [{ id: 'p1', nombre: 'X' }], version: 4 });
     expect(viejo.ok).toBe(true);
     expect(viejo.avisos.join(' ')).toContain('version antigua');
   });
@@ -96,7 +96,15 @@ describe('importarData', () => {
     const b = useBackupStore();
     await b.importarData({
       productos: [{ id: 'p_1', nombre: 'Café', precio: 25 }],
-      ventas: [{ id: 'v_1', items: [{ productoId: 'p_1', cantidad: 1 }], total: 25 }],
+      ventas: [
+        {
+          id: 'v_1',
+          fecha: new Date().toISOString(),
+          items: [{ productoId: 'p_1', nombre: 'Café', cantidad: 1, precio: 25, costo: 10, ganancia: 15 }],
+          total: 25,
+          ganancia: 15,
+        },
+      ],
     });
     const productos = useProductosStore();
     expect(await db.productos.get('p_1')).toBeTruthy();
@@ -108,7 +116,7 @@ describe('importarData', () => {
     const cfgViva = configStore.cfg; // referencia capturada como hace App.vue/storeToRefs
     const b = useBackupStore();
     await b.importarData({
-      productos: [{ id: 'p_1' }],
+      productos: [{ id: 'p_1', nombre: 'X' }],
       cfg: { nombre: 'Tienda Del Sol', tema: 'dark' },
     });
     expect(configStore.cfg.nombre).toBe('Tienda Del Sol');
@@ -137,9 +145,13 @@ describe('importarData', () => {
     // db.productos (dos wrappers del mismo IDB). Espiar la que se usa.
     const spy = vi.spyOn(db.table('productos'), 'bulkPut').mockRejectedValueOnce(new Error('boom'));
     // items: [] — desde la auditoría red-team, validarEsquema exige que toda
-    // venta traiga items como array (una venta sin items reventaba el render)
+    // venta traiga items como array (una venta sin items reventaba el render);
+    // ronda 3: también nombre en productos y fecha en ventas (datos hostiles)
     await expect(
-      b.importarData({ productos: [{ id: 'p_nuevo' }], ventas: [{ id: 'v_1', items: [] }] })
+      b.importarData({
+        productos: [{ id: 'p_nuevo', nombre: 'Nuevo' }],
+        ventas: [{ id: 'v_1', fecha: new Date().toISOString(), items: [] }],
+      })
     ).rejects.toThrow('rollback');
     expect(spy).toHaveBeenCalled();
     // El snapshot pre-import se restauró: el producto original sigue y el nuevo no entró

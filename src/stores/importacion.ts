@@ -10,6 +10,36 @@ import { useGastosStore } from './useGastosStore';
 import { useCapitalStore } from './useCapitalStore';
 import type { Respaldo } from '../types';
 
+/**
+ * Tablas de DATOS cuyo borrado duele: si la CLAVE no viene en el respaldo
+ * (recorte a mano, export viejo parcial), importar BORRA lo que haya en la
+ * app para esas tablas. Devuelve las ausentes para avisar ANTES de pisar.
+ *
+ * Ojo: un `[]` explícito es una decisión ("no traigo ventas"), una clave
+ * ausente suele ser un archivo recortado sin darse cuenta — por eso solo
+ * cuentan las ausentes.
+ */
+const TABLAS_DATOS = [
+  'productos',
+  'lotes',
+  'ventas',
+  'compras',
+  'ajustes',
+  'arqueos',
+  'movCaja',
+  'cierres',
+  'capital',
+  'retiros',
+  'socios',
+  'distribuciones',
+  'gastos',
+] as const;
+
+export function tablasAusentes(d: Record<string, unknown> | undefined | null): string[] {
+  if (!d || typeof d !== 'object') return [];
+  return TABLAS_DATOS.filter((t) => d[t] === undefined);
+}
+
 /** Conteos actuales por tabla (según stores). */
 export function usarStores() {
   return {
