@@ -33,6 +33,38 @@ export async function descomprimirGzip(blob: Blob) {
 }
 
 /**
+ * Bytes → texto. Descomprime gzip (magic 0x1f 0x8b) o decodifica UTF-8 directo.
+ * Fuente única para leer respaldos comprimidos: la detección por magic bytes
+ * (y no por la extensión del archivo) cubre TAMBIÉN los .json "disfrazados"
+ * que exportaban las versiones anteriores a la migración: el nombre decía
+ * .json pero el contenido era un blob gzip (bug del exportador viejo).
+ */
+export async function textoDesdeBytes(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  const esGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
+  if (!esGzip) return new TextDecoder().decode(bytes);
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('El respaldo esta comprimido (gzip) y este navegador no puede descomprimirlo');
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).text();
+}
+
+/**
+ * Lee un archivo de respaldo (File del input de importación) y devuelve el
+ * objeto JSON parseado. Acepta los tres formatos que ha producido la app a
+ * lo largo de su historia:
+ * 1. JSON plano (.json actual, export de Ajustes en web)
+ * 2. gzip con extensión .json.gz (backup automático de la carpeta)
+ * 3. gzip con extensión .json (export de versiones pre-migración)
+ * No descifra: el sobre cifrado (cifrado: true) se maneja después, igual
+ * que siempre, sobre el objeto ya parseado.
+ */
+export async function leerArchivoRespaldo(archivo: Blob): Promise<unknown> {
+  const bytes = new Uint8Array(await archivo.arrayBuffer());
+  return JSON.parse(await textoDesdeBytes(bytes));
+}
+
+/**
  * Deriva una clave AES-256-GCM desde una contraseña (PBKDF2-SHA256).
  * `iteraciones` por defecto 600k (OWASP 2023+ para SHA-256); los sobres
  * cifrados v1 usaban 100k y se indican en el campo kdf.iter del sobre.

@@ -14,7 +14,7 @@ import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
-import { comprimirGzip, descomprimirGzip, hashContenido, guardarEnCarpeta } from '../services/backup';
+import { comprimirGzip, hashContenido, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
 import {
   tgCheckName,
   tgRegister,
@@ -277,16 +277,10 @@ export const useTelegramStore = defineStore('telegram', () => {
           const url = tgFileUrl(file.file_path);
           const r = await fetch(url);
           const blob = await r.blob();
-          let txt;
-          if (bk.fileName.endsWith('.gz')) {
-            tgProgreso.value = 'Descomprimiendo...';
-            const descomprimido = await descomprimirGzip(blob);
-            txt = await descomprimido.text();
-          } else {
-            txt = await blob.text();
-          }
           tgProgreso.value = 'Importando...';
-          const d = JSON.parse(txt);
+          // Lector único por magic bytes: cubre .gz, .json plano y los .json
+          // que son gzip por dentro (export de versiones pre-migración)
+          const d = (await leerArchivoRespaldo(blob)) as Respaldo;
           if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
           await importarData(d);
           toastMsg('Backup restaurado (' + fmtFH(bk.fecha) + ')');

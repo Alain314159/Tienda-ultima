@@ -118,7 +118,15 @@
       <button class="btn ghost" @click="backup.triggerImport">
         <icon name="upload" :size="16" :color="mutColor"></icon> Importar datos
       </button>
-      <input type="file" id="impFile" accept=".json" style="display: none" @change="backup.onImportFile" />
+      <!-- accept ampliado: los respaldos históricos incluyen .json.gz (carpeta
+           de backups automáticos) y .json con gzip por dentro (pre-migración) -->
+      <input
+        type="file"
+        id="impFile"
+        accept=".json,.gz,application/json,application/gzip"
+        style="display: none"
+        @change="backup.onImportFile"
+      />
       <div v-if="backup.ultimoBackup" style="font-size: 0.75rem; color: var(--mut); margin-top: 0.3rem">
         Último backup auto: {{ fmtFH(backup.ultimoBackup.fecha) }}
         <button class="link-btn" @click="backup.restaurarBackupAuto">Restaurar backup automático</button>

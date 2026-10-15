@@ -6,17 +6,19 @@
  */
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { fmtFH } from '../utils/formato';
 import { P, clean } from '../utils/id';
 import { db } from '../db';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
+import { esNativo } from '../services/platform';
 import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
 import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
-import { derivarClave, hashContenido, aBase64, desdeBase64 } from '../services/backup';
+import { derivarClave, hashContenido, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
 import type { Respaldo } from '../types';
 
 /** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
@@ -54,6 +56,12 @@ export const useBackupStore = defineStore('backup', () => {
   const preImportDisponible = ref(false);
   const preImportFecha = ref<string | null>(null);
   const importFile = ref<File | null>(null);
+  // Datos del respaldo YA parseados (y descifrados si aplicaba) durante la
+  // previsualización. ejecutarImport usa ESTE objeto en vez de re-leer el
+  // archivo: re-leer rompía los respaldos cifrados (el sobre no tiene
+  // productos/ventas y saltaba "Archivo invalido" aunque la contraseña
+  // fuera correcta) y duplicaba la lógica de gzip/cifrado.
+  let _datosImport: Respaldo | null = null;
   let _backupFallos = 0;
   let _backupIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -66,15 +74,48 @@ export const useBackupStore = defineStore('backup', () => {
     URL.revokeObjectURL(a.href);
   }
 
+  /**
+   * Entrega un archivo de texto al usuario según la plataforma:
+   * - Web: descarga del navegador (blob + <a download>). Devuelve null.
+   * - Nativo (Android WebView): la descarga de blob: NO funciona — el
+   *   WebView no tiene gestor de descargas para ese esquema. Se escribe
+   *   directamente en Documents/ con el plugin Filesystem y devuelve la
+   *   ruta usada (para que el toast le diga al usuario dónde quedó).
+   */
+  async function entregarArchivoTexto(
+    contenido: string,
+    nombre: string,
+    tipo = 'application/json'
+  ): Promise<string | null> {
+    if (!esNativo()) {
+      descargar(new Blob([contenido], { type: tipo }), nombre);
+      return null;
+    }
+    const b64 = aBase64(new TextEncoder().encode(contenido));
+    await Filesystem.writeFile({
+      path: nombre,
+      data: b64,
+      directory: Directory.Documents,
+      recursive: true,
+    });
+    return 'Documentos/' + nombre;
+  }
+
   function exportar() {
     const d = datosDeStores();
-    descargar(
-      new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }),
-      'respaldo-tienda-' + new Date().toISOString().split('T')[0] + '.json'
-    );
+    void (async () => {
+      try {
+        const destino = await entregarArchivoTexto(
+          JSON.stringify(d, null, 2),
+          'respaldo-tienda-' + new Date().toISOString().split('T')[0] + '.json'
+        );
+        toastMsg(destino ? 'Respaldo guardado en ' + destino : 'Respaldo descargado');
+      } catch (e) {
+        toastMsg('Error exportando: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+      }
+    })();
     configStore.cfg.ultimoExport = new Date().toISOString();
     configStore.guardarCfg();
-    toastMsg('Respaldo descargado');
   }
 
   async function exportarCifrado() {
@@ -105,11 +146,11 @@ export const useBackupStore = defineStore('backup', () => {
         // Base64 por trozos: el spread ...bytes desbordaba la pila con >64KB
         data: aBase64(new Uint8Array(cipher)),
       };
-      descargar(
-        new Blob([JSON.stringify(out)], { type: 'application/json' }),
+      const destino = await entregarArchivoTexto(
+        JSON.stringify(out),
         'respaldo-cifrado-' + new Date().toISOString().split('T')[0] + '.json'
       );
-      toastMsg('Respaldo cifrado descargado');
+      toastMsg(destino ? 'Respaldo cifrado guardado en ' + destino : 'Respaldo cifrado descargado');
     } catch (e) {
       toastMsg('Error cifrado: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
@@ -126,10 +167,11 @@ export const useBackupStore = defineStore('backup', () => {
     if (!file) return;
     importFile.value = file;
     (e.target as HTMLInputElement).value = '';
-    const rd = new FileReader();
-    rd.onload = async (ev) => {
+    void (async () => {
       try {
-        let d = JSON.parse(String(ev.target?.result));
+        // Acepta JSON plano, .json.gz y los .json que son gzip por dentro
+        // (export de versiones pre-migración) — detección por magic bytes
+        let d = (await leerArchivoRespaldo(file)) as Record<string, unknown>;
         // Si esta cifrado, pedir contrasena
         if (d.cifrado === true) {
           const pass = await ui.preguntar({
@@ -140,11 +182,11 @@ export const useBackupStore = defineStore('backup', () => {
           });
           if (!pass) return toastMsg('Cancelado', TOAST.WARN);
           try {
-            const salt = desdeBase64(d.salt);
-            const iv = desdeBase64(d.iv);
-            const cipher = desdeBase64(d.data);
+            const salt = desdeBase64(String(d.salt));
+            const iv = desdeBase64(String(d.iv));
+            const cipher = desdeBase64(String(d.data));
             // v1 usaba 100k iteraciones y no lo declaraba; v2+ lo declara
-            const iter = d.kdf?.iter || 100000;
+            const iter = (d.kdf as { iter?: number } | undefined)?.iter || 100000;
             const key = await derivarClave(pass, salt, iter);
             const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
             d = JSON.parse(new TextDecoder().decode(json));
@@ -153,9 +195,10 @@ export const useBackupStore = defineStore('backup', () => {
           }
         }
         if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
+        _datosImport = d as unknown as Respaldo;
 
         const { usarStores, crearPreview } = await import('./importacion.js');
-        importPreview.value = crearPreview(d, usarStores());
+        importPreview.value = crearPreview(d as unknown as Respaldo, usarStores());
 
         let adv = '';
         const preview = importPreview.value;
@@ -175,41 +218,37 @@ export const useBackupStore = defineStore('backup', () => {
       } catch (err) {
         toastMsg('Error: ' + (err instanceof Error ? err.message : String(err)), TOAST.BAD);
       }
-    };
-    rd.readAsText(file);
+    })();
   }
 
-  function ejecutarImport() {
-    const file = importFile.value;
-    if (!file) return;
-    const rd = new FileReader();
-    rd.onload = async (ev) => {
+  async function ejecutarImport() {
+    // Usa el objeto YA parseado (y descifrado) de la previsualización:
+    // re-leer el archivo aquí rompía los respaldos cifrados (el sobre no
+    // pasa el check de productos/ventas) y duplicaba la lógica de gzip.
+    const d = _datosImport;
+    if (!d) return toastMsg('No hay datos para importar', TOAST.WARN);
+    try {
+      // Guardar estado actual como red de seguridad
       try {
-        const d = JSON.parse(String(ev.target?.result));
-        if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
-
-        // Guardar estado actual como red de seguridad
-        try {
-          const estadoActual = datosDeStores();
-          await P(db.config, { key: 'preImportBackup', value: estadoActual, fecha: new Date().toISOString() });
-          preImportDisponible.value = true;
-          preImportFecha.value = new Date().toISOString();
-          console.log('✅ Pre-import backup guardado');
-        } catch (e) {
-          console.error('pre-import backup', e);
-        }
-
-        await importarData(d);
-        importPreview.value = null;
-        ui.ajustesAbierto = false;
-        toastMsg('Datos importados (puedes deshacer desde Ajustes)', TOAST.OK, 'Deshacer', () => {
-          ui.ajustesAbierto = true;
-        });
+        const estadoActual = datosDeStores();
+        await P(db.config, { key: 'preImportBackup', value: estadoActual, fecha: new Date().toISOString() });
+        preImportDisponible.value = true;
+        preImportFecha.value = new Date().toISOString();
+        console.log('✅ Pre-import backup guardado');
       } catch (e) {
-        toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+        console.error('pre-import backup', e);
       }
-    };
-    rd.readAsText(file);
+
+      await importarData(d);
+      _datosImport = null;
+      importPreview.value = null;
+      ui.ajustesAbierto = false;
+      toastMsg('Datos importados (puedes deshacer desde Ajustes)', TOAST.OK, 'Deshacer', () => {
+        ui.ajustesAbierto = true;
+      });
+    } catch (e) {
+      toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+    }
   }
 
   /** Valida el esquema de un archivo de respaldo. */

@@ -1,5 +1,6 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { esNativo } from './platform';
+import { textoDesdeBytes } from './backup';
 
 const CARPETA = 'backups';
 const MAX_BACKUPS = 30;
@@ -86,19 +87,13 @@ export const BackupFolder = {
         path: `${CARPETA}/${nombre}`,
         directory: Directory.Documents,
       });
-      // r.data es base64. Convertir a texto.
+      // r.data es base64. Convertir a bytes y dejar que el helper compartido
+      // decida gzip-vs-plano por magic bytes (mismo criterio que el import
+      // de Ajustes — por si un .json.gz viejo fue renombrado a mano).
       const bin = atob(String(r.data));
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-
-      // Descomprimir si es gzip (magic bytes 0x1f 0x8b)
-      let texto: string;
-      if (bytes[0] === 0x1f && bytes[1] === 0x8b && typeof DecompressionStream !== 'undefined') {
-        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-        texto = await new Response(stream).text();
-      } else {
-        texto = new TextDecoder().decode(bytes);
-      }
+      const texto = await textoDesdeBytes(bytes);
       return JSON.parse(texto);
     } catch (e) {
       console.error('BackupFolder.leer', e);
