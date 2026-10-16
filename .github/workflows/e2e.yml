@@ -111,29 +111,43 @@ jobs:
       # Umbrales tipo trinquete: se calibraron contra el build actual
       # (perf 75 / a11y 95 / bp 96 en 4G simulada). Subirlos cuando
       # el build mejore, nunca bajarlos.
-      - name: Auditoría Lighthouse con umbrales
+      #
+      # MEDIANA DE 3: los runners compartidos de GitHub tienen varianza de CPU
+      # brutal (2026-10-16: mismo commit, local 72-78 vs runner 51-61; TBT
+      # 134-312 ms vs 536-905 ms). Una sola corrida hace el gate de lotería;
+      # la mediana de 3 filtra los picos de ruido sin aflojar los umbrales.
+      - name: Auditoría Lighthouse (mediana de 3 corridas, con umbrales)
         run: |
-          npx --yes lighthouse@12 http://localhost:4173/Tienda-ultima/ \
-            --chrome-flags="--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage" \
-            --only-categories=performance,accessibility,best-practices \
-            --output=json --output-path=/tmp/lh.json --quiet
+          for i in 1 2 3; do
+            npx --yes lighthouse@12 http://localhost:4173/Tienda-ultima/ \
+              --chrome-flags="--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage" \
+              --only-categories=performance,accessibility,best-practices \
+              --output=json --output-path=/tmp/lh-$i.json --quiet
+          done
           node -e "
-            const d = require('/tmp/lh.json');
             const minimo = { performance: 0.70, accessibility: 0.90, 'best-practices': 0.90 };
+            const scores = {};
+            for (let i = 1; i <= 3; i++) {
+              const d = require('/tmp/lh-' + i + '.json');
+              for (const cat of Object.keys(minimo)) {
+                (scores[cat] = scores[cat] || []).push(d.categories[cat].score);
+              }
+            }
             let fallo = [];
             for (const [cat, min] of Object.entries(minimo)) {
-              const s = d.categories[cat].score;
-              const linea = cat + ': ' + Math.round(s * 100) + '/100 (mínimo ' + Math.round(min * 100) + ')';
-              console.log(s >= min ? '  ✓ ' + linea : '  ✗ ' + linea);
-              if (s < min) fallo.push(cat);
+              const arr = scores[cat].slice().sort((a, b) => a - b);
+              const mediana = arr[1];
+              const linea = cat + ': mediana ' + Math.round(mediana * 100) + '/100 (mínimo ' + Math.round(min * 100) + ') — corridas ' + arr.map((s) => Math.round(s * 100)).join('/');
+              console.log(mediana >= min ? '  ✓ ' + linea : '  ✗ ' + linea);
+              if (mediana < min) fallo.push(cat);
             }
             if (fallo.length) { console.error('Por debajo del presupuesto: ' + fallo.join(', ')); process.exit(1); }
           "
 
-      - name: Subir reporte Lighthouse
+      - name: Subir reportes Lighthouse
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-reporte
-          path: /tmp/lh.json
+          path: /tmp/lh-*.json
           retention-days: 14
