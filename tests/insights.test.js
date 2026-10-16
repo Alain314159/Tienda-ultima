@@ -43,7 +43,20 @@ const venta = (diasAtras, total = 100, ganancia = 30, items = []) => ({
   total,
   ganancia,
   anulada: false,
-  items: items.length ? items : [{ productoId: 'p1', nombre: 'X', cantidad: 1, unidad: '', precio: total, costo: total - ganancia, ganancia, lotesUsados: [] }],
+  items: items.length
+    ? items
+    : [
+        {
+          productoId: 'p1',
+          nombre: 'X',
+          cantidad: 1,
+          unidad: '',
+          precio: total,
+          costo: total - ganancia,
+          ganancia,
+          lotesUsados: [],
+        },
+      ],
 });
 
 const porClave = (recs) => Object.fromEntries(recs.map((r) => [r.clave, r]));
@@ -156,13 +169,21 @@ describe('insights: ATENCIÓN', () => {
   it('descuentos altos: item por debajo del precio de catálogo', () => {
     const productos = [{ id: 'p1', nombre: 'A', precio: 100 }];
     const item = (precio, cantidad = 1, pid = 'p1') => ({
-      productoId: pid, nombre: 'A', cantidad, precio, costo: 10, ganancia: 1, anulado: false,
+      productoId: pid,
+      nombre: 'A',
+      cantidad,
+      precio,
+      costo: 10,
+      ganancia: 1,
+      anulado: false,
     });
     let r = generarRecomendaciones(estadoBase({ productos, ventas: [venta(1, 75, 65, [item(75)])] }));
     expect(porClave(r)['descuentos-1'].peso).toBe(50); // 25% ≥ 20%
 
     // 15% no salta; cantidad 0 no salta; producto sin precio no salta
-    r = generarRecomendaciones(estadoBase({ productos, ventas: [venta(1, 85, 75, [item(85), item(50, 0), item(40, 1, 'pX')])] }));
+    r = generarRecomendaciones(
+      estadoBase({ productos, ventas: [venta(1, 85, 75, [item(85), item(50, 0), item(40, 1, 'pX')])] })
+    );
     expect(porClave(r)['descuentos-1']).toBeUndefined();
   });
 
@@ -190,7 +211,10 @@ describe('insights: ATENCIÓN', () => {
 
     // Última vieja (hace 40 días): no salta
     r = generarRecomendaciones(
-      estadoBase({ productos, compras: compras.map((c, i) => (i === 0 ? { ...c, fecha: new Date(2026, 8, 1).toISOString() } : c)) })
+      estadoBase({
+        productos,
+        compras: compras.map((c, i) => (i === 0 ? { ...c, fecha: new Date(2026, 8, 1).toISOString() } : c)),
+      })
     );
     expect(r.find((x) => x.clave.startsWith('compra-cara'))).toBeUndefined();
   });
@@ -206,7 +230,9 @@ describe('insights: ATENCIÓN', () => {
 
   it('revisa inventario: 3 agotados o 5 con stock bajo', () => {
     const productos = [
-      { id: 'a', nombre: 'A' }, { id: 'b', nombre: 'B' }, { id: 'c', nombre: 'C' },
+      { id: 'a', nombre: 'A' },
+      { id: 'b', nombre: 'B' },
+      { id: 'c', nombre: 'C' },
     ];
     let r = generarRecomendaciones(estadoBase({ productos, stockDe: () => 0 }));
     expect(porClave(r)['revisa-inventario'].titulo).toContain('3 agotados');
@@ -283,8 +309,29 @@ describe('insights: OPORTUNIDAD / INFO', () => {
   it('mejor día de la semana (90 días, 10+ ventas) y proyección fin de mes', () => {
     // 10 ventas, todas en viernes (9, 2, 25 sep, 18 sep...)
     const ventas = [];
-    const viernes = [new Date(2026, 9, 9), new Date(2026, 9, 2), new Date(2026, 8, 25), new Date(2026, 8, 18), new Date(2026, 8, 11), new Date(2026, 8, 4), new Date(2026, 7, 28), new Date(2026, 7, 21), new Date(2026, 7, 14), new Date(2026, 7, 7)];
-    viernes.forEach((f, i) => ventas.push(venta(0, 100, 30, []) && ({ ...venta(0), id: 'vf' + i, fecha: new Date(f.getFullYear(), f.getMonth(), f.getDate(), 12).toISOString(), total: 100, ganancia: 30 })));
+    const viernes = [
+      new Date(2026, 9, 9),
+      new Date(2026, 9, 2),
+      new Date(2026, 8, 25),
+      new Date(2026, 8, 18),
+      new Date(2026, 8, 11),
+      new Date(2026, 8, 4),
+      new Date(2026, 7, 28),
+      new Date(2026, 7, 21),
+      new Date(2026, 7, 14),
+      new Date(2026, 7, 7),
+    ];
+    viernes.forEach((f, i) =>
+      ventas.push(
+        venta(0, 100, 30, []) && {
+          ...venta(0),
+          id: 'vf' + i,
+          fecha: new Date(f.getFullYear(), f.getMonth(), f.getDate(), 12).toISOString(),
+          total: 100,
+          ganancia: 30,
+        }
+      )
+    );
     const r = generarRecomendaciones(estadoBase({ ventas }));
     expect(porClave(r)['mejor-dia'].titulo).toContain('Viernes');
     // Oct 14 ≥ día 5 del mes → proyección
@@ -300,7 +347,9 @@ describe('insights: OPORTUNIDAD / INFO', () => {
     ];
     const lotes = [{ productoId: 'd2', fecha: hace90 }];
     const ventas = [
-      venta(3, 100, 30, [{ productoId: 'vivo', nombre: 'Vivo', cantidad: 1, precio: 100, costo: 70, ganancia: 30, anulado: false }]),
+      venta(3, 100, 30, [
+        { productoId: 'vivo', nombre: 'Vivo', cantidad: 1, precio: 100, costo: 70, ganancia: 30, anulado: false },
+      ]),
     ];
     const r = generarRecomendaciones(
       estadoBase({ productos, lotes, ventas, stockDe: (pid) => (pid === 'vivo' ? 0 : 5) })

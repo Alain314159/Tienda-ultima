@@ -72,7 +72,15 @@ async function clickGuardar(w) {
 beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
-  await Promise.all([db.productos.clear(), db.lotes.clear(), db.compras.clear(), db.ventas.clear(), db.movCaja.clear(), db.capital.clear(), db.config.clear()]);
+  await Promise.all([
+    db.productos.clear(),
+    db.lotes.clear(),
+    db.compras.clear(),
+    db.ventas.clear(),
+    db.movCaja.clear(),
+    db.capital.clear(),
+    db.config.clear(),
+  ]);
   useConfigStore().cfg.capitalInicial = 1000;
   useConfigStore().cfg.periodoInicio = '2026-09-01T00:00:00.000Z';
   await cargarTodo();

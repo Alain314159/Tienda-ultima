@@ -157,7 +157,10 @@ describe('SONDA ProductosView: bugs del flujo real de edición', () => {
     await w.find('button[aria-label="Editar"]').trigger('click');
     await flushPromises();
     await w.find('input[placeholder="Unidades"]').setValue('10');
-    await clickGuardar(w, () => useProductosStore().productos.find((p) => p.id === 'p1')?.empaques?.[0]?.unidades === 10);
+    await clickGuardar(
+      w,
+      () => useProductosStore().productos.find((p) => p.id === 'p1')?.empaques?.[0]?.unidades === 10
+    );
 
     // 53 con cajas de 10 = 5 cajas + 3 und — la fila DEBE refrescarse
     expect(w.text()).toContain('5 cajas + 3 und');
@@ -348,7 +351,10 @@ describe('ProductosView: lista y filtros', () => {
     // archivado no se ve por defecto
     expect(txt).not.toContain('Viejo');
 
-    await w.findAll('button').filter((b) => b.text().includes('Ver archivados'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Ver archivados'))[0]
+      .trigger('click');
     await flushPromises();
     expect(w.text()).toContain('ARCHIVADO');
     w.unmount();
@@ -409,7 +415,10 @@ describe('ProductosView: archivar y restaurar', () => {
     expect(w.findAll('.prod-wrap').length).toBe(0);
 
     // Ver archivados
-    await w.findAll('button').filter((b) => b.text().includes('Ver archivados'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Ver archivados'))[0]
+      .trigger('click');
     await flushPromises();
     expect(w.findAll('.prod-wrap').length).toBe(1);
 

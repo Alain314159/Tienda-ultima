@@ -40,9 +40,18 @@ beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
   await Promise.all([
-    db.cierres.clear(), db.movCaja.clear(), db.arqueos.clear(), db.ventas.clear(),
-    db.compras.clear(), db.gastos.clear(), db.capital.clear(), db.retiros.clear(),
-    db.distribuciones.clear(), db.socios.clear(), db.asientos.clear(), db.config.clear(),
+    db.cierres.clear(),
+    db.movCaja.clear(),
+    db.arqueos.clear(),
+    db.ventas.clear(),
+    db.compras.clear(),
+    db.gastos.clear(),
+    db.capital.clear(),
+    db.retiros.clear(),
+    db.distribuciones.clear(),
+    db.socios.clear(),
+    db.asientos.clear(),
+    db.config.clear(),
   ]);
   const config = useConfigStore();
   config.cfg.capitalInicial = 1000;
@@ -56,10 +65,16 @@ describe('ReportesView: arqueo de caja', () => {
     const errSpy = vi.spyOn(toast, 'error').mockImplementation(() => {});
     const w = await montar();
     const input = w.find('input[placeholder="Contado físico en caja"]');
-    await w.findAll('button').filter((b) => b.text().includes('Registrar arqueo'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Registrar arqueo'))[0]
+      .trigger('click');
     await flushPromises();
     await input.setValue('1e999');
-    await w.findAll('button').filter((b) => b.text().includes('Registrar arqueo'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Registrar arqueo'))[0]
+      .trigger('click');
     await flushPromises();
     expect(errSpy).toHaveBeenCalledTimes(2);
     expect(await db.arqueos.count()).toBe(0);
@@ -76,7 +91,10 @@ describe('ReportesView: arqueo de caja', () => {
     expect(w.text()).toContain('Sobra');
     expect(w.text()).toContain('$200.00');
 
-    await w.findAll('button').filter((b) => b.text().includes('Registrar arqueo'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Registrar arqueo'))[0]
+      .trigger('click');
     await flushPromises();
     const ui = useUIStore();
     expect(ui.confirm.titulo).toBe('Registrar arqueo');
@@ -108,7 +126,10 @@ describe('ReportesView: arqueo de caja', () => {
     expect(w.text()).toContain('Falta');
     expect(w.text()).toContain('$50.00');
 
-    await w.findAll('button').filter((b) => b.text().includes('Registrar arqueo'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Registrar arqueo'))[0]
+      .trigger('click');
     await flushPromises();
     expect(useUIStore().confirm.msg).toContain('FALTA $50.00');
     useUIStore().okConfirm();
@@ -124,9 +145,12 @@ describe('ReportesView: arqueo de caja', () => {
     const w = await montar();
     await w.find('input[placeholder="Contado físico en caja"]').setValue('1000');
     await flushPromises();
-    expect(w.text()).toContain('Cuadra')
+    expect(w.text()).toContain('Cuadra');
 
-    await w.findAll('button').filter((b) => b.text().includes('Registrar arqueo'))[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().includes('Registrar arqueo'))[0]
+      .trigger('click');
     await flushPromises();
     expect(useUIStore().confirm.msg).toContain('cuadra');
     useUIStore().okConfirm();
@@ -145,7 +169,18 @@ describe('ReportesView: cierre de período', () => {
     await db.ventas.put({
       id: 'v1',
       fecha: '2026-10-05T12:00:00.000Z',
-      items: [{ productoId: 'px', nombre: 'X', cantidad: 1, unidad: '', precio: 500, costo: 200, ganancia: 300, lotesUsados: [] }],
+      items: [
+        {
+          productoId: 'px',
+          nombre: 'X',
+          cantidad: 1,
+          unidad: '',
+          precio: 500,
+          costo: 200,
+          ganancia: 300,
+          lotesUsados: [],
+        },
+      ],
       total: 500,
       ganancia: 300,
       anulada: false,
@@ -181,7 +216,18 @@ describe('ReportesView: libro diario', () => {
     await db.ventas.put({
       id: 'v1',
       fecha: '2026-10-05T12:00:00.000Z',
-      items: [{ productoId: 'px', nombre: 'X', cantidad: 2, unidad: '', precio: 100, costo: 40, ganancia: 120, lotesUsados: [] }],
+      items: [
+        {
+          productoId: 'px',
+          nombre: 'X',
+          cantidad: 2,
+          unidad: '',
+          precio: 100,
+          costo: 40,
+          ganancia: 120,
+          lotesUsados: [],
+        },
+      ],
       total: 200,
       ganancia: 120,
       anulada: false,

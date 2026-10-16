@@ -132,7 +132,10 @@ describe('BackupPanel', () => {
     mockListar.mockResolvedValue([{ name: 'backup-2026-10-14.json.gz' }]);
     mockLeer.mockResolvedValue(RESPALDO_MIN);
     const w = await montar();
-    await w.findAll('button').filter((b) => b.text().trim() === 'Restaurar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().trim() === 'Restaurar')[0]
+      .trigger('click');
     await flushPromises();
 
     const ui = useUIStore();
@@ -164,7 +167,10 @@ describe('BackupPanel', () => {
     mockListar.mockResolvedValue([{ name: 'roto.json.gz' }]);
     mockLeer.mockRejectedValue(new Error('corrupto'));
     const w = await montar();
-    await w.findAll('button').filter((b) => b.text().trim() === 'Restaurar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text().trim() === 'Restaurar')[0]
+      .trigger('click');
     await flushPromises();
     useUIStore().okConfirm();
     await flushPromises();
@@ -306,7 +312,12 @@ describe('useBackupStore: borrarTodo (zona peligrosa)', () => {
     vi.spyOn(toast, 'warning').mockImplementation(() => {});
     await db.productos.put({ id: 'p1', nombre: 'X', precio: 1 });
     await db.ventas.put({
-      id: 'v1', fecha: new Date().toISOString(), items: [], total: 0, ganancia: 0, anulada: false,
+      id: 'v1',
+      fecha: new Date().toISOString(),
+      items: [],
+      total: 0,
+      ganancia: 0,
+      anulada: false,
     });
     await db.config.put({ key: 'cfg', value: { nombreTienda: 'T' } });
 

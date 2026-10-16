@@ -247,8 +247,20 @@ describe('VentasView: cobro', () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
     vi.spyOn(toast, 'error').mockImplementation(() => {});
     await sembrarProducto({ id: 'p1', nombre: 'Aceite', precio: 200 });
-    await sembrarLote({ id: 'lA', productoId: 'p1', cantidadInicial: 5, costo: 100, fecha: '2026-10-01T10:00:00.000Z' });
-    await sembrarLote({ id: 'lB', productoId: 'p1', cantidadInicial: 10, costo: 140, fecha: '2026-10-05T10:00:00.000Z' });
+    await sembrarLote({
+      id: 'lA',
+      productoId: 'p1',
+      cantidadInicial: 5,
+      costo: 100,
+      fecha: '2026-10-01T10:00:00.000Z',
+    });
+    await sembrarLote({
+      id: 'lB',
+      productoId: 'p1',
+      cantidadInicial: 10,
+      costo: 140,
+      fecha: '2026-10-05T10:00:00.000Z',
+    });
     await cargarTodo();
 
     const w = await montar();
@@ -425,8 +437,26 @@ describe('VentasView: historial y anulaciones', () => {
       id: 'v2',
       fecha: '2026-10-11T14:30:00.000Z',
       items: [
-        { productoId: 'p1', nombre: 'Aceite', cantidad: 1, unidad: '', precio: 200, costo: 100, ganancia: 100, lotesUsados: [{ loteId: 'l1', cantidad: 1 }] },
-        { productoId: 'p1', nombre: 'Aceite', cantidad: 2, unidad: '', precio: 200, costo: 200, ganancia: 200, lotesUsados: [{ loteId: 'l1', cantidad: 2 }] },
+        {
+          productoId: 'p1',
+          nombre: 'Aceite',
+          cantidad: 1,
+          unidad: '',
+          precio: 200,
+          costo: 100,
+          ganancia: 100,
+          lotesUsados: [{ loteId: 'l1', cantidad: 1 }],
+        },
+        {
+          productoId: 'p1',
+          nombre: 'Aceite',
+          cantidad: 2,
+          unidad: '',
+          precio: 200,
+          costo: 200,
+          ganancia: 200,
+          lotesUsados: [{ loteId: 'l1', cantidad: 2 }],
+        },
       ],
       total: 600,
       ganancia: 300,
@@ -570,7 +600,18 @@ describe('VentasView: historial y anulaciones', () => {
     await db.ventas.put({
       id: 'v2',
       fecha: '2026-10-11T10:00:00.000Z',
-      items: [{ productoId: 'p2', nombre: 'Jabón', cantidad: 1, unidad: '', precio: 60, costo: 30, ganancia: 30, lotesUsados: [] }],
+      items: [
+        {
+          productoId: 'p2',
+          nombre: 'Jabón',
+          cantidad: 1,
+          unidad: '',
+          precio: 60,
+          costo: 30,
+          ganancia: 30,
+          lotesUsados: [],
+        },
+      ],
       total: 60,
       ganancia: 30,
       anulada: false,
@@ -603,7 +644,18 @@ describe('VentasView: historial y anulaciones', () => {
     await db.ventas.put({
       id: 'vOld',
       fecha: '2026-08-15T10:00:00.000Z',
-      items: [{ productoId: 'p1', nombre: 'Aceite viejo', cantidad: 1, unidad: '', precio: 150, costo: 100, ganancia: 50, lotesUsados: [] }],
+      items: [
+        {
+          productoId: 'p1',
+          nombre: 'Aceite viejo',
+          cantidad: 1,
+          unidad: '',
+          precio: 150,
+          costo: 100,
+          ganancia: 50,
+          lotesUsados: [],
+        },
+      ],
       total: 150,
       ganancia: 50,
       anulada: false,
@@ -628,7 +680,18 @@ describe('VentasView: historial y anulaciones', () => {
       ventas.push({
         id: 'v' + i,
         fecha: new Date(Date.UTC(2026, 9, 1 + Math.floor(i / 3), 12)).toISOString(),
-        items: [{ productoId: 'p1', nombre: 'Chicle', cantidad: 1, unidad: '', precio: 5, costo: 2, ganancia: 3, lotesUsados: [] }],
+        items: [
+          {
+            productoId: 'p1',
+            nombre: 'Chicle',
+            cantidad: 1,
+            unidad: '',
+            precio: 5,
+            costo: 2,
+            ganancia: 3,
+            lotesUsados: [],
+          },
+        ],
         total: 5,
         ganancia: 3,
         anulada: false,

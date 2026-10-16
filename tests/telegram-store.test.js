@@ -463,8 +463,22 @@ describe('useTelegramStore: cola y rotación', () => {
     const s = useTelegramStore();
     configurarTg();
     await db.tgQueue.bulkPut([
-      { id: 'viejo', ts: '2026-10-13T08:00:00.000Z', estado: 'pendiente', intentos: 0, motivo: 'auto', datos: RESPALDO },
-      { id: 'nuevo', ts: '2026-10-14T08:00:00.000Z', estado: 'pendiente', intentos: 0, motivo: 'auto', datos: RESPALDO },
+      {
+        id: 'viejo',
+        ts: '2026-10-13T08:00:00.000Z',
+        estado: 'pendiente',
+        intentos: 0,
+        motivo: 'auto',
+        datos: RESPALDO,
+      },
+      {
+        id: 'nuevo',
+        ts: '2026-10-14T08:00:00.000Z',
+        estado: 'pendiente',
+        intentos: 0,
+        motivo: 'auto',
+        datos: RESPALDO,
+      },
     ]);
     mocks.tgSendDocument.mockResolvedValue({ ok: true });
     mocks.tgListBackups.mockResolvedValue([]);

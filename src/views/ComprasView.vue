@@ -333,7 +333,8 @@ function eliminarCompra(id: string) {
             // otra pestaña pudo consumir el lote mientras tanto → lotes
             // huérfanos referenciados por ventas con lotesUsados rotos
             const l = await db.lotes.where('compraId').equals(id).first();
-            if (l && n(l.cantidadVendida) > 0) throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
+            if (l && n(l.cantidadVendida) > 0)
+              throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
           });

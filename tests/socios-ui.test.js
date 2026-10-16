@@ -65,7 +65,9 @@ async function sembrarGanancia(ganancia) {
   await db.ventas.put({
     id: 'vg1',
     fecha: '2026-10-05T12:00:00.000Z',
-    items: [{ productoId: 'px', nombre: 'X', cantidad: 1, unidad: '', precio: ganancia, costo: 0, ganancia, lotesUsados: [] }],
+    items: [
+      { productoId: 'px', nombre: 'X', cantidad: 1, unidad: '', precio: ganancia, costo: 0, ganancia, lotesUsados: [] },
+    ],
     total: ganancia,
     ganancia,
     anulada: false,
@@ -407,7 +409,10 @@ describe('SociosView: retiros y aportes', () => {
 
     await w.find('input[placeholder="Monto del aporte"]').setValue('250');
     await w.find('input[placeholder="Nota (opcional)"]').setValue('inyección extra');
-    await w.findAll('select').filter((s) => s.findAll('option').length > 1)[0].setValue('so1');
+    await w
+      .findAll('select')
+      .filter((s) => s.findAll('option').length > 1)[0]
+      .setValue('so1');
     await clickBoton(w, 'Registrar Aporte');
     await esperar(() => useCapitalStore().capital.length === 1);
 
