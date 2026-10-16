@@ -29,6 +29,9 @@ import { balanzaDeComprobacion } from '../src/services/libroDiario';
 import { useBackupStore } from '../src/stores/useBackupStore';
 import { useConfigStore } from '../src/stores/useConfigStore';
 import { useCajaStore } from '../src/stores/useCajaStore';
+import { useProductosStore } from '../src/stores/useProductosStore';
+import { useLotesStore } from '../src/stores/useLotesStore';
+import { useVentasStore } from '../src/stores/useVentasStore';
 import { useUIStore } from '../src/stores/useUIStore';
 import { db } from '../src/db';
 
@@ -281,3 +284,100 @@ describe('flujo de importación desde Ajustes (onImportFile → ejecutarImport)'
     expect(confirmarSpy).not.toHaveBeenCalled();
   });
 });
+
+// ===== Round-trip REAL del export cifrado: exportarCifrado → importar =====
+// La regresión histórica era "ejecutarImport re-leía el archivo SIN descifrar";
+// este test cierra el círculo completo: el archivo EXACTO que produce hoy
+// exportarCifrado (mismo código, 600k iteraciones) debe re-entrar por la
+// puerta de importación con su contraseña y restaurarlo todo.
+describe('round-trip exportarCifrado → onImportFile', () => {
+  it('el archivo producido por exportarCifrado re-importa con la contraseña', async () => {
+    // este archivo comparte la BD entre tests: limpiar primero
+    await Promise.all(db.tables.map((t) => t.clear()));
+    // datos vivos en la BD (algo en cada tabla clave)
+    await db.productos.put({ id: 'p1', nombre: 'Aceite', precio: 350, stockMinimo: 2 });
+    await db.lotes.put({ id: 'l1', productoId: 'p1', cantidadInicial: 10, cantidadVendida: 1, costo: 300 });
+    await db.ventas.put({
+      id: 'v1',
+      fecha: new Date('2026-10-16T10:00:00Z').toISOString(),
+      items: [{ productoId: 'p1', nombre: 'Aceite', cantidad: 1, precio: 350, costo: 300, ganancia: 50 }],
+      total: 350,
+      ganancia: 50,
+      anulada: false,
+    });
+    // exportarCifrado lee los STORES de pinia, no la BD: cargarlos primero
+    await useProductosStore().cargarProductos();
+    await useLotesStore().cargarLotes();
+    await useVentasStore().cargarVentas();
+
+    // capturar el blob que exportarCifrado entrega a <a download>
+    let blobCapturado = null;
+    const crearURL = URL.createObjectURL;
+    URL.createObjectURL = (b) => {
+      blobCapturado = b;
+      return 'blob:falso';
+    };
+    const clickAnchor = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = () => {};
+
+    const b = useBackupStore();
+    const ui = useUIStore();
+    const preguntarSpy = vi.spyOn(ui, 'preguntar').mockResolvedValue('secreto123');
+
+    await b.exportarCifrado();
+    await vi.waitFor(() => expect(blobCapturado).not.toBeNull());
+
+    URL.createObjectURL = crearURL;
+    HTMLAnchorElement.prototype.click = clickAnchor;
+
+    // el sobre es JSON con las claves del esquema v2
+    const sobre = JSON.parse(await blobCapturado.text());
+    expect(sobre.cifrado).toBe(true);
+    expect(sobre.kdf.iter).toBe(600000);
+
+    // borrar lo que hay y re-importar el archivo recién exportado
+    await db.productos.clear();
+    await db.lotes.clear();
+    await db.ventas.clear();
+    expect(await db.productos.count()).toBe(0);
+
+    let onOkCapturado = null;
+    const confirmarSpy = vi.spyOn(ui, 'confirmar').mockImplementation(({ onOk }) => {
+      onOkCapturado = onOk;
+    });
+
+    b.onImportFile(eventoInput(comoFile(new Encoder().encode(JSON.stringify(sobre)), 'respaldo-cifrado.json')));
+
+    await vi.waitFor(() => expect(confirmarSpy).toHaveBeenCalled()); // descifró bien
+    await onOkCapturado();
+    await vi.waitFor(async () => expect(await db.productos.count()).toBe(1));
+    expect((await db.ventas.get('v1')).total).toBe(350);
+    expect(b.importPreview).toBe(null);
+  });
+
+  it('exportarCifrado con contraseña corta NO produce archivo', async () => {
+    const b = useBackupStore();
+    const ui = useUIStore();
+    let blobCapturado = null;
+    const crearURL = URL.createObjectURL;
+    URL.createObjectURL = (b) => {
+      blobCapturado = b;
+      return 'blob:falso';
+    };
+    HTMLAnchorElement.prototype.click = () => {};
+    vi.spyOn(ui, 'preguntar').mockResolvedValue('123'); // < 6 chars
+
+    await b.exportarCifrado();
+    await new Promise((r) => setTimeout(r, 300)); // PBKDF2 no debe correr
+
+    URL.createObjectURL = crearURL;
+    expect(blobCapturado).toBe(null);
+  });
+});
+
+/** TextEncoder local (evita repetir new TextEncoder() por todas partes). */
+class Encoder {
+  encode(s) {
+    return new TextEncoder().encode(s);
+  }
+}
