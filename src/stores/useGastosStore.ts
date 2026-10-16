@@ -6,11 +6,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Gasto } from '../types';
 import { n, m } from '../utils/numero';
-import { P, genId } from '../utils/id';
 import { db } from '../db';
-import { hoyLocal, fechaLocal } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
-import { CATEGORIAS_GASTO, METODOS_PAGO } from '../constants';
 
 export const useGastosStore = defineStore('gastos', () => {
   // ===== STORES DEPENDIENTES =====
@@ -18,16 +15,6 @@ export const useGastosStore = defineStore('gastos', () => {
 
   // ===== ESTADO =====
   const gastos = ref<Gasto[]>([]);
-  const gastoForm = ref({
-    editId: '',
-    fecha: hoyLocal(),
-    categoria: '',
-    concepto: '',
-    monto: '',
-    nota: '',
-    metodoPago: 'efectivo',
-    saleDeCaja: true,
-  });
 
   // ===== GETTERS =====
 
@@ -84,42 +71,6 @@ export const useGastosStore = defineStore('gastos', () => {
   }
 
   /**
-   * Guarda un gasto
-   */
-  async function guardarGasto() {
-    const gasto = {
-      id: gastoForm.value.editId || genId('g'),
-      fecha: gastoForm.value.fecha,
-      categoria: gastoForm.value.categoria,
-      concepto: gastoForm.value.concepto.trim(),
-      monto: n(gastoForm.value.monto),
-      nota: gastoForm.value.nota.trim(),
-      metodoPago: gastoForm.value.metodoPago,
-      saleDeCaja: gastoForm.value.saleDeCaja,
-    };
-
-    // Validaciones (isFinite: "1e999" colaba y dejaba la caja en -∞)
-    if (!gasto.concepto) throw new Error('Concepto obligatorio');
-    if (!isFinite(gasto.monto) || gasto.monto <= 0) throw new Error('Monto inválido');
-
-    await P(db.gastos, gasto);
-    await cargarGastos();
-
-    gastoForm.value = {
-      editId: '',
-      fecha: hoyLocal(),
-      categoria: '',
-      concepto: '',
-      monto: '',
-      nota: '',
-      metodoPago: 'efectivo',
-      saleDeCaja: true,
-    };
-
-    return gasto;
-  }
-
-  /**
    * Elimina un gasto
    */
   async function eliminarGasto(gastoId: string) {
@@ -139,54 +90,20 @@ export const useGastosStore = defineStore('gastos', () => {
     }
   }
 
-  /**
-   * Prepara el formulario para editar un gasto
-   */
-  function editarGasto(gasto: Gasto) {
-    gastoForm.value = {
-      editId: gasto.id,
-      fecha: fechaLocal(gasto.fecha),
-      categoria: gasto.categoria,
-      concepto: gasto.concepto,
-      monto: String(gasto.monto),
-      nota: gasto.nota || '',
-      metodoPago: gasto.metodoPago || 'efectivo',
-      saleDeCaja: gasto.saleDeCaja !== false,
-    };
-  }
-
-  /**
-   * Limpia el formulario de gasto
-   */
-  function limpiarGastoForm() {
-    gastoForm.value = {
-      editId: '',
-      fecha: hoyLocal(),
-      categoria: '',
-      concepto: '',
-      monto: '',
-      nota: '',
-      metodoPago: 'efectivo',
-      saleDeCaja: true,
-    };
-  }
-
   // ===== EXPORTS =====
+  // (guardarGasto/editarGasto/gastoForm del store eliminados: eran código
+  // muerto — GastosView tiene su propia implementación con el espejo contable
+  // en movCaja, que la versión del store ni siquiera creía. Un duplicado que
+  // no sincroniza es peor que no tenerlo.)
   return {
     gastos,
-    gastoForm,
     gastosOrdenadas,
     gastosOrdenados,
     gastosTotalAcumulado,
     gastosOpPeriodo,
     gastosPorCategoria,
-    CATEGORIAS_GASTO,
-    METODOS_PAGO,
     cargarGastos,
-    guardarGasto,
     eliminarGasto,
-    editarGasto,
-    limpiarGastoForm,
   };
 });
 

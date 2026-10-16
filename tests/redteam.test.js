@@ -283,21 +283,10 @@ describe('red-team: aportes, gastos y arqueo rechazan Infinity', () => {
     expect(n(items[0].monto)).toBe(500);
   });
 
-  it('gasto con monto "Infinity" lanza error (antes: caja = -∞)', async () => {
-    const g = useGastosStore();
-    await g.cargarGastos();
-    g.gastoForm = {
-      editId: '',
-      fecha: '2026-10-15',
-      categoria: 'Servicios',
-      concepto: 'bomba',
-      monto: 'Infinity',
-      nota: '',
-      metodoPago: 'efectivo',
-      saleDeCaja: true,
-    };
-    await expect(g.guardarGasto()).rejects.toThrow('Monto');
-  });
+  // (gasto con monto "Infinity" por el store: la acción guardarGasto/gastoForm
+  // del store era CÓDIGO MUERTO — la vista usa su propia implementación, que
+  // era la que tenía el agujero. Esa validación ahora vive y se prueba en
+  // tests/gastos-ui.test.js contra el formulario REAL.)
 
   it('hacerArqueo con cajaFísica Infinity lanza error', async () => {
     const caja = useCajaStore();

@@ -179,7 +179,9 @@ async function guardarGasto() {
   const fechaISO = f.fecha ? new Date(f.fecha + 'T12:00:00').toISOString() : new Date().toISOString();
   if (!categoria) return toastMsg('Categoria obligatoria', TOAST.BAD);
   if (!concepto) return toastMsg('Concepto obligatorio', TOAST.BAD);
-  if (monto <= 0) return toastMsg('Monto debe ser > 0', TOAST.BAD);
+  // isFinite: "1e999" colaba por "<= 0" (Infinity <= 0 es false) — el mismo
+  // agujero que cerramos en el store, pero por el camino REAL de la vista.
+  if (!isFinite(monto) || monto <= 0) return toastMsg('Monto debe ser > 0', TOAST.BAD);
 
   if (f.editId) {
     const o = gastosStore.gastos.find((x) => x.id === f.editId);
