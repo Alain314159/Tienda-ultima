@@ -335,8 +335,10 @@ export const useTelegramStore = defineStore('telegram', () => {
   }
 
   async function tgAutoDetectarChat() {
-    const token = tgTokenActual();
-    if (!token) return false;
+    // SIN guard de token: tras la migración al proxy, tgTokenActual() devuelve
+    // 'proxy' solo si YA hay tgChatId — exactamente lo que esta función viene
+    // a detectar. Con el guard, la autodetección (poll de App.vue + botón de
+    // Ajustes) era IMPOSIBLE: nunca salía de "esperando-start".
     if (configStore.cfg.tgChatId) return true;
     try {
       const updates = await tgGetUpdates();
@@ -463,6 +465,13 @@ export const useTelegramStore = defineStore('telegram', () => {
         await db.tgQueue.bulkDelete(borrar);
         console.log('[tg] Cola limpiada: ' + borrar.length + ' auto viejos descartados');
       }
+
+      // Los 'error' con intentos agotados pasan a 'fallido' definitivo.
+      // (Antes quedaban en 'error' PARA SIEMPRE: el filtro de abajo los
+      // excluía justo antes de la rama que los marcaba, y tgColaPendiente
+      // los contaba eternamente como pendientes que jamás se reintentan.)
+      const agotados = todos.filter((x) => x.estado === 'error' && (x.intentos || 0) >= 5);
+      for (const x of agotados) await P(db.tgQueue, { ...x, estado: 'fallido' });
 
       // Procesar pendientes + errores reintentables
       const items = await db.tgQueue

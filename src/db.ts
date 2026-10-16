@@ -143,6 +143,31 @@ class TiendaProDB extends Dexie {
       tgQueue: 'id, estado, ts',
       config: 'key',
     });
+
+    // Version 8: indexar 'motivo' en la cola de Telegram — los
+    // where('motivo').equals('auto') de tgEncolar/backupAuto reventaban con
+    // SchemaError (motivo no era índice) y los try/catch lo tragaban en
+    // silencio: la anti-acumulación de backups 'auto' en cola estaba muerta.
+    this.version(8).stores({
+      productos: 'id, nombre, archivado, [archivado+nombre]',
+      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+      ventas: 'id, fecha, anulada, [anulada+fecha]',
+      compras: 'id, productoId, fecha, [productoId+fecha]',
+      ajustes: 'id, productoId, fecha, [productoId+fecha]',
+      arqueos: 'id, fecha',
+      movCaja: 'id, fecha, tipo, [tipo+fecha]',
+      cierres: 'id, fechaCierre',
+      capital: 'id, fecha, socioId',
+      retiros: 'id, fecha',
+      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+      gastos: 'id, fecha, categoria, [categoria+fecha]',
+      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+      auditorias: 'id, fechaInicio, estado',
+      tgQueue: 'id, estado, ts, motivo',
+      config: 'key',
+    });
   }
 }
 
