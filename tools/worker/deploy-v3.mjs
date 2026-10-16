@@ -107,8 +107,17 @@ export default {
 
     // ===== GET UPDATES (para detectar chat_id) =====
     if (url.pathname === '/api/tg/getUpdates') {
-      const r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/getUpdates?limit=100');
-      const data = await r.json();
+      let r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/getUpdates?limit=100');
+      let data = await r.json();
+      // AUTO-SANACIÓN: si un webhook de un tercio secuestró el bot (409
+      // Conflict — este bot es exclusivo de la app y funciona por polling),
+      // eliminarlo y reintentar. 2026-10: tele.goldenherd.com lo re-registra
+      // periódicamente y rompía la autodetección de la app.
+      if (data && data.error_code === 409) {
+        await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/deleteWebhook?drop_pending_updates=false');
+        r = await fetch('https://api.telegram.org/bot' + env.TG_TOKEN + '/getUpdates?limit=100');
+        data = await r.json();
+      }
       return json(data, r.status, cors);
     }
 

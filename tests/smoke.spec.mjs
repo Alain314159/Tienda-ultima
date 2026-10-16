@@ -11,6 +11,30 @@ const warnings = [];
 const logs = [];
 const acciones = [];
 
+// Excepción AMBIENTAL estrecha: 409 del proxy de Telegram. Un servicio de
+// terceros (tele.goldenherd.com) pelea este bot re-registrando un webhook
+// que rompe getUpdates ("can't use getUpdates while webhook is active").
+// El Worker lo auto-sana (deleteWebhook + retry — ver tools/worker), pero
+// hasta su redespliegue puede colarse un 409 puntual. NO AMPLIAR:
+// el 401 (secret sin heredar) que este gate cazó el 2026-10-16 sigue
+// siendo FATAL, igual que cualquier otro 4xx/5xx o console.error.
+const perdonarTg409 = (lista) => {
+  const tg409 = lista.filter((e) => e.tipo === 'http-409' && e.texto.includes('tienda-proxy')).length;
+  if (!tg409) return lista;
+  let perdonados = 0;
+  const resto = lista.filter((e) => {
+    if (e.tipo === 'http-409' && e.texto.includes('tienda-proxy')) return false;
+    if (e.tipo === 'console.error' && /status of 409/.test(e.texto) && perdonados < tg409) {
+      perdonados++;
+      return false;
+    }
+    return true;
+  });
+  warnings.push({ tipo: 'http-409-tg', texto: tg409 + ' getUpdates 409 (webhook de tercero en el bot; el Worker lo auto-sana)' });
+  console.log('  ⚠️  ' + tg409 + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot)');
+  return resto;
+};
+
 const grabar = (nombre) => {
   acciones.push({ nombre, ts: new Date().toISOString() });
   console.log('▶️  ' + nombre);
@@ -172,14 +196,15 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     console.log('\n═══════════════════════════════════════════');
     console.log(' RESUMEN');
     console.log('═══════════════════════════════════════════');
+    const erroresFinales = perdonarTg409(errors);
     console.log(' Acciones: ' + acciones.length);
     console.log(' Logs: ' + logs.length);
     console.log(' Warnings: ' + warnings.length);
-    console.log(' Errores: ' + errors.length);
+    console.log(' Errores: ' + erroresFinales.length);
 
-    if (errors.length > 0) {
+    if (erroresFinales.length > 0) {
       console.log('\n--- ERRORES ---');
-      errors.forEach((e, i) => console.log(' ' + (i + 1) + '. [' + e.tipo + '] ' + e.texto));
+      erroresFinales.forEach((e, i) => console.log(' ' + (i + 1) + '. [' + e.tipo + '] ' + e.texto));
       process.exit(1);
     } else {
       console.log('\n🎉 TODO OK');

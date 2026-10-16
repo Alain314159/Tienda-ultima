@@ -14,9 +14,21 @@ Proxy para Telegram Bot API. Vive en Cloudflare, NO en este repo.
     source .env
     export CF_API_TOKEN="..."
     export CF_ACCOUNT_ID="..."
+    export TIENDA_NAMES_KV_ID="c89ecb4108ce4bd58316f0ce95fccb0a"
     export TG_TOKEN_ACTUAL="..."
     export APP_KEY_ACTUAL="..."
     node ~/tienda-proxy/deploy-v3.mjs
+
+## ⚠️ Redespliegue pendiente (2026-10-16)
+
+El Worker en producción TODAVÍA NO tiene la auto-sanación del 409: un
+servicio de terceros (tele.goldenherd.com) re-registra un webhook sobre el
+bot y rompe `getUpdates` (autodetección de la app) hasta que alguien lo
+borra a mano. El worker.js de este repo ya se defiende solo: si Telegram
+responde 409, hace `deleteWebhook` y reintenta. **Hace falta correr el
+despliegue de arriba una vez** para que entre en vigor. Si ya no usas
+goldenherd con este bot, además bórralo de ese servicio para dejar de
+pelear el webhook.
 
 ## Que hace
 
@@ -25,6 +37,7 @@ Proxy para Telegram Bot API. Vive en Cloudflare, NO en este repo.
 - KV backups:<chatId>: indice de backups por chat
 - Filtrado por chat_id + nombre para privacidad
 - Rotacion automatica: mantiene ultimos 20 backups
+- Auto-sanación: webhook pirata (409) → deleteWebhook + reintento
 
 ## KV namespace
 
