@@ -394,8 +394,13 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
 
   // Proyeccion semanal
   if (totalSemana > 0) {
-    const diasPasados = Math.min(7, Math.ceil((ahora.getTime() - semanaActual.i.getTime()) / 86400000));
-    if (diasPasados >= 3 && diasPasados < 7) {
+    // Días FRACCIONARIOS desde el inicio de la ventana rodante: con la
+    // semana definida como [hoy-6 a medianoche, ahora], ceil() daba SIEMPRE 7
+    // y el guard "< 7" dejaba la regla MUERTA (solo disparaba en el
+    // instante exacto de la medianoche). Con fracción, "al ritmo actual"
+    // proyecta de verdad el tramo restante de la ventana.
+    const diasPasados = Math.max(1, (ahora.getTime() - semanaActual.i.getTime()) / 86400000);
+    if (diasPasados >= 3) {
       const promedio = totalSemana / diasPasados;
       const proyeccionSemana = promedio * 7;
       push({
