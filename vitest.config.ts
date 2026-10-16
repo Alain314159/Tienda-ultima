@@ -19,13 +19,14 @@ export default defineConfig({
       include: ['src/**'],
       exclude: ['src/main.ts', 'src/env.d.ts', 'src/shims/**'],
       // Umbrales anti-regresion (trinquete): subir al mejorar la suite,
-      // nunca bajar. Actual (2026-10-14, 260 tests): lineas 48.6 /
-      // funciones 36.0 / statements 45.9 / branches 25.8
+      // nunca bajar. Actual (2026-10-16, 633 tests — campaña de cobertura
+      // profunda por áreas): lineas 83.1 / funciones 76.7 / statements 81.1 /
+      // branches 65.6. Margen de ~1 punto para no cazarnos con flakes.
       thresholds: {
-        lines: 48,
-        functions: 36,
-        statements: 46,
-        branches: 26,
+        lines: 82,
+        functions: 75,
+        statements: 80,
+        branches: 64,
       },
     },
   },
