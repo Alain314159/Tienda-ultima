@@ -395,17 +395,22 @@ function anularProductoEnVenta(ventaId: string, itemIndex: number) {
 }
 
 function anularVenta(id: string) {
-  ui.confirmar({
-    titulo: 'Anular venta',
-    msg: '¿Anular esta venta por completo? Se restaura el stock de todos sus productos.',
-    onOk: async () => {
-      try {
-        await ventasStore.anularVenta(id);
-        toastMsg('Venta anulada');
-      } catch (e) {
-        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
-      }
-    },
+  // Operación destructiva (restaura stock de TODOS los ítems y revierte el
+  // total): mismo PIN que la anulación por ítem — antes no lo pedía y era
+  // más fácil anular la venta completa que un solo ítem
+  ui.pedirPin(() => {
+    ui.confirmar({
+      titulo: 'Anular venta',
+      msg: '¿Anular esta venta por completo? Se restaura el stock de todos sus productos.',
+      onOk: async () => {
+        try {
+          await ventasStore.anularVenta(id);
+          toastMsg('Venta anulada');
+        } catch (e) {
+          toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+        }
+      },
+    });
   });
 }
 

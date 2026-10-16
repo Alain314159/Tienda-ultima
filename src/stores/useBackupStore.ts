@@ -20,7 +20,7 @@ import { useUIStore } from './useUIStore';
 import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
-import { derivarClave, hashContenido, hashRespaldoEstable, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
+import { derivarClave, hashRespaldoEstable, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
 import type { Respaldo } from '../types';
 
 /** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
@@ -690,45 +690,49 @@ export const useBackupStore = defineStore('backup', () => {
 
   // ===== ZONA PELIGROSA =====
   function borrarTodo() {
-    ui.confirmar({
-      titulo: '⚠ BORRAR TODO',
-      msg: 'Esto eliminara PERMANENTEMENTE todos los datos de la app. No se puede deshacer.',
-      onOk: () => {
-        ui.preguntar({
-          titulo: 'Confirmacion final',
-          msg: 'Escribe BORRAR (en mayusculas) para confirmar:',
-          placeholder: 'BORRAR',
-        }).then(async (v) => {
-          if (v !== 'BORRAR') return toastMsg('Cancelado', TOAST.WARN);
-          try {
-            const tables = [
-              'productos',
-              'lotes',
-              'ventas',
-              'compras',
-              'ajustes',
-              'arqueos',
-              'movCaja',
-              'cierres',
-              'capital',
-              'retiros',
-              'socios',
-              'distribuciones',
-              'gastos',
-              'asientos',
-              'pasivos',
-            ];
-            await db.transaction('rw', tables.concat(['config']), async () => {
-              for (const t of tables) await db.table(t).clear();
-              await db.config.clear();
-            });
-            toastMsg('Todos los datos eliminados');
-            setTimeout(() => location.reload(), 1200);
-          } catch (e) {
-            toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
-          }
-        });
-      },
+    // La operación MÁS destructiva de la app: si hay PIN activo se pide
+    // ANTES de las confirmaciones (antes solo pedía escribir BORRAR)
+    ui.pedirPin(() => {
+      ui.confirmar({
+        titulo: '⚠ BORRAR TODO',
+        msg: 'Esto eliminara PERMANENTEMENTE todos los datos de la app. No se puede deshacer.',
+        onOk: () => {
+          ui.preguntar({
+            titulo: 'Confirmacion final',
+            msg: 'Escribe BORRAR (en mayusculas) para confirmar:',
+            placeholder: 'BORRAR',
+          }).then(async (v) => {
+            if (v !== 'BORRAR') return toastMsg('Cancelado', TOAST.WARN);
+            try {
+              const tables = [
+                'productos',
+                'lotes',
+                'ventas',
+                'compras',
+                'ajustes',
+                'arqueos',
+                'movCaja',
+                'cierres',
+                'capital',
+                'retiros',
+                'socios',
+                'distribuciones',
+                'gastos',
+                'asientos',
+                'pasivos',
+              ];
+              await db.transaction('rw', tables.concat(['config']), async () => {
+                for (const t of tables) await db.table(t).clear();
+                await db.config.clear();
+              });
+              toastMsg('Todos los datos eliminados');
+              setTimeout(() => location.reload(), 1200);
+            } catch (e) {
+              toastMsg('Error: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+            }
+          });
+        },
+      });
     });
   }
 

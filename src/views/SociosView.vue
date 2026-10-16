@@ -390,14 +390,18 @@ function repartirGanancia() {
 }
 
 // ===== RETIRO / APORTE (modales locales, estado en capitalStore) =====
-async function registrarRetiro() {
-  try {
-    await capitalStore.registrarRetiro();
-    ui.retiroAbierto = false;
-    toastMsg('Retiro registrado');
-  } catch (e) {
-    toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
-  }
+function registrarRetiro() {
+  // Sacar dinero de la caja: mismo PIN que el reparto (antes el reparto lo
+  // pedía y el retiro no — inconsistencia)
+  ui.pedirPin(async () => {
+    try {
+      await capitalStore.registrarRetiro();
+      ui.retiroAbierto = false;
+      toastMsg('Retiro registrado');
+    } catch (e) {
+      toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+    }
+  });
 }
 
 async function registrarAporte() {

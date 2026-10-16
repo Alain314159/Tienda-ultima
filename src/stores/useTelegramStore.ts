@@ -14,7 +14,7 @@ import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
-import { comprimirGzip, hashContenido, hashRespaldoEstable, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
+import { comprimirGzip, hashRespaldoEstable, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
 import {
   tgCheckName,
   tgRegister,

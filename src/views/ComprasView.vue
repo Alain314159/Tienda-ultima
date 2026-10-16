@@ -319,27 +319,31 @@ function editarCompra(id: string) {
 function eliminarCompra(id: string) {
   if (!loteSinVentas(id)) return;
   const c = comprasStore.compras.find((x) => x.id === id);
-  ui.confirmar({
-    titulo: 'Eliminar compra',
-    msg: '¿Eliminar compra de ' + (c?.productoNombre || '') + '?',
-    onOk: async () => {
-      try {
-        await db.transaction('rw', db.compras, db.lotes, async () => {
-          // Revalidación CONTRA LA BD dentro de la transacción: el check
-          // reactivo (loteSinVentas) corrió antes del modal y una venta en
-          // otra pestaña pudo consumir el lote mientras tanto → lotes
-          // huérfanos referenciados por ventas con lotesUsados rotos
-          const l = await db.lotes.where('compraId').equals(id).first();
-          if (l && n(l.cantidadVendida) > 0) throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
-          await db.compras.delete(id);
-          if (l) await db.lotes.delete(l.id);
-        });
-        await recargarStores('compras', 'lotes', 'asientos');
-        toastMsg('Compra eliminada');
-      } catch (e) {
-        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
-      }
-    },
+  // Destructiva (borra compra+lote y ajusta caja): requiere PIN como el
+  // resto de eliminaciones
+  ui.pedirPin(() => {
+    ui.confirmar({
+      titulo: 'Eliminar compra',
+      msg: '¿Eliminar compra de ' + (c?.productoNombre || '') + '?',
+      onOk: async () => {
+        try {
+          await db.transaction('rw', db.compras, db.lotes, async () => {
+            // Revalidación CONTRA LA BD dentro de la transacción: el check
+            // reactivo (loteSinVentas) corrió antes del modal y una venta en
+            // otra pestaña pudo consumir el lote mientras tanto → lotes
+            // huérfanos referenciados por ventas con lotesUsados rotos
+            const l = await db.lotes.where('compraId').equals(id).first();
+            if (l && n(l.cantidadVendida) > 0) throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
+            await db.compras.delete(id);
+            if (l) await db.lotes.delete(l.id);
+          });
+          await recargarStores('compras', 'lotes', 'asientos');
+          toastMsg('Compra eliminada');
+        } catch (e) {
+          toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+        }
+      },
+    });
   });
 }
 

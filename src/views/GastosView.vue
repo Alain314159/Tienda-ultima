@@ -276,17 +276,20 @@ function editarGasto(id: string) {
 function eliminarGasto(id: string) {
   const g = gastosStore.gastos.find((x) => x.id === id);
   if (!g) return;
-  ui.confirmar({
-    titulo: 'Eliminar gasto',
-    msg: 'Eliminar "' + g.concepto + '" por ' + fmt(g.monto) + '?',
-    onOk: async () => {
-      await db.transaction('rw', db.gastos, db.movCaja, async () => {
-        await db.gastos.delete(id);
-        if (g.movId) await db.movCaja.delete(g.movId);
-      });
-      await recargarStores('gastos', 'movCaja', 'asientos');
-      toastMsg('Gasto eliminado');
-    },
+  // Destructiva (borra el gasto y su movimiento de caja): requiere PIN
+  ui.pedirPin(() => {
+    ui.confirmar({
+      titulo: 'Eliminar gasto',
+      msg: 'Eliminar "' + g.concepto + '" por ' + fmt(g.monto) + '?',
+      onOk: async () => {
+        await db.transaction('rw', db.gastos, db.movCaja, async () => {
+          await db.gastos.delete(id);
+          if (g.movId) await db.movCaja.delete(g.movId);
+        });
+        await recargarStores('gastos', 'movCaja', 'asientos');
+        toastMsg('Gasto eliminado');
+      },
+    });
   });
 }
 

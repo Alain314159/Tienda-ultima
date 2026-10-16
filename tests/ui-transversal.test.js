@@ -11,7 +11,6 @@ import { toast } from 'vue-sonner';
 
 import { db } from '../src/db';
 import { useConfigStore } from '../src/stores/useConfigStore';
-import { useUIStore } from '../src/stores/useUIStore';
 import AppIcon from '../src/components/AppIcon.vue';
 
 const mockCheckPerms = vi.fn();
@@ -74,7 +73,14 @@ beforeEach(async () => {
   vi.spyOn(toast, 'success').mockImplementation(() => {});
   vi.spyOn(toast, 'warning').mockImplementation(() => {});
   vi.spyOn(toast, 'error').mockImplementation(() => {});
-  await Promise.all([db.config.clear(), db.productos.clear(), db.lotes.clear(), db.arqueos.clear(), db.cierres.clear(), db.ventas.clear()]);
+  await Promise.all([
+    db.config.clear(),
+    db.productos.clear(),
+    db.lotes.clear(),
+    db.arqueos.clear(),
+    db.cierres.clear(),
+    db.ventas.clear(),
+  ]);
 });
 
 // ============================================================
@@ -87,10 +93,16 @@ describe('ModalConfirm', () => {
     expect(w.text()).toContain('¿Seguro?');
     expect(w.text()).toContain('Línea 1');
 
-    await w.findAll('button').filter((b) => b.text() === 'Confirmar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text() === 'Confirmar')[0]
+      .trigger('click');
     expect(w.emitted('ok')).toHaveLength(1);
 
-    await w.findAll('button').filter((b) => b.text() === 'Cancelar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text() === 'Cancelar')[0]
+      .trigger('click');
     expect(w.emitted('cancelar')).toHaveLength(1);
     w.unmount();
   });
@@ -115,7 +127,10 @@ describe('ModalPrompt', () => {
     // El padre actualiza el prop (v-model) y Aceptar lo lleva tal cual
     await w.setProps({ value: '1234' });
     expect(input.element.value).toBe('1234');
-    await w.findAll('button').filter((b) => b.text() === 'Aceptar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text() === 'Aceptar')[0]
+      .trigger('click');
     expect(w.emitted('ok')).toHaveLength(1);
     expect(w.emitted('ok')[0]).toEqual(['1234']);
 
@@ -130,7 +145,10 @@ describe('ModalPrompt', () => {
   it('Cancelar emite cancelar', async () => {
     const { default: ModalPrompt } = await import('../src/components/ModalPrompt.vue');
     const w = await montar(ModalPrompt, { activo: true, titulo: 'X' });
-    await w.findAll('button').filter((b) => b.text() === 'Cancelar')[0].trigger('click');
+    await w
+      .findAll('button')
+      .filter((b) => b.text() === 'Cancelar')[0]
+      .trigger('click');
     expect(w.emitted('cancelar')).toHaveLength(1);
     w.unmount();
   });
@@ -150,9 +168,15 @@ describe('SheetMas', () => {
     expect(activos.length).toBe(1);
     expect(activos[0].text()).toContain('Productos');
 
-    await w.findAll('.sheet-btn').filter((b) => b.text().includes('Gastos'))[0].trigger('click');
+    await w
+      .findAll('.sheet-btn')
+      .filter((b) => b.text().includes('Gastos'))[0]
+      .trigger('click');
     expect(w.emitted('ir')).toEqual([['gastos']]);
-    await w.findAll('.sheet-btn').filter((b) => b.text().includes('Ajustes'))[0].trigger('click');
+    await w
+      .findAll('.sheet-btn')
+      .filter((b) => b.text().includes('Ajustes'))[0]
+      .trigger('click');
     expect(w.emitted('abrir-ajustes')).toHaveLength(1);
     // Overlay cierra
     await w.find('.overlay').trigger('click');
@@ -279,7 +303,13 @@ describe('useNotificacionesStore: chequeos periódicos', () => {
     // Con arqueo registrado hoy: no avisa de nuevo
     config.cfg.ultimaNotifArqueo = '';
     const { useCajaStore } = await import('../src/stores/useCajaStore');
-    await db.arqueos.put({ id: 'a1', fecha: new Date().toISOString(), cajaFisica: 0, cajaSistema: 0, faltanteSobrante: 0 });
+    await db.arqueos.put({
+      id: 'a1',
+      fecha: new Date().toISOString(),
+      cajaFisica: 0,
+      cajaSistema: 0,
+      faltanteSobrante: 0,
+    });
     await useCajaStore().cargarArqueos();
     await s.chequearNotificaciones();
     expect(config.cfg.ultimaNotifArqueo).toBe('');

@@ -215,7 +215,6 @@ const lotesStore = useLotesStore();
 const { busqProd, mostrarArchivados, filtroStock } = storeToRefs(productosStore);
 const { stock, formatStock, badgeStock, txtBadge, limpiarFiltroStock } = productosStore;
 const { lotesDeProducto, valorLotesProducto } = lotesStore;
-const stockMap = lotesStore.stockMap as Record<string, number>;
 
 const sec = 'productos';
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));

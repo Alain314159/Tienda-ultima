@@ -22,7 +22,6 @@ import { useLotesStore } from '../src/stores/useLotesStore';
 import { useProductosStore } from '../src/stores/useProductosStore';
 import { useCapitalStore } from '../src/stores/useCapitalStore';
 import { useCajaStore } from '../src/stores/useCajaStore';
-import { useGastosStore } from '../src/stores/useGastosStore';
 import { useBackupStore } from '../src/stores/useBackupStore';
 
 beforeEach(async () => {
