@@ -106,19 +106,9 @@ describe('useProductosStore', () => {
     expect(await db.productos.count()).toBe(0);
   });
 
-  it('toggleArchivarProducto alterna el estado y persiste', async () => {
-    const s = useProductosStore();
-    await s.guardarProducto({ nombre: 'Yogur', precio: 20 });
-    const pid = s.productos[0].id;
-    await s.toggleArchivarProducto(pid);
-    expect(s.productos.find((p) => p.id === pid).archivado).toBe(true);
-    expect(s.prodsActivos.length).toBe(0);
-
-    await s.toggleArchivarProducto(pid);
-    expect(s.prodsActivos.length).toBe(1);
-    // persistido
-    expect((await db.productos.get(pid)).archivado).toBe(false);
-  });
+  // (toggleArchivarProducto del store eliminado: era código muerto SIN el
+  // check de stock — archivaba con stock encima. El flujo real vive en
+  // ProductosView y se prueba en tests/productos-ui.test.js)
 });
 
 describe('useLotesStore', () => {

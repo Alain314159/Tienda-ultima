@@ -202,7 +202,17 @@ export const useProductosStore = defineStore('productos', () => {
     empaques?: Empaque[];
     nota?: string;
   }) {
-    const v = validar(productoSchema, producto);
+    // Filas de subformulario agregadas y dejadas vacías NO bloquean el
+    // guardado: se descartan (una fila a medias — con nombre pero sin
+    // unidades — sí es error: es un dato perdido a medias).
+    const limpiarVacios = <T extends object>(filas: T[] | undefined) =>
+      (filas || []).filter((f) => Object.values(f).some((v) => String(v ?? '').trim() !== ''));
+
+    const v = validar(productoSchema, {
+      ...producto,
+      empaques: limpiarVacios(producto.empaques),
+      preciosEscalonados: limpiarVacios(producto.preciosEscalonados),
+    });
     if (!v.ok) throw new Error(v.error);
     try {
       // Anti-duplicados (comportamiento del monolito original)
@@ -221,7 +231,9 @@ export const useProductosStore = defineStore('productos', () => {
           nombre: v.data.nombre,
           precio: v.data.precio,
           stockMinimo: v.data.stockMin,
-          unidad: v.data.unidad || original.unidad,
+          // unidad SE SOBRESCRIBE (vaciarla debe borrarla: el "|| original.unidad"
+          // hacia imposible quitarla una vez puesta)
+          unidad: v.data.unidad,
           preciosEscalonados: v.data.preciosEscalonados,
           empaques: v.data.empaques,
           nota: v.data.nota,
@@ -243,22 +255,6 @@ export const useProductosStore = defineStore('productos', () => {
       await cargarProductos();
     } catch (e) {
       console.error('Error guardando producto:', e);
-      throw e;
-    }
-  }
-
-  /**
-   * Archiva/Desarchiva un producto
-   */
-  async function toggleArchivarProducto(productoId: string) {
-    try {
-      const prod = productos.value.find((p) => p.id === productoId);
-      if (prod) {
-        await P(db.productos, { ...prod, archivado: !prod.archivado });
-        await cargarProductos();
-      }
-    } catch (e) {
-      console.error('Error archivando producto:', e);
       throw e;
     }
   }
@@ -307,7 +303,6 @@ export const useProductosStore = defineStore('productos', () => {
     txtBadge,
     cargarProductos,
     guardarProducto,
-    toggleArchivarProducto,
     setBusqProd,
     toggleMostrarArchivados,
   };

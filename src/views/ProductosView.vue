@@ -122,7 +122,6 @@
       <div
         v-for="p in prodsFiltrados"
         :key="p.id"
-        v-memo="[p.id, p.nombre, p.precio, p.archivado, stockMap[p.id], badgeMap[p.id], prodExpandido[p.id]]"
         class="prod-wrap"
         :id="'ref-' + p.id"
         :class="'prod-' + (badgeMap[p.id] || 'ok')"
