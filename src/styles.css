@@ -94,7 +94,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth PROHIBIDO a nivel global: en el WebView de
+     Android una animación de scroll programático (route change → top:0,
+     scrollTo(0,0) tras guardar) interrumpida por el dedo deja el scroll
+     del compositor en un estado pillado: se puede subir pero NO bajar
+     hasta el siguiente reflow. Los scrolls suaves INTENCIONALES pasan
+     behavior:'smooth' explícito (ver utils/navegacion.ts). */
   font-size: calc(15px * var(--font-scale));
 }
 
@@ -367,6 +372,16 @@ main {
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+}
+
+/* Sub-línea de las stat cards: desglose de la Ganancia del Dashboard
+   (generada vs retirada). Solo visible cuando hay retiros. */
+.stat .stat-sub {
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  color: var(--mut);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
 /* ============================================ BADGES ============================================ */

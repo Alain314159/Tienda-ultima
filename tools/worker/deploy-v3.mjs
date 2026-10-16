@@ -27,10 +27,18 @@ async function api(method, url, body) {
 
 const workerCode = `// Cloudflare Worker - Tienda Pro (multi-tenant con KV de backups)
 
+// APK (Capacitor): el WebView sirve la app desde https://localhost. Sin
+// estas entradas TODA llamada a Telegram desde la app instalada muere en
+// el preflight CORS (403 Forbidden origin) → los backups no se suben.
+// Seguro: X-App-Key (env.APP_KEY) sigue gatingando cada request.
 const ALLOWED_ORIGINS = new Set([
   'https://alain314159.github.io',
   'http://localhost:5173',
   'http://localhost:4173',
+  'https://localhost', // APK Android (Capacitor, androidScheme https)
+  'http://localhost', // APK con esquema http (config legacy)
+  'capacitor://localhost', // iOS Capacitor
+  'ionic://localhost', // iOS legacy
 ]);
 
 function corsHeaders(origin) {

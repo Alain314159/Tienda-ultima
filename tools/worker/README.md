@@ -19,16 +19,31 @@ Proxy para Telegram Bot API. Vive en Cloudflare, NO en este repo.
     export APP_KEY_ACTUAL="..."
     node ~/tienda-proxy/deploy-v3.mjs
 
-## ⚠️ Redespliegue pendiente (2026-10-16)
+## ⚠️ Redespliegue pendiente (2026-10-17)
 
-El Worker en producción TODAVÍA NO tiene la auto-sanación del 409: un
-servicio de terceros (tele.goldenherd.com) re-registra un webhook sobre el
-bot y rompe `getUpdates` (autodetección de la app) hasta que alguien lo
-borra a mano. El worker.js de este repo ya se defiende solo: si Telegram
-responde 409, hace `deleteWebhook` y reintenta. **Hace falta correr el
-despliegue de arriba una vez** para que entre en vigor. Si ya no usas
-goldenherd con este bot, además bórralo de ese servicio para dejar de
-pelear el webhook.
+El Worker en producción está DESACTUALIZADO en dos cosas críticas:
+
+1. **Origen del APK bloqueado**: la versión desplegada NO tiene en
+   `ALLOWED_ORIGINS` el origen `https://localhost` del WebView de Capacitor.
+   Resultado: desde la app INSTALADA toda llamada al proxy muere en el
+   preflight CORS con 403 "Forbidden origin" → **los backups de Telegram
+   no se suben desde el APK** (solo funcionaban desde el navegador/PWA).
+   El worker.js de este repo ya lo permite (más capacitor://localhost y
+   http://localhost). `X-App-Key` sigue protegiendo cada request.
+2. **Auto-sanación del 409**: un servicio de terceros (tele.goldenherd.com)
+   re-registra un webhook sobre el bot y rompe `getUpdates`
+   (autodetección del chat). El worker.js de este repo ya hace
+   `deleteWebhook` + reintento.
+
+**Hace falta correr el despliegue de arriba UNA VEZ** para que ambas
+entren en vigor. Si ya no usas goldenherd con este bot, además bórralo de
+ese servicio para dejar de pelear el webhook.
+
+Verificación rápida tras desplegar (debe responder 200, no 403):
+
+    curl -s -o /dev/null -w "%{http_code}" \
+      https://tienda-proxy.tienda-ul5r2q.workers.dev/api/tg/getMe \
+      -H "X-App-Key: <APP_KEY>" -H "Origin: https://localhost"
 
 ## Que hace
 

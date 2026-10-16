@@ -162,9 +162,18 @@ export const useTelegramStore = defineStore('telegram', () => {
     }
     try {
       await tgEnviarDatos(datos, 'manual', true);
-    } catch {
+    } catch (e) {
       await tgEncolar(datos, 'manual');
-      toastMsg('Sin conexion. Backup en cola.', TOAST.WARN);
+      // Error de RED (fetch TypeError) → "sin conexion". Cualquier otra cosa
+      // (403 del proxy, nombre no registrado, etc.) se muestra TAL CUAL:
+      // antes todo era "Sin conexion" y los fallos reales quedaban
+      // indistinguibles (el dueño veía "no se suben" sin saber por qué).
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/failed to fetch|networkerror|load failed|conex/i.test(msg)) {
+        toastMsg('Sin conexion. Backup en cola.', TOAST.WARN);
+      } else {
+        toastMsg('Backup en cola. Error: ' + msg, TOAST.WARN);
+      }
     }
   }
 

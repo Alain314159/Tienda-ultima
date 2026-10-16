@@ -238,11 +238,29 @@ describe('useTelegramStore: envío', () => {
   it('tgBackupAhora con fallo de red encola y avisa', async () => {
     const s = useTelegramStore();
     configurarTg();
-    mocks.tgSendDocument.mockRejectedValue(new Error('sin red'));
+    // TypeError real del WebView de Android cuando no hay red/CORS:
+    // "Failed to fetch" — el guard de tgBackupAhora lo clasifica como red
+    mocks.tgSendDocument.mockRejectedValue(new Error('Failed to fetch'));
     await s.tgBackupAhora(RESPALDO);
     expect(toast.warning).toHaveBeenCalledWith('Sin conexion. Backup en cola.', expect.anything());
     expect(await db.tgQueue.count()).toBe(1);
     expect(useTelegramStore().tgColaPendiente).toBe(1);
+  });
+
+  it('tgBackupAhora con error del SERVIDOR muestra la causa real (no "sin conexion")', async () => {
+    const s = useTelegramStore();
+    configurarTg();
+    // El 403 "No autorizado" del proxy (p.ej. Worker sin el origen del APK
+    // en ALLOWED_ORIGINS, o nombre de tienda no registrado) antes se
+    // reportaba como "Sin conexion" — el dueño veía que los backups no
+    // subían sin ninguna pista del porqué.
+    mocks.tgSendDocument.mockRejectedValue(new Error('No autorizado para este nombre'));
+    await s.tgBackupAhora(RESPALDO);
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Backup en cola. Error: No autorizado para este nombre',
+      expect.anything()
+    );
+    expect(await db.tgQueue.count()).toBe(1); // igualmente queda en cola
   });
 });
 

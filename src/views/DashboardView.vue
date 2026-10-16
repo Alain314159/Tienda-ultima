@@ -30,7 +30,16 @@
       </div>
       <div class="stat">
         <div class="lbl"><icon name="dollar" :size="13" :color="mutColor"></icon> Ganancia</div>
-        <div class="val pos">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</div>
+        <!-- Ganancia que le QUEDA al dueño (acumulada − retirada): antes se
+             mostraba la del período, que no cambia al retirar y parecía que
+             la app "no se enteraba" de los retiros. -->
+        <div class="val pos" :class="{ neg: capitalStore.gananciaDisponible < 0 }">
+          {{ fmt(capitalStore.gananciaDisponible) }}
+        </div>
+        <div v-if="capitalStore.retirosGananciaTotal > 0" class="stat-sub">
+          Generada: {{ fmt(capitalStore.gananciasAcumuladas) }} · Retirada:
+          {{ fmt(capitalStore.retirosGananciaTotal) }}
+        </div>
       </div>
       <div class="stat">
         <div class="lbl"><icon name="bag" :size="13" :color="mutColor"></icon> Compras</div>
@@ -144,6 +153,7 @@ import { useLotesStore } from '../stores/useLotesStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useCajaStore } from '../stores/useCajaStore';
 import { useCierresStore } from '../stores/useCierresStore';
+import { useCapitalStore } from '../stores/useCapitalStore';
 import { useInsightsStore } from '../stores/useInsightsStore';
 import { useGraficos } from '../composables/useGraficos';
 import { ir } from '../utils/navegacion';
@@ -156,6 +166,7 @@ const lotesStore = useLotesStore();
 const ventasStore = useVentasStore();
 const cajaStore = useCajaStore();
 const cierresStore = useCierresStore();
+const capitalStore = useCapitalStore();
 const insights = useInsightsStore();
 
 const sec = 'dashboard';
