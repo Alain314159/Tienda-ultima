@@ -101,7 +101,19 @@
         </label>
       </div>
       <div v-if="cfg.pinActivo" style="margin-top: 0.3rem">
-        <input v-model="cfg.pin" type="password" placeholder="PIN (4 dígitos)" maxlength="6" @change="guardarCfg" />
+        <!-- Nunca bindear cfg.pin directo: ahí vive el HASH pbkdf2 (83 chars).
+             El campo es solo para escribir un PIN NUEVO; vacío = conservar el
+             actual. Antes: el hash colaba al input (maxlength=6 lo hacía
+             ineditable y editarlo a medias corrompía el PIN guardado). -->
+        <input
+          v-model="pinNuevo"
+          type="password"
+          :placeholder="pinGuardado ? 'Nuevo PIN (vacío = sin cambio)' : 'PIN (4 dígitos)'"
+          maxlength="6"
+          inputmode="numeric"
+          @change="guardarPinNuevo"
+        />
+        <div v-if="pinGuardado" style="font-size: 0.68rem; opacity: 0.65; margin-top: 0.15rem">PIN configurado ✓</div>
       </div>
 
       <div class="set-group">Datos y respaldos</div>
@@ -597,7 +609,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { Capacitor } from '@capacitor/core';
 import { fmtFH } from '../utils/formato';
 import { useConfigStore } from '../stores/useConfigStore';
@@ -627,6 +639,18 @@ const ventasStore = useVentasStore();
 const comprasStore = useComprasStore();
 
 const cfg = configStore.cfg;
+
+// ===== PIN: el input escribe un PIN NUEVO, nunca el hash guardado =====
+const pinNuevo = ref('');
+const pinGuardado = computed(() => Boolean(cfg.pin));
+async function guardarPinNuevo() {
+  const v = pinNuevo.value.trim();
+  // vacío = conservar el PIN actual (no tocar cfg.pin)
+  if (!v) return;
+  cfg.pin = v;
+  pinNuevo.value = '';
+  await configStore.guardarCfg(); // hashea antes de persistir
+}
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
 const esNativoApp = computed(() => Capacitor.isNativePlatform());
 const soportaNotif = computed(() => notificaciones.soportaNotif);
