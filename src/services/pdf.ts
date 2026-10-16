@@ -6,6 +6,8 @@
 import { n } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
 import type { ResultadoCuadre, Socio } from '../types';
+import { esNativo } from './platform';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 /** Contexto financiero de la tienda que necesita el PDF (portada y reparto). */
 interface ContextoPDF {
@@ -26,8 +28,10 @@ interface ContextoPDF {
  * @param {object} ctx contexto financiero: nombreTienda, saldoCaja, valorInventario,
  *   capitalTotal, gananciasAcumuladas, gananciaDisponible, patrimonioTotal
  *   (capital + ganancias - retiros), retirosAcumulados, gastosFueraCaja, socios
+ * @returns {Promise<string|null>} destino del archivo en nativo
+ *   ('Documentos/cuadre-….pdf') o null en web (descarga del navegador)
  */
-export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
+export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF): Promise<string | null> {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
 
@@ -260,5 +264,21 @@ export async function generarPDFCuadre(r: ResultadoCuadre, ctx: ContextoPDF) {
     doc.text('Pagina ' + p + ' de ' + totalPages, PW - 10, PH - 6, { align: 'right' });
   }
 
-  doc.save('cuadre-' + r._fechaI + '-' + r._fechaF + '.pdf');
+  const nombre = 'cuadre-' + r._fechaI + '-' + r._fechaF + '.pdf';
+  if (esNativo()) {
+    // WebView de Android: doc.save() dispara una descarga blob: que el WebView
+    // ignora (no hay gestor de descargas para ese esquema). En nativo se escribe
+    // el PDF en Documentos/ con el plugin Filesystem — mismo criterio que los
+    // respaldos exportados desde Ajustes.
+    const dataUri = doc.output('datauristring');
+    await Filesystem.writeFile({
+      path: nombre,
+      data: String(dataUri).split(',')[1],
+      directory: Directory.Documents,
+      recursive: true,
+    });
+    return 'Documentos/' + nombre;
+  }
+  doc.save(nombre);
+  return null;
 }

@@ -318,7 +318,7 @@ export function useCuadre() {
 
   async function generarPDFCuadre() {
     if (!rep.resultado) return;
-    await exportarPDF(rep.resultado, {
+    const destino = await exportarPDF(rep.resultado, {
       nombreTienda: configStore.cfg.nombre || 'Tienda Pro',
       saldoCaja: cajaStore.saldoCaja,
       valorInventario: lotesStore.valorInventario,
@@ -333,7 +333,9 @@ export function useCuadre() {
       gastosFueraCaja: m(gastosStore.gastos.filter((g) => g.saleDeCaja === false).reduce((s, g) => s + n(g.monto), 0)),
       socios: capitalStore.socios.filter((s) => s.activo !== false),
     });
-    toastMsg('PDF generado');
+    // En nativo el PDF se escribe en Documentos/ (la descarga blob del
+    // WebView no funciona); en web el navegador lo descarga.
+    toastMsg(destino ? 'PDF guardado en ' + destino : 'PDF generado');
   }
 
   return {

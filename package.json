@@ -25,7 +25,9 @@
     "lint:css": "stylelint \"src/**/*.{css,vue}\"",
     "lint:css:fix": "stylelint \"src/**/*.{css,vue}\" --fix",
     "commitlint": "commitlint --edit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:cap": "CAPACITOR=1 vite build && npx cap sync android",
+    "apk:debug": "npm run build:cap && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

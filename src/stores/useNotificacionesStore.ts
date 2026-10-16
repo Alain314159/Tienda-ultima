@@ -18,7 +18,6 @@ import { useProductosStore } from './useProductosStore';
 import { useCajaStore } from './useCajaStore';
 import { useCierresStore } from './useCierresStore';
 import { useInsightsStore } from './useInsightsStore';
-import { useTelegramStore } from './useTelegramStore';
 import type { Producto } from '../types';
 import { inicioDiaLocal } from '../utils/fecha';
 
@@ -49,7 +48,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
               title: titulo,
               body: cuerpo,
               schedule: { at: new Date(Date.now() + 100) },
-              smallIcon: 'ic_stat_icon_config_sample',
+              smallIcon: 'ic_stat_notif',
               iconColor: '#2196F3',
             },
           ],
@@ -287,12 +286,14 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
   async function notificarAgotado(prod: Producto) {
     const nombre = prod.nombre;
 
-    // 1. Notificacion del sistema (con timeout interno, nunca bloquea)
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        await enviarNotif('⚠ Producto agotado', nombre + ' — quedó en 0');
-      }
-    } catch {}
+    // 1. Notificacion del sistema (con timeout interno, nunca bloquea).
+    //    Guard por plataforma: en el WebView de Android no existe
+    //    window.Notification (la via nativa es LocalNotifications, que
+    //    enviarNotif elige solo) — sin este check los agotados JAMAS
+    //    notificaban en la app instalada.
+    if (Capacitor.isNativePlatform() || ('Notification' in window && Notification.permission === 'granted')) {
+      await enviarNotif('⚠ Producto agotado', nombre + ' — quedó en 0');
+    }
 
     // 2. Vibracion
     try {
@@ -309,33 +310,13 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     } catch (e) {
       console.warn('chequearAgotados', e);
     }
-
-    // 4. Aviso al bot de Telegram (timeout de 8s)
-    try {
-      const telegram = useTelegramStore();
-      const token = telegram.tgTokenActual();
-      const chatId = configStore.cfg.tgChatId;
-      if (token && chatId) {
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 8000);
-        try {
-          await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: '⚠️ *AGOTADO*\n\n' + nombre + '\n\nAvisa al grupo cuando puedas.',
-              parse_mode: 'Markdown',
-            }),
-            signal: ctrl.signal,
-          });
-        } finally {
-          clearTimeout(to);
-        }
-      }
-    } catch (e) {
-      console.warn('notificarAgotado telegram', e);
-    }
+    // NOTA: antes habia un 4º paso que hacia fetch directo a
+    // api.telegram.org — codigo muerto de la era pre-proxy: (a) el CSP lo
+    // bloquea (connect-src no incluye api.telegram.org), (b) usaba el
+    // "token" tgTokenActual() que tras la migracion al Worker devuelve
+    // literal 'proxy', no un token real. El bot no acepta mensajes directos
+    // sin token: eliminado. Para avisar por Telegram hace falta una ruta
+    // /api/tg/sendMessage en el Worker (pendiente de diseno).
   }
 
   // ===== TIMERS =====

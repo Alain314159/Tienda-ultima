@@ -7,6 +7,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const pdfState = vi.hoisted(() => ({ instancias: [], tablas: [] }));
+const capState = vi.hoisted(() => ({ nativo: false, escritas: [] }));
+
+// Capacitor moqueado: plataforma conmutable para probar la entrega del PDF
+// en web (descarga del navegador) vs APK instalado (Filesystem → Documentos).
+vi.mock('@capacitor/core', () => ({
+  Capacitor: {
+    isNativePlatform: () => capState.nativo,
+    getPlatform: () => (capState.nativo ? 'android' : 'web'),
+  },
+}));
+vi.mock('@capacitor/filesystem', () => ({
+  Filesystem: {
+    writeFile: vi.fn(async (opts) => {
+      capState.escritas.push(opts);
+      return {};
+    }),
+  },
+  Directory: { Documents: 'DOCUMENTS' },
+}));
 
 vi.mock('jspdf', () => ({
   jsPDF: class {
@@ -39,6 +58,10 @@ vi.mock('jspdf', () => ({
     }
     save(nombre) {
       this.savedName = nombre;
+    }
+    output(type) {
+      if (type === 'datauristring') return 'data:application/pdf;base64,JVBERi0xLjQK';
+      return '';
     }
   },
 }));
@@ -116,6 +139,8 @@ function ctxBase(socios = []) {
 beforeEach(() => {
   pdfState.instancias.length = 0;
   pdfState.tablas.length = 0;
+  capState.nativo = false;
+  capState.escritas.length = 0;
 });
 
 describe('generarPDFCuadre', () => {
@@ -220,5 +245,40 @@ describe('generarPDFCuadre', () => {
     pdfState.instancias.length = 0;
     await generarPDFCuadre(resultadoBase(), { ...ctxBase(), nombreTienda: '' });
     expect(pdfState.instancias[0].textos).toContain('Tienda Pro');
+  });
+});
+
+// ============================================================
+// ENTREGA POR PLATAFORMA — APK instalado (Android WebView)
+// doc.save() dispara una descarga blob: que el WebView ignora:
+// en nativo el PDF debe escribirse con Filesystem en Documentos/.
+// ============================================================
+describe('generarPDFCuadre: entrega del archivo por plataforma', () => {
+  it('en WEB: descarga del navegador (doc.save) y no escribe archivos', async () => {
+    const destino = await generarPDFCuadre(resultadoBase(), ctxBase());
+
+    expect(destino).toBe(null); // web: el toast dice "PDF generado"
+    const doc = pdfState.instancias[0];
+    expect(doc.savedName).toBe('cuadre-2026-10-01-2026-10-14.pdf');
+    expect(capState.escritas).toHaveLength(0); // nunca Filesystem en web
+  });
+
+  it('en NATIVO (APK): escribe en Documentos/ con Filesystem y devuelve la ruta', async () => {
+    capState.nativo = true;
+    const destino = await generarPDFCuadre(resultadoBase(), ctxBase());
+
+    // La ruta devuelta alimenta el toast ("PDF guardado en …")
+    expect(destino).toBe('Documentos/cuadre-2026-10-01-2026-10-14.pdf');
+
+    const doc = pdfState.instancias[0];
+    expect(doc.savedName).toBe(null); // doc.save JAMAS en nativo (no hace nada)
+
+    expect(capState.escritas).toHaveLength(1);
+    const escritura = capState.escritas[0];
+    expect(escritura.path).toBe('cuadre-2026-10-01-2026-10-14.pdf');
+    expect(escritura.directory).toBe('DOCUMENTS');
+    expect(escritura.recursive).toBe(true);
+    // base64 del dataURI sin el prefijo "data:…;base64," (formato del plugin)
+    expect(escritura.data).toBe('JVBERi0xLjQK');
   });
 });
