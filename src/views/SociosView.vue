@@ -289,7 +289,10 @@ async function guardarSocio() {
   const aporte = n(f.aporte);
   if (!nombre) return toastMsg('Nombre obligatorio', TOAST.BAD);
   if (pct < 0 || pct > 100) return toastMsg('Porcentaje entre 0 y 100', TOAST.BAD);
-  if (aporte < 0) return toastMsg('Aporte invalido', TOAST.BAD);
+  // isFinite: "1e999" colaba por "aporte < 0" (Infinity < 0 es false) y el
+  // socio nacía con aporte ∞ → aportesTotal ∞ → caja en ∞ (misma familia
+  // cazada en gastos/productos: checks de signo sin finitud)
+  if (!isFinite(aporte) || aporte < 0) return toastMsg('Aporte invalido', TOAST.BAD);
   const dup = capitalStore.socios.find(
     (x) => (x.nombre || '').toLowerCase() === nombre.toLowerCase() && x.id !== f.editId
   );
