@@ -1,11 +1,25 @@
-name: Build & Deploy to GitHub Pages
+name: Tests, Build & Deploy
+
+# Pipeline completo de entrega — se dispara en cada push a las ramas de
+# entrega. Orden: PRIMERO tests, DESPUÉS builds (el dueño instala el APK,
+# no usa el navegador):
+#
+#   1. quality  → ESLint 0/0 + vue-tsc + Vitest (umbrales) + build
+#   2. e2e      → smoke + funcional en Chromium real + Lighthouse
+#   3. web      → build PWA + deploy a GitHub Pages
+#   4. apk      → build Capacitor + APK RELEASE FIRMADO (keystore en secrets)
+#                 + APK debug, ambos como artifacts
+#
+# Nota: los `uses:` de workflows reusables requieren `secrets: inherit`
+# para que quality/e2e vean VITE_TG_APP_KEY — sin esto el build de E2E
+# hornea la key vacía y el proxy responde 401 (regresión de 2026-10-16).
 
 on:
   push:
     branches:
       - main
       - master
-      - refactor/arquitectura-modular
+      - migracion-pinia-nueva
   workflow_dispatch:
 
 permissions:
@@ -21,13 +35,15 @@ jobs:
   quality:
     name: Quality gates
     uses: ./.github/workflows/quality.yml
+    secrets: inherit
 
   e2e:
     name: E2E + Lighthouse
     uses: ./.github/workflows/e2e.yml
+    secrets: inherit
 
-  build:
-    name: Build
+  web:
+    name: Build web (PWA)
     needs: [quality, e2e]
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +54,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -57,8 +74,8 @@ jobs:
           path: ./dist
 
   deploy:
-    name: Deploy
-    needs: build
+    name: Deploy GitHub Pages
+    needs: web
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -67,3 +84,88 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  apk:
+    name: Build APK firmado
+    needs: [quality, e2e]
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (modo Capacitor)
+        run: CAPACITOR=1 npm run build
+        env:
+          NODE_ENV: production
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decodificar keystore de firma
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/tienda-pro-release.keystore
+          ls -la android/app/tienda-pro-release.keystore
+
+      - name: Build APKs (debug + release firmado)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace \
+            -PTIENDA_RELEASE_STORE_FILE=tienda-pro-release.keystore \
+            -PTIENDA_RELEASE_STORE_PASSWORD="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -PTIENDA_RELEASE_KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}" \
+            -PTIENDA_RELEASE_KEY_PASSWORD="${{ secrets.ANDROID_KEY_PASSWORD }}"
+
+      - name: Verificar firma del release (apksigner)
+        working-directory: android
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk \
+            | grep -q "CN=Tienda Pro" \
+            || { echo "::error::El APK release NO está firmado con el keystore de la tienda (certificado inesperado)"; exit 1; }
+          echo "✓ APK release firmado con el certificado de la tienda"
+
+      - name: Preparar artifacts
+        run: |
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk artifacts/TiendaPro-release.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/TiendaPro-debug.apk
+          sha256sum artifacts/*.apk > artifacts/SHA256SUMS.txt
+          cat artifacts/SHA256SUMS.txt
+
+      - name: Subir APK firmado
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiendapro-release-${{ github.sha }}
+          path: artifacts/TiendaPro-release.apk
+          retention-days: 90
+
+      - name: Subir APK debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiendapro-debug-${{ github.sha }}
+          path: |
+            artifacts/TiendaPro-debug.apk
+            artifacts/SHA256SUMS.txt
+          retention-days: 30

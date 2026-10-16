@@ -16,6 +16,7 @@ import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
 import { comprimirGzip, hashRespaldoEstable, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
 import {
+  TG_APP_KEY,
   tgCheckName,
   tgRegister,
   tgLogin,
@@ -340,6 +341,13 @@ export const useTelegramStore = defineStore('telegram', () => {
     // a detectar. Con el guard, la autodetección (poll de App.vue + botón de
     // Ajustes) era IMPOSIBLE: nunca salía de "esperando-start".
     if (configStore.cfg.tgChatId) return true;
+    if (!TG_APP_KEY) {
+      // Build SIN VITE_TG_APP_KEY (p.ej. APK local sin .env.local): el proxy
+      // responde 401 a cada llamada. Sin key el bot no puede conectarse — no
+      // disparamos peticiones condenadas (el smoke E2E las cuenta como errores
+      // de consola) ni ensuciamos el log con un 401 cada 5 segundos.
+      return false;
+    }
     try {
       const updates = await tgGetUpdates();
       const chat = tgDetectarChatId(updates);
@@ -397,6 +405,7 @@ export const useTelegramStore = defineStore('telegram', () => {
 
   function iniciarTgPoll() {
     if (_tgPollTimer) return;
+    if (!TG_APP_KEY) return; // sin key del proxy no hay nada que detectar
     _tgPollTimer = setInterval(async () => {
       if (configStore.cfg.tgChatId) {
         if (_tgPollTimer) clearInterval(_tgPollTimer);

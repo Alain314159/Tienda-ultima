@@ -11,3 +11,7 @@ coverage/
 .env.*
 !.env.example
 bundle-report.html
+# Keystore de firma: NUNCA al repo (es público) — vive en GitHub secrets
+*.keystore
+*.jks
+android/app/tienda-pro-release.keystore

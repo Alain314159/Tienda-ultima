@@ -16,10 +16,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // Firma de entrega: propiedades -P inyectadas por CI (secrets de
+            // GitHub) o por `npm run apk:release` en local. El keystore NUNCA
+            // se commitea (repo público).
+            if (project.hasProperty('TIENDA_RELEASE_STORE_FILE') && project.property('TIENDA_RELEASE_STORE_FILE')) {
+                storeFile file(project.property('TIENDA_RELEASE_STORE_FILE'))
+                storePassword project.property('TIENDA_RELEASE_STORE_PASSWORD')
+                keyAlias project.property('TIENDA_RELEASE_KEY_ALIAS')
+                keyPassword project.property('TIENDA_RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (project.hasProperty('TIENDA_RELEASE_STORE_FILE') && project.property('TIENDA_RELEASE_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            } else {
+                // Sin propiedades de firma (build local sin keystore): firma
+                // debug para que `assembleRelease` nunca se rompa. CI verifica
+                // con apksigner que el artifact esté firmado por la tienda.
+                signingConfig signingConfigs.debug
+            }
         }
     }
 }

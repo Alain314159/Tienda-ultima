@@ -125,6 +125,8 @@ Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
 
 ## 📱 Instalación como app
 
+**APK Android (recomendado):** cada push a las ramas de entrega corre el pipeline completo (tests → build → deploy) y deja el **APK firmado** como artifact de la run. Descárgalo desde *Actions → Tests, Build & Deploy → artifact `tiendapro-release-…`* e instálalo en el teléfono (permitir "orígenes desconocidos"). También funciona el clásico PWA:
+
 1. Abre la demo en Chrome o Edge desde el celular
 2. Menú del navegador → **"Instalar aplicación"** o **"Agregar a pantalla de inicio"**
 3. La app se abre en modo standalone (sin barra del navegador)
@@ -132,6 +134,22 @@ Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
 5. Las notificaciones del sistema quedan disponibles
 
 **En iPhone (Safari):** Compartir → "Agregar a pantalla de inicio". Las notificaciones requieren iOS 16.4+.
+
+### 🔏 Firma del APK
+
+El APK de entrega se firma con un keystore dedicado (PKCS12, RSA 2048) que vive como secrets de GitHub Actions (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) — nunca en el repo, que es público. El job `apk` verifica con `apksigner` que el certificado sea el de la tienda antes de publicar el artifact.
+
+**Importante:** Android solo acepta actualizaciones firmadas con la MISMA clave. Guarda una copia del keystore y su contraseña fuera del repo (por ejemplo, en tu nube personal); sin él no se podrá actualizar la app instalada.
+
+Build firmado en local (con el keystore a mano):
+
+```bash
+export TIENDA_KEYSTORE=ruta/al/tienda-pro-release.keystore
+export TIENDA_STORE_PASS='…' TIENDA_KEY_ALIAS=tiendapro TIENDA_KEY_PASS='…'
+npm run apk:release
+```
+
+Sin esas variables, `assembleRelease` cae a firma debug (solo para pruebas locales: no se puede actualizar una instalación release con un APK debug-firmado).
 
 ---
 

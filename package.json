@@ -27,7 +27,8 @@
     "commitlint": "commitlint --edit",
     "prepare": "husky",
     "build:cap": "CAPACITOR=1 vite build && npx cap sync android",
-    "apk:debug": "npm run build:cap && cd android && ./gradlew assembleDebug"
+    "apk:debug": "npm run build:cap && cd android && ./gradlew assembleDebug",
+    "apk:release": "npm run build:cap && cd android && ./gradlew assembleRelease -PTIENDA_RELEASE_STORE_FILE=\"$TIENDA_KEYSTORE\" -PTIENDA_RELEASE_STORE_PASSWORD=\"$TIENDA_STORE_PASS\" -PTIENDA_RELEASE_KEY_ALIAS=\"$TIENDA_KEY_ALIAS\" -PTIENDA_RELEASE_KEY_PASSWORD=\"$TIENDA_KEY_PASS\""
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
