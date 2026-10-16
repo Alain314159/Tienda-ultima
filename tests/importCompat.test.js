@@ -285,6 +285,13 @@ describe('flujo de importación desde Ajustes (onImportFile → ejecutarImport)'
   });
 });
 
+/** TextEncoder local (evita repetir new TextEncoder() por todas partes). */
+class Encoder {
+  encode(s) {
+    return new TextEncoder().encode(s);
+  }
+}
+
 // ===== Round-trip REAL del export cifrado: exportarCifrado → importar =====
 // La regresión histórica era "ejecutarImport re-leía el archivo SIN descifrar";
 // este test cierra el círculo completo: el archivo EXACTO que produce hoy
@@ -322,7 +329,7 @@ describe('round-trip exportarCifrado → onImportFile', () => {
 
     const b = useBackupStore();
     const ui = useUIStore();
-    const preguntarSpy = vi.spyOn(ui, 'preguntar').mockResolvedValue('secreto123');
+    vi.spyOn(ui, 'preguntar').mockResolvedValue('secreto123');
 
     await b.exportarCifrado();
     await vi.waitFor(() => expect(blobCapturado).not.toBeNull());
@@ -356,28 +363,21 @@ describe('round-trip exportarCifrado → onImportFile', () => {
   });
 
   it('exportarCifrado con contraseña corta NO produce archivo', async () => {
-    const b = useBackupStore();
+    const backup = useBackupStore();
     const ui = useUIStore();
     let blobCapturado = null;
     const crearURL = URL.createObjectURL;
-    URL.createObjectURL = (b) => {
-      blobCapturado = b;
+    URL.createObjectURL = (blob) => {
+      blobCapturado = blob;
       return 'blob:falso';
     };
     HTMLAnchorElement.prototype.click = () => {};
     vi.spyOn(ui, 'preguntar').mockResolvedValue('123'); // < 6 chars
 
-    await b.exportarCifrado();
+    await backup.exportarCifrado();
     await new Promise((r) => setTimeout(r, 300)); // PBKDF2 no debe correr
 
     URL.createObjectURL = crearURL;
     expect(blobCapturado).toBe(null);
   });
 });
-
-/** TextEncoder local (evita repetir new TextEncoder() por todas partes). */
-class Encoder {
-  encode(s) {
-    return new TextEncoder().encode(s);
-  }
-}
