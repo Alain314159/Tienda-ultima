@@ -4,9 +4,9 @@
  * en carpeta del dispositivo (File System Access API).
  */
 import { db } from '../db';
-import { hashContenido } from './hash';
+import { hashContenido, hashRespaldoEstable } from './hash';
 
-export { hashContenido };
+export { hashContenido, hashRespaldoEstable };
 
 /** Comprime un Blob con gzip (CompressionStream nativo; sin soporte devuelve el original). */
 export async function comprimirGzip(blob: Blob) {

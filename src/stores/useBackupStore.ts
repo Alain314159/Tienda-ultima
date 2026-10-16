@@ -20,7 +20,7 @@ import { useUIStore } from './useUIStore';
 import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
-import { derivarClave, hashContenido, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
+import { derivarClave, hashContenido, hashRespaldoEstable, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
 import type { Respaldo } from '../types';
 
 /** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
@@ -617,7 +617,7 @@ export const useBackupStore = defineStore('backup', () => {
           console.warn('backupAuto: base vacia, se omite subida a Telegram');
         } else {
           try {
-            const hash = await hashContenido(JSON.stringify(data));
+            const hash = await hashRespaldoEstable(data as unknown as Record<string, unknown>);
             if (configStore.cfg.tgUltimoHash !== hash) {
               // Limpiar TODOS los auto anteriores (pendientes, error, enviando)
               try {

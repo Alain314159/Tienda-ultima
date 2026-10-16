@@ -14,7 +14,7 @@ import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
 import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
-import { comprimirGzip, hashContenido, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
+import { comprimirGzip, hashContenido, hashRespaldoEstable, guardarEnCarpeta, leerArchivoRespaldo } from '../services/backup';
 import {
   tgCheckName,
   tgRegister,
@@ -175,9 +175,11 @@ export const useTelegramStore = defineStore('telegram', () => {
     tgCargando.value = true;
     tgProgreso.value = 'Preparando...';
     try {
-      // 1. Serializar
+      // 1. Serializar (el hash EXCLUYE los campos volátiles: fecha del
+      // snapshot y marcadores tg* — sin eso nunca coincidía y el dedup
+      // de "Sin cambios" estaba muerto)
       const json = JSON.stringify(datos);
-      const hash = await hashContenido(json);
+      const hash = await hashRespaldoEstable(datos as unknown as Record<string, unknown>);
 
       // 2. Si es auto y el hash no cambio, saltar
       if (motivo === 'auto' && configStore.cfg.tgUltimoHash === hash) {
