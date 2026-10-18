@@ -19,25 +19,32 @@ Proxy para Telegram Bot API. Vive en Cloudflare, NO en este repo.
     export APP_KEY_ACTUAL="..."
     node ~/tienda-proxy/deploy-v3.mjs
 
-## ⚠️ Redespliegue pendiente (2026-10-17)
+## ⚠️ Redespliegue pendiente (2026-10-17) — YA NO BLOQUEA LOS BACKUPS
 
-El Worker en producción está DESACTUALIZADO en dos cosas críticas:
+El Worker en producción está DESACTUALIZADO, PERO los backups del APK
+ya NO dependen de redesplegarlo:
 
-1. **Origen del APK bloqueado**: la versión desplegada NO tiene en
-   `ALLOWED_ORIGINS` el origen `https://localhost` del WebView de Capacitor.
-   Resultado: desde la app INSTALADA toda llamada al proxy muere en el
-   preflight CORS con 403 "Forbidden origin" → **los backups de Telegram
-   no se suben desde el APK** (solo funcionaban desde el navegador/PWA).
-   El worker.js de este repo ya lo permite (más capacitor://localhost y
-   http://localhost). `X-App-Key` sigue protegiendo cada request.
+**Solución aplicada en la app (2026-10-19): `CapacitorHttp` nativo.**
+`capacitor.config.json` tiene `plugins.CapacitorHttp.enabled: true` →
+el bridge de Capacitor parchea `window.fetch` en Android y TODAS las
+llamadas al proxy salen por HTTP nativo (OkHttp), SIN cabecera `Origin`
+y SIN preflight CORS → el Worker desplegado (viejo) las acepta con 200
+(verificado con curl: sin Origin responde 200). No se cambió
+`server.hostname` a propósito: cambiar el origen del WebView
+reparticionaría IndexedDB y el dueño perdería sus datos locales.
+Ver `tests/capacitor-http.test.js`.
+
+Lo que SÍ seguiría roto sin redesplegar (motivo para hacerlo igual):
+
+1. ~~Origen del APK bloqueado~~ → RESUELTO con CapacitorHttp (arriba).
 2. **Auto-sanación del 409**: un servicio de terceros (tele.goldenherd.com)
    re-registra un webhook sobre el bot y rompe `getUpdates`
    (autodetección del chat). El worker.js de este repo ya hace
    `deleteWebhook` + reintento.
 
-**Hace falta correr el despliegue de arriba UNA VEZ** para que ambas
-entren en vigor. Si ya no usas goldenherd con este bot, además bórralo de
-ese servicio para dejar de pelear el webhook.
+**Para redesplegar (recomendado, un momento): correr el despliegue de
+arriba UNA VEZ.** Si ya no usas goldenherd con este bot, además bórralo
+de ese servicio para dejar de pelear el webhook.
 
 Verificación rápida tras desplegar (debe responder 200, no 403):
 
