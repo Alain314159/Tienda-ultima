@@ -475,6 +475,19 @@ export const useTelegramStore = defineStore('telegram', () => {
     try {
       // Limpieza previa: si hay varios 'auto', dejar solo el mas reciente
       const todos = await db.tgQueue.toArray();
+
+      // RECUPERACION de huerfanos 'enviando': si el OS mato la app a mitad
+      // de un envio (normal en Android al pasarlo a background) o un P()
+      // fallo, la fila quedaba 'enviando' PARA SIEMPRE — invisible para el
+      // filtro de abajo, para tgActualizarCola y para el usuario: un backup
+      // encolado que jamas se reintentaba. El guard prueba que ningun envio
+      // de esta cola esta activo, asi que TODA fila 'enviando' es un
+      // huerfano muerto y seguro de recuperar.
+      const huerfanos = todos.filter((x) => x.estado === 'enviando');
+      if (huerfanos.length > 0) {
+        for (const x of huerfanos) await P(db.tgQueue, { ...x, estado: 'pendiente' });
+        console.log('[tg] Recuperados ' + huerfanos.length + " envio(s) huerfano(s) en 'enviando'");
+      }
       const autos = todos
         .filter((x) => x.motivo === 'auto')
         .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());

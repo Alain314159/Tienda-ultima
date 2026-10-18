@@ -506,6 +506,56 @@ describe('useTelegramStore: cola y rotación', () => {
     expect(mocks.tgSendDocument).toHaveBeenCalledTimes(1);
   });
 
+  it('tgProcesarCola recupera huerfanos en "enviando" (app muerta a mitad de envio)', async () => {
+    const s = useTelegramStore();
+    configurarTg();
+    // Simula un crash del OS durante el envio: la fila quedo 'enviando'
+    await db.tgQueue.bulkPut([
+      {
+        id: 'huerfano',
+        ts: '2026-10-14T08:00:00.000Z',
+        estado: 'enviando',
+        intentos: 2,
+        motivo: 'manual',
+        datos: RESPALDO,
+      },
+      {
+        id: 'normal',
+        ts: '2026-10-14T09:00:00.000Z',
+        estado: 'pendiente',
+        intentos: 0,
+        motivo: 'auto',
+        // datos DISTINTOS: si fuera igual al huerfano, el dedup por hash
+        // saltaria el segundo envio ("Sin cambios") y solo llegaria 1 send
+        datos: { ...RESPALDO, productos: [{ id: 'p2', nombre: 'Pan', precio: 20 }] },
+      },
+    ]);
+
+    mocks.tgSendDocument.mockResolvedValue({ ok: true });
+    mocks.tgListBackups.mockResolvedValue([]);
+    await s.tgProcesarCola();
+
+    // Ambos se envian (el huerfano recuperado y el pendiente): cola vacia
+    expect(await db.tgQueue.count()).toBe(0);
+    expect(mocks.tgSendDocument).toHaveBeenCalledTimes(2);
+
+    // Caso borde: si el envio del huerfano recuperado vuelve a fallar,
+    // conserva sus intentos previos (2 + 1 = 3, todavia reintentable)
+    mocks.tgSendDocument.mockRejectedValue(new Error('sin red'));
+    await db.tgQueue.put({
+      id: 'h2',
+      ts: '2026-10-14T08:00:00.000Z',
+      estado: 'enviando',
+      intentos: 2,
+      motivo: 'manual',
+      datos: RESPALDO,
+    });
+    await s.tgProcesarCola();
+    const item = await db.tgQueue.get('h2');
+    expect(item.estado).toBe('error');
+    expect(item.intentos).toBe(3);
+  });
+
   it('tgRotarViejos borra los que exceden el límite configurado', async () => {
     const s = useTelegramStore();
     configurarTg({ tgMantenerN: 2 });
