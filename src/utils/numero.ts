@@ -17,6 +17,19 @@ export const n = (v: unknown): number => {
   return isNaN(x) ? 0 : x;
 };
 
+/**
+ * Stock mínimo efectivo de un producto.
+ *
+ * 0 es un valor VÁLIDO y significa "no avisar" (schema: nonnegative).
+ * Solo se aplica el default 5 cuando el campo no existe (datos viejos).
+ * `|| 5` tragaba el 0 y generaba alertas falsas de stock bajo.
+ */
+export const stockMinEfectivo = (v: unknown): number => {
+  if (v == null || v === '') return 5;
+  const x = Number(v);
+  return isNaN(x) ? 5 : x;
+};
+
 function redondear(v: unknown, decimales: number): number {
   const x = n(v);
   if (!isFinite(x)) return 0;

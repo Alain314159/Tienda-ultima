@@ -5,7 +5,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Producto, Escalon, Empaque } from '../types';
-import { n } from '../utils/numero';
+import { n, stockMinEfectivo } from '../utils/numero';
 import { fmtCant } from '../utils/formato';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
@@ -57,7 +57,7 @@ export const useProductosStore = defineStore('productos', () => {
       if (filtroStock.value === 'agotados' && (stockMap[p.id] || 0) > 0.001) return false;
       if (filtroStock.value === 'bajos') {
         const s = stockMap[p.id] || 0;
-        if (!(s > 0 && s <= n(p.stockMinimo || 5))) return false;
+        if (!(s > 0 && s <= stockMinEfectivo(p.stockMinimo))) return false;
       }
       return true;
     });
@@ -70,7 +70,7 @@ export const useProductosStore = defineStore('productos', () => {
     const stockMap = lotesStore.stockMap;
     return prodsActivos.value.filter((p) => {
       const s = stockMap[p.id] || 0;
-      return s > 0 && s <= n(p.stockMinimo || 5);
+      return s > 0 && s <= stockMinEfectivo(p.stockMinimo);
     });
   });
 

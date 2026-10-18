@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { n, m, q } from '../src/utils/numero';
+import { n, m, q, stockMinEfectivo } from '../src/utils/numero';
 import { fmt, fmtCant } from '../src/utils/formato';
 import { genId, clean } from '../src/utils/id';
 import { evaluar, evaluarAsync, precargarEvaluador } from '../src/services/calculadora';
@@ -49,6 +49,17 @@ describe('numero: redondeo contable a 4 decimales', () => {
   it('q() se comporta igual que m() para cantidades', () => {
     expect(q(1.23456)).toBe(1.2346);
     expect(q('2.00005')).toBe(2.0001);
+  });
+
+  it('stockMinEfectivo: 0 es válido (no avisar), solo defaultea 5 lo ausente', () => {
+    expect(stockMinEfectivo(0)).toBe(0); // 0 = no avisar, NO 5
+    expect(stockMinEfectivo('0')).toBe(0);
+    expect(stockMinEfectivo(2)).toBe(2);
+    expect(stockMinEfectivo(undefined)).toBe(5); // datos viejos
+    expect(stockMinEfectivo(null)).toBe(5);
+    expect(stockMinEfectivo('')).toBe(5);
+    expect(stockMinEfectivo('7')).toBe(7);
+    expect(stockMinEfectivo('basura')).toBe(5); // defensa final
   });
 });
 

@@ -242,6 +242,25 @@ describe('insights: ATENCIÓN', () => {
     r = generarRecomendaciones(estadoBase({ productos: bajos, stockDe: () => 3 }));
     expect(porClave(r)['revisa-inventario'].titulo).toContain('5 bajos');
   });
+
+  it('stockMinimo 0 = "no avisar": no cuenta como stock bajo (bug || 5)', () => {
+    const productos = [];
+    for (let i = 0; i < 6; i++) productos.push({ id: 'z' + i, nombre: 'Z' + i, stockMinimo: 0 });
+    // 6 productos con stock 3 y mínimo 0: NINGUNO debe contar como bajo
+    let r = generarRecomendaciones(estadoBase({ productos, stockDe: () => 3 }));
+    expect(porClave(r)['revisa-inventario']).toBeUndefined();
+
+    // 5 con mínimo 0 + 1 con mínimo 5: solo el último cuenta
+    productos[5].stockMinimo = 5;
+    r = generarRecomendaciones(estadoBase({ productos, stockDe: () => 3 }));
+    expect(porClave(r)['revisa-inventario']).toBeUndefined(); // 1 bajo < umbral de 5
+
+    // sin stockMinimo (datos viejos) sigue defaulteando a 5
+    const viejos = [];
+    for (let i = 0; i < 5; i++) viejos.push({ id: 'v' + i, nombre: 'V' + i });
+    r = generarRecomendaciones(estadoBase({ productos: viejos, stockDe: () => 3 }));
+    expect(porClave(r)['revisa-inventario'].titulo).toContain('5 bajos');
+  });
 });
 
 describe('insights: OPORTUNIDAD / INFO', () => {
@@ -363,10 +382,22 @@ describe('insights: OPORTUNIDAD / INFO', () => {
 });
 
 describe('insights: contexto temporal', () => {
-  it('lunes temprano: nuevo mes', () => {
+  it('lunes temprano: buena semana (el nuevo-mes ya no dispara los lunes)', () => {
     vi.setSystemTime(new Date(2026, 9, 12, 8, 0)); // lunes 12 oct, 8am
     const r = generarRecomendaciones(estadoBase());
+    expect(r[0].clave).toBe('ctx-lunes');
+    expect(porClave(r)['ctx-nuevo-mes']).toBeUndefined();
+  });
+
+  it('dia 1 del mes por la manana: nuevo mes (aunque no sea lunes)', () => {
+    vi.setSystemTime(new Date(2026, 10, 1, 8, 0)); // domingo 1 nov, 8am
+    const r = generarRecomendaciones(estadoBase());
     expect(r[0].clave).toBe('ctx-nuevo-mes');
+
+    // por la tarde del dia 1 ya no (solo manana)
+    vi.setSystemTime(new Date(2026, 10, 1, 15, 0));
+    const r2 = generarRecomendaciones(estadoBase());
+    expect(porClave(r2)['ctx-nuevo-mes']).toBeUndefined();
   });
 
   it('viernes por la tarde y sábado por la mañana', () => {

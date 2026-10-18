@@ -4,6 +4,7 @@
 
 import type { Ajuste, Compra, Config, Cierre, Gasto, Lote, MovCaja, Producto, Recomendacion, Venta } from './types';
 import { inicioDiaLocal } from './utils/fecha';
+import { stockMinEfectivo } from './utils/numero';
 
 /** Estado que inyecta useInsightsStore al motor de recomendaciones. */
 export interface InsightsState {
@@ -293,7 +294,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   const conStockBajo = productos.filter((p) => {
     if (p.archivado) return false;
     const s = stockDe(p.id);
-    return s > 0 && s <= Number(p.stockMinimo || 5);
+    return s > 0 && s <= stockMinEfectivo(p.stockMinimo);
   });
   if (agotados.length >= 3 || conStockBajo.length >= 5) {
     push({
@@ -552,7 +553,7 @@ function contextoDelMomento(ahora: Date, data: ContextoData): Recomendacion | nu
   const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
   const { ventas, diasSinCierre, formatMoney } = data;
 
-  if (dia === 1 && hora <= 11) {
+  if (diaMes === 1 && hora <= 11) {
     return {
       nivel: 'info',
       peso: 28,
