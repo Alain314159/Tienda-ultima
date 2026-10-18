@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { chromium, firefox, webkit } from 'playwright-core';
+import { filtrarTg409 } from './lib/tg409.mjs';
 
 const BASE_URL = process.env.BASE_URL || 'https://alain314159.github.io/Tienda-ultima/';
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH;
@@ -95,6 +96,14 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     errores.push('pageerror: ' + err.message);
     console.log('  ❌ pageerror: ' + err.message);
   });
+  // 409 reales del proxy TG (webhook pirata): se cuentan aqui y solo se
+  // perdonan los console.error emparejados al final (logica compartida
+  // con smoke.spec.mjs en tests/lib/tg409.mjs). Todo lo demas es fatal.
+  let http409Tg = 0;
+  page.on('response', res => {
+    if (res.status() === 409 && res.url().includes('tienda-proxy')) http409Tg++;
+  });
+
   page.on('console', msg => {
     if (msg.type() === 'error') {
       const t = msg.text();
@@ -350,14 +359,19 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     const ok = checks.filter(c => c.ok).length;
     const total = checks.length;
     console.log(' Checks: ' + ok + '/' + total);
-    console.log(' Errores de ejecucion: ' + errores.length);
+    const erroresFinales = filtrarTg409(errores, {
+      extra409: http409Tg,
+      avisar: (n) =>
+        console.log('  ⚠️  ' + n + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot; el Worker lo auto-sana)'),
+    });
+    console.log(' Errores de ejecucion: ' + erroresFinales.length);
 
-    if (errores.length > 0) {
+    if (erroresFinales.length > 0) {
       console.log('\n--- ERRORES ---');
-      errores.forEach((e, i) => console.log(' ' + (i + 1) + '. ' + e));
+      erroresFinales.forEach((e, i) => console.log(' ' + (i + 1) + '. ' + e));
     }
 
-    if (ok === total && errores.length === 0) {
+    if (ok === total && erroresFinales.length === 0) {
       console.log('\n🎉 TODOS LOS CHECKS PASARON');
       process.exit(0);
     } else {

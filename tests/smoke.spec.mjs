@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { chromium, firefox, webkit } from 'playwright-core';
+import { filtrarTg409 } from './lib/tg409.mjs';
 
 const BASE_URL = process.env.BASE_URL || 'https://alain314159.github.io/Tienda-ultima/';
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH;
@@ -11,29 +12,18 @@ const warnings = [];
 const logs = [];
 const acciones = [];
 
-// Excepción AMBIENTAL estrecha: 409 del proxy de Telegram. Un servicio de
-// terceros (tele.goldenherd.com) pelea este bot re-registrando un webhook
-// que rompe getUpdates ("can't use getUpdates while webhook is active").
-// El Worker lo auto-sana (deleteWebhook + retry — ver tools/worker), pero
-// hasta su redespliegue puede colarse un 409 puntual. NO AMPLIAR:
+// Excepción AMBIENTAL estrecha: 409 del proxy de Telegram. La lógica vive
+// compartida en tests/lib/tg409.mjs (la usa también functional.spec.mjs
+// para que las dos suites no se desincronicen). NO AMPLIAR la tolerancia:
 // el 401 (secret sin heredar) que este gate cazó el 2026-10-16 sigue
 // siendo FATAL, igual que cualquier otro 4xx/5xx o console.error.
-const perdonarTg409 = (lista) => {
-  const tg409 = lista.filter((e) => e.tipo === 'http-409' && e.texto.includes('tienda-proxy')).length;
-  if (!tg409) return lista;
-  let perdonados = 0;
-  const resto = lista.filter((e) => {
-    if (e.tipo === 'http-409' && e.texto.includes('tienda-proxy')) return false;
-    if (e.tipo === 'console.error' && /status of 409/.test(e.texto) && perdonados < tg409) {
-      perdonados++;
-      return false;
-    }
-    return true;
+const perdonarTg409 = (lista) =>
+  filtrarTg409(lista, {
+    avisar: (n) => {
+      warnings.push({ tipo: 'http-409-tg', texto: n + ' getUpdates 409 (webhook de tercero en el bot; el Worker lo auto-sana)' });
+      console.log('  ⚠️  ' + n + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot)');
+    },
   });
-  warnings.push({ tipo: 'http-409-tg', texto: tg409 + ' getUpdates 409 (webhook de tercero en el bot; el Worker lo auto-sana)' });
-  console.log('  ⚠️  ' + tg409 + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot)');
-  return resto;
-};
 
 const grabar = (nombre) => {
   acciones.push({ nombre, ts: new Date().toISOString() });
