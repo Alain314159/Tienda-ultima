@@ -89,6 +89,8 @@ de las dos cosas.
 - **TypeScript 7.** `typescript` permanece en 6.0.3 porque `typescript-eslint`
   8.74 exige `<6.1.0` (`vue-tsc` 3.3 acepta `>=5.0.0` y no es el obstáculo).
   Conviene revisarlo cuando `typescript-eslint` publique soporte para la 7.
+  Es el único paquete que `npm outdated` sigue listando: ningún otro paquete
+  instalado tiene una versión más reciente publicada.
 - **`npm audit`: 7 avisos moderados** que quedan tras actualizar, todos en la
   cadena de desarrollo y compilación. No se resolvieron con las actualizaciones
   disponibles dentro del rango semver actual.
