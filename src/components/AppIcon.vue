@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 /**
- * Wrapper global de iconos sobre lucide-vue-next (componentes oficiales,
+ * Wrapper global de iconos sobre @lucide/vue (componentes oficiales,
  * tree-shaken). La API pública no cambia: <icon name size color />, por lo
  * que ningún template necesita modificarse. Sustituye a icons.ts (paths SVG
  * copiados a mano inyectados con v-html).
@@ -56,7 +56,7 @@ import {
   Phone,
   MessageCircle,
   type LucideIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 defineOptions({ name: 'AppIcon' });
 

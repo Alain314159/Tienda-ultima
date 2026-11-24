@@ -30,7 +30,7 @@ Ejecutado en los commits `5ca6e59..23c4225`:
 | 6   | Aritmética de dinero    | ✅ Se mantiene el convenio 4 decimales, endurecido: half-away-from-zero simétrico + épsilon relativo a magnitud + saneo de no finitos (tests en `tests/utils.test.js`) |
 | 7   | Búsqueda global         | ✅ **MiniSearch** (fuzzy 0.2 + prefijo) unido al match por subcadena                                                                                                   |
 | 8   | Charts imperativos      | ✅ **vue-chartjs** declarativo (`ChartVentas`/`ChartProductos` async, cero DOM manual)                                                                                 |
-| 9   | Iconos SVG a mano       | ✅ **lucide-vue-next** vía wrapper `AppIcon` (misma API, `icons.ts` y `v-html` eliminados)                                                                             |
+| 9   | Iconos SVG a mano       | ✅ **@lucide/vue** (antes `lucide-vue-next`) vía wrapper `AppIcon` (misma API, `icons.ts` y `v-html` eliminados)                                                       |
 | 10  | Watchdog de promesas    | ⏸️ Mantener (20 líneas, justificado)                                                                                                                                   |
 | 11  | Logger completo         | ⏸️ Mantener (aislado, offline; opción Sentry anotada abajo)                                                                                                            |
 | 12  | Wrapper de storage      | ⏸️ Mantener (adapter correcto híbrido nativo/web)                                                                                                                      |
@@ -50,7 +50,7 @@ Ejecutado en los commits `5ca6e59..23c4225`:
 | 6   | Aritmética de dinero casera               | `utils/numero.ts`             | currency.js, dinero.js, big.js                     | 🟡 Media (riesgo sutil) |
 | 7   | Búsqueda global por `includes()`          | `GlobalSearch.vue`            | MiniSearch, Fuse.js, FlexSearch                    | 🟡 Media (UX)           |
 | 8   | Charts imperativos (getElementById)       | `composables/useGraficos.ts`  | vue-chartjs                                        | 🟡 Media                |
-| 9   | Iconos SVG copiados a mano                | `icons.ts` + `AppIcon.vue`    | unplugin-icons, lucide-vue-next                    | 🟡 Media                |
+| 9   | Iconos SVG copiados a mano                | `icons.ts` + `AppIcon.vue`    | unplugin-icons, lucide-vue-next → @lucide/vue      | 🟡 Media                |
 | 10  | Watchdog de promesas                      | `utils/watchdog.ts`           | p-timeout                                          | 🟢 Baja                 |
 | 11  | Logger completo a mano                    | `services/logger.ts`          | loglevel, consola, @capgo/capacitor-logger, Sentry | 🟡 Media                |
 | 12  | Wrapper de storage propio                 | `services/storage.ts`         | VueUse `useLocalStorage`, localForage              | 🟢 Baja (justificado)   |
@@ -295,7 +295,7 @@ Esfuerzo: ~2-3 h. Riesgo bajo (la lógica de datos queda igual).
 | Opción                                    | Pros                                                                                                                      | Contras                                                                                                                                             |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **unplugin-icons + @iconify-json/lucide** | Acceso a >200k iconos on-demand, compilados en build (0 runtime); tree-shaking perfecto; tipado; auto-import en templates | Cambia la API de templates (`<icon name="x">` → `<i-lucide-x>`); tocar cada template (~10 vistas/componentes); añade 2 dev-deps                     |
-| **lucide-vue-next**                       | Componentes Vue oficiales de Lucide; tree-shaken; API directa                                                             | Cambia igualmente los templates; sin la capa iconify (solo Lucide — suficiente aquí)                                                                |
+| **lucide-vue-next** (hoy **@lucide/vue**) | Componentes Vue oficiales de Lucide; tree-shaken; API directa                                                             | Cambia igualmente los templates; sin la capa iconify (solo Lucide — suficiente aquí)                                                                |
 | **@iconify/vue**                          | Runtime, cualquier set sin build config                                                                                   | Carga por red/cache en runtime (offline-first se resiente); algo más pesado                                                                         |
 | **Mantener icons.ts**                     | Cero cambios; funciona offline total                                                                                      | Mantenimiento manual de paths; `v-html` (seguro aquí porque son constantes propias, pero es superficie de ataque futura); sin tree-shaking granular |
 
@@ -309,6 +309,13 @@ decisión del propietario por el alcance del cambio en templates.
 > wrapper). `src/icons.ts` eliminado, `v-html` eliminado, tree-shaking real por
 > icono, y el icono `info` (usado en AjustesModal) ahora renderiza — antes
 > devolvía un SVG vacío por no existir en `PATHS`.
+>
+> **Actualización 2026-11-24:** `lucide-vue-next` quedó depreciado y congelado en 1.0.0;
+> el paquete oficial pasó a llamarse **`@lucide/vue`**. Se migró a `@lucide/vue` 1.79.0 sin
+> cambios de API: los 40 nombres que importa `AppIcon.vue` existen (3 como alias oficiales:
+> `Home`, `Trash2`, `CircleAlert`). 34 glifos son idénticos y 6 traen el dibujo actual de
+> Lucide (carrito, libro, signo $, calendario, tarjeta y rayo). Lo comprueba
+> `tests/appicon.test.js`: todo nombre de icono usado en los templates renderiza un `<svg>`.
 
 ---
 

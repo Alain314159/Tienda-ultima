@@ -114,7 +114,8 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **Chart.js + vue-chartjs** — gráficos declarativos y reactivos (chunks diferidos)
 - **mathjs** — evaluador de la calculadora (sandbox, sin `eval`; carga diferida)
 - **MiniSearch** — búsqueda global con tolerancia a errores de tipeo
-- **lucide-vue-next** — iconos como componentes (tree-shaken, sin `v-html`)
+- **@lucide/vue** — iconos como componentes (tree-shaken, sin `v-html`; sustituye a
+  `lucide-vue-next`, que quedó depreciado en 1.0.0)
 - **jsPDF + autoTable** — generación de PDF
 - **vite-plugin-pwa** — soporte PWA con Service Worker
 - **Capacitor 8** — empaquetado APK Android + notificaciones nativas
@@ -125,7 +126,7 @@ Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
 
 ## 📱 Instalación como app
 
-**APK Android (recomendado):** cada push a las ramas de entrega corre el pipeline completo (tests → build → deploy) y deja el **APK firmado** como artifact de la run. Descárgalo desde *Actions → Tests, Build & Deploy → artifact `tiendapro-release-…`* e instálalo en el teléfono (permitir "orígenes desconocidos"). También funciona el clásico PWA:
+**APK Android (recomendado):** cada push a las ramas de entrega corre el pipeline completo (tests → build → deploy) y deja el **APK firmado** como artifact de la run. Descárgalo desde _Actions → Tests, Build & Deploy → artifact `tiendapro-release-…`_ e instálalo en el teléfono (permitir "orígenes desconocidos"). También funciona el clásico PWA:
 
 1. Abre la demo en Chrome o Edge desde el celular
 2. Menú del navegador → **"Instalar aplicación"** o **"Agregar a pantalla de inicio"**
