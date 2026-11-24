@@ -21,7 +21,10 @@ export default defineConfig(({ mode }) => {
       !isCapacitor &&
         process.env.NODE_ENV !== 'production' &&
         checker({
-          eslint: { lintCommand: 'eslint \"./src/**/*.{js,vue}\"' },
+          // vite-plugin-checker >= 1 ejecuta el comando sin shell y desde la raiz de Vite:
+          // el globo va entre comillas. Incluye .ts para que el lint en desarrollo
+          // cubra lo mismo que `npm run lint`.
+          eslint: { lintCommand: 'eslint \"./src/**/*.{js,ts,vue}\"' },
           overlay: false,
         }),
       !isCapacitor &&
