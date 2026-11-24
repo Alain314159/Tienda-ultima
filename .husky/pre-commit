@@ -1,1 +1,1 @@
-npx lint-staged
+node tools/guarda-secretos.mjs && npx lint-staged
