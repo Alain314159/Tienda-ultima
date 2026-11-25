@@ -85,11 +85,36 @@ describe('sincronización por canal', () => {
     expect(rb.enviado).toBe(2);
     expect(rb.aplicados).toBe(0);
     expect(rb.descartes).toBe(0);
-    // A no tenía nada nuevo; a lo sumo devuelve lo que acaba de recibir de B, y B lo ignora.
-    expect(ra.enviado).toBeLessThanOrEqual(2);
+    // A no tenía nada nuevo, y lo que acaba de recibir de B no se lo devuelve.
+    expect(ra.enviado).toBe(0);
     expect(ra.aplicados).toBe(2);
     expect((await A.productos.get('p1')).nombre).toBe('Uno editado');
     expect((await A.productos.get('p3')).nombre).toBe('Tres');
+  });
+
+  it('el punto guardado sirve en los dos sentidos', async () => {
+    await A.productos.put({ id: 'p1', nombre: 'Uno' });
+    await enlazar();
+    await B.productos.put({ id: 'p3', nombre: 'Tres' });
+    const primera = await enlazar();
+    expect(primera.rb.enviado).toBe(1);
+    expect(primera.ra.enviado).toBe(0);
+    await A.productos.put({ id: 'p9', nombre: 'Nueve' });
+    const segunda = await enlazar();
+    expect(segunda.ra.enviado).toBe(1);
+    expect(segunda.rb.enviado).toBe(0);
+    expect((await B.productos.get('p9')).nombre).toBe('Nueve');
+  });
+
+  it('lo que llegó del otro no se le devuelve', async () => {
+    await A.productos.put({ id: 'p1', nombre: 'Uno' });
+    await A.productos.put({ id: 'p2', nombre: 'Dos' });
+    await enlazar();
+    // B edita una de las dos filas que recibió: solo eso viaja de vuelta.
+    await B.productos.update('p1', { nombre: 'Uno editado en B' });
+    const { rb } = await enlazar();
+    expect(rb.enviado).toBe(1);
+    expect((await A.productos.get('p1')).nombre).toBe('Uno editado en B');
   });
 
   it('viajan por lotes sin perder ni repetir filas', async () => {
@@ -104,7 +129,16 @@ describe('sincronización por canal', () => {
     await enlazar();
     await aplicarRemotas(
       ctxA,
-      [{ tabla: 'productos', id: 'de_c', datos: { nombre: 'De C' }, borrado: false, ts: Date.now() + 5000, dispositivo: 'dev_ccc' }],
+      [
+        {
+          tabla: 'productos',
+          id: 'de_c',
+          datos: { nombre: 'De C' },
+          borrado: false,
+          ts: Date.now() + 5000,
+          dispositivo: 'dev_ccc',
+        },
+      ],
       'nube'
     );
     const { rb } = await enlazar();
@@ -141,5 +175,29 @@ describe('sincronización por canal', () => {
   it('un enlace mudo se corta en lugar de quedar colgado', async () => {
     const mudo = { abierto: Promise.resolve(), enviar() {}, alRecibir() {}, cerrar() {} };
     await expect(sincronizarPorCanal(ctxA, mudo, { sinActividadMs: 40 })).rejects.toThrow('tiempo-agotado');
+  });
+
+  it('mientras el otro no se conecta espera más; conectado, corta antes', async () => {
+    const mudo = { abierto: Promise.resolve(), enviar() {}, alRecibir() {}, cerrar() {} };
+    const inicio = Date.now();
+    await expect(sincronizarPorCanal(ctxA, mudo, { sinActividadMs: 40, esperaConexionMs: 300 })).rejects.toThrow(
+      'tiempo-agotado'
+    );
+    expect(Date.now() - inicio).toBeGreaterThanOrEqual(250);
+
+    // Un canal que solo anuncia quién es y luego calla.
+    const soloHola = {
+      abierto: Promise.resolve(),
+      enviar() {},
+      alRecibir(fn) {
+        fn(JSON.stringify({ t: 'hola', dispositivo: 'dev_zzz' }));
+      },
+      cerrar() {},
+    };
+    const conectado = Date.now();
+    await expect(sincronizarPorCanal(ctxA, soloHola, { sinActividadMs: 40, esperaConexionMs: 5000 })).rejects.toThrow(
+      'tiempo-agotado'
+    );
+    expect(Date.now() - conectado).toBeLessThan(2000);
   });
 });

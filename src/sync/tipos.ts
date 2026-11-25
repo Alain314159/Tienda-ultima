@@ -44,6 +44,8 @@ export interface Cambio {
   dispositivo: string;
   /** 1 si nació en este dispositivo (hay que propagarlo); 0 si llegó de otro. */
   propagar: number;
+  /** De dónde llegó si no nació aquí (`wifi`, `nube`): así no vuelve al mismo sitio. */
+  origen?: string;
 }
 
 /** Versión local que pierde contra una remota más nueva: se guarda para poder recuperarla. */

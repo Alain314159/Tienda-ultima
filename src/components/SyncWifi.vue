@@ -50,6 +50,8 @@ const codigoDibujado = ref(false);
 const textoVisible = ref(false);
 const pegado = ref('');
 const error = ref('');
+/** La cámara no se pudo abrir: se ofrece pegar el código en su lugar. */
+const camaraFallida = ref(false);
 const progreso = ref<ProgresoSync>({ fase: 'conectando', enviadas: 0, porEnviar: 0, recibidas: 0, porRecibir: 0 });
 const resultado = ref({ enviado: 0, aplicados: 0, descartes: 0 });
 const descartes = ref<Descarte[]>([]);
@@ -60,6 +62,8 @@ const lienzoQr = ref<HTMLCanvasElement | null>(null);
 let enlace: Enlace | null = null;
 let flujo: MediaStream | null = null;
 let temporizador: ReturnType<typeof setTimeout> | undefined;
+/** Número de intento: lo que llegue de una sincronización ya abandonada se ignora. */
+let intento = 0;
 
 const porcentaje = computed(() => {
   const p = progreso.value;
@@ -88,6 +92,7 @@ function detenerCamara(): void {
 }
 
 function reiniciar(): void {
+  intento++;
   detenerCamara();
   cerrarEnlace(enlace);
   enlace = null;
@@ -104,9 +109,10 @@ function cerrar(): void {
   emit('cerrar');
 }
 
-function fallo(mensaje: string, e: unknown): void {
+function fallo(mensaje: string, e: unknown, sinCamara = false): void {
   if (e) console.error('[sync-wifi]', e);
   detenerCamara();
+  camaraFallida.value = sinCamara;
   error.value = mensaje;
   fase.value = 'error';
 }
@@ -153,7 +159,7 @@ async function abrirCamara(): Promise<void> {
     await v.play().catch(() => undefined);
     bucle();
   } catch (e) {
-    fallo('No se pudo abrir la cámara. Usa «Pegar código».', e);
+    fallo('No se pudo abrir la cámara. Pega el código en su lugar.', e, true);
   }
 }
 
@@ -196,6 +202,9 @@ async function alDetectar(codigo: string): Promise<void> {
     } else {
       enlace = await aceptarOferta(codigo);
       await mostrarCodigo(enlace.codigo);
+      // La sincronización ya queda esperando: empieza cuando el otro teléfono
+      // escanee este código, mientras aquí se sigue mostrando.
+      void conectar();
     }
   } catch (e) {
     fallo(
@@ -224,20 +233,35 @@ async function conectarPegado(): Promise<void> {
 
 async function conectar(): Promise<void> {
   if (!enlace) return;
-  fase.value = 'sincronizando';
+  const actual = ++intento;
+  // Quien se une sigue mostrando su código hasta que el otro lo escanee.
+  const creador = rol.value === 'creador';
+  if (creador) fase.value = 'sincronizando';
   try {
     const r = await sincronizarPorCanal({ db, seg: seguimiento }, enlace.canal, {
+      // El que se unió se queda esperando a que el otro teléfono escanee su código.
+      esperaConexionMs: 300_000,
       enProgreso: (p) => {
+        if (actual !== intento) return;
         progreso.value = p;
+        if (p.fase !== 'conectando') fase.value = 'sincronizando';
       },
     });
+    if (actual !== intento) return;
     resultado.value = { enviado: r.enviado, aplicados: r.aplicados, descartes: r.descartes };
     descartes.value = await db.descartes.orderBy('id').reverse().limit(30).toArray();
     await recargarTodoStores();
     toastMsg(`Teléfonos sincronizados: ${r.aplicados} cambios recibidos`);
     fase.value = 'listo';
   } catch (e) {
-    fallo('El enlace se perdió. Acerca los teléfonos, revisa que estén en la misma WiFi y vuelve a intentarlo.', e);
+    if (actual !== intento) return;
+    const sinRespuesta = e instanceof Error && e.message === 'tiempo-agotado';
+    fallo(
+      sinRespuesta
+        ? 'El otro teléfono tardó demasiado en conectarse. Revisa que los dos estén en la misma red WiFi y vuelve a intentarlo.'
+        : 'El enlace se perdió. Acerca los teléfonos, revisa que estén en la misma WiFi y vuelve a intentarlo.',
+      e
+    );
   }
 }
 
@@ -305,6 +329,7 @@ onBeforeUnmount(() => {
         <p v-if="!codigoDibujado" class="sync-aviso">
           El código no cabe en un QR: usa «Copiar código» y pégalo en el otro teléfono.
         </p>
+        <p v-else-if="rol === 'union'" class="sync-estado">Esperando a que el otro teléfono escanee este código…</p>
         <button v-if="rol === 'creador'" class="sync-boton" type="button" @click="iniciarCamara">
           Escanear la respuesta
         </button>
@@ -365,7 +390,10 @@ onBeforeUnmount(() => {
 
       <template v-else-if="fase === 'error'">
         <p class="sync-aviso">{{ error }}</p>
-        <button class="sync-boton" type="button" @click="reiniciar">Empezar de nuevo</button>
+        <button v-if="camaraFallida" class="sync-boton" type="button" @click="abrirPegar">
+          {{ rol === 'creador' ? 'Pegar la respuesta' : 'Pegar el código' }}
+        </button>
+        <button class="sync-boton sync-secundario" type="button" @click="reiniciar">Empezar de nuevo</button>
       </template>
 
       <canvas ref="lienzo" class="sync-oculto" />

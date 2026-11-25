@@ -62,8 +62,8 @@ function conDatos(f: FilaRemota): Record<string, unknown> {
   return { ...(f.datos as Record<string, unknown>), id: f.id };
 }
 
-function anotada(f: FilaRemota, tipo: Cambio['tipo']): Cambio {
-  return { tabla: f.tabla, registroId: f.id, tipo, ts: f.ts, dispositivo: f.dispositivo, propagar: 0 };
+function anotada(f: FilaRemota, tipo: Cambio['tipo'], origen: string): Cambio {
+  return { tabla: f.tabla, registroId: f.id, tipo, ts: f.ts, dispositivo: f.dispositivo, propagar: 0, origen };
 }
 
 function esValida(f: FilaRemota): boolean {
@@ -122,11 +122,13 @@ export async function obtenerEstadoCompleto(ctx: ContextoSync): Promise<FilaRemo
 
 /**
  * Cambios propios posteriores al cursor, con una entrada por fila (la última).
- * `hasta` es el nuevo cursor del emisor.
+ * `hasta` es el nuevo cursor del emisor. Con `sinOrigen` se saltan los que
+ * llegaron de ese transporte: no tiene sentido devolverlos al mismo sitio.
  */
 export async function obtenerCambiosDesde(
   ctx: ContextoSync,
-  desde: number
+  desde: number,
+  opciones: { sinOrigen?: string } = {}
 ): Promise<{ filas: FilaRemota[]; hasta: number }> {
   const { db, seg } = ctx;
   const entradas = await db.table<Cambio, number>('cambios').where('id').above(desde).toArray();
@@ -134,6 +136,7 @@ export async function obtenerCambiosDesde(
   const ultima = new Map<string, Cambio>();
   let hasta = desde;
   for (const e of entradas) {
+    if (opciones.sinOrigen && e.origen === opciones.sinOrigen) continue;
     const k = clave(e.tabla, e.registroId);
     const anterior = ultima.get(k);
     if (!anterior || (e.id ?? 0) > (anterior.id ?? 0)) ultima.set(k, e);
@@ -205,13 +208,13 @@ export async function aplicarRemotas(
           if (f.borrado) {
             if (ult?.tipo !== 'delete') {
               // Se anota la lápida para que una copia vieja que llegue después no resucite la fila.
-              await cambios.add(anotada(f, 'delete'));
+              await cambios.add(anotada(f, 'delete', origen));
             }
             res.ignorados++;
             continue;
           }
           await tabla.put(conDatos(f));
-          await cambios.add(anotada(f, 'put'));
+          await cambios.add(anotada(f, 'put', origen));
           res.aplicados++;
           tocadas.add(f.tabla);
           continue;
@@ -225,7 +228,7 @@ export async function aplicarRemotas(
         if (!f.borrado && mismoContenido(local, conDatos(f))) {
           // Mismo contenido: solo se anota la marca, sin tocar la fila ni alarmar con un descarte.
           if (ult?.tipo !== 'put' || ult.ts !== f.ts || ult.dispositivo !== f.dispositivo) {
-            await cambios.add(anotada(f, 'put'));
+            await cambios.add(anotada(f, 'put', origen));
           }
           res.ignorados++;
           continue;
@@ -241,7 +244,7 @@ export async function aplicarRemotas(
         });
         if (f.borrado) await tabla.delete(f.id);
         else await tabla.put(conDatos(f));
-        await cambios.add(anotada(f, f.borrado ? 'delete' : 'put'));
+        await cambios.add(anotada(f, f.borrado ? 'delete' : 'put', origen));
         res.aplicados++;
         res.descartes++;
         tocadas.add(f.tabla);

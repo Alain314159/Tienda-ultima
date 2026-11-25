@@ -139,6 +139,7 @@
     />
 
     <SyncWifi :abierto="syncAbierto" @cerrar="syncAbierto = false" />
+    <CuentaNube :abierto="cuentaAbierta" @cerrar="cuentaAbierta = false" />
 
     <!-- MORE MENU SHEET -->
     <SheetMas
@@ -147,6 +148,7 @@
       @cerrar="ui.masAbierto = false"
       @ir="ir"
       @abrir-sync="syncAbierto = true"
+      @abrir-cuenta="cuentaAbierta = true"
       @abrir-ajustes="
         ui.masAbierto = false;
         ui.ajustesAbierto = true;
@@ -252,6 +254,7 @@ import { db } from './db';
 import BottomNav from './components/BottomNav.vue';
 import SheetMas from './components/SheetMas.vue';
 import SyncWifi from './components/SyncWifi.vue';
+import CuentaNube from './components/CuentaNube.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
@@ -288,6 +291,7 @@ const online = useOnline();
 const configStore = useConfigStore();
 const ui = useUIStore();
 const syncAbierto = ref(false);
+const cuentaAbierta = ref(false);
 const productosStore = useProductosStore();
 const ventasStore = useVentasStore();
 const comprasStore = useComprasStore();

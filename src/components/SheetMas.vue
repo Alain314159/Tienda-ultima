@@ -29,6 +29,9 @@
         <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-sync')">
           <icon name="users" :size="22"></icon>Compartir por WiFi
         </button>
+        <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-cuenta')">
+          <icon name="refresh" :size="22"></icon>Nube y cuenta
+        </button>
         <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-ajustes')">
           <icon name="settings" :size="22"></icon>Ajustes
         </button>
@@ -45,5 +48,5 @@ defineProps({
   sec: { type: String, required: true },
 });
 
-defineEmits(['cerrar', 'ir', 'abrir-ajustes', 'abrir-sync']);
+defineEmits(['cerrar', 'ir', 'abrir-ajustes', 'abrir-sync', 'abrir-cuenta']);
 </script>

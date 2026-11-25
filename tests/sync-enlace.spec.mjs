@@ -6,7 +6,10 @@
  * comprueba el resultado. No forma parte de la suite de cobertura: necesita el
  * Chromium de playwright y arranca un servidor de desarrollo.
  *
- * Uso: npm run test:enlace
+ * Es la única prueba que usa WebRTC de verdad (las de unidad usan un canal
+ * simulado): aquí se vieron los tres fallos que impedían unirse a un enlace.
+ *
+ * Uso: npm run test:enlace            (con CHROMIUM_PATH se exige que arranque)
  */
 import { createServer } from 'vite';
 import { chromium } from 'playwright-core';
@@ -20,13 +23,20 @@ await server.listen();
 const base = server.resolvedUrls.local[0];
 let browser;
 try {
-  // `channel: 'chromium'` usa el Chromium completo (no requiere el paquete aparte del modo headless).
+  // Igual que smoke y functional: CHROMIUM_PATH apunta a un Chromium ya
+  // instalado; sin él se usa el Chromium completo de playwright.
   browser = await chromium.launch({
-    channel: 'chromium',
+    ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
     args: ['--allow-loopback-in-webrtc', '--disable-features=WebRtcHideLocalIpsWithMdns'],
   });
 } catch (e) {
-  console.log('SALTO: no se pudo iniciar Chromium (npx playwright-core install chromium).', String(e?.message ?? e).split('\n')[0]);
+  const primera = String(e?.message ?? e).split('\n')[0];
+  if (process.env.CHROMIUM_PATH) {
+    console.log(`FALLA no se pudo iniciar el Chromium de CHROMIUM_PATH: ${primera}`);
+    await server.close();
+    process.exit(1);
+  }
+  console.log('SALTO: no se pudo iniciar Chromium (npx playwright-core install chromium).', primera);
   await server.close();
   process.exit(0);
 }
@@ -46,23 +56,30 @@ try {
 
   const r = await page.evaluate(async () => {
     const S = window.syncPrueba;
+    const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
     const A = new S.TiendaProDB('EnlaceRealA');
     const B = new S.TiendaProDB('EnlaceRealB');
     const ctxA = { db: A, seg: S.instalarSeguimiento(A, { dispositivo: 'dev_real_a' }) };
     const ctxB = { db: B, seg: S.instalarSeguimiento(B, { dispositivo: 'dev_real_b' }) };
+    /** Direcciones de red que lleva un código: sin ellas los teléfonos no se encuentran. */
+    const direcciones = (enlace) =>
+      (enlace.pc.localDescription?.sdp ?? '').split('\r\n').filter((l) => l.startsWith('a=candidate')).length;
     try {
       await A.productos.bulkPut(Array.from({ length: 120 }, (_, i) => ({ id: 'p' + i, nombre: 'Producto ' + i, precio: i })));
       await B.productos.put({ id: 'solo_b', nombre: 'Solo en B' });
 
+      // Como en la pantalla: B escanea la oferta, muestra su respuesta y se queda
+      // esperando; solo después A escanea esa respuesta.
       const oferta = await S.crearOferta();
       const ofertaLeida = await S.porQr(oferta.codigo);
       const respuesta = await S.aceptarOferta(ofertaLeida);
       const respuestaLeida = await S.porQr(respuesta.codigo);
+      const sesionB = S.sincronizarPorCanal(ctxB, respuesta.canal);
+      sesionB.catch(() => undefined);
+      await dormir(1500);
       await S.aceptarRespuesta(oferta, respuestaLeida);
-      const [r1a, r1b] = await Promise.all([
-        S.sincronizarPorCanal(ctxA, oferta.canal),
-        S.sincronizarPorCanal(ctxB, respuesta.canal),
-      ]);
+      const r1a = await S.sincronizarPorCanal(ctxA, oferta.canal);
+      const r1b = await sesionB;
 
       await B.productos.update('p3', { nombre: 'Cambiado en B' });
       await B.productos.put({ id: 'nuevo_b', nombre: 'Nuevo en B' });
@@ -79,6 +96,8 @@ try {
         respuestaLeida: respuestaLeida === respuesta.codigo,
         tamanoOferta: oferta.codigo.length,
         tamanoRespuesta: respuesta.codigo.length,
+        direccionesOferta: direcciones(oferta),
+        direccionesRespuesta: direcciones(respuesta),
         r1a,
         r1b,
         r2a,
@@ -97,11 +116,19 @@ try {
   comprobar('el QR de la oferta se lee igual', r.ofertaLeida, `${r.tamanoOferta} caracteres`);
   comprobar('el QR de la respuesta se lee igual', r.respuestaLeida, `${r.tamanoRespuesta} caracteres`);
   comprobar('los dos códigos caben en un QR', r.tamanoOferta < 4296 && r.tamanoRespuesta < 4296);
-  comprobar('B recibe las 120 filas de A', r.r1b.aplicados === 120, `aplicados ${r.r1b.aplicados}`);
-  comprobar('A recibe la fila de B', r.r1a.aplicados === 1, `aplicados ${r.r1a.aplicados}`);
-  comprobar('los dos quedan con 121 productos', r.totalA === 121 && r.totalB === 121, `${r.totalA}/${r.totalB}`);
-  comprobar('el segundo enlace solo envia lo nuevo', r.r2b.enviado === 2 && r.r2a.aplicados === 2, `enviado ${r.r2b.enviado}`);
-  comprobar('A recibe la edicion y la fila nueva de B', r.cambiado === 'Cambiado en B' && r.nuevo);
+  comprobar('la oferta lleva la dirección del teléfono', r.direccionesOferta >= 1, `${r.direccionesOferta} direcciones`);
+  comprobar('la respuesta lleva la dirección del teléfono', r.direccionesRespuesta >= 1, `${r.direccionesRespuesta} direcciones`);
+  comprobar('el que se une recibe estando ya a la espera', r.r1b.aplicados === 120, `aplicados ${r.r1b.aplicados}`);
+  comprobar('el que crea recibe la fila del otro', r.r1a.aplicados === 1, `aplicados ${r.r1a.aplicados}`);
+  // 120 de A + «Solo en B» + «Nuevo en B» (creado antes del segundo enlace).
+  comprobar('los dos quedan con los mismos 122 productos', r.totalA === 122 && r.totalB === 122, `${r.totalA}/${r.totalB}`);
+  // B editó una fila y creó otra: eso y solo eso viaja; A no tenía nada nuevo.
+  comprobar(
+    'el segundo enlace solo envia lo nuevo',
+    r.r2b.enviado === 2 && r.r2a.enviado === 0 && r.r2a.aplicados === 2,
+    `B envia ${r.r2b.enviado}, A envia ${r.r2a.enviado}`
+  );
+  comprobar('el que crea recibe la edicion y la fila nueva del otro', r.cambiado === 'Cambiado en B' && r.nuevo);
   comprobar('sin errores en la pagina', errores.length === 0, errores.join(' | ').slice(0, 300));
 } catch (e) {
   fallas.push('excepcion');

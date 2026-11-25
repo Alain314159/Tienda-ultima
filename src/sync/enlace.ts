@@ -4,9 +4,11 @@
  * mismo motor que la nube.
  *
  * Protocolo, idéntico en los dos extremos:
- * 1. `hola`: quién soy y desde qué punto quiero que me envíen (-1 = todo).
- * 2. `cab` + `lote`*: lo que envío; cada lote se confirma con un `ack`.
- * 3. `fin` / `fin-ok`: cierre de cada sentido; quien recibe guarda el punto
+ * 1. `hola`: quién soy. Hace falta saberlo antes de pedir: el punto hasta el
+ *    que el otro me envió está guardado bajo su identificador, no bajo el mío.
+ * 2. `pide`: desde qué punto le pido que me envíe (-1 = todo).
+ * 3. `cab` + `lote`*: lo que envío; cada lote se confirma con un `ack`.
+ * 4. `fin` / `fin-ok`: cierre de cada sentido; quien recibe guarda el punto
  *    hasta el que le enviaron, para que la próxima vez viaje solo lo nuevo.
  *
  * Las dos direcciones van a la vez y no se esperan entre sí: por eso el envío
@@ -52,6 +54,8 @@ export interface OpcionesSesion {
   enProgreso?: (p: ProgresoSync) => void;
   /** Milisegundos sin recibir nada antes de dar el enlace por perdido. */
   sinActividadMs?: number;
+  /** Lo mismo mientras el otro teléfono aún no se ha conectado, que suele tardar más. */
+  esperaConexionMs?: number;
   filasPorLote?: number;
 }
 
@@ -61,6 +65,9 @@ export const cursorDe = (dispositivo: string): string => `wifi_desde:${dispositi
 interface Hola {
   t: 'hola';
   dispositivo: string;
+}
+interface Pide {
+  t: 'pide';
   desde: number;
 }
 interface Cab {
@@ -73,7 +80,7 @@ interface Lote {
   n: number;
   filas: FilaRemota[];
 }
-type Mensaje = Hola | Cab | Lote | { t: 'ack'; n: number } | { t: 'fin' } | { t: 'fin-ok' };
+type Mensaje = Hola | Pide | Cab | Lote | { t: 'ack'; n: number } | { t: 'fin' } | { t: 'fin-ok' };
 
 export async function sincronizarPorCanal(
   ctx: ContextoSync,
@@ -83,6 +90,7 @@ export async function sincronizarPorCanal(
   const meta = ctx.db.table<RegistroSync, string>('syncMeta');
   const cambios = ctx.db.table<Cambio, number>('cambios');
   const sinActividad = opciones.sinActividadMs ?? 60_000;
+  const esperaConexion = opciones.esperaConexionMs ?? sinActividad;
   const filasPorLote = opciones.filasPorLote ?? 200;
   const avisar = opciones.enProgreso ?? (() => undefined);
 
@@ -97,6 +105,9 @@ export async function sincronizarPorCanal(
 
     let remoto: Hola | undefined;
     let cabRemota: Cab | undefined;
+    let pedido = false;
+    // Tras fallar o terminar no se procesa nada más de lo que siga llegando.
+    let terminado = false;
     let confirmacion: ((n: number) => void) | undefined;
     let temporizador: ReturnType<typeof setTimeout> | undefined;
     let cola: Promise<unknown> = Promise.resolve();
@@ -106,18 +117,21 @@ export async function sincronizarPorCanal(
     const aplicado = { filas: 0, descartes: 0, tablas: new Set<string>() };
 
     const fallar = (e: unknown): void => {
+      if (terminado) return;
+      terminado = true;
       clearTimeout(temporizador);
       canal.cerrar();
       rechazar(e instanceof Error ? e : new Error(String(e)));
     };
     const armar = (): void => {
       clearTimeout(temporizador);
-      temporizador = setTimeout(() => fallar(new Error('tiempo-agotado')), sinActividad);
+      temporizador = setTimeout(() => fallar(new Error('tiempo-agotado')), remoto ? sinActividad : esperaConexion);
     };
     const comprobar = (): void => {
       // Cada sentido cierra por su lado: el mío cuando el otro confirma (`fin-ok`)
       // y el suyo cuando me dice que terminó (`fin`). La sesión acaba con los dos.
       if (!recepcionCerrada || !envioConfirmado || !remoto) return;
+      terminado = true;
       clearTimeout(temporizador);
       canal.cerrar();
       resolver({
@@ -132,13 +146,23 @@ export async function sincronizarPorCanal(
       canal.enviar(JSON.stringify(m));
     };
 
-    async function emitir(hola: Hola): Promise<void> {
+    /** Le pido al otro lo que me falta: lo posterior a la última vez que me envió. */
+    async function pedir(): Promise<void> {
+      if (!remoto) return;
+      const guardado = await meta.get(cursorDe(remoto.dispositivo));
+      enviar({ t: 'pide', desde: typeof guardado?.value === 'number' ? guardado.value : -1 });
+    }
+
+    async function emitir(pide: Pide): Promise<void> {
       publicar({ fase: 'preparando' });
       const maximo = (await cambios.orderBy('id').last())?.id ?? 0;
       let filas: FilaRemota[];
       let hasta: number;
-      if (hola.desde >= 0 && hola.desde <= maximo) {
-        const incremental = await obtenerCambiosDesde(ctx, hola.desde);
+      if (pide.desde >= 0 && pide.desde <= maximo) {
+        // Lo que este teléfono recibió del otro no se le devuelve: ya lo tiene.
+        const incremental = await obtenerCambiosDesde(ctx, pide.desde, {
+          sinOrigen: `wifi:${remoto?.dispositivo ?? '?'}`,
+        });
         filas = incremental.filas;
         hasta = incremental.hasta;
       } else {
@@ -162,11 +186,19 @@ export async function sincronizarPorCanal(
     }
 
     async function procesar(texto: string): Promise<void> {
+      if (terminado) return;
       const m = JSON.parse(texto) as Mensaje;
       switch (m.t) {
         case 'hola':
           if (remoto) return;
           remoto = m;
+          // Ya se conectó: desde aquí cuenta la espera corta.
+          armar();
+          void pedir().catch(fallar);
+          break;
+        case 'pide':
+          if (pedido || !remoto) return;
+          pedido = true;
           void emitir(m).catch(fallar);
           break;
         case 'cab':
@@ -206,13 +238,8 @@ export async function sincronizarPorCanal(
 
     armar();
     canal.abierto
-      .then(async () => {
-        const guardado = await meta.get(cursorDe(ctx.seg.idDispositivo));
-        enviar({
-          t: 'hola',
-          dispositivo: ctx.seg.idDispositivo,
-          desde: typeof guardado?.value === 'number' ? guardado.value : -1,
-        });
+      .then(() => {
+        enviar({ t: 'hola', dispositivo: ctx.seg.idDispositivo });
       })
       .catch(fallar);
     canal.alRecibir((texto) => {
