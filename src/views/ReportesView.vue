@@ -1,0 +1,674 @@
+<template>
+  <section v-if="sec === 'reportes'" class="fade-up">
+    <!-- Cerrar Período -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período
+      </div>
+      <div class="info-box" style="margin-bottom: 0.6rem">
+        Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
+      </div>
+      <div style="font-size: 0.82rem; color: var(--mut); margin-bottom: 0.5rem">
+        Período actual: desde {{ fmtFecha(cfg.periodoInicio) }}
+      </div>
+      <div class="grid2" style="margin-bottom: 0.5rem">
+        <div>
+          <span class="det">Ventas</span>
+          <div style="font-weight: 800">{{ fmt(ventasStore.ventasPeriodo) }}</div>
+        </div>
+        <div>
+          <span class="det">Compras</span>
+          <div style="font-weight: 800" class="neg">{{ fmt(cierresStore.comprasPeriodo) }}</div>
+        </div>
+      </div>
+      <div style="font-size: 0.9rem; font-weight: 800; margin-bottom: 0.6rem">
+        Ganancia:
+        <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
+      </div>
+      <button class="btn warn" @click="cerrarPeriodo()">
+        <icon name="calendar" :size="16" color="#fff"></icon> Cerrar Período y Empezar Nuevo
+      </button>
+    </div>
+
+    <!-- Historial de Cierres -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres
+      </div>
+      <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
+      <div
+        v-for="c in cierresStore.cierresOrdenados"
+        :key="c.id"
+        class="item"
+        style="flex-direction: column; align-items: stretch; gap: 0.3rem"
+      >
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem">
+          <div class="nm">{{ c.periodo }}</div>
+          <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
+        </div>
+        <div class="det" style="font-size: 0.72rem">
+          Cerrado {{ fmtFecha(c.fechaCierre || c.fecha || '') }}
+          <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
+        </div>
+        <div
+          v-if="c.cogs !== undefined"
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.7rem; margin-top: 0.2rem"
+        >
+          <div style="color: var(--mut)">
+            Ventas: <b style="color: var(--ok)">{{ fmt(c.ventas) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            COGS: <b style="color: var(--bad)">-{{ fmt(c.cogs) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            Gastos: <b style="color: var(--bad)">-{{ fmt(c.gastos) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            Mermas: <b style="color: var(--bad)">-{{ fmt(c.mermas) }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIBRO DIARIO (PARTIDA DOBLE) -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="book" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Libro Diario
+      </div>
+      <div class="info-box" style="margin-bottom: 0.6rem">
+        Contabilidad de partida doble generada automáticamente: cada operación produce un cargo y un abono por el mismo
+        monto.
+      </div>
+
+      <div v-if="libro.asientos.length === 0" class="empty">Sin movimientos aún</div>
+
+      <template v-else>
+        <!-- Balanza de comprobación -->
+        <div class="card-title" style="margin-top: 0">
+          <icon name="chart" :size="16"></icon> Balanza de comprobación
+        </div>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Cuenta</th>
+                <th>Debe</th>
+                <th>Haber</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in libro.balanza" :key="f.cuenta">
+                <td>
+                  <b>{{ f.cuenta }}</b>
+                </td>
+                <td>{{ fmt(f.debe) }}</td>
+                <td>{{ fmt(f.haber) }}</td>
+                <td :class="f.saldo >= 0 ? 'pos' : 'neg'">
+                  <b>{{ fmt(f.saldo) }}</b>
+                </td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td>{{ fmt(libro.totalDebe) }}</td>
+                <td>{{ fmt(libro.totalHaber) }}</td>
+                <td :class="libro.balanceado ? 'pos' : 'neg'">
+                  {{ libro.balanceado ? '✓ Balanceado' : '✗ Descuadre' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Balance general (estado de situación) -->
+        <div class="card-title" style="margin-top: 0.8rem">
+          <icon name="book" :size="16"></icon> Balance general (estado de situación)
+        </div>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Activo</th>
+                <th>Monto</th>
+                <th>Patrimonio</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Caja</td>
+                <td>{{ fmt(libro.bg.caja) }}</td>
+                <td>Capital aportado</td>
+                <td>{{ fmt(libro.bg.capital) }}</td>
+              </tr>
+              <tr>
+                <td>Inventario (FIFO)</td>
+                <td>{{ fmt(libro.bg.inventario) }}</td>
+                <td>Resultado histórico integral</td>
+                <td>{{ fmt(libro.bg.resultado) }}</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td>Retiros de ganancia</td>
+                <td>-{{ fmt(libro.bg.retirosGanancia) }}</td>
+              </tr>
+              <tr v-if="libro.bg.fueraCaja !== 0">
+                <td></td>
+                <td></td>
+                <td>Pagos por fuera de caja</td>
+                <td>{{ fmt(libro.bg.fueraCaja) }}</td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL ACTIVO</td>
+                <td>{{ fmt(libro.bg.totalActivo) }}</td>
+                <td>TOTAL PATRIMONIO</td>
+                <td :class="libro.bg.cuadra ? 'pos' : 'neg'">
+                  {{ fmt(libro.bg.totalPatrimonio) }} {{ libro.bg.cuadra ? '✓' : '✗' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="info-box" style="margin-top: 0.4rem">
+          Ecuación contable: Activo = Capital + Resultado − Retiros de ganancia + partidas fuera de caja. El resultado
+          integral incluye sobrantes de inventario y ajustes de arqueo.
+        </div>
+
+        <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
+        <div class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</div>
+        <div class="row">
+          <span>Caja según libro vs sistema</span>
+          <b :class="libro.cajaOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.cajaLibro) }} {{ libro.cajaOk ? '✓' : '≠ ' + fmt(libro.cajaSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Inventario según libro vs lotes</span>
+          <b :class="libro.invOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.invLibro) }} {{ libro.invOk ? '✓' : '≠ ' + fmt(libro.invSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Resultado neto histórico vs acumulado</span>
+          <b :class="libro.resOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.resultado) }} {{ libro.resOk ? '✓' : '≠ ' + fmt(libro.acumuladas) }}</b
+          >
+        </div>
+
+        <!-- Últimos asientos -->
+        <div class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</div>
+        <div v-for="a in libro.ultimos" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="nm">{{ a.concepto }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                {{ fmtFecha(a.fecha) }} · {{ a.cuentaDebe }} ← {{ a.cuentaHaber }}
+              </div>
+            </div>
+            <b>{{ fmt(a.monto) }}</b>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ARQUEO DE CAJA (restaurado: la notificación diaria existía pero la UI
+         se perdió al eliminar la vista Caja) -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="dollar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Arqueo de Caja
+      </div>
+      <div class="row">
+        <span>Caja según sistema</span>
+        <b>{{ fmt(cajaStore.saldoCaja) }}</b>
+      </div>
+      <div class="grid2" style="margin-top: 0.4rem">
+        <input v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
+        <input v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
+      </div>
+      <div v-if="arqueoDiff !== null" class="row" style="margin-top: 0.4rem">
+        <span>Diferencia (físico − sistema)</span>
+        <b :class="Math.abs(arqueoDiff) < 0.01 ? 'pos' : 'neg'">
+          {{
+            Math.abs(arqueoDiff) < 0.01
+              ? 'Cuadra ✓'
+              : (arqueoDiff > 0 ? 'Sobra ' : 'Falta ') + fmt(Math.abs(arqueoDiff))
+          }}
+        </b>
+      </div>
+      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI">Registrar arqueo</button>
+      <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
+        <div class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</div>
+        <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="det">{{ fmtFH(a.fecha) }} · sistema {{ fmt(a.cajaSistema) }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                físico {{ fmt(a.cajaFisica) }}<span v-if="a.nota"> · {{ a.nota }}</span>
+              </div>
+            </div>
+            <b :class="Math.abs(n(a.faltanteSobrante)) < 0.01 ? 'pos' : 'neg'">{{
+              Math.abs(n(a.faltanteSobrante)) < 0.01 ? '✓' : fmt(a.faltanteSobrante)
+            }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
+    <div class="card">
+      <div class="card-title">
+        <icon name="file" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cuadre por Período
+      </div>
+      <div class="grid2">
+        <input
+          v-model="rep.fechaInicio"
+          type="date"
+          @input="
+            rep.isoInicio = null;
+            rep.isoFin = null;
+            rep.periodoActivo = null;
+          "
+        />
+        <input
+          v-model="rep.fechaFin"
+          type="date"
+          @input="
+            rep.isoInicio = null;
+            rep.isoFin = null;
+            rep.periodoActivo = null;
+          "
+        />
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; margin-bottom: 0.5rem">
+        <button
+          class="btn"
+          :class="rep.periodoActivo === 'hoy' ? 'pri' : 'ghost'"
+          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          @click="setHoy()"
+        >
+          Hoy
+        </button>
+        <button
+          class="btn"
+          :class="rep.periodoActivo === 'semana' ? 'pri' : 'ghost'"
+          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          @click="setSemana()"
+        >
+          7d
+        </button>
+        <button
+          class="btn"
+          :class="rep.periodoActivo === 'mes' ? 'pri' : 'ghost'"
+          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          @click="setMesActual()"
+        >
+          Mes
+        </button>
+        <button
+          class="btn"
+          :class="rep.periodoActivo === 'mes-ant' ? 'pri' : 'ghost'"
+          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          @click="setMesAnterior()"
+        >
+          Mes ant
+        </button>
+        <button
+          class="btn"
+          :class="rep.periodoActivo === 'anio' ? 'pri' : 'ghost'"
+          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          @click="setAnio()"
+        >
+          Año
+        </button>
+      </div>
+      <button
+        class="btn"
+        :class="rep.periodoActivo === 'actual' ? 'pri' : 'ghost'"
+        style="margin-bottom: 0.5rem; font-size: 0.72rem"
+        @click="setPeriodoActual()"
+      >
+        Periodo actual (desde {{ fmtFecha(cfg.periodoInicio) }})
+      </button>
+      <div v-if="cierresOrdenados.length" style="margin-bottom: 0.7rem">
+        <div class="det" style="font-size: 0.72rem; color: var(--mut); margin-bottom: 0.35rem">
+          Periodos cerrados anteriores:
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem">
+          <button
+            v-for="c in cierresOrdenados.slice(0, 6)"
+            :key="c.id"
+            class="btn"
+            :class="rep.periodoActivo === c.id ? 'pri' : 'ghost'"
+            style="width: auto; padding: 0.35rem 0.7rem; font-size: 0.68rem; margin: 0"
+            @click="setPeriodoCierre(c)"
+          >
+            {{ c.periodo }}
+          </button>
+        </div>
+      </div>
+      <button class="btn pri" @click="generarReporte()">
+        <icon name="search" :size="16" color="#fff"></icon> Generar Cuadre
+      </button>
+
+      <!-- Resumen del cuadre -->
+      <div v-if="rep.resultado" style="margin-top: 0.8rem">
+        <div class="card-title" style="margin-top: 0"><icon name="chart" :size="18"></icon> Resumen</div>
+        <div class="row">
+          <span>Ingresos</span><b class="pos">{{ fmt(rep.resultado.ingresos) }}</b>
+        </div>
+        <div class="row">
+          <span>Costos (COGS)</span><b class="neg">-{{ fmt(rep.resultado.cogs) }}</b>
+        </div>
+        <div class="row">
+          <span>Ganancia bruta</span><b>{{ fmt(rep.resultado.bruta) }} ({{ rep.resultado.margenB }}%)</b>
+        </div>
+        <div class="row">
+          <span>Mermas</span><b class="neg">-{{ fmt(rep.resultado.mermas) }}</b>
+        </div>
+        <div class="row">
+          <span>Gastos operativos</span><b class="neg">-{{ fmt(rep.resultado.gastos) }}</b>
+        </div>
+        <div class="row total">
+          <span>Ganancia neta</span>
+          <span :class="rep.resultado.neta >= 0 ? 'pos' : 'neg'"
+            >{{ fmt(rep.resultado.neta) }} ({{ rep.resultado.margenN }}%)</span
+          >
+        </div>
+        <div class="det" style="font-size: 0.75rem; color: var(--mut); margin-top: 0.3rem">
+          Ventas realizadas: {{ rep.resultado.numVentas }}
+        </div>
+      </div>
+
+      <!-- Tabla de cuadre por producto -->
+      <div v-if="rep.resultado && rep.resultado.cuadre" style="margin-top: 1rem">
+        <div class="card-title"><icon name="package" :size="18"></icon> Cuadre por producto</div>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Compras</th>
+                <th>Costo c/u</th>
+                <th>Ventas</th>
+                <th>Precio c/u</th>
+                <th>Ingresos</th>
+                <th>Costo</th>
+                <th>Ganancia</th>
+                <th>Stock</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="r in rep.resultado.cuadre" :key="r.id">
+                <tr
+                  class="product-row"
+                  style="cursor: pointer"
+                  @click="r.subfilas.length > 1 ? toggleCuadreProducto(r.id) : null"
+                >
+                  <td>
+                    <span
+                      v-if="r.subfilas.length > 1"
+                      class="chev"
+                      :class="{ open: cuadreExpandido[r.id] }"
+                      style="margin-right: 0.3rem; display: inline-flex"
+                    >
+                      <icon name="chevron" :size="12" :color="mutColor"></icon>
+                    </span>
+                    <b>{{ r.nombre }}</b>
+                    <span v-if="r.subfilas.length > 1" class="badge-lotes">{{ r.subfilas.length }} lotes</span>
+                  </td>
+                  <td>{{ fmtCant(r.compras) }}</td>
+                  <td>{{ fmt(r.costoCompra) }}</td>
+                  <td>{{ fmtCant(r.ventas) }}</td>
+                  <td>{{ fmt(r.precioVenta) }}</td>
+                  <td class="pos">{{ fmt(r.ingresos) }}</td>
+                  <td class="neg">{{ fmt(r.costo) }}</td>
+                  <td :class="r.ganancia >= 0 ? 'pos' : 'neg'">
+                    <b>{{ fmt(r.ganancia) }}</b>
+                  </td>
+                  <td>{{ fmtCant(r.stockFinal) }}</td>
+                  <td>{{ fmt(r.valorInv) }}</td>
+                </tr>
+                <template v-if="r.subfilas.length > 1 && cuadreExpandido[r.id]">
+                  <tr v-for="(sf, i) in r.subfilas" :key="r.id + '_' + i" class="sub-row">
+                    <td class="sub-lote-cell">
+                      <span class="sub-arrow">└</span>
+                      <span class="sub-num">Lote {{ i + 1 }}</span>
+                      <span class="sub-fechas"
+                        >{{ fmt(sf.costo) }}<span v-if="sf.precio !== null"> → {{ fmt(sf.precio) }}</span
+                        ><span v-else class="sub-sin-venta"> · sin ventas</span></span
+                      >
+                    </td>
+                    <td>{{ sf.comprasCant ? fmtCant(sf.comprasCant) : '—' }}</td>
+                    <td>{{ fmt(sf.costo) }}</td>
+                    <td>{{ sf.cantVend ? fmtCant(sf.cantVend) : '—' }}</td>
+                    <td>{{ sf.precio !== null ? fmt(sf.precio) : '—' }}</td>
+                    <td class="pos">{{ sf.ingresos ? fmt(sf.ingresos) : '—' }}</td>
+                    <td class="neg">{{ sf.costoVend ? fmt(sf.costoVend) : '—' }}</td>
+                    <td :class="sf.ganancia >= 0 ? 'pos' : 'neg'">{{ sf.ganancia ? fmt(sf.ganancia) : '—' }}</td>
+                    <td>{{ fmtCant(sf.stockActual) }}</td>
+                    <td>{{ fmt(sf.valorActual) }}</td>
+                  </tr>
+                </template>
+              </template>
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td>{{ fmtCant(rep.resultado.totales.compras) }}</td>
+                <td></td>
+                <td>{{ fmtCant(rep.resultado.totales.ventas) }}</td>
+                <td></td>
+                <td class="pos">{{ fmt(rep.resultado.totales.ingresos) }}</td>
+                <td class="neg">{{ fmt(rep.resultado.totales.costo) }}</td>
+                <td :class="rep.resultado.totales.ganancia >= 0 ? 'pos' : 'neg'">
+                  {{ fmt(rep.resultado.totales.ganancia) }}
+                </td>
+                <td>{{ fmtCant(rep.resultado.totales.stockFinal) }}</td>
+                <td>{{ fmt(rep.resultado.totales.valorInv) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Botón PDF (reemplaza CSV y Compartir) -->
+        <button class="btn ok" style="margin-top: 0.8rem" @click="generarPDFCuadre()">
+          <icon name="file" :size="16" color="#fff"></icon> Exportar PDF
+        </button>
+
+        <!-- Reparto entre socios -->
+        <div v-if="sociosActivos.length" style="margin-top: 1.2rem">
+          <div class="card-title"><icon name="users" :size="18"></icon> Reparto entre socios</div>
+          <div class="info-box" style="margin-bottom: 0.5rem">
+            Ganancia neta del periodo: <b>{{ fmt(rep.resultado.neta) }}</b>
+          </div>
+          <div v-for="s in sociosActivos" :key="s.id" class="row">
+            <span>{{ s.nombre }} ({{ n(s.porcentaje).toFixed(2) }}%)</span>
+            <b :class="(rep.resultado.neta * n(s.porcentaje)) / 100 >= 0 ? 'pos' : 'neg'">
+              {{ fmt((rep.resultado.neta * n(s.porcentaje)) / 100) }}
+            </b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, reactive, onMounted, ref } from 'vue';
+import { n, m } from '../utils/numero';
+import { fmt, fmtCant, fmtFecha, fmtFH } from '../utils/formato';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useVentasStore } from '../stores/useVentasStore';
+import { useCierresStore } from '../stores/useCierresStore';
+import { useCapitalStore } from '../stores/useCapitalStore';
+import { useCajaStore } from '../stores/useCajaStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useLotesStore } from '../stores/useLotesStore';
+import { useCuadre } from '../composables/useCuadre';
+import { db } from '../db';
+import {
+  balanzaDeComprobacion,
+  balanceGeneral,
+  CUENTAS,
+  type Asiento,
+  type BalanceGeneral,
+} from '../services/libroDiario';
+
+const configStore = useConfigStore();
+const ui = useUIStore();
+const ventasStore = useVentasStore();
+const cierresStore = useCierresStore();
+const capitalStore = useCapitalStore();
+const cajaStore = useCajaStore();
+const lotesStore = useLotesStore();
+
+const sec = 'reportes';
+const cfg = configStore.cfg;
+const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
+
+// ===== CIERRES =====
+const cierres = computed(() => cierresStore.cierres);
+const cierresOrdenados = computed(() => cierresStore.cierresOrdenados);
+const gananciaNetaPeriodo = computed(() => cierresStore.gananciaNetaPeriodo);
+
+function cerrarPeriodo() {
+  // Acción irreversible (reinicia contadores del período): confirmar como
+  // el resto de operaciones destructivas de la app
+  ui.confirmar({
+    titulo: 'Cerrar período',
+    msg: 'Se acumulará la ganancia del período y los contadores empezarán de cero. El historial se conserva. ¿Continuar?',
+    onOk: () => cierresStore.cerrarPeriodo(),
+  });
+}
+
+// ===== SOCIOS (para el reparto del PDF) =====
+const sociosActivos = computed(() => capitalStore.socios.filter((s) => s.activo !== false));
+
+// ===== ARQUEO DE CAJA =====
+const arqueoForm = ref({ fisico: '', nota: '' });
+const arqueoDiff = computed(() => {
+  const f = n(arqueoForm.value.fisico);
+  if (arqueoForm.value.fisico.trim() === '' || isNaN(f)) return null;
+  return m(f - cajaStore.saldoCaja);
+});
+
+function hacerArqueoUI() {
+  const f = n(arqueoForm.value.fisico);
+  if (arqueoForm.value.fisico.trim() === '' || isNaN(f) || !isFinite(f) || f < 0) {
+    return toastMsg('Ingresa el efectivo contado', TOAST.BAD);
+  }
+  const diff = m(f - cajaStore.saldoCaja);
+  const msg =
+    Math.abs(diff) < 0.01
+      ? 'El conteo cuadra con el saldo del sistema (' + fmt(cajaStore.saldoCaja) + ').'
+      : diff > 0
+        ? 'El conteo SOBRA ' + fmt(diff) + ' respecto al sistema. Se registrará como ingreso.'
+        : 'El conteo FALTA ' + fmt(Math.abs(diff)) + ' respecto al sistema. Se registrará como egreso.';
+  ui.confirmar({
+    titulo: 'Registrar arqueo',
+    msg: msg + '\n\n¿Confirmar?',
+    onOk: async () => {
+      try {
+        await cajaStore.hacerArqueo(f, diff, arqueoForm.value.nota.trim());
+        arqueoForm.value = { fisico: '', nota: '' };
+        toastMsg('Arqueo registrado');
+      } catch (e) {
+        toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+      }
+    },
+  });
+}
+
+// ===== LIBRO DIARIO =====
+const libro = reactive({
+  asientos: [] as Asiento[],
+  balanza: [] as ReturnType<typeof balanzaDeComprobacion>,
+  bg: {
+    caja: 0,
+    inventario: 0,
+    totalActivo: 0,
+    capital: 0,
+    resultado: 0,
+    retirosGanancia: 0,
+    fueraCaja: 0,
+    totalPatrimonio: 0,
+    cuadra: true,
+  } as BalanceGeneral,
+  totalDebe: 0,
+  totalHaber: 0,
+  balanceado: true,
+  cajaLibro: 0,
+  cajaSistema: 0,
+  cajaOk: true,
+  invLibro: 0,
+  invSistema: 0,
+  invOk: true,
+  resultado: 0,
+  acumuladas: 0,
+  resOk: true,
+  ultimos: [] as Asiento[],
+});
+
+function saldoDe(cuenta: string): number {
+  const f = libro.balanza.find((x) => x.cuenta === cuenta);
+  return f ? f.saldo : 0;
+}
+
+function refrescarLibro() {
+  const bal = libro.balanza;
+  libro.totalDebe = m(bal.reduce((s, f) => s + f.debe, 0));
+  libro.totalHaber = m(bal.reduce((s, f) => s + f.haber, 0));
+  libro.balanceado = Math.abs(libro.totalDebe - libro.totalHaber) < 0.01;
+
+  // Balance general (estado de situación): identidad Σdeudores = Σacreedores
+  libro.bg = balanceGeneral(libro.asientos);
+
+  // Diagnóstico: saldos del libro contra los cálculos del sistema
+  libro.cajaLibro = saldoDe(CUENTAS.CAJA);
+  libro.cajaSistema = cajaStore.saldoCaja;
+  libro.cajaOk = Math.abs(libro.cajaLibro - libro.cajaSistema) < 0.01;
+
+  libro.invLibro = saldoDe(CUENTAS.INVENTARIO);
+  libro.invSistema = lotesStore.valorInventario;
+  libro.invOk = Math.abs(libro.invLibro - libro.invSistema) < 0.01;
+
+  // Resultado neto histórico según el libro: ingresos - costo - gastos - mermas
+  // (los saldos de COSTO/GASTOS/MERMAS son deudores: +; el de INGRESOS acreedor: -)
+  libro.resultado = m(
+    -saldoDe(CUENTAS.INGRESOS) - saldoDe(CUENTAS.COSTO) - saldoDe(CUENTAS.GASTOS) - saldoDe(CUENTAS.MERMAS)
+  );
+  libro.acumuladas = capitalStore.gananciasAcumuladas;
+  libro.resOk = Math.abs(libro.resultado - libro.acumuladas) < 0.01;
+
+  libro.ultimos = libro.asientos.slice(-30).reverse();
+}
+
+onMounted(async () => {
+  try {
+    const filas = await db.asientos.toArray();
+    libro.asientos = filas.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    libro.balanza = balanzaDeComprobacion(libro.asientos);
+    refrescarLibro();
+  } catch (e) {
+    console.warn('libro diario', e);
+  }
+});
+
+// ===== CUADRE POR PERÍODO =====
+const {
+  rep,
+  cuadreExpandido,
+  setSemana,
+  setMesAnterior,
+  setAnio,
+  setHoy,
+  setPeriodoCierre,
+  setMesActual,
+  setPeriodoActual,
+  toggleCuadreProducto,
+  generarReporte,
+  generarPDFCuadre,
+} = useCuadre();
+</script>

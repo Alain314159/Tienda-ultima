@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tienda Pro</string>
+    <string name="title_activity_main">Tienda Pro</string>
+    <string name="package_name">com.tiendapro.app</string>
+    <string name="custom_url_scheme">com.tiendapro.app</string>
+</resources>

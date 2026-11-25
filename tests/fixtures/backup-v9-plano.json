@@ -1,0 +1,2847 @@
+{
+  "version": 9,
+  "fecha": "2026-10-09T12:53:06.451Z",
+  "cfg": {
+    "nombre": "Tienda Prueba",
+    "tema": "dark",
+    "pin": "",
+    "pinActivo": false,
+    "capitalInicial": 200000,
+    "periodoInicio": "2026-09-26T14:40:51.596Z",
+    "ultimoBackupAuto": 1791550366391,
+    "ultimoExport": "2026-09-29T20:04:35.860Z",
+    "notifActivo": false,
+    "horaArqueo": "",
+    "ultimaNotifStock": null,
+    "ultimaNotifArqueo": null,
+    "ultimaNotifCriticas": null,
+    "ultimaNotifCierre": null,
+    "umbralDiasCierre": 30,
+    "umbralMermasSemana": 3,
+    "umbralFaltantesMes": 2,
+    "umbralBackupDias": 7,
+    "umbralSinMovimientoDias": 60,
+    "umbralDescuentoPct": 20,
+    "umbralSobrantesMes": 2,
+    "stockMinDefault": 5,
+    "anomaliasDescartadas": [
+      "anuladas-5",
+      "anuladas-7",
+      "anuladas-9"
+    ],
+    "calcBilletesActiva": true,
+    "calcActiva": true,
+    "busquedaGlobalActiva": false,
+    "tgToken": "",
+    "tgChatId": "",
+    "nombreTienda": "Tienda Prueba",
+    "tiendaConfigurada": false,
+    "tgNombre": "",
+    "tgAutoBackup": true,
+    "tgUltimoBackup": "2026-10-09T12:52:54.458Z",
+    "tgUltimoHash": "5f3b07f1b745bf09",
+    "tgFallosConsecutivos": 1,
+    "ultimaNotifBackupFail": null,
+    "tgMantenerN": 10,
+    "productosAvisados": [
+      "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+      "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+      "pb37e9af1-9806-44f3-88ae-4c1244b1a4ac",
+      "pc9bd6119-2bbf-40fa-b176-b610072c9275",
+      "pd66d1ca9-067b-4369-bdff-9848394648f7",
+      "pe4da9581-7aae-4444-be9d-6b31e7dfbbf4",
+      "p_mu3b0oka83bgb",
+      "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "p87569035-9107-426d-86c2-6e44b1176b1d",
+      "pc119aac2-9783-4927-87ba-d4cfec54e101",
+      "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+      "p_mu6yehibwuygo",
+      "p_mug6byybn08bg",
+      "p_muh4g7k0zyaw6",
+      "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+      "p_mu3b23ms2p59n",
+      "pc0ff4621-e93a-4e7f-a2a1-2aa6baf13e92",
+      "p_mulat4bcqs27u",
+      "p_mulhk3uwxkqg2",
+      "p_mulhkdb5lcbym",
+      "p_mulhl5b1u0s5k",
+      "p_mu3b1i71hl6hl",
+      "p_mubw877afd9x1",
+      "p_muha0gh2m7t9i",
+      "p_mulcddpkybekh",
+      "p_mug5pyur81aoa",
+      "p_mul7ov107p2kg"
+    ],
+    "tgCarpetaActiva": true,
+    "tgCarpetaNombre": "App tienda respaldos",
+    "modoCompacto": false,
+    "fontScale": 1,
+    "graficoVista": "mes",
+    "graficoProdPeriodo": "mes",
+    "graficoProdTipo": "vendidos",
+    "avisoTiendaDescartado": false,
+    "tutorialVisto": false,
+    "mostrarSplash": true,
+    "erudaActivo": false,
+    "tipsVistos": [
+      "socios",
+      "compartir-precios",
+      "pin",
+      "busqueda",
+      "cierre",
+      "tamano-letra",
+      "exportar",
+      "empaques",
+      "merma",
+      "escalones",
+      "modo-oscuro",
+      "arqueo",
+      "anomalias",
+      "pasivos",
+      "mas",
+      "gastos",
+      "modo-compacto",
+      "backup-tg"
+    ],
+    "moneda": "$",
+    "contactoDireccion": "",
+    "contactoTelefonos": "",
+    "contactoGrupoWa": ""
+  },
+  "productos": [
+    {
+      "id": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+      "nombre": "Jabón aura",
+      "codigo": "",
+      "precio": 340,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 72
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+      "nombre": "Jabón dayli",
+      "codigo": "",
+      "precio": 420,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 53
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+      "nombre": "Set de colores",
+      "codigo": "",
+      "precio": 530,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": ""
+    },
+    {
+      "id": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "nombre": "Toallitas húmedas 120uds",
+      "codigo": "",
+      "precio": 720,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 12
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "nombre": "Detergente Defá 500g",
+      "codigo": "",
+      "precio": 810,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Saco",
+          "unidades": 40
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "nombre": "Jabitas",
+      "codigo": "",
+      "precio": 8.5,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": ""
+    },
+    {
+      "id": "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+      "nombre": "Toallitas húmedas 90uds",
+      "codigo": "",
+      "precio": 600,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": ""
+    },
+    {
+      "id": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+      "nombre": "Sazones",
+      "codigo": "",
+      "precio": 50,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": ""
+    },
+    {
+      "id": "p6a7e9eaa-6127-41c0-86c8-9613a212381f",
+      "nombre": "Papel sanitario la excelencia",
+      "codigo": "",
+      "precio": 650,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Paca",
+          "unidades": 20
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p87569035-9107-426d-86c2-6e44b1176b1d",
+      "nombre": "Jabón carbón",
+      "codigo": "",
+      "precio": 370,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 72
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "nombre": "Perlas de olor",
+      "codigo": "",
+      "precio": 85,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": ""
+    },
+    {
+      "id": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+      "nombre": "Paquete de aparatico de afeitar",
+      "codigo": "",
+      "precio": 850,
+      "stockMinimo": 5,
+      "archivado": false,
+      "unidad": "",
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 24
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p_mu3b0oka83bgb",
+      "nombre": "Leche condensada",
+      "precio": 780,
+      "stockMinimo": 5,
+      "archivado": false,
+      "preciosEscalonados": [],
+      "empaques": [
+        {
+          "nombre": "Caja",
+          "unidades": 48
+        }
+      ],
+      "nota": ""
+    },
+    {
+      "id": "p_mu3b14fe7sdt2",
+      "nombre": "Café",
+      "precio": 530,
+      "stockMinimo": 5,
+      "archivado": false,
+      "preciosEscalonados": [],
+      "empaques": [],
+      "nota": ""
+    },
+    {
+      "id": "p_mu3b1i71hl6hl",
+      "nombre": "Sopita",
+      "precio": 235,
+      "stockMinimo": 5,
+      "archivado": false,
+      "preciosEscalonados": [],
+      "empaques": [],
+      "nota": ""
+    }
+  ],
+  "lotes": [
+    {
+      "id": "l08c25ac1-0316-42f4-a14d-e3321ddb6a9a",
+      "compraId": "c8b128cc0-0f75-4ad4-81ee-14f56f15c629",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidadInicial": 100,
+      "cantidadVendida": 100,
+      "costo": 75,
+      "fecha": "2026-09-06T14:21:19.034Z"
+    },
+    {
+      "id": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+      "compraId": "ce40e20ed-3ded-4888-8ec2-738063bd5ec4",
+      "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+      "productoNombre": "Sazones",
+      "productoUnidad": "",
+      "cantidadInicial": 1200,
+      "cantidadVendida": 408,
+      "costo": 45,
+      "fecha": "2026-08-23T14:35:39.202Z"
+    },
+    {
+      "id": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+      "compraId": "c872c8b01-b9bf-4c68-b199-a8609afe5ea5",
+      "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+      "productoNombre": "Jabón aura",
+      "productoUnidad": "",
+      "cantidadInicial": 216,
+      "cantidadVendida": 216,
+      "costo": 320,
+      "fecha": "2026-08-23T14:40:57.598Z"
+    },
+    {
+      "id": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+      "compraId": "cd0089d1a-499d-4425-a3ea-9dfd7c1326d6",
+      "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+      "productoNombre": "Jabón dayli",
+      "productoUnidad": "",
+      "cantidadInicial": 106,
+      "cantidadVendida": 106,
+      "costo": 380,
+      "fecha": "2026-09-06T14:20:55.926Z"
+    },
+    {
+      "id": "l3bcbcc5b-90a0-4fad-895f-3aa3b1b5119b",
+      "compraId": "cce109c57-d01b-42f1-ae68-0ae6e0efd933",
+      "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "productoNombre": "Jabitas",
+      "productoUnidad": "",
+      "cantidadInicial": 1000,
+      "cantidadVendida": 1000,
+      "costo": 7,
+      "fecha": "2026-08-23T14:38:49.097Z"
+    },
+    {
+      "id": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+      "compraId": "c00e6e129-7c0f-4082-a3ae-4b18328ea787",
+      "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+      "productoNombre": "Jabón carbón",
+      "productoUnidad": "",
+      "cantidadInicial": 72,
+      "cantidadVendida": 72,
+      "costo": 350,
+      "fecha": "2026-08-23T14:42:51.072Z"
+    },
+    {
+      "id": "l690471e3-16ed-4b27-a239-940c0a1170f5",
+      "compraId": "c10d73fb2-c087-4958-b609-bb4e389be8f5",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidadInicial": 100,
+      "cantidadVendida": 100,
+      "costo": 75,
+      "fecha": "2026-09-09T16:06:34.190Z"
+    },
+    {
+      "id": "l99c745a8-664a-4c03-881a-d6ed495ab0c5",
+      "compraId": "c02d9bf6b-2cd6-42db-928b-7366345e5c14",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidadInicial": 200,
+      "cantidadVendida": 100,
+      "costo": 75,
+      "fecha": "2026-09-11T15:24:19.538Z"
+    },
+    {
+      "id": "l_mu3bc083go8vd",
+      "compraId": "c_mu3bc082yri3o",
+      "productoId": "p_mu3b1i71hl6hl",
+      "productoNombre": "Sopita",
+      "cantidadInicial": 50,
+      "cantidadVendida": 50,
+      "costo": 220,
+      "fecha": "2026-09-15T23:38:34.658Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mu3bcpz1cmafr",
+      "compraId": "c_mu3bcpz1bgj3u",
+      "productoId": "p_mu3b0oka83bgb",
+      "productoNombre": "Leche condensada",
+      "cantidadInicial": 48,
+      "cantidadVendida": 48,
+      "costo": 760,
+      "fecha": "2026-09-15T23:39:08.029Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mu3bd01178sem",
+      "compraId": "c_mu3bd011au6ff",
+      "productoId": "p_mu3b14fe7sdt2",
+      "productoNombre": "Café",
+      "cantidadInicial": 40,
+      "cantidadVendida": 40,
+      "costo": 510,
+      "fecha": "2026-09-15T23:39:21.061Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mu3bdn4ellcay",
+      "compraId": "c_mu3bdn4ebjxj5",
+      "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "productoNombre": "Toallitas húmedas 120uds",
+      "cantidadInicial": 12,
+      "cantidadVendida": 12,
+      "costo": 680,
+      "fecha": "2026-09-15T23:39:50.990Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mu6yj9bqwgeyr",
+      "compraId": "c_mu6yj9bqxouzj",
+      "productoId": "p_mu3b0oka83bgb",
+      "productoNombre": "Leche condensada",
+      "cantidadInicial": 24,
+      "cantidadVendida": 24,
+      "costo": 775,
+      "fecha": "2026-09-18T12:51:22.742Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mu9v1zsevmg1s",
+      "compraId": "c_mu9v1zseg3vy6",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá 500g",
+      "cantidadInicial": 80,
+      "cantidadVendida": 16,
+      "costo": 780,
+      "fecha": "2026-09-20T13:37:16.910Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "l_mug5wl31l0sb3",
+      "compraId": "c_mug5wl31yr3za",
+      "productoId": "p_mu3b14fe7sdt2",
+      "productoNombre": "Café",
+      "cantidadInicial": 20,
+      "cantidadVendida": 0,
+      "costo": 510,
+      "fecha": "2026-09-24T23:27:37.405Z",
+      "empaqueInfo": null
+    },
+    {
+      "id": "la0e5b8bf-2c0c-4b22-baf1-cbc2c49f7962",
+      "compraId": "c9a53598b-ca32-4167-882e-4e324a04d843",
+      "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "productoNombre": "Jabitas",
+      "productoUnidad": "",
+      "cantidadInicial": 2000,
+      "cantidadVendida": 2000,
+      "costo": 6,
+      "fecha": "2026-08-23T14:38:32.065Z"
+    },
+    {
+      "id": "la47a7c69-28fd-4287-8606-d82fcb6f0bb5",
+      "compraId": "c504c34d9-8950-415c-8e3d-1047af9c81a6",
+      "productoId": "p6a7e9eaa-6127-41c0-86c8-9613a212381f",
+      "productoNombre": "Papel sanitario la excelencia",
+      "productoUnidad": "",
+      "cantidadInicial": 40,
+      "cantidadVendida": 8,
+      "costo": 600,
+      "fecha": "2026-08-27T01:49:21.392Z"
+    },
+    {
+      "id": "lb907e25b-9acf-454f-8eed-9f6d1ee923c8",
+      "compraId": "c20b092a4-7848-468d-b8df-22fcb3ee6133",
+      "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+      "productoNombre": "Set de colores",
+      "productoUnidad": "",
+      "cantidadInicial": 12,
+      "cantidadVendida": 12,
+      "costo": 500,
+      "fecha": "2026-08-23T14:35:52.291Z"
+    },
+    {
+      "id": "lbc2e6b0b-ccf3-4bdb-8b22-53e6919b0218",
+      "compraId": "c877d2f67-5e55-44a4-9fd7-120338177464",
+      "productoId": "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+      "productoNombre": "Toallitas húmedas 90uds",
+      "productoUnidad": "",
+      "cantidadInicial": 24,
+      "cantidadVendida": 24,
+      "costo": 560,
+      "fecha": "2026-08-23T14:35:10.999Z"
+    },
+    {
+      "id": "lcbb71b5f-c84e-4fd7-8a56-6dbf6899f931",
+      "compraId": "cd30a8f26-6361-4e24-8228-8c4572f646c5",
+      "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "productoNombre": "Toallitas húmedas 120uds",
+      "productoUnidad": "",
+      "cantidadInicial": 24,
+      "cantidadVendida": 24,
+      "costo": 700,
+      "fecha": "2026-08-23T14:35:23.250Z"
+    },
+    {
+      "id": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+      "compraId": "cca5e78cd-8ea0-4706-8f28-8f8fd580ae25",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá",
+      "productoUnidad": "",
+      "cantidadInicial": 276,
+      "cantidadVendida": 276,
+      "costo": 670,
+      "fecha": "2026-09-06T14:27:52.604Z"
+    },
+    {
+      "id": "ldc4bcc1f-5db5-443f-ab89-995e5de8944e",
+      "compraId": "c6f8eefec-773b-472b-84d6-a992fd482efb",
+      "productoId": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+      "productoNombre": "Aparatico de afeitar",
+      "productoUnidad": "",
+      "cantidadInicial": 24,
+      "cantidadVendida": 6,
+      "costo": 750,
+      "fecha": "2026-09-09T16:08:13.302Z"
+    },
+    {
+      "id": "lfe2cf978-35d9-43bf-aa54-81ac26404723",
+      "compraId": "ccf6293ca-b4f8-4f4e-af07-262315a972d4",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá",
+      "productoUnidad": "",
+      "cantidadInicial": 80,
+      "cantidadVendida": 80,
+      "costo": 750,
+      "fecha": "2026-09-06T14:20:33.090Z"
+    }
+  ],
+  "ventas": [
+    {
+      "id": "v0731f66a-b32c-4d16-a60b-255e7ed52313",
+      "fecha": "2026-09-11T16:06:55.016Z",
+      "items": [
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 420,
+          "costo": 3800,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 10,
+              "costo": 380
+            }
+          ]
+        }
+      ],
+      "total": 4200,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "v07ad7275-c5b8-42c8-8823-358b06aafc2c",
+      "fecha": "2026-09-11T00:24:10.251Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 780,
+          "costo": 13400,
+          "ganancia": 2200,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 20,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 15600,
+      "ganancia": 2200,
+      "anulada": false
+    },
+    {
+      "id": "v0c76cca9-a217-4175-a92f-c4c01d04ac5f",
+      "fecha": "2026-09-09T16:48:15.523Z",
+      "items": [
+        {
+          "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+          "nombre": "Jabitas",
+          "cantidad": 100,
+          "unidad": "",
+          "precio": 8.5,
+          "costo": 700,
+          "ganancia": 150,
+          "lotesUsados": [
+            {
+              "loteId": "l3bcbcc5b-90a0-4fad-895f-3aa3b1b5119b",
+              "cantidad": 100,
+              "costo": 7
+            }
+          ]
+        }
+      ],
+      "total": 850,
+      "ganancia": 150,
+      "anulada": false
+    },
+    {
+      "id": "v138bbcaf-75a6-4ebe-975a-936f6b113f40",
+      "fecha": "2026-09-06T14:21:30.994Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 80,
+          "unidad": "",
+          "precio": 780,
+          "costo": 60000,
+          "ganancia": 2400,
+          "lotesUsados": [
+            {
+              "loteId": "lfe2cf978-35d9-43bf-aa54-81ac26404723",
+              "cantidad": 80,
+              "costo": 750
+            }
+          ]
+        }
+      ],
+      "total": 62400,
+      "ganancia": 2400,
+      "anulada": false
+    },
+    {
+      "id": "v1467eec3-7e56-42dc-a61c-493bac27391a",
+      "fecha": "2026-09-09T16:44:02.424Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 370,
+          "costo": 350,
+          "ganancia": 20,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 1,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 370,
+      "ganancia": 20,
+      "anulada": false
+    },
+    {
+      "id": "v1b2c758e-ce98-4aa7-9c2f-5f7e97e27b57",
+      "fecha": "2026-09-06T14:22:25.843Z",
+      "items": [
+        {
+          "productoId": "p6a7e9eaa-6127-41c0-86c8-9613a212381f",
+          "nombre": "Papel sanitario la excelencia",
+          "cantidad": 3,
+          "unidad": "",
+          "precio": 650,
+          "costo": 1800,
+          "ganancia": 150,
+          "lotesUsados": [
+            {
+              "loteId": "la47a7c69-28fd-4287-8606-d82fcb6f0bb5",
+              "cantidad": 3,
+              "costo": 600
+            }
+          ]
+        }
+      ],
+      "total": 1950,
+      "ganancia": 150,
+      "anulada": false
+    },
+    {
+      "id": "v22e9e932-69bc-4592-bd07-e3b566b495f1",
+      "fecha": "2026-09-09T16:43:54.317Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 340,
+          "costo": 1600,
+          "ganancia": 100,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 5,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 1700,
+      "ganancia": 100,
+      "anulada": false
+    },
+    {
+      "id": "v27023e61-4034-4225-93b6-b6652efc0d10",
+      "fecha": "2026-09-09T01:11:33.390Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 370,
+          "costo": 3500,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 10,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 3700,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v2f7089b7-85c8-44aa-9ce2-e2e688e4a1b5",
+      "fecha": "2026-09-06T14:22:33.620Z",
+      "items": [
+        {
+          "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+          "nombre": "Perlas de olor",
+          "cantidad": 50,
+          "unidad": "",
+          "precio": 85,
+          "costo": 3750,
+          "ganancia": 500,
+          "lotesUsados": [
+            {
+              "loteId": "l08c25ac1-0316-42f4-a14d-e3321ddb6a9a",
+              "cantidad": 50,
+              "costo": 75
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 500,
+      "anulada": false
+    },
+    {
+      "id": "v41e409de-53e6-4e64-9b75-1a2d04ed94f5",
+      "fecha": "2026-08-23T14:37:28.789Z",
+      "items": [
+        {
+          "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+          "nombre": "Toallitas húmedas 120uds",
+          "cantidad": 15,
+          "unidad": "",
+          "precio": 740,
+          "costo": 10500,
+          "ganancia": 600,
+          "lotesUsados": [
+            {
+              "loteId": "lcbb71b5f-c84e-4fd7-8a56-6dbf6899f931",
+              "cantidad": 15,
+              "costo": 700
+            }
+          ]
+        }
+      ],
+      "total": 11100,
+      "ganancia": 600,
+      "anulada": false
+    },
+    {
+      "id": "v4a05b4f4-e3e3-4a74-b528-10c95b42a185",
+      "fecha": "2026-09-09T01:13:27.069Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 40,
+          "unidad": "",
+          "precio": 760,
+          "costo": 26800,
+          "ganancia": 3600,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 40,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 30400,
+      "ganancia": 3600,
+      "anulada": false
+    },
+    {
+      "id": "v4a52b8a1-373f-429e-be37-7a6cc2e9df87",
+      "fecha": "2026-09-06T14:18:42.632Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 72,
+          "unidad": "",
+          "precio": 50,
+          "costo": 3240,
+          "ganancia": 360,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 72,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 3600,
+      "ganancia": 360,
+      "anulada": false
+    },
+    {
+      "id": "v4a57ec5a-1cb2-4f5b-ba32-34b710b456d6",
+      "fecha": "2026-09-09T01:10:06.169Z",
+      "items": [
+        {
+          "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+          "nombre": "Jabitas",
+          "cantidad": 100,
+          "unidad": "",
+          "precio": 8.5,
+          "costo": 700,
+          "ganancia": 150,
+          "lotesUsados": [
+            {
+              "loteId": "l3bcbcc5b-90a0-4fad-895f-3aa3b1b5119b",
+              "cantidad": 100,
+              "costo": 7
+            }
+          ]
+        }
+      ],
+      "total": 850,
+      "ganancia": 150,
+      "anulada": false
+    },
+    {
+      "id": "v4a832b9b-04fa-4e3d-851a-08f63521299e",
+      "fecha": "2026-09-11T17:08:49.458Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 11,
+          "unidad": "",
+          "precio": 780,
+          "costo": 7370,
+          "ganancia": 1210,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 11,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 8580,
+      "ganancia": 1210,
+      "anulada": false
+    },
+    {
+      "id": "v53b8c99c-177a-48ae-b98f-1a57daa946fb",
+      "fecha": "2026-08-23T15:06:01.816Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 120,
+          "unidad": "",
+          "precio": 55,
+          "costo": 5400,
+          "ganancia": 1200,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 120,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 6600,
+      "ganancia": 1200,
+      "anulada": false
+    },
+    {
+      "id": "v5712a44b-ada6-4bf9-ab67-d3b776ffa96b",
+      "fecha": "2026-08-25T12:26:35.048Z",
+      "items": [
+        {
+          "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+          "nombre": "Toallitas húmedas 120uds",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 740,
+          "costo": 700,
+          "ganancia": 40,
+          "lotesUsados": [
+            {
+              "loteId": "lcbb71b5f-c84e-4fd7-8a56-6dbf6899f931",
+              "cantidad": 1,
+              "costo": 700
+            }
+          ]
+        }
+      ],
+      "total": 740,
+      "ganancia": 40,
+      "anulada": false
+    },
+    {
+      "id": "v5dc13561-1591-418f-b1d9-2b3373c32ee0",
+      "fecha": "2026-09-09T16:25:21.838Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 40,
+          "unidad": "",
+          "precio": 760,
+          "costo": 26800,
+          "ganancia": 3600,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 40,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 30400,
+      "ganancia": 3600,
+      "anulada": false
+    },
+    {
+      "id": "v5e1310d2-36eb-4994-ae65-6fcd602a5274",
+      "fecha": "2026-09-11T14:52:54.800Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 780,
+          "costo": 3350,
+          "ganancia": 550,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 5,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 3900,
+      "ganancia": 550,
+      "anulada": false
+    },
+    {
+      "id": "v67f3be0f-3cdc-49d8-8d8c-964380c36ff5",
+      "fecha": "2026-09-06T14:18:12.561Z",
+      "items": [
+        {
+          "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+          "nombre": "Toallitas húmedas 120uds",
+          "cantidad": 8,
+          "unidad": "",
+          "precio": 740,
+          "costo": 5600,
+          "ganancia": 320,
+          "lotesUsados": [
+            {
+              "loteId": "lcbb71b5f-c84e-4fd7-8a56-6dbf6899f931",
+              "cantidad": 8,
+              "costo": 700
+            }
+          ]
+        }
+      ],
+      "total": 5920,
+      "ganancia": 320,
+      "anulada": false
+    },
+    {
+      "id": "v6eb1187d-4c1c-489f-ac1e-adeaccfcd184",
+      "fecha": "2026-09-06T14:18:54.015Z",
+      "items": [
+        {
+          "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+          "nombre": "Jabitas",
+          "cantidad": 500,
+          "unidad": "",
+          "precio": 8.5,
+          "costo": 3300,
+          "ganancia": 950,
+          "lotesUsados": [
+            {
+              "loteId": "la0e5b8bf-2c0c-4b22-baf1-cbc2c49f7962",
+              "cantidad": 200,
+              "costo": 6
+            },
+            {
+              "loteId": "l3bcbcc5b-90a0-4fad-895f-3aa3b1b5119b",
+              "cantidad": 300,
+              "costo": 7
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 950,
+      "anulada": false
+    },
+    {
+      "id": "v75349bf3-305e-4d47-81ce-b28e91794d47",
+      "fecha": "2026-08-23T14:43:17.403Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 370,
+          "costo": 7000,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 20,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 7400,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "v78f65bcc-574c-4744-a5ba-17f4bdc40985",
+      "fecha": "2026-08-23T14:37:13.414Z",
+      "items": [
+        {
+          "productoId": "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+          "nombre": "Toallitas húmedas 90uds",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 600,
+          "costo": 5600,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "lbc2e6b0b-ccf3-4bdb-8b22-53e6919b0218",
+              "cantidad": 10,
+              "costo": 560
+            }
+          ]
+        }
+      ],
+      "total": 6000,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "v829aa606-6a7a-4956-83ec-71bd2bf3bc54",
+      "fecha": "2026-09-09T01:15:20.638Z",
+      "items": [
+        {
+          "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+          "nombre": "Perlas de olor",
+          "cantidad": 50,
+          "unidad": "",
+          "precio": 85,
+          "costo": 3750,
+          "ganancia": 500,
+          "lotesUsados": [
+            {
+              "loteId": "l08c25ac1-0316-42f4-a14d-e3321ddb6a9a",
+              "cantidad": 50,
+              "costo": 75
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 500,
+      "anulada": false
+    },
+    {
+      "id": "v8364bdc2-8d57-48e4-8a93-ca2af8b6e799",
+      "fecha": "2026-09-11T14:52:44.493Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 370,
+          "costo": 1750,
+          "ganancia": 100,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 5,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 1850,
+      "ganancia": 100,
+      "anulada": false
+    },
+    {
+      "id": "v86c32918-feff-4bb5-91e8-017fb1e81799",
+      "fecha": "2026-08-23T14:42:30.236Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 60,
+          "unidad": "",
+          "precio": 340,
+          "costo": 19200,
+          "ganancia": 1200,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 60,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 20400,
+      "ganancia": 1200,
+      "anulada": false
+    },
+    {
+      "id": "v87066f7b-60f7-4c43-8243-9365b09c8b96",
+      "fecha": "2026-08-23T14:41:35.023Z",
+      "items": [
+        {
+          "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+          "nombre": "Jabitas",
+          "cantidad": 1800,
+          "unidad": "",
+          "precio": 7.5,
+          "costo": 10800,
+          "ganancia": 2700,
+          "lotesUsados": [
+            {
+              "loteId": "la0e5b8bf-2c0c-4b22-baf1-cbc2c49f7962",
+              "cantidad": 1800,
+              "costo": 6
+            }
+          ]
+        }
+      ],
+      "total": 13500,
+      "ganancia": 2700,
+      "anulada": false
+    },
+    {
+      "id": "v8ac325d7-f439-4621-bcc9-59e9287d5d71",
+      "fecha": "2026-09-09T16:13:42.143Z",
+      "items": [
+        {
+          "productoId": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+          "nombre": "Aparatico de afeitar",
+          "cantidad": 2,
+          "unidad": "",
+          "precio": 850,
+          "costo": 1500,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "ldc4bcc1f-5db5-443f-ab89-995e5de8944e",
+              "cantidad": 2,
+              "costo": 750
+            }
+          ]
+        }
+      ],
+      "total": 1700,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v8fefcb34-edb2-4576-88c3-203c63bc7b11",
+      "fecha": "2026-09-06T14:52:07.551Z",
+      "items": [
+        {
+          "productoId": "p6a7e9eaa-6127-41c0-86c8-9613a212381f",
+          "nombre": "Papel sanitario la excelencia",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 650,
+          "costo": 3000,
+          "ganancia": 250,
+          "lotesUsados": [
+            {
+              "loteId": "la47a7c69-28fd-4287-8606-d82fcb6f0bb5",
+              "cantidad": 5,
+              "costo": 600
+            }
+          ]
+        }
+      ],
+      "total": 3250,
+      "ganancia": 250,
+      "anulada": false
+    },
+    {
+      "id": "v9d238ff3-8ae6-4905-9f44-4b14fdc3c176",
+      "fecha": "2026-09-06T14:19:45.344Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 21,
+          "unidad": "",
+          "precio": 340,
+          "costo": 6720,
+          "ganancia": 420,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 21,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 7140,
+      "ganancia": 420,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3axizdkpx17",
+      "fecha": "2026-09-15T23:27:19.129Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 340,
+          "costo": 6400,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 20,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 6800,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3axy33o135z",
+      "fecha": "2026-09-15T23:27:38.703Z",
+      "items": [
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 30,
+          "unidad": "",
+          "precio": 420,
+          "costo": 11400,
+          "ganancia": 1200,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 30,
+              "costo": 380
+            }
+          ]
+        }
+      ],
+      "total": 12600,
+      "ganancia": 1200,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3ay9nuu2b8m",
+      "fecha": "2026-09-15T23:27:53.706Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 12,
+          "unidad": "",
+          "precio": 50,
+          "costo": 540,
+          "ganancia": 60,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 12,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 600,
+      "ganancia": 60,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3aypvqkpnyk",
+      "fecha": "2026-09-15T23:28:14.726Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 370,
+          "costo": 3500,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 10,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 3700,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3bqdtshsc0p",
+      "fecha": "2026-09-15T23:49:45.472Z",
+      "items": [
+        {
+          "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+          "nombre": "Toallitas húmedas 120uds",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 720,
+          "costo": 3400,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bdn4ellcay",
+              "cantidad": 5,
+              "costo": 680
+            }
+          ]
+        }
+      ],
+      "total": 3600,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3brwrjtpur8",
+      "fecha": "2026-09-15T23:50:56.671Z",
+      "items": [
+        {
+          "productoId": "p_mu3b1i71hl6hl",
+          "nombre": "Sopita",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 235,
+          "costo": 2200,
+          "ganancia": 150,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bc083go8vd",
+              "cantidad": 10,
+              "costo": 220
+            }
+          ]
+        }
+      ],
+      "total": 2350,
+      "ganancia": 150,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3buqk1kxcjv",
+      "fecha": "2026-09-15T23:53:08.593Z",
+      "items": [
+        {
+          "productoId": "p_mu3b14fe7sdt2",
+          "nombre": "Café",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 530,
+          "costo": 10200,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bd01178sem",
+              "cantidad": 20,
+              "costo": 510
+            }
+          ]
+        }
+      ],
+      "total": 10600,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3bvh3ar2vmu",
+      "fecha": "2026-09-15T23:53:42.982Z",
+      "items": [
+        {
+          "productoId": "p_mu3b0oka83bgb",
+          "nombre": "Leche condensada",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 780,
+          "costo": 7600,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bcpz1cmafr",
+              "cantidad": 10,
+              "costo": 760
+            }
+          ]
+        }
+      ],
+      "total": 7800,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mu3c1ahkea0hn",
+      "fecha": "2026-09-15T23:58:14.360Z",
+      "items": [
+        {
+          "productoId": "p_mu3b14fe7sdt2",
+          "nombre": "Café",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 530,
+          "costo": 2550,
+          "ganancia": 100,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bd01178sem",
+              "cantidad": 5,
+              "costo": 510
+            }
+          ]
+        }
+      ],
+      "total": 2650,
+      "ganancia": 100,
+      "anulada": false
+    },
+    {
+      "id": "v_mu4p8xdmecwcf",
+      "fecha": "2026-09-16T22:55:51.802Z",
+      "items": [
+        {
+          "productoId": "p_mu3b0oka83bgb",
+          "nombre": "Leche condensada",
+          "cantidad": 18,
+          "unidad": "",
+          "precio": 780,
+          "costo": 13680,
+          "ganancia": 360,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bcpz1cmafr",
+              "cantidad": 18,
+              "costo": 760
+            }
+          ]
+        }
+      ],
+      "total": 14040,
+      "ganancia": 360,
+      "anulada": false
+    },
+    {
+      "id": "v_mu4p97qgpafbx",
+      "fecha": "2026-09-16T22:56:05.224Z",
+      "items": [
+        {
+          "productoId": "p_mu3b14fe7sdt2",
+          "nombre": "Café",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 530,
+          "costo": 5100,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bd01178sem",
+              "cantidad": 10,
+              "costo": 510
+            }
+          ]
+        }
+      ],
+      "total": 5300,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mu4qtg3ywv6ys",
+      "fecha": "2026-09-16T23:39:48.814Z",
+      "items": [
+        {
+          "productoId": "p_mu3b0oka83bgb",
+          "nombre": "Leche condensada",
+          "cantidad": 15,
+          "unidad": "",
+          "precio": 780,
+          "costo": 11400,
+          "ganancia": 300,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bcpz1cmafr",
+              "cantidad": 15,
+              "costo": 760
+            }
+          ]
+        }
+      ],
+      "total": 11700,
+      "ganancia": 300,
+      "anulada": false
+    },
+    {
+      "id": "v_mu6yn22t3465w",
+      "fecha": "2026-09-18T12:54:19.973Z",
+      "items": [
+        {
+          "productoId": "p_mu3b0oka83bgb",
+          "nombre": "Leche condensada",
+          "cantidad": 24,
+          "unidad": "",
+          "precio": 790,
+          "costo": 18600,
+          "ganancia": 360,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu6yj9bqwgeyr",
+              "cantidad": 24,
+              "costo": 775
+            }
+          ]
+        }
+      ],
+      "total": 18960,
+      "ganancia": 360,
+      "anulada": false
+    },
+    {
+      "id": "v_mu9w650yka8yd",
+      "fecha": "2026-09-20T14:08:29.939Z",
+      "items": [
+        {
+          "productoId": "p_mu3b1i71hl6hl",
+          "nombre": "Sopita",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 235,
+          "costo": 1100,
+          "ganancia": 75,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bc083go8vd",
+              "cantidad": 5,
+              "costo": 220
+            }
+          ]
+        },
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 18,
+          "unidad": "",
+          "precio": 370,
+          "costo": 6300,
+          "ganancia": 360,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 18,
+              "costo": 350
+            }
+          ]
+        },
+        {
+          "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+          "nombre": "Toallitas húmedas 120uds",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 720,
+          "costo": 680,
+          "ganancia": 40,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bdn4ellcay",
+              "cantidad": 1,
+              "costo": 680
+            }
+          ]
+        },
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 8,
+          "unidad": "",
+          "precio": 420,
+          "costo": 3040,
+          "ganancia": 320,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 8,
+              "costo": 380
+            }
+          ]
+        },
+        {
+          "productoId": "p_mu3b14fe7sdt2",
+          "nombre": "Café",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 530,
+          "costo": 2550,
+          "ganancia": 100,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bd01178sem",
+              "cantidad": 5,
+              "costo": 510
+            }
+          ]
+        },
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá 500g",
+          "cantidad": 10,
+          "unidad": "",
+          "precio": 810,
+          "costo": 7800,
+          "ganancia": 300,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu9v1zsevmg1s",
+              "cantidad": 10,
+              "costo": 780
+            }
+          ]
+        }
+      ],
+      "total": 22665,
+      "ganancia": 1195,
+      "anulada": false
+    },
+    {
+      "id": "v_mu9wdbn97tka7",
+      "fecha": "2026-09-20T14:14:05.109Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 24,
+          "unidad": "",
+          "precio": 50,
+          "costo": 1080,
+          "ganancia": 120,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 24,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 1200,
+      "ganancia": 120,
+      "anulada": false
+    },
+    {
+      "id": "v_mubwh7itk0pt0",
+      "fecha": "2026-09-21T23:52:38.741Z",
+      "items": [
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 420,
+          "costo": 1900,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 5,
+              "costo": 380
+            }
+          ]
+        }
+      ],
+      "total": 2100,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mues2sg8o8qp1",
+      "fecha": "2026-09-24T00:12:46.088Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá 500g",
+          "cantidad": 6,
+          "unidad": "",
+          "precio": 810,
+          "costo": 4680,
+          "ganancia": 180,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu9v1zsevmg1s",
+              "cantidad": 6,
+              "costo": 780
+            }
+          ]
+        }
+      ],
+      "total": 4860,
+      "ganancia": 180,
+      "anulada": false
+    },
+    {
+      "id": "v_mues6l8rq8o7c",
+      "fecha": "2026-09-24T00:15:43.371Z",
+      "items": [
+        {
+          "productoId": "p_mu3b1i71hl6hl",
+          "nombre": "Sopita",
+          "cantidad": 5,
+          "unidad": "",
+          "precio": 235,
+          "costo": 1100,
+          "ganancia": 75,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu3bc083go8vd",
+              "cantidad": 5,
+              "costo": 220
+            }
+          ]
+        }
+      ],
+      "total": 1175,
+      "ganancia": 75,
+      "anulada": false
+    },
+    {
+      "id": "v_mues6xnu9aq50",
+      "fecha": "2026-09-24T00:15:59.466Z",
+      "items": [
+        {
+          "productoId": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+          "nombre": "Paquete de aparatico de afeitar",
+          "cantidad": 2,
+          "unidad": "",
+          "precio": 850,
+          "costo": 1500,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "ldc4bcc1f-5db5-443f-ab89-995e5de8944e",
+              "cantidad": 2,
+              "costo": 750
+            }
+          ]
+        }
+      ],
+      "total": 1700,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "v_mues781qpwpad",
+      "fecha": "2026-09-24T00:16:12.926Z",
+      "items": [
+        {
+          "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+          "nombre": "Perlas de olor",
+          "cantidad": 50,
+          "unidad": "",
+          "precio": 85,
+          "costo": 3750,
+          "ganancia": 500,
+          "lotesUsados": [
+            {
+              "loteId": "l99c745a8-664a-4c03-881a-d6ed495ab0c5",
+              "cantidad": 50,
+              "costo": 75
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 500,
+      "anulada": false
+    },
+    {
+      "id": "v_mues7hqoqv676",
+      "fecha": "2026-09-24T00:16:25.488Z",
+      "items": [
+        {
+          "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+          "nombre": "Jabitas",
+          "cantidad": 500,
+          "unidad": "",
+          "precio": 8.5,
+          "costo": 3500,
+          "ganancia": 750,
+          "lotesUsados": [
+            {
+              "loteId": "l3bcbcc5b-90a0-4fad-895f-3aa3b1b5119b",
+              "cantidad": 500,
+              "costo": 7
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 750,
+      "anulada": false
+    },
+    {
+      "id": "v_mues7wuszxipt",
+      "fecha": "2026-09-24T00:16:45.076Z",
+      "items": [
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 420,
+          "costo": 7600,
+          "ganancia": 800,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 20,
+              "costo": 380
+            }
+          ]
+        }
+      ],
+      "total": 8400,
+      "ganancia": 800,
+      "anulada": false
+    },
+    {
+      "id": "v_mug6mkjvuect9",
+      "fecha": "2026-09-24T23:47:49.771Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 24,
+          "unidad": "",
+          "precio": 50,
+          "costo": 1080,
+          "ganancia": 120,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 24,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 1200,
+      "ganancia": 120,
+      "anulada": false
+    },
+    {
+      "id": "v_mugzfyerqc4m9",
+      "fecha": "2026-09-25T13:14:30.003Z",
+      "items": [
+        {
+          "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+          "nombre": "Set de colores",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 530,
+          "costo": 500,
+          "ganancia": 30,
+          "lotesUsados": [
+            {
+              "loteId": "lb907e25b-9acf-454f-8eed-9f6d1ee923c8",
+              "cantidad": 1,
+              "costo": 500
+            }
+          ]
+        }
+      ],
+      "total": 530,
+      "ganancia": 30,
+      "anulada": true,
+      "fechaAnulacion": "2026-09-25T13:14:37.976Z"
+    },
+    {
+      "id": "v_mugzmc4nntvv7",
+      "fecha": "2026-09-25T13:19:27.719Z",
+      "items": [
+        {
+          "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+          "nombre": "Set de colores",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 530,
+          "costo": 500,
+          "ganancia": 30,
+          "lotesUsados": [
+            {
+              "loteId": "lb907e25b-9acf-454f-8eed-9f6d1ee923c8",
+              "cantidad": 1,
+              "costo": 500
+            }
+          ]
+        }
+      ],
+      "total": 530,
+      "ganancia": 30,
+      "anulada": true,
+      "fechaAnulacion": "2026-09-25T13:19:35.342Z"
+    },
+    {
+      "id": "v_mugzn1yyrrr9v",
+      "fecha": "2026-09-25T13:20:01.210Z",
+      "items": [
+        {
+          "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+          "nombre": "Set de colores",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 530,
+          "costo": 500,
+          "ganancia": 30,
+          "lotesUsados": [
+            {
+              "loteId": "lb907e25b-9acf-454f-8eed-9f6d1ee923c8",
+              "cantidad": 1,
+              "costo": 500
+            }
+          ]
+        }
+      ],
+      "total": 530,
+      "ganancia": 30,
+      "anulada": true,
+      "fechaAnulacion": "2026-09-25T13:20:04.315Z"
+    },
+    {
+      "id": "v_muh4vqjm46n2m",
+      "fecha": "2026-09-25T15:46:44.386Z",
+      "items": [
+        {
+          "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+          "nombre": "Set de colores",
+          "cantidad": 12,
+          "unidad": "",
+          "precio": 530,
+          "costo": 6000,
+          "ganancia": 360,
+          "lotesUsados": [
+            {
+              "loteId": "lb907e25b-9acf-454f-8eed-9f6d1ee923c8",
+              "cantidad": 12,
+              "costo": 500
+            }
+          ]
+        }
+      ],
+      "total": 6360,
+      "ganancia": 360,
+      "anulada": false
+    },
+    {
+      "id": "v_mujwvrj0quotc",
+      "fecha": "2026-09-27T14:26:07.260Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá 500g",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 810,
+          "costo": 780,
+          "ganancia": 30,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu9v1zsevmg1s",
+              "cantidad": 1,
+              "costo": 780
+            }
+          ]
+        }
+      ],
+      "total": 810,
+      "ganancia": 30,
+      "anulada": true,
+      "fechaAnulacion": "2026-09-27T14:34:17.461Z"
+    },
+    {
+      "id": "v_mujx65ope5rno",
+      "fecha": "2026-09-27T14:34:12.169Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá 500g",
+          "cantidad": 1,
+          "unidad": "",
+          "precio": 810,
+          "costo": 780,
+          "ganancia": 30,
+          "lotesUsados": [
+            {
+              "loteId": "l_mu9v1zsevmg1s",
+              "cantidad": 1,
+              "costo": 780
+            }
+          ]
+        }
+      ],
+      "total": 810,
+      "ganancia": 30,
+      "anulada": true,
+      "fechaAnulacion": "2026-09-27T14:34:15.556Z"
+    },
+    {
+      "id": "va0ea91ed-2cab-45b6-bbeb-1db0a3d6c56c",
+      "fecha": "2026-08-23T14:37:54.954Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 132,
+          "unidad": "",
+          "precio": 55,
+          "costo": 5940,
+          "ganancia": 1320,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 132,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 7260,
+      "ganancia": 1320,
+      "anulada": false
+    },
+    {
+      "id": "va19a73d4-30e4-4537-a4f3-c38119322eaf",
+      "fecha": "2026-09-09T17:36:06.285Z",
+      "items": [
+        {
+          "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+          "nombre": "Sazones",
+          "cantidad": 24,
+          "unidad": "",
+          "precio": 50,
+          "costo": 1080,
+          "ganancia": 120,
+          "lotesUsados": [
+            {
+              "loteId": "l1c63a758-c72a-44a4-96dc-7470c6351c1e",
+              "cantidad": 24,
+              "costo": 45
+            }
+          ]
+        }
+      ],
+      "total": 1200,
+      "ganancia": 120,
+      "anulada": false
+    },
+    {
+      "id": "va2ab367f-358a-4d07-9b1f-42425b336377",
+      "fecha": "2026-09-11T00:23:15.140Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 40,
+          "unidad": "",
+          "precio": 760,
+          "costo": 26800,
+          "ganancia": 3600,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 40,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 30400,
+      "ganancia": 3600,
+      "anulada": false
+    },
+    {
+      "id": "va73c8ce6-08d3-4341-8590-08343cbb114f",
+      "fecha": "2026-09-06T14:17:24.547Z",
+      "items": [
+        {
+          "productoId": "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+          "nombre": "Toallitas húmedas 90uds",
+          "cantidad": 14,
+          "unidad": "",
+          "precio": 600,
+          "costo": 7840,
+          "ganancia": 560,
+          "lotesUsados": [
+            {
+              "loteId": "lbc2e6b0b-ccf3-4bdb-8b22-53e6919b0218",
+              "cantidad": 14,
+              "costo": 560
+            }
+          ]
+        }
+      ],
+      "total": 8400,
+      "ganancia": 560,
+      "anulada": false
+    },
+    {
+      "id": "vb0318334-1806-41c7-8e19-82c9889f3858",
+      "fecha": "2026-09-11T14:52:34.183Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 15,
+          "unidad": "",
+          "precio": 340,
+          "costo": 4800,
+          "ganancia": 300,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 15,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 5100,
+      "ganancia": 300,
+      "anulada": false
+    },
+    {
+      "id": "vc25186db-17ce-4126-b673-ccd8c1551161",
+      "fecha": "2026-09-06T14:19:55.060Z",
+      "items": [
+        {
+          "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+          "nombre": "Jabón carbón",
+          "cantidad": 8,
+          "unidad": "",
+          "precio": 370,
+          "costo": 2800,
+          "ganancia": 160,
+          "lotesUsados": [
+            {
+              "loteId": "l662379ed-0e35-41da-93b9-17a5755b18ca",
+              "cantidad": 8,
+              "costo": 350
+            }
+          ]
+        }
+      ],
+      "total": 2960,
+      "ganancia": 160,
+      "anulada": false
+    },
+    {
+      "id": "vd44f3c16-6ff9-4c4a-8619-aa22a4daa2a4",
+      "fecha": "2026-09-09T01:11:03.907Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 75,
+          "unidad": "",
+          "precio": 340,
+          "costo": 24000,
+          "ganancia": 1500,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 75,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 25500,
+      "ganancia": 1500,
+      "anulada": false
+    },
+    {
+      "id": "vd8a4ac28-637c-4cd2-b1a3-bde6804c8196",
+      "fecha": "2026-09-11T16:06:45.277Z",
+      "items": [
+        {
+          "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+          "nombre": "Jabón aura",
+          "cantidad": 20,
+          "unidad": "",
+          "precio": 340,
+          "costo": 6400,
+          "ganancia": 400,
+          "lotesUsados": [
+            {
+              "loteId": "l2a0e8b88-ce7c-4cf7-a113-c1a1b5952fb6",
+              "cantidad": 20,
+              "costo": 320
+            }
+          ]
+        }
+      ],
+      "total": 6800,
+      "ganancia": 400,
+      "anulada": false
+    },
+    {
+      "id": "vda050d69-f067-4bef-92f4-4d0f6603735d",
+      "fecha": "2026-09-11T00:25:19.382Z",
+      "items": [
+        {
+          "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+          "nombre": "Perlas de olor",
+          "cantidad": 50,
+          "unidad": "",
+          "precio": 85,
+          "costo": 3750,
+          "ganancia": 500,
+          "lotesUsados": [
+            {
+              "loteId": "l690471e3-16ed-4b27-a239-940c0a1170f5",
+              "cantidad": 50,
+              "costo": 75
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 500,
+      "anulada": false
+    },
+    {
+      "id": "vdb4fec30-eb14-4388-8611-360cd5826470",
+      "fecha": "2026-09-09T16:45:41.947Z",
+      "items": [
+        {
+          "productoId": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+          "nombre": "Aparatico de afeitar",
+          "cantidad": 2,
+          "unidad": "",
+          "precio": 850,
+          "costo": 1500,
+          "ganancia": 200,
+          "lotesUsados": [
+            {
+              "loteId": "ldc4bcc1f-5db5-443f-ab89-995e5de8944e",
+              "cantidad": 2,
+              "costo": 750
+            }
+          ]
+        }
+      ],
+      "total": 1700,
+      "ganancia": 200,
+      "anulada": false
+    },
+    {
+      "id": "vf28aa75d-ecc3-450b-8302-127bdbaf922f",
+      "fecha": "2026-09-11T00:23:00.113Z",
+      "items": [
+        {
+          "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+          "nombre": "Detergente Defá",
+          "cantidad": 120,
+          "unidad": "",
+          "precio": 750,
+          "costo": 80400,
+          "ganancia": 9600,
+          "lotesUsados": [
+            {
+              "loteId": "ld5ad6810-ebeb-4585-bc4c-ae5feebd0d87",
+              "cantidad": 120,
+              "costo": 670
+            }
+          ]
+        }
+      ],
+      "total": 90000,
+      "ganancia": 9600,
+      "anulada": false
+    },
+    {
+      "id": "vf6c838e4-9ce8-4e7c-b3b0-d5f9477be8c8",
+      "fecha": "2026-09-06T14:21:39.639Z",
+      "items": [
+        {
+          "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+          "nombre": "Jabón dayli",
+          "cantidad": 33,
+          "unidad": "",
+          "precio": 420,
+          "costo": 12540,
+          "ganancia": 1320,
+          "lotesUsados": [
+            {
+              "loteId": "l2dfd3497-ce83-42ca-aca9-c60f7e9e28e1",
+              "cantidad": 33,
+              "costo": 380
+            }
+          ]
+        }
+      ],
+      "total": 13860,
+      "ganancia": 1320,
+      "anulada": false
+    },
+    {
+      "id": "vf7eec6dd-a796-4583-ab92-eacea9174c2d",
+      "fecha": "2026-09-09T16:08:28.567Z",
+      "items": [
+        {
+          "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+          "nombre": "Perlas de olor",
+          "cantidad": 50,
+          "unidad": "",
+          "precio": 85,
+          "costo": 3750,
+          "ganancia": 500,
+          "lotesUsados": [
+            {
+              "loteId": "l690471e3-16ed-4b27-a239-940c0a1170f5",
+              "cantidad": 50,
+              "costo": 75
+            }
+          ]
+        }
+      ],
+      "total": 4250,
+      "ganancia": 500,
+      "anulada": false
+    }
+  ],
+  "compras": [
+    {
+      "id": "c00e6e129-7c0f-4082-a3ae-4b18328ea787",
+      "fecha": "2026-08-23T14:42:51.072Z",
+      "productoId": "p87569035-9107-426d-86c2-6e44b1176b1d",
+      "productoNombre": "Jabón carbón",
+      "productoUnidad": "",
+      "cantidad": 72,
+      "costo": 350,
+      "total": 25200,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c02d9bf6b-2cd6-42db-928b-7366345e5c14",
+      "fecha": "2026-09-11T15:24:19.538Z",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidad": 200,
+      "costo": 75,
+      "total": 15000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c10d73fb2-c087-4958-b609-bb4e389be8f5",
+      "fecha": "2026-09-09T16:06:34.190Z",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidad": 100,
+      "costo": 75,
+      "total": 7500,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c20b092a4-7848-468d-b8df-22fcb3ee6133",
+      "fecha": "2026-08-23T14:35:52.291Z",
+      "productoId": "p1b9f1fa6-915f-4e59-82ef-42c2952fe356",
+      "productoNombre": "Set de colores",
+      "productoUnidad": "",
+      "cantidad": 12,
+      "costo": 500,
+      "total": 6000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c504c34d9-8950-415c-8e3d-1047af9c81a6",
+      "fecha": "2026-08-27T01:49:21.392Z",
+      "productoId": "p6a7e9eaa-6127-41c0-86c8-9613a212381f",
+      "productoNombre": "Papel sanitario la excelencia",
+      "productoUnidad": "",
+      "cantidad": 40,
+      "costo": 600,
+      "total": 24000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c6f8eefec-773b-472b-84d6-a992fd482efb",
+      "fecha": "2026-09-09T16:08:13.302Z",
+      "productoId": "p97744180-23b0-46b8-9229-5d01eda38ab4",
+      "productoNombre": "Aparatico de afeitar",
+      "productoUnidad": "",
+      "cantidad": 24,
+      "costo": 750,
+      "total": 18000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c872c8b01-b9bf-4c68-b199-a8609afe5ea5",
+      "fecha": "2026-08-23T14:40:57.598Z",
+      "productoId": "p1236f2c6-27c9-4f98-84dd-338ae15363d7",
+      "productoNombre": "Jabón aura",
+      "productoUnidad": "",
+      "cantidad": 216,
+      "costo": 320,
+      "total": 69120,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c877d2f67-5e55-44a4-9fd7-120338177464",
+      "fecha": "2026-08-23T14:35:10.999Z",
+      "productoId": "p68ad8227-b87b-4307-aa07-f4def7fa05fa",
+      "productoNombre": "Toallitas húmedas 90uds",
+      "productoUnidad": "",
+      "cantidad": 24,
+      "costo": 560,
+      "total": 13440,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c8b128cc0-0f75-4ad4-81ee-14f56f15c629",
+      "fecha": "2026-09-06T14:21:19.034Z",
+      "productoId": "p8b25d6d6-762e-46c0-9c91-b2cf5032cbba",
+      "productoNombre": "Perlas de olor",
+      "productoUnidad": "",
+      "cantidad": 100,
+      "costo": 75,
+      "total": 7500,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c9a53598b-ca32-4167-882e-4e324a04d843",
+      "fecha": "2026-08-23T14:38:32.065Z",
+      "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "productoNombre": "Jabitas",
+      "productoUnidad": "",
+      "cantidad": 2000,
+      "costo": 6,
+      "total": 12000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "c_mu3bc082yri3o",
+      "fecha": "2026-09-15T23:38:34.658Z",
+      "productoId": "p_mu3b1i71hl6hl",
+      "productoNombre": "Sopita",
+      "cantidad": 50,
+      "costo": 220,
+      "total": 11000,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mu3bcpz1bgj3u",
+      "fecha": "2026-09-15T23:39:08.029Z",
+      "productoId": "p_mu3b0oka83bgb",
+      "productoNombre": "Leche condensada",
+      "cantidad": 48,
+      "costo": 760,
+      "total": 36480,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mu3bd011au6ff",
+      "fecha": "2026-09-15T23:39:21.061Z",
+      "productoId": "p_mu3b14fe7sdt2",
+      "productoNombre": "Café",
+      "cantidad": 40,
+      "costo": 510,
+      "total": 20400,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mu3bdn4ebjxj5",
+      "fecha": "2026-09-15T23:39:50.990Z",
+      "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "productoNombre": "Toallitas húmedas 120uds",
+      "cantidad": 12,
+      "costo": 680,
+      "total": 8160,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mu6yj9bqxouzj",
+      "fecha": "2026-09-18T12:51:22.742Z",
+      "productoId": "p_mu3b0oka83bgb",
+      "productoNombre": "Leche condensada",
+      "cantidad": 24,
+      "costo": 775,
+      "total": 18600,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mu9v1zseg3vy6",
+      "fecha": "2026-09-20T13:37:16.910Z",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá 500g",
+      "cantidad": 80,
+      "costo": 780,
+      "total": 62400,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "c_mug5wl31yr3za",
+      "fecha": "2026-09-24T23:27:37.405Z",
+      "productoId": "p_mu3b14fe7sdt2",
+      "productoNombre": "Café",
+      "cantidad": 20,
+      "costo": 510,
+      "total": 10200,
+      "anulada": false,
+      "empaqueInfo": null
+    },
+    {
+      "id": "cca5e78cd-8ea0-4706-8f28-8f8fd580ae25",
+      "fecha": "2026-09-06T14:27:52.604Z",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá",
+      "productoUnidad": "",
+      "cantidad": 276,
+      "costo": 670,
+      "total": 184920,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "cce109c57-d01b-42f1-ae68-0ae6e0efd933",
+      "fecha": "2026-08-23T14:38:49.097Z",
+      "productoId": "p3386fe00-c0a9-4c8b-a8a0-a45cac250ae8",
+      "productoNombre": "Jabitas",
+      "productoUnidad": "",
+      "cantidad": 1000,
+      "costo": 7,
+      "total": 7000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "ccf6293ca-b4f8-4f4e-af07-262315a972d4",
+      "fecha": "2026-09-06T14:20:33.090Z",
+      "productoId": "p2db64ac4-c6eb-400a-a0bd-c38c5a35f1e6",
+      "productoNombre": "Detergente Defá",
+      "productoUnidad": "",
+      "cantidad": 80,
+      "costo": 750,
+      "total": 60000,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "cd0089d1a-499d-4425-a3ea-9dfd7c1326d6",
+      "fecha": "2026-09-06T14:20:55.926Z",
+      "productoId": "p1a245188-e72d-4ff7-82f7-51e1c7c1998e",
+      "productoNombre": "Jabón dayli",
+      "productoUnidad": "",
+      "cantidad": 106,
+      "costo": 380,
+      "total": 40280,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "cd30a8f26-6361-4e24-8228-8c4572f646c5",
+      "fecha": "2026-08-23T14:35:23.250Z",
+      "productoId": "p256ac076-e95a-43a0-9e8b-c4b02e10f27a",
+      "productoNombre": "Toallitas húmedas 120uds",
+      "productoUnidad": "",
+      "cantidad": 24,
+      "costo": 700,
+      "total": 16800,
+      "anulada": false,
+      "unidad": ""
+    },
+    {
+      "id": "ce40e20ed-3ded-4888-8ec2-738063bd5ec4",
+      "fecha": "2026-08-23T14:35:39.202Z",
+      "productoId": "p695800ec-68d1-457a-bc14-ec4f12aa65e1",
+      "productoNombre": "Sazones",
+      "productoUnidad": "",
+      "cantidad": 1200,
+      "costo": 45,
+      "total": 54000,
+      "anulada": false,
+      "unidad": ""
+    }
+  ],
+  "ajustes": [],
+  "arqueos": [],
+  "movCaja": [],
+  "cierres": [
+    {
+      "id": "z7c117001-69f2-48e6-96df-e641b961f138",
+      "periodo": "23/08/26 - 09/09/26",
+      "fechaCierre": "2026-09-09T17:44:10.697Z",
+      "totalVentas": 310330,
+      "totalCompras": 410920,
+      "ganancia": 24070
+    },
+    {
+      "id": "z_mua02zt4696c5",
+      "periodo": "11/09/26 - 20/09/26",
+      "fechaCierre": "2026-09-20T15:58:01.671Z",
+      "periodoInicio": "2026-09-11T17:35:24.354Z",
+      "periodoFin": "2026-09-20T15:58:01.671Z",
+      "totalVentas": 232500,
+      "totalCompras": 392340,
+      "cogs": 220390,
+      "bruta": 12110,
+      "gastos": 0,
+      "mermas": 0,
+      "ganancia": 12110,
+      "numVentas": 31,
+      "numCompras": 17,
+      "numGastos": 0,
+      "numMermas": 0,
+      "cajaAlCierre": 76930,
+      "inventarioAlCierre": 323130,
+      "capitalAlCierre": 400000,
+      "cerrado": true
+    },
+    {
+      "id": "z_muihyv7xd4qm5",
+      "periodo": "20/09/26 - 26/09/26",
+      "fechaCierre": "2026-09-26T14:40:51.596Z",
+      "periodoInicio": "2026-09-20T15:58:01.671Z",
+      "periodoFin": "2026-09-26T14:40:51.596Z",
+      "totalVentas": 266570,
+      "totalCompras": 317280,
+      "cogs": 250185,
+      "bruta": 16385,
+      "gastos": 0,
+      "mermas": 0,
+      "ganancia": 16385,
+      "numVentas": 43,
+      "numCompras": 17,
+      "numGastos": 0,
+      "numMermas": 0,
+      "cajaAlCierre": 209820,
+      "inventarioAlCierre": 390225,
+      "capitalAlCierre": 600000,
+      "cerrado": true
+    },
+    {
+      "id": "zbfae14bf-91e6-49a8-acd4-039ab69bdf05",
+      "periodo": "23/08/26 - 23/08/26",
+      "fechaCierre": "2026-08-23T15:44:26.971Z",
+      "totalVentas": 125940,
+      "totalCompras": 313320,
+      "ganancia": 11960
+    },
+    {
+      "id": "zf7e7328d-5e20-4a69-b987-43b43fe6ce86",
+      "periodo": "09/09/26 - 11/09/26",
+      "fechaCierre": "2026-09-11T17:35:24.354Z",
+      "totalVentas": 209100,
+      "totalCompras": 15000,
+      "ganancia": 21280
+    }
+  ],
+  "capital": [
+    {
+      "id": "k4e9e188b-6a7c-4a7f-b673-f7fcd1145500",
+      "fecha": "2026-08-25T12:25:22.050Z",
+      "monto": 200000,
+      "nota": "",
+      "socioId": "so_mu76gaxpkjsjq"
+    },
+    {
+      "id": "k_muerqfpyfu3sm",
+      "fecha": "2026-09-24T00:03:09.718Z",
+      "monto": 200000,
+      "nota": "",
+      "socioId": "so_mu76gaxpkjsjq"
+    }
+  ],
+  "retiros": [
+    {
+      "id": "r235a38f8-2250-4d5e-88d1-2b31d0a3bb95",
+      "fecha": "2026-09-11T17:34:17.990Z",
+      "monto": 21200,
+      "concepto": "Reparto"
+    },
+    {
+      "id": "r62b60dca-a779-4410-bec9-6fdec4de9d80",
+      "fecha": "2026-09-09T17:43:57.634Z",
+      "monto": 24000,
+      "concepto": "Reparto de ganancias"
+    },
+    {
+      "id": "r_mua022zgytwwz",
+      "fecha": "2026-09-20T15:57:19.133Z",
+      "monto": 12200,
+      "concepto": "Repartir"
+    },
+    {
+      "id": "r_muihyme6rn40q",
+      "fecha": "2026-09-26T14:40:40.158Z",
+      "monto": 16400,
+      "concepto": "Reparto"
+    },
+    {
+      "id": "rf2a192cc-d126-45ab-b473-999ae393ac54",
+      "fecha": "2026-08-23T15:43:54.352Z",
+      "monto": 11960,
+      "concepto": "Reparto de utilidad"
+    }
+  ],
+  "socios": [
+    {
+      "id": "so_mu76fxwpd5u7t",
+      "nombre": "Socio Uno",
+      "porcentaje": 75,
+      "aporte": 0,
+      "fecha": "2026-09-18T16:32:44.905Z",
+      "activo": true
+    },
+    {
+      "id": "so_mu76gaxpkjsjq",
+      "nombre": "Socio Dos 2",
+      "porcentaje": 25,
+      "aporte": 0,
+      "fecha": "2026-09-18T16:33:01.789Z",
+      "activo": true
+    }
+  ],
+  "distribuciones": [],
+  "gastos": []
+}

@@ -1,0 +1,20 @@
+name: CI
+
+# Quality gates para PRs. Los pushes a las ramas de entrega los cubre
+# deploy.yml (pipeline completo: gates → build web + Pages → APK firmado).
+# Nota: los `uses:` de workflows reusables requieren `secrets: inherit`
+# para que quality/e2e vean VITE_TG_APP_KEY — sin esto el build de E2E
+# hornea la key vacía y el smoke falla con 401 del proxy.
+on:
+  pull_request:
+
+jobs:
+  quality:
+    name: Quality gates
+    uses: ./.github/workflows/quality.yml
+    secrets: inherit
+
+  e2e:
+    name: E2E + Lighthouse
+    uses: ./.github/workflows/e2e.yml
+    secrets: inherit

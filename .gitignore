@@ -1,0 +1,17 @@
+node_modules
+dist/
+.DS_Store
+*.log
+*.bak
+*.bak-*
+*.bak-*
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+bundle-report.html
+# Keystore de firma: NUNCA al repo (es público) — vive en GitHub secrets
+*.keystore
+*.jks
+android/app/tienda-pro-release.keystore

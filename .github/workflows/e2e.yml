@@ -1,0 +1,162 @@
+name: E2E + Lighthouse
+
+# Pruebas que requieren un navegador real contra el build de producción:
+# - smoke: la app carga, navega por todas las secciones sin errores de consola
+# - funcional: flujo contable completo (producto → compra → venta → gasto →
+#   socio → caja → libro diario balanceado → cuadre) validando la DB
+# - enlace: dos "teléfonos" se sincronizan por WebRTC de verdad, pasando los
+#   códigos por QR leídos; arranca su propio servidor de desarrollo
+# - lighthouse: presupuesto de performance / accesibilidad / best-practices
+#
+# Estas pruebas cazan bugs que los tests unitarios no ven: el fix del
+# modal-box portaled fuera de pantalla (regresión reka-ui) solo se detectó
+# así.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/smoke.spec.mjs'
+      - 'tests/functional.spec.mjs'
+      - 'tests/sync-enlace.spec.mjs'
+      - 'tests/fixtures/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/e2e.yml'
+
+jobs:
+  e2e:
+    name: E2E smoke + funcional (Chromium móvil)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build de producción
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
+
+      - name: Instalar Chromium de playwright
+        run: |
+          npx playwright-core install chromium --with-deps
+          echo "CHROMIUM_PATH=$(ls $HOME/.cache/ms-playwright/chromium-*/chrome-linux*/chrome | head -1)" >> "$GITHUB_ENV"
+
+      - name: Servir build (vite preview)
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 3
+          curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
+
+      - name: Smoke test (carga y navegación sin errores)
+        run: node tests/smoke.spec.mjs
+        env:
+          BASE_URL: http://localhost:4173/Tienda-ultima/
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Test funcional E2E (flujo contable completo)
+        run: node tests/functional.spec.mjs
+        env:
+          BASE_URL: http://localhost:4173/Tienda-ultima/
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Prueba del enlace por WiFi (WebRTC real, dos dispositivos)
+        run: npm run test:enlace
+        env:
+          CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+
+      - name: Subir capturas si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-capturas-fallo
+          path: '*.png'
+          if-no-files-found: ignore
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse (performance / a11y / best-practices)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build de producción
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
+
+      - name: Servir build (vite preview)
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 3
+          curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
+
+      # Umbrales tipo trinquete: se calibraron contra el build actual
+      # (perf 75 / a11y 95 / bp 96 en 4G simulada). Subirlos cuando
+      # el build mejore, nunca bajarlos.
+      #
+      # MEDIANA DE 3: los runners compartidos de GitHub tienen varianza de CPU
+      # brutal (2026-10-16: mismo commit, local 72-78 vs runner 51-61; TBT
+      # 134-312 ms vs 536-905 ms). Una sola corrida hace el gate de lotería;
+      # la mediana de 3 filtra los picos de ruido sin aflojar los umbrales.
+      - name: Auditoría Lighthouse (mediana de 3 corridas, con umbrales)
+        run: |
+          for i in 1 2 3; do
+            npx --yes lighthouse@12 http://localhost:4173/Tienda-ultima/ \
+              --chrome-flags="--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage" \
+              --only-categories=performance,accessibility,best-practices \
+              --output=json --output-path=/tmp/lh-$i.json --quiet
+          done
+          node -e "
+            const minimo = { performance: 0.70, accessibility: 0.90, 'best-practices': 0.90 };
+            const scores = {};
+            for (let i = 1; i <= 3; i++) {
+              const d = require('/tmp/lh-' + i + '.json');
+              for (const cat of Object.keys(minimo)) {
+                (scores[cat] = scores[cat] || []).push(d.categories[cat].score);
+              }
+            }
+            let fallo = [];
+            for (const [cat, min] of Object.entries(minimo)) {
+              const arr = scores[cat].slice().sort((a, b) => a - b);
+              const mediana = arr[1];
+              const linea = cat + ': mediana ' + Math.round(mediana * 100) + '/100 (mínimo ' + Math.round(min * 100) + ') — corridas ' + arr.map((s) => Math.round(s * 100)).join('/');
+              console.log(mediana >= min ? '  ✓ ' + linea : '  ✗ ' + linea);
+              if (mediana < min) fallo.push(cat);
+            }
+            if (fallo.length) { console.error('Por debajo del presupuesto: ' + fallo.join(', ')); process.exit(1); }
+          "
+
+      - name: Subir reportes Lighthouse
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reporte
+          path: /tmp/lh-*.json
+          retention-days: 14
