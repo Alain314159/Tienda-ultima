@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture del enlace por WiFi</title>
+  </head>
+  <body>
+    <script type="module">
+      import QRCode from 'qrcode';
+      import { TiendaProDB } from '/src/db.ts';
+      import { instalarSeguimiento } from '/src/sync/seguimiento.ts';
+      import { sincronizarPorCanal } from '/src/sync/enlace.ts';
+      import { aceptarOferta, aceptarRespuesta, crearOferta } from '/src/sync/webrtc.ts';
+      import { leerQr } from '/src/sync/qr.ts';
+
+      /** El código ida y vuelta por un QR dibujado y leído, como en un teléfono. */
+      async function porQr(texto) {
+        const qr = QRCode.create(texto, { errorCorrectionLevel: 'L' });
+        const margen = 4;
+        const escala = 4;
+        const lado = (qr.modules.size + margen * 2) * escala;
+        const data = new Uint8ClampedArray(lado * lado * 4).fill(255);
+        for (let y = 0; y < lado; y++) {
+          for (let x = 0; x < lado; x++) {
+            const f = Math.floor(y / escala) - margen;
+            const c = Math.floor(x / escala) - margen;
+            if (f >= 0 && c >= 0 && f < qr.modules.size && c < qr.modules.size && qr.modules.get(f, c)) {
+              const i = (y * lado + x) * 4;
+              data[i] = 0;
+              data[i + 1] = 0;
+              data[i + 2] = 0;
+            }
+          }
+        }
+        return await leerQr({ data, width: lado, height: lado });
+      }
+
+      window.syncPrueba = { TiendaProDB, instalarSeguimiento, sincronizarPorCanal, aceptarOferta, aceptarRespuesta, crearOferta, porQr };
+    </script>
+  </body>
+</html>

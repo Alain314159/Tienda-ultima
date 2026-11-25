@@ -144,3 +144,27 @@ de Telegram).
 - Librerías de QR: <https://github.com/ionic-team/capacitor-barcode-scanner>,
   <https://github.com/capawesome-team/capacitor-mlkit>,
   <https://www.nngroup.com/articles/qr-code-guidelines>
+
+## 9. Estado de la implementación (24 de noviembre de 2026)
+
+Hecho, con pruebas automáticas:
+
+- **Registro de cambios** (`src/sync/seguimiento.ts`, esquema versión 9): toda escritura en las 15 tablas sincronizables deja su entrada en `cambios`, también dentro de transacciones y en operaciones masivas; los borrados dejan lápida. La marca lógica salta por encima de cualquier marca remota vista.
+- **Motor de sincronización** (`src/sync/motor.ts`): exportar estado completo o cambios desde un cursor, y aplicar filas remotas con la regla «gana la más nueva»; la versión que pierde queda en `descartes`; lo anterior al seguimiento viaja con marca 0 y nunca pisa un cambio real.
+- **Enlace por WiFi directo** (`src/sync/webrtc.ts`, `enlace.ts`, `codigo.ts`, `qr.ts`): canal de datos WebRTC sin servidores (solo red local), señalización por QR o copiar y pegar, SDP comprimido en base45, lotes confirmados, la segunda vez solo viaja lo nuevo.
+- **Panel «Compartir por WiFi»** (`src/components/SyncWifi.vue`, entrada en el menú «Más»): guía los dos pasos, muestra el progreso y permite restaurar versiones que perdieron. Permiso de cámara declarado en el manifiesto de Android para leer el QR.
+- Pruebas: `tests/sync-seguimiento`, `sync-motor`, `sync-codigo`, `sync-enlace` (37 casos) y `npm run test:enlace`, que conecta dos bases en un Chromium real pasando los códigos por QR.
+
+Pendiente (siguiente incremento, por este orden):
+
+1. Probar el enlace en dos teléfonos Android reales: alcance del QR en pantalla, permiso de cámara y conexión en la red local. Hasta hacerlo, la cámara y el WebRTC se consideran sin verificar en dispositivo.
+2. Nube con Supabase: migración SQL (`registros`, RLS, `sync_empujar` / `sync_tirar`), adaptador sobre el mismo motor, inicio de sesión con correo y contraseña, y la pantalla de cuenta. Queda desactivado si no están las variables de entorno.
+3. Vista general de `descartes` (hoy solo se ven al terminar un enlace).
+4. Retirar el bot de Telegram cuando la nube esté validada.
+
+Limitaciones conocidas:
+
+- Los datos que ya existían antes del registro de cambios no tienen fecha: viajan con marca 0 y pierden contra cualquier edición posterior; la copia antigua queda en `descartes`.
+- Importar o restaurar un respaldo cuenta como cambio nuevo: lo importado gana en los demás dispositivos, y lo que el respaldo no incluía se borra también allí (siempre con copia en `descartes`).
+- Si dos teléfonos se enlazan mientras uno está recibiendo datos del otro, ese dato puede volver a enviarse; el receptor lo ignora, solo cuesta ancho de banda.
+- Los respaldos por Telegram y por archivo no incluyen `cambios` ni `descartes`.

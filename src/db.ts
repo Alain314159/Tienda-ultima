@@ -20,6 +20,8 @@ import type {
   Gasto,
   ItemCola,
 } from './types';
+import type { Cambio, Descarte, RegistroSync } from './sync/tipos';
+import { instalarSeguimiento } from './sync/seguimiento';
 
 /** Registro clave/valor de configuración. */
 export interface RegistroConfig {
@@ -29,7 +31,7 @@ export interface RegistroConfig {
   nombre?: string;
 }
 
-class TiendaProDB extends Dexie {
+export class TiendaProDB extends Dexie {
   productos!: Table<Producto, string>;
   lotes!: Table<Lote, string>;
   ventas!: Table<Venta, string>;
@@ -48,9 +50,13 @@ class TiendaProDB extends Dexie {
   auditorias!: Table<Record<string, unknown>, string>;
   tgQueue!: Table<ItemCola, string>;
   config!: Table<RegistroConfig, string>;
+  cambios!: Table<Cambio, number>;
+  descartes!: Table<Descarte, number>;
+  syncMeta!: Table<RegistroSync, string>;
 
-  constructor() {
-    super('TiendaProDB');
+  // `nombre` permite abrir una segunda base en los tests (dos "dispositivos").
+  constructor(nombre = 'TiendaProDB') {
+    super(nombre);
     this._definirVersiones();
   }
 
@@ -168,10 +174,43 @@ class TiendaProDB extends Dexie {
       tgQueue: 'id, estado, ts, motivo',
       config: 'key',
     });
+
+    // Version 9: sincronización entre dispositivos.
+    // - cambios: registro de altas, modificaciones y borrados (lápidas) que
+    //   alimenta la nube y el WiFi directo. `++id` da el orden y el cursor;
+    //   `propagar` separa lo nacido aquí (1) de lo aplicado desde fuera (0).
+    // - descartes: versión local que pierde un conflicto, para poder recuperarla.
+    // - syncMeta: cursores y estado de los transportes.
+    this.version(9).stores({
+      productos: 'id, nombre, archivado, [archivado+nombre]',
+      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+      ventas: 'id, fecha, anulada, [anulada+fecha]',
+      compras: 'id, productoId, fecha, [productoId+fecha]',
+      ajustes: 'id, productoId, fecha, [productoId+fecha]',
+      arqueos: 'id, fecha',
+      movCaja: 'id, fecha, tipo, [tipo+fecha]',
+      cierres: 'id, fechaCierre',
+      capital: 'id, fecha, socioId',
+      retiros: 'id, fecha',
+      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+      gastos: 'id, fecha, categoria, [categoria+fecha]',
+      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+      auditorias: 'id, fechaInicio, estado',
+      tgQueue: 'id, estado, ts, motivo',
+      config: 'key',
+      cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
+      descartes: '++id, tabla, registroId, ts',
+      syncMeta: 'clave',
+    });
   }
 }
 
 export const db = new TiendaProDB();
+
+/** Seguimiento de cambios de la base principal (ver sync/seguimiento.ts). */
+export const seguimiento = instalarSeguimiento(db);
 
 // Exponer db en window para debugging (útil con Eruda/F12)
 if (typeof window !== 'undefined') (window as unknown as Record<string, unknown>).db = db;

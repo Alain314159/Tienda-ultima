@@ -138,12 +138,15 @@
       @toggle-mas="ui.masAbierto = !ui.masAbierto"
     />
 
+    <SyncWifi :abierto="syncAbierto" @cerrar="syncAbierto = false" />
+
     <!-- MORE MENU SHEET -->
     <SheetMas
       :abierto="ui.masAbierto"
       :sec="sec"
       @cerrar="ui.masAbierto = false"
       @ir="ir"
+      @abrir-sync="syncAbierto = true"
       @abrir-ajustes="
         ui.masAbierto = false;
         ui.ajustesAbierto = true;
@@ -248,6 +251,7 @@ import { P, genId, clean } from './utils/id';
 import { db } from './db';
 import BottomNav from './components/BottomNav.vue';
 import SheetMas from './components/SheetMas.vue';
+import SyncWifi from './components/SyncWifi.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
@@ -283,6 +287,7 @@ const online = useOnline();
 
 const configStore = useConfigStore();
 const ui = useUIStore();
+const syncAbierto = ref(false);
 const productosStore = useProductosStore();
 const ventasStore = useVentasStore();
 const comprasStore = useComprasStore();
