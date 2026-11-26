@@ -69,12 +69,17 @@ jobs:
           sleep 3
           curl -sf http://localhost:4173/Tienda-ultima/ > /dev/null
 
+      # PLAYWRIGHT_BROWSERS_PATH='': el .env versionado lo fija en 0 (setup
+      # Termux) y dotenv no pisa variables ya presentes; sin sobrescribirlo
+      # el test busca los binarios en node_modules y firefox/webkit mueren
+      # con "Executable doesn't exist" (los instala este workflow en ~/.cache).
       - name: Smoke test (${{ matrix.browser }})
         run: node tests/smoke.spec.mjs
         env:
           BASE_URL: http://localhost:4173/Tienda-ultima/
           BROWSER: ${{ matrix.browser }}
           CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+          PLAYWRIGHT_BROWSERS_PATH: ''
 
       - name: Test funcional (${{ matrix.browser }})
         run: node tests/functional.spec.mjs
@@ -82,6 +87,7 @@ jobs:
           BASE_URL: http://localhost:4173/Tienda-ultima/
           BROWSER: ${{ matrix.browser }}
           CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+          PLAYWRIGHT_BROWSERS_PATH: ''
 
       - name: Subir capturas si falla
         if: failure()
@@ -134,6 +140,7 @@ jobs:
           BASE_URL: http://localhost:4173/Tienda-ultima/
           BROWSER: chromium
           CHROMIUM_PATH: ${{ env.CHROMIUM_PATH }}
+          PLAYWRIGHT_BROWSERS_PATH: ''
 
       - name: Subir capturas si falla
         if: failure()
