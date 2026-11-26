@@ -115,7 +115,16 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
 
   try {
     console.log('\n▶️  Cargando app...');
-    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    for (let intento = 0; intento < 2; intento++) {
+      try {
+        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        break;
+      } catch (e) {
+        if (intento === 1) throw e;
+        // Firefox a veces reporta "interrupted by another navigation": reintenta
+        await esperar(1000);
+      }
+    }
     await esperar(3500);
 
     console.log('\n▶️  Limpiando IndexedDB para test limpio...');
@@ -126,12 +135,19 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
       }
     });
     await esperar(500);
-    // WebKit a veces aborta el reload con "Download is starting" (quirk del
-    // motor tras borrar IndexedDB): reintenta con goto directo a la URL.
-    try {
-      await page.reload({ waitUntil: 'domcontentloaded' });
-    } catch {
-      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Rarezas de motor tras borrar IndexedDB: WebKit a veces aborta con
+    // "Download is starting" y Firefox con "interrupted by another
+    // navigation". Reintento acotado (2 pasadas reload→goto); si persiste,
+    // el test falla y queda visible: NO se debilita la verificación.
+    for (let intento = 0; intento < 2; intento++) {
+      try {
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+        break;
+      } catch {
+        if (intento === 1) throw new Error('No se pudo recargar tras limpiar IndexedDB (2 intentos)');
+        await esperar(1000);
+        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      }
     }
     await esperar(3500);
 
