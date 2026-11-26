@@ -14,7 +14,7 @@ Proxy para Telegram Bot API. Vive en Cloudflare, NO en este repo.
     source .env
     export CF_API_TOKEN="..."
     export CF_ACCOUNT_ID="..."
-    export TIENDA_NAMES_KV_ID="c89ecb4108ce4bd58316f0ce95fccb0a"
+    export TIENDA_NAMES_KV_ID="<ID_DEL_NAMESPACE_KV>"
     export TG_TOKEN_ACTUAL="..."
     export APP_KEY_ACTUAL="..."
     node ~/tienda-proxy/deploy-v3.mjs
@@ -64,9 +64,9 @@ Verificación rápida tras desplegar (debe responder 200, no 403):
 ## KV namespace
 
 - Nombre: TIENDA_NAMES
-- ID: c89ecb4108ce4bd58316f0ce95fccb0a
+- ID: ver `TIENDA_NAMES_KV_ID` (no publicarlo: pertenece a la cuenta de Cloudflare)
 
 ## URLs
 
 - Worker: https://tienda-proxy.tienda-ul5r2q.workers.dev
-- Dashboard: https://dash.cloudflare.com/fd78f4002006695beb9ad65cebf94156/workers
+- Dashboard: https://dash.cloudflare.com/<ACCOUNT_ID>/workers

@@ -10,9 +10,8 @@
  * estar alain314159.github.io en la lista).
  *
  * Estos tests fijan el contrato del CÓDIGO que hay que desplegar: el
- * worker.js del repo Y la copia embebida en deploy-v3.mjs (el script que
- * realmente sube el Worker) deben permitir los orígenes nativos. Si se
- * desincronizan, el despliegue sube una versión vieja y el bug vuelve.
+ * worker.js del repo es la única fuente de verdad y deploy-v3.mjs lo lee
+ * del disco al desplegar (sin copia embebida que se desincronice).
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -25,20 +24,20 @@ const telegram = readFileSync(resolve(RAIZ, 'src', 'telegram.ts'), 'utf8');
 
 const ORIGENES_NATIVE = ['https://localhost', 'capacitor://localhost'];
 
-describe('Worker proxy: orígenes del APK permitidos (CORS)', () => {
-  for (const origen of ORIGENES_NATIVE) {
-    it(`worker.js permite el origen nativo ${origen}`, () => {
+describe('Worker proxy: deploy-v3 usa worker.js como fuente única', () => {
+  it('deploy-v3.mjs lee worker.js del disco (sin copia embebida que se desincronice)', () => {
+    expect(deploy).toContain("fs.readFileSync(new URL('./worker.js', import.meta.url), 'utf8')");
+  });
+
+  it('el worker permite los orígenes nativos del APK', () => {
+    for (const origen of ORIGENES_NATIVE) {
       expect(worker).toContain(`'${origen}'`);
-    });
-    it(`deploy-v3.mjs (copia desplegada) también permite ${origen}`, () => {
-      expect(deploy).toContain(`'${origen}'`);
-    });
-  }
+    }
+  });
 
   it('los orígenes web históricos siguen permitidos (PWA + dev)', () => {
     for (const o of ['https://alain314159.github.io', 'http://localhost:5173', 'http://localhost:4173']) {
       expect(worker).toContain(`'${o}'`);
-      expect(deploy).toContain(`'${o}'`);
     }
   });
 

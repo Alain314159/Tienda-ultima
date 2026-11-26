@@ -182,3 +182,35 @@ activado) ni reconoce formatos desconocidos.
 - No se evaluaron cambios de versión mayor más allá de los tres paquetes citados.
 - No se tocó `main`, no se reescribió el historial y no se cambió ninguna
   configuración del repositorio.
+
+---
+
+## 8. Addendum (rama `vibe/mejoras-seguridad-y-deps`)
+
+Pendientes de la sección 6 cerrados en código:
+
+- **N.º 5 (Dependabot):** añadido `.github/dependabot.yml` (npm + github-actions,
+  semanal, minors y parches agrupados). Las actualizaciones de seguridad del
+  panel _Code security_ siguen siendo un ajuste del repositorio.
+- **N.º 7 (identificadores en `tools/worker/README.md`):** sustituidos el ID de
+  cuenta de Cloudflare y el ID del namespace KV por placeholders.
+- **N.º 8 (limitación de ritmo):** `/api/register` (5/hora por IP) y
+  `/api/login` (10/15 min por IP) limitan el ritmo con KV
+  (`limitarRitmo` en `worker.js`, respuesta 429). La regla de Cloudflare
+  sigue recomendándose como segunda capa.
+
+Además:
+
+- **PBKDF2 del Worker subido a 600k** (era 100k): los registros nuevos declaran
+  `iter: 600000`; los legacy se validan a 100k y se re-hashean al primer login
+  correcto.
+- **`deploy-v3.mjs` ya no lleva el Worker embebido**: lee `worker.js` del disco
+  (una sola fuente de verdad; antes cada redespliegue podía subir código viejo).
+- **Dependencias:** `@capacitor/*` 8.6.3, `@lucide/vue` 1.81.0, `vitest` y
+  `@vitest/coverage-v8` 5.1.2, `vite` 8.4.0, `vue-router` 5.5.3. TypeScript
+  sigue bloqueado en 6.0.3 (sección 3.2).
+
+Verificación: **vue-tsc 0 errores · ESLint 0 · Stylelint 0 · 838/838 tests
+(66 archivos) · build OK · guarda de secretos: 0 hallazgos.**
+
+El hallazgo P0 de credenciales (sección 2) sigue pendiente del propietario.

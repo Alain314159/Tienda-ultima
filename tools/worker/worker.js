@@ -36,16 +36,33 @@ function json(data, status, cors) {
   });
 }
 
-async function hashPassword(password, saltB64) {
+async function hashPassword(password, saltB64, iteraciones) {
   const enc = new TextEncoder();
   const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: iteraciones, hash: 'SHA-256' },
     keyMaterial,
     256
   );
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+
+// Iteraciones PBKDF2 del Worker: 600k (OWASP para SHA-256). Los registros
+// antiguos no declaran `iter`: se validan con 100k y se re-hashean al hacer
+// login correcto (ver /api/login).
+const PBKDF2_ITER = 600000;
+const PBKDF2_ITER_LEGACY = 100000;
+
+// Limitacion de ritmo con KV: ventana fija por clave. KV es eventualmente
+// consistente, pero basta para frenar fuerza bruta contra /api/register y
+// /api/login. Cada escritura reinicia la ventana (TTL desde el ultimo intento).
+async function limitarRitmo(KV, clave, max, ventanaSeg) {
+  const k = 'rl:' + clave;
+  const n = Number((await KV.get(k)) || 0);
+  if (n >= max) return false;
+  await KV.put(k, String(n + 1), { expirationTtl: ventanaSeg });
+  return true;
 }
 
 function genSalt() {
@@ -134,6 +151,10 @@ export default {
     // ===== REGISTER =====
     if (url.pathname === '/api/register' && request.method === 'POST') {
       try {
+        const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
+        if (!(await limitarRitmo(KV, 'reg:' + ip, 5, 3600)))
+          return json({ ok: false, description: 'Demasiados registros desde esta IP. Intenta mas tarde.' }, 429, cors);
+
         const body = await request.json();
         const nombre = (body.nombre || '').toLowerCase().trim();
         const password = body.password || '';
@@ -153,12 +174,13 @@ export default {
           return json({ ok: false, description: 'Este chat ya tiene nombre asignado: ' + chatExistente }, 409, cors);
 
         const salt = genSalt();
-        const passwordHash = await hashPassword(password, salt);
+        const passwordHash = await hashPassword(password, salt, PBKDF2_ITER);
         const registro = {
           nombre,
           chatId,
           salt,
           passwordHash,
+          iter: PBKDF2_ITER,
           fechaRegistro: new Date().toISOString(),
           chatsAutorizados: [chatId],
         };
@@ -174,6 +196,10 @@ export default {
     // ===== LOGIN (migrar a otro dispositivo) =====
     if (url.pathname === '/api/login' && request.method === 'POST') {
       try {
+        const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
+        if (!(await limitarRitmo(KV, 'login:' + ip, 10, 900)))
+          return json({ ok: false, description: 'Demasiados intentos. Espera 15 minutos.' }, 429, cors);
+
         const body = await request.json();
         const nombre = (body.nombre || '').toLowerCase().trim();
         const password = body.password || '';
@@ -185,13 +211,19 @@ export default {
         if (!rec) return json({ ok: false, description: 'Nombre no registrado' }, 404, cors);
 
         const registro = JSON.parse(rec);
-        const hash = await hashPassword(password, registro.salt);
+        const iter = Number(registro.iter) || PBKDF2_ITER_LEGACY;
+        const hash = await hashPassword(password, registro.salt, iter);
         if (hash !== registro.passwordHash) return json({ ok: false, description: 'Contrasena incorrecta' }, 401, cors);
 
+        if (iter < PBKDF2_ITER) {
+          registro.salt = genSalt();
+          registro.passwordHash = await hashPassword(password, registro.salt, PBKDF2_ITER);
+          registro.iter = PBKDF2_ITER;
+        }
         if (!registro.chatsAutorizados.includes(chatId)) {
           registro.chatsAutorizados.push(chatId);
-          await KV.put('name:' + nombre, JSON.stringify(registro));
         }
+        await KV.put('name:' + nombre, JSON.stringify(registro));
         await KV.put('chat:' + chatId, nombre);
 
         return json({ ok: true, nombre, chatId }, 200, cors);
