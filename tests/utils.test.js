@@ -119,9 +119,16 @@ describe('id: generación y clonado', () => {
   });
 });
 
-describe('calculadora: evaluador mathjs', () => {
-  it('evaluar devuelve null hasta precargar (contrato async)', () => {
-    expect(evaluar('2+2')).toBeNull();
+describe('calculadora: evaluador propio (CSP-safe, sin eval/Function)', () => {
+  it('el parser es sincrono y siempre esta disponible (sin carga diferida)', () => {
+    expect(evaluar('2+2')).toBe(4);
+  });
+
+  it('potencia asociativa por la derecha y unarios (convencion matematica)', () => {
+    expect(evaluar('2^3^2')).toBe(512);
+    expect(evaluar('-2^2')).toBe(-4);
+    expect(evaluar('2^-1')).toBeCloseTo(0.5, 10);
+    expect(evaluar('5*-2')).toBe(-10);
   });
 
   it('evalúa aritmética básica con precedencia correcta', async () => {

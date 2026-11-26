@@ -11,6 +11,12 @@
  */
 import { z, type ZodType } from 'zod';
 
+// Sin JIT de zod: su sonda `new Function("")` dispara una violación CSP
+// (console.error) en navegadores con CSP estricta —sin 'unsafe-eval'— aunque
+// el intento esté en try/catch (rompía el smoke E2E en Firefox y la validación
+// seguía igual de segura sin JIT).
+z.config({ jitless: true });
+
 /** Número finito (rechaza NaN/Infinity con mensaje de formulario). */
 const numeroFin = (msg: string) => z.coerce.number().finite(msg);
 

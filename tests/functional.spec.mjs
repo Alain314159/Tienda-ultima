@@ -126,7 +126,13 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
       }
     });
     await esperar(500);
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    // WebKit a veces aborta el reload con "Download is starting" (quirk del
+    // motor tras borrar IndexedDB): reintenta con goto directo a la URL.
+    try {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    } catch {
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
     await esperar(3500);
 
     // En instalación limpia aparece el aviso de configurar respaldo de Telegram:

@@ -154,7 +154,7 @@ watch(
   () => props.visible,
   (v) => {
     if (v) {
-      precargarEvaluador(); // code-splitting: mathjs listo antes del primer "="
+      precargarEvaluador(); // contrato histórico: hoy es un no-op (parser síncrono)
       cargarEstado();
       actualizarPreview();
     } else {
