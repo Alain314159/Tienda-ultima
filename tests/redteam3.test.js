@@ -90,6 +90,8 @@ function respaldoSano() {
         saleDeCaja: true,
       },
     ],
+    pasivos: [],
+    auditorias: [],
   };
 }
 

@@ -155,7 +155,7 @@ async function hacerBackupAhora() {
   guardando.value = true;
   msg.value = '';
   try {
-    const data = datosDeStores();
+    const data = await datosDeStores();
     const nombre = await BackupFolder.guardar(data, null);
     await BackupFolder.rotar(30);
     msg.value = 'Backup creado: ' + nombre;

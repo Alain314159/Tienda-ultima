@@ -12,13 +12,13 @@ let _contadorOps = 0;
 let _ultimoHash: string | null = null;
 let _initDone = false;
 let _guardando = false;
-let _getDataFn: (() => unknown) | null = null;
+let _getDataFn: (() => unknown | Promise<unknown>) | null = null;
 
 export const Autosave = {
-  async init({ getData }: { getData: () => unknown }) {
+  async init({ getData }: { getData: () => unknown | Promise<unknown> }) {
     if (_initDone) return;
     _initDone = true;
-    _getDataFn = getData as () => unknown;
+    _getDataFn = getData as () => unknown | Promise<unknown>;
 
     // Cargar estado previo
     _ultimoHash = await Storage.get(KEY_HASH);
@@ -59,7 +59,10 @@ export const Autosave = {
     if (_guardando || !_getDataFn) return;
     _guardando = true;
     try {
-      const data = _getDataFn();
+      // datosDeStores es async (pasivos/auditorías se leen de IndexedDB):
+      // sin await, JSON.stringify recibiría la Promise y el autosave
+      // guardaría '{}' con el hash siempre igual.
+      const data = await _getDataFn();
       const json = JSON.stringify(data);
       const hash = await hashContenido(json);
 

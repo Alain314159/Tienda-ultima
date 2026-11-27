@@ -18,6 +18,7 @@ import { useProductosStore } from './useProductosStore';
 import { useCajaStore } from './useCajaStore';
 import { useCierresStore } from './useCierresStore';
 import { useInsightsStore } from './useInsightsStore';
+import { db } from '../db';
 import type { Producto } from '../types';
 import { inicioDiaLocal } from '../utils/fecha';
 
@@ -222,6 +223,43 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     if (dias >= n(configStore.cfg.umbralDiasCierre || 30) && configStore.cfg.ultimaNotifCierre !== hoy) {
       enviarNotif('Cierre pendiente', dias + ' dias sin cerrar periodo');
       configStore.cfg.ultimaNotifCierre = hoy;
+      cambio = true;
+    }
+
+    // 5. Respaldo pendiente: más días que umbralBackupDias (def. 7) sin
+    // respaldo válido. Vale el backup local automático (db.config
+    // 'backupAuto', con su fecha), un export manual (cfg.ultimoExport)
+    // o una sincronización correcta con la nube ('ultimaSyncNube').
+    // Como el resto de avisos del store: como mucho una vez al día
+    // (marca en cfg.ultimaNotifRespaldo) y solo si hay datos que perder.
+    const umbralRespaldo = n(configStore.cfg.umbralBackupDias || 7);
+    let ultimaFechaRespaldo: number | null = null;
+    try {
+      const recBackup = await db.config.get('backupAuto');
+      const recSync = await db.config.get('ultimaSyncNube');
+      const fechas = [
+        recBackup?.fecha,
+        typeof recSync?.value === 'string' ? recSync.value : null,
+        configStore.cfg.ultimoExport,
+      ]
+        .map((f) => (f ? new Date(f as string).getTime() : NaN))
+        .filter((t) => !isNaN(t));
+      if (fechas.length) ultimaFechaRespaldo = Math.max(...fechas);
+    } catch (e) {
+      console.warn('chequearNotificaciones: no se pudo leer la fecha del último respaldo', e);
+    }
+    const diasSinRespaldo =
+      ultimaFechaRespaldo === null
+        ? Infinity
+        : Math.floor((ahora.getTime() - ultimaFechaRespaldo) / 86400000);
+    const hayDatos = productosStore.productos.length > 0;
+    if (hayDatos && diasSinRespaldo > umbralRespaldo && configStore.cfg.ultimaNotifRespaldo !== hoy) {
+      const textoDias = ultimaFechaRespaldo === null ? 'nunca' : diasSinRespaldo + ' días';
+      enviarNotif(
+        'Respaldo pendiente',
+        'Llevas ' + textoDias + ' sin respaldo: exporta o sincroniza con la nube'
+      );
+      configStore.cfg.ultimaNotifRespaldo = hoy;
       cambio = true;
     }
 

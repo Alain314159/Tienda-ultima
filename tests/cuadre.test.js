@@ -21,7 +21,7 @@ import { useLotesStore } from '../src/stores/useLotesStore';
 import { useProductosStore } from '../src/stores/useProductosStore';
 import { toastMsg } from '../src/utils/toast';
 import { TOAST } from '../src/constants';
-import { hoyLocal, diaLocal } from '../src/utils/fecha';
+import { hoyLocal, diaLocal, inicioDiaLocal } from '../src/utils/fecha';
 
 const AHORA = () => new Date().toISOString();
 const HACE = (dias) => new Date(Date.now() - dias * 86400000).toISOString();
@@ -173,7 +173,10 @@ describe('selectores de período', () => {
     const { rep, setPeriodoCierre } = useCuadre();
     setPeriodoCierre({
       id: 'cie_1',
-      periodoInicio: '2026-08-01T00:00:00.000Z',
+      // Inicio del período como medianoche LOCAL del 1 de ago: con
+      // '2026-08-01T00:00:00.000Z' (medianoche UTC) fechaLocal() da 31 de
+      // jul en zonas UTC-4 y el test fallaba por zona horaria.
+      periodoInicio: inicioDiaLocal('2026-08-01').toISOString(),
       periodoFin: '2026-08-31T23:59:59.000Z',
     });
     expect(rep.periodoActivo).toBe('cie_1');

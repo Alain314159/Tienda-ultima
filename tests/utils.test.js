@@ -3,7 +3,6 @@
  * - utils/numero: redondeo contable half-away-from-zero con épsilon relativo
  * - utils/formato: moneda con Intl.NumberFormat cacheado
  * - utils/id: genId (crypto) y clean (structuredClone con fallback)
- * - services/calculadora: evaluador mathjs (porcentajes, símbolos, seguridad)
  */
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
@@ -11,7 +10,6 @@ import 'fake-indexeddb/auto';
 import { n, m, q, stockMinEfectivo } from '../src/utils/numero';
 import { fmt, fmtCant } from '../src/utils/formato';
 import { genId, clean } from '../src/utils/id';
-import { evaluar, evaluarAsync, precargarEvaluador } from '../src/services/calculadora';
 
 describe('numero: redondeo contable a 4 decimales', () => {
   it('n() parsea y devuelve 0 en entradas inválidas', () => {
@@ -119,49 +117,3 @@ describe('id: generación y clonado', () => {
   });
 });
 
-describe('calculadora: evaluador mathjs', () => {
-  it('evaluar devuelve null hasta precargar (contrato async)', () => {
-    expect(evaluar('2+2')).toBeNull();
-  });
-
-  it('evalúa aritmética básica con precedencia correcta', async () => {
-    await precargarEvaluador();
-    expect(evaluar('2+3*4')).toBe(14);
-    expect(evaluar('(1+2)*5')).toBe(15);
-    expect(evaluar('10/4')).toBe(2.5);
-    expect(evaluar('-5+3')).toBe(-2);
-  });
-
-  it('normaliza símbolos × ÷ −', async () => {
-    await precargarEvaluador();
-    expect(evaluar('2×3')).toBe(6);
-    expect(evaluar('10÷4')).toBe(2.5);
-    expect(evaluar('5−3')).toBe(2);
-  });
-
-  it('porcentaje relacional: A ± B% y porcentaje suelto N%', async () => {
-    await precargarEvaluador();
-    expect(evaluar('100+10%')).toBe(110);
-    expect(evaluar('100-10%')).toBe(90);
-    expect(evaluar('50%')).toBe(0.5);
-    expect(evaluar('200×50%')).toBe(100);
-  });
-
-  it('soporta exponente (capacidad nueva de mathjs)', async () => {
-    await precargarEvaluador();
-    expect(evaluar('2^10')).toBe(1024);
-  });
-
-  it('rechaza expresiones inválidas y vacías', async () => {
-    await precargarEvaluador();
-    expect(evaluar('')).toBeNull();
-    expect(evaluar('2+*3')).toBeNull();
-    expect(evaluar('constructor')).toBeNull();
-    expect(evaluar('alert(1)')).toBeNull();
-  });
-
-  it('evaluarAsync precarga y evalúa en un solo paso', async () => {
-    const r = await evaluarAsync('9×9');
-    expect(r).toBe(81);
-  });
-});

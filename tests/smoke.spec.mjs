@@ -152,6 +152,31 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     const stats = await page.$$('.stat');
     console.log('  ✅ ' + stats.length + ' stat(s)');
 
+    grabar('Simular sin conexión: el chip del header avisa sin tapar botones');
+    await page.context().setOffline(true);
+    await esperar(800);
+    const chipOff = await page.$('.sync-ind[data-estado="sin-conexion"]');
+    if (!chipOff) throw new Error('Sin conexión no muestra el chip "Sin conexión" en el header');
+    console.log('  ✅ Chip "Sin conexión" visible en el header');
+    // Ya no hay banner fijo: ningún .banner.off debe existir
+    const bannerOff = await page.$('.banner.off');
+    if (bannerOff) throw new Error('Sigue existiendo el banner fijo .banner.off');
+    // El botón Ajustes debe seguir siendo clicable: el elemento en el centro
+    // del botón tiene que ser el botón (o su hijo), no un banner encima
+    const btnAjustes2 = await page.$('header button[aria-label="Ajustes"]');
+    const box = await btnAjustes2.boundingBox();
+    const enPunto = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.closest('button')?.getAttribute('aria-label') || el.tagName : null;
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    );
+    if (enPunto !== 'Ajustes') throw new Error('El botón Ajustes está tapado sin conexión (en el punto hay: ' + enPunto + ')');
+    console.log('  ✅ Botón Ajustes clicable sin conexión');
+    await page.context().setOffline(false);
+    await esperar(500);
+
     console.log('\n✅ FLUJO COMPLETADO');
 
   } catch (e) {

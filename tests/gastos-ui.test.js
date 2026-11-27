@@ -19,11 +19,15 @@ import { useConfigStore } from '../src/stores/useConfigStore';
 import { useCajaStore } from '../src/stores/useCajaStore';
 import { useCierresStore } from '../src/stores/useCierresStore';
 import { useUIStore } from '../src/stores/useUIStore';
-import { fechaLocal } from '../src/utils/fecha';
+import { fechaLocal, inicioDiaLocal } from '../src/utils/fecha';
 import AppIcon from '../src/components/AppIcon.vue';
 import GastosView from '../src/views/GastosView.vue';
 
-const PERIODO_INI = '2026-09-01T00:00:00.000Z';
+// Inicio del período como MEDIANOCHE LOCAL del 1 de sep de 2026:
+// periodoInicio es el inicio del día local, no medianoche UTC — con
+// '2026-09-01T00:00:00.000Z' la normalización lo movía al 31 de ago
+// (UTC-4) y el gasto "antes" colaba dentro del período.
+const PERIODO_INI = inicioDiaLocal('2026-09-01').toISOString();
 
 async function montar() {
   const wrapper = mount(GastosView, {
@@ -512,7 +516,13 @@ describe('useGastosStore: computeds', () => {
   it('gastosOpPeriodo: incluye el gasto exactamente en periodoInicio (borde >=)', async () => {
     await db.gastos.bulkPut([
       { id: 'borde', fecha: PERIODO_INI, concepto: 'Borde', monto: 7, categoria: 'X' },
-      { id: 'antes', fecha: '2026-08-31T23:59:59.999Z', concepto: 'Antes', monto: 99, categoria: 'X' },
+      {
+        id: 'antes',
+        fecha: new Date(new Date(PERIODO_INI).getTime() - 1).toISOString(),
+        concepto: 'Antes',
+        monto: 99,
+        categoria: 'X',
+      },
     ]);
     const s = useGastosStore();
     await s.cargarGastos();

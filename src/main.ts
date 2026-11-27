@@ -63,7 +63,7 @@ if (Capacitor.isNativePlatform()) {
   CapApp.addListener('backButton', () => {
     const ui = useUIStore();
     // Prioridad: cobro > ajustes > mas > retiro > aporte > confirm > prompt >
-    // share > busqueda > calculadora > backup > status > navegar a inicio
+    // share > busqueda > backup > status > navegar a inicio
     if (ui.cobroAbierto) {
       ui.cobroAbierto = false;
       return;
@@ -98,10 +98,6 @@ if (Capacitor.isNativePlatform()) {
     }
     if (ui.busquedaGlobalAbierta) {
       ui.busquedaGlobalAbierta = false;
-      return;
-    }
-    if (ui.calcAbierto) {
-      ui.calcAbierto = false;
       return;
     }
     if (ui.backupPanelAbierto) {

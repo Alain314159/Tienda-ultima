@@ -22,7 +22,8 @@ import { recargarTodoStores } from './recarga';
 import { derivarClave, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
 import type { Respaldo } from '../types';
 
-/** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
+/** Tablas de datos incluidas en un respaldo. Asientos NO viaja: se reconstruye
+ * localmente desde las tablas de origen (ver exportar.ts). */
 type TablaDatos =
   | 'productos'
   | 'lotes'
@@ -36,7 +37,9 @@ type TablaDatos =
   | 'retiros'
   | 'socios'
   | 'distribuciones'
-  | 'gastos';
+  | 'gastos'
+  | 'pasivos'
+  | 'auditorias';
 
 export const useBackupStore = defineStore('backup', () => {
   const configStore = useConfigStore();
@@ -102,9 +105,9 @@ export const useBackupStore = defineStore('backup', () => {
   }
 
   function exportar() {
-    const d = datosDeStores();
     void (async () => {
       try {
+        const d = await datosDeStores();
         const destino = await entregarArchivoTexto(
           JSON.stringify(d, null, 2),
           'respaldo-tienda-' + hoyLocal() + '.json'
@@ -127,7 +130,7 @@ export const useBackupStore = defineStore('backup', () => {
     });
     if (!pass || pass.length < 6) return toastMsg('Contrasena muy corta (min 6)', TOAST.BAD);
     try {
-      const data = datosDeStores();
+      const data = await datosDeStores();
       const enc = new TextEncoder();
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -148,6 +151,10 @@ export const useBackupStore = defineStore('backup', () => {
       };
       const destino = await entregarArchivoTexto(JSON.stringify(out), 'respaldo-cifrado-' + hoyLocal() + '.json');
       toastMsg(destino ? 'Respaldo cifrado guardado en ' + destino : 'Respaldo cifrado descargado');
+      // Un export cifrado también es un respaldo manual: cuenta para el
+      // recordatorio de backups igual que el export plano.
+      configStore.cfg.ultimoExport = new Date().toISOString();
+      configStore.guardarCfg();
     } catch (e) {
       toastMsg('Error cifrado: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
     }
@@ -245,7 +252,7 @@ export const useBackupStore = defineStore('backup', () => {
     try {
       // Guardar estado actual como red de seguridad
       try {
-        const estadoActual = datosDeStores();
+        const estadoActual = await datosDeStores();
         await P(db.config, { key: 'preImportBackup', value: estadoActual, fecha: new Date().toISOString() });
         preImportDisponible.value = true;
         preImportFecha.value = new Date().toISOString();
@@ -295,13 +302,17 @@ export const useBackupStore = defineStore('backup', () => {
       'socios',
       'distribuciones',
       'gastos',
+      'pasivos',
+      'auditorias',
     ];
     tablas.forEach((t) => {
       if (d[t] !== undefined && !Array.isArray(d[t])) errores.push('"' + t + '" no es un array');
     });
     tablas.forEach((t) => {
       if (!Array.isArray(d[t])) return;
-      const sinId = d[t].filter((x) => !x || typeof x !== 'object' || !x.id);
+      // unknown[] (pasivos/auditorias) no tiene .id en el tipo: leer como registro
+      const arr = d[t] as unknown as Record<string, unknown>[];
+      const sinId = arr.filter((x) => !x || typeof x !== 'object' || !x.id);
       if (sinId.length > 0) errores.push('"' + t + '": ' + sinId.length + ' item(s) sin id');
     });
     // --- IDs duplicados (#4 red-team): bulkPut es last-wins — un respaldo
@@ -311,7 +322,7 @@ export const useBackupStore = defineStore('backup', () => {
       if (!Array.isArray(d[t])) return;
       const vistos = new Set();
       let dups = 0;
-      for (const x of d[t]) {
+      for (const x of d[t] as unknown as Record<string, unknown>[]) {
         if (!x || typeof x !== 'object' || !x.id) continue;
         if (vistos.has(x.id)) dups++;
         else vistos.add(x.id);
@@ -472,8 +483,16 @@ export const useBackupStore = defineStore('backup', () => {
         'socios',
         'distribuciones',
         'arqueos',
+        'pasivos',
       ] as TablaDatos[]
     ).forEach((t) => pushFecha(t, conFechaMala(t)));
+    // Auditorías: su fecha es fechaInicio, no fecha.
+    if (Array.isArray(d.auditorias)) {
+      const malas = d.auditorias.filter(
+        (a) => a && typeof a === 'object' && fechaMala((a as Record<string, unknown>).fechaInicio)
+      );
+      if (malas.length > 0) errores.push(malas.length + ' registro(s) de "auditorias" con fechaInicio inválida');
+    }
     // Fechas extremas: mismo recorrido que las inválidas
     if (Array.isArray(d.ventas)) pushFechaExtrema('ventas', conFechaExtrema('ventas'));
     (
@@ -488,8 +507,18 @@ export const useBackupStore = defineStore('backup', () => {
         'socios',
         'distribuciones',
         'arqueos',
+        'pasivos',
       ] as TablaDatos[]
     ).forEach((t) => pushFechaExtrema(t, conFechaExtrema(t)));
+    if (Array.isArray(d.auditorias)) {
+      const extremos = d.auditorias.filter(
+        (a) => a && typeof a === 'object' && fechaExtrema((a as Record<string, unknown>).fechaInicio)
+      );
+      if (extremos.length > 0)
+        errores.push(
+          extremos.length + ' registro(s) de "auditorias" con fechaInicio fuera de rango (año <2000 o >2100)'
+        );
+    }
     if (Array.isArray(d.cierres)) {
       const malos = d.cierres.filter(
         (c) =>
@@ -534,6 +563,8 @@ export const useBackupStore = defineStore('backup', () => {
       'socios',
       'distribuciones',
       'gastos',
+      'pasivos',
+      'auditorias',
     ];
     // Snapshot antes por si falla
     const respaldo: Record<string, unknown[]> = {};
@@ -596,7 +627,7 @@ export const useBackupStore = defineStore('backup', () => {
   // ===== BACKUP AUTOMÁTICO LOCAL =====
   async function backupAuto() {
     try {
-      const data = datosDeStores();
+      const data = await datosDeStores();
       await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
     } catch (e) {
       _backupFallos++;

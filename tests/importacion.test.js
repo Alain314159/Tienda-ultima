@@ -29,6 +29,7 @@ describe('crearPreview', () => {
     socios: [{ id: 's_1' }, { id: 's_2' }, { id: 's_3' }],
     asientos: [{ id: 'as_1' }],
     pasivos: [],
+    auditorias: [{ id: 'au_1' }],
     fecha: '2026-10-01T10:00:00.000Z',
     cfg: { nombre: 'Mi Tienda' },
   };
@@ -44,10 +45,11 @@ describe('crearPreview', () => {
       socios: 3,
       asientos: 1,
       pasivos: 0,
+      auditorias: 1,
     });
   });
 
-  it('expone las 8 tablas con sus etiquetas y el archivo completo', () => {
+  it('expone las 9 tablas con sus etiquetas y el archivo completo', () => {
     const prev = crearPreview(respaldoLleno, {});
     expect(prev.campos.map((c) => c.key)).toEqual([
       'productos',
@@ -58,6 +60,7 @@ describe('crearPreview', () => {
       'socios',
       'asientos',
       'pasivos',
+      'auditorias',
     ]);
     expect(prev.archivo).toBe(respaldoLleno);
     expect(prev.actuales).toEqual({});

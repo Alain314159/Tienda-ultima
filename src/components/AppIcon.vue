@@ -50,7 +50,6 @@ import {
   Users,
   CreditCard,
   Zap,
-  Calculator,
   Info,
   MapPin,
   Phone,
@@ -103,7 +102,6 @@ const ICONOS: Record<string, LucideIcon> = {
   users: Users,
   'credit-card': CreditCard,
   zap: Zap,
-  calculator: Calculator,
   info: Info, // antes no existía en PATHS y renderizaba vacío
   'map-pin': MapPin,
   phone: Phone,

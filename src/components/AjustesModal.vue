@@ -59,23 +59,6 @@
       </div>
 
       <div class="set-row">
-        <span class="lbl"><icon name="calculator" :size="18"></icon> Boton de calculadora</span>
-        <label class="switch">
-          <input
-            type="checkbox"
-            :checked="configStore.calcActiva !== false"
-            @change="
-              cfg.calcActiva = ($event.target as HTMLInputElement).checked;
-              guardarCfg();
-            "
-          />
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div style="font-size: 0.72rem; color: var(--mut); margin-top: 0.2rem; margin-bottom: 0.5rem">
-        Muestra u oculta el icono de calculadora en la barra superior.
-      </div>
-      <div class="set-row">
         <span class="lbl"><icon name="search" :size="18"></icon> Busqueda global</span>
         <label class="switch">
           <input

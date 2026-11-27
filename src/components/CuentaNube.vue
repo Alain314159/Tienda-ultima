@@ -7,6 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { db, seguimiento } from '../db';
 import { recargarTodoStores } from '../stores/recarga';
+import { useNubeStore } from '../stores/useNubeStore';
 import { toastMsg } from '../utils/toast';
 import {
   alVolverDeGoogle,
@@ -28,8 +29,11 @@ const emit = defineEmits(['cerrar']);
 const sesion = ref<SesionNube | null>(null);
 const ocupado = ref(false);
 const aviso = ref('');
-const ultima = ref<Date | null>(null);
 const resumen = ref('');
+// El estado de sync vive en el store compartido para que el indicador del
+// header lo lea sin duplicar lógica; aquí solo queda el texto local.
+const nube = useNubeStore();
+const ultima = computed(() => (nube.ultimaSync ? new Date(nube.ultimaSync) : null));
 
 let temporizador: ReturnType<typeof setInterval> | undefined;
 let quitarEnlace: (() => void) | undefined;
@@ -41,13 +45,15 @@ async function sincronizar(): Promise<void> {
   if (ocupado.value || !sesion.value) return;
   ocupado.value = true;
   aviso.value = '';
+  nube.marcarInicio();
   try {
     const r = await sincronizarNube({ db, seg: seguimiento }, clienteNubeDe(await supabase()));
     if (r.tablas.length) await recargarTodoStores();
-    ultima.value = new Date();
+    await nube.marcarExito();
     resumen.value = `${r.enviado} enviados · ${r.aplicados} recibidos${r.descartes ? ` · ${r.descartes} guardados en versiones que perdieron` : ''}`;
   } catch (e) {
     aviso.value = 'No se pudo sincronizar con la nube. Revisa la conexión a internet.';
+    nube.marcarError('No se pudo sincronizar con la nube.');
     console.error('[nube]', e);
   } finally {
     ocupado.value = false;
@@ -77,7 +83,7 @@ async function salir(): Promise<void> {
   try {
     await salirDeNube({ db, seg: seguimiento });
     sesion.value = null;
-    ultima.value = null;
+    nube.setSesion(null);
     resumen.value = '';
   } catch (e) {
     aviso.value = 'No se pudo cerrar la sesión.';
@@ -92,9 +98,12 @@ function alCambiarVisibilidad(): void {
 }
 
 onMounted(async () => {
+  await nube.cargarUltimaSync();
   sesion.value = await sesionNube();
+  nube.setSesion(sesion.value?.correo ?? null);
   quitarEnlace = alVolverDeGoogle((s) => {
     sesion.value = s;
+    nube.setSesion(s?.correo ?? null);
     toastMsg('Sesión iniciada con Google');
     void sincronizar();
   });

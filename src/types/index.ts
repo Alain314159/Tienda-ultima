@@ -232,7 +232,6 @@ export interface Config {
   pinActivo: boolean;
   capitalInicial: number;
   periodoInicio: string;
-  calcActiva: boolean;
   busquedaGlobalActiva: boolean;
   calcBilletesActiva: boolean;
   notifActivo: boolean;
@@ -264,6 +263,7 @@ export interface Config {
   ultimaNotifArqueo?: string;
   ultimaNotifCriticas?: string;
   ultimaNotifCierre?: string;
+  ultimaNotifRespaldo?: string;
   ultimaNotifBackupFail?: string;
   [key: string]: unknown;
 }

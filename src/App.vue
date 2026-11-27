@@ -85,17 +85,16 @@
     </div>
 
     <!-- BANNERS -->
-    <div v-if="!online" class="banner off no-print">
-      <icon name="alert" :size="14" color="#fff"></icon>
-      Sin conexion — los datos se guardan localmente
-    </div>
     <div v-if="hayUpdate" class="banner upd no-print" @click="aplicarUpdate">
       Nueva versión disponible — tocar para actualizar
     </div>
 
     <!-- HEADER -->
     <header class="header no-print">
-      <h1><icon name="store" :size="20" color="#fff"></icon> {{ configStore.nombreTienda || 'Tienda Pro' }}</h1>
+      <div class="hbrand">
+        <h1><icon name="store" :size="20" color="#fff"></icon> {{ configStore.nombreTienda || 'Tienda Pro' }}</h1>
+        <SyncIndicador :online="online" @abrir-cuenta="cuentaAbierta = true" />
+      </div>
       <div class="hacts">
         <button
           v-if="configStore.busquedaGlobalActiva !== false"
@@ -104,14 +103,6 @@
           aria-label="Buscar"
         >
           <icon name="search" :size="18" color="#fff"></icon>
-        </button>
-        <button
-          v-if="configStore.calcActiva !== false"
-          class="h-btn"
-          @click="ui.calcAbierto = true"
-          aria-label="Calculadora"
-        >
-          <icon name="calculator" :size="18" color="#fff"></icon>
         </button>
         <!-- WCAG 2.5.3 Label in Name: el nombre accesible contiene el texto visible -->
         <button class="h-btn" @click="toggleTema()" :aria-label="configStore.tema === 'dark' ? 'Claro' : 'Oscuro'">
@@ -202,7 +193,6 @@
 
     <!-- TOAST -->
     <Toaster position="top-center" :duration="3000" :visible-toasts="3" rich-colors close-button />
-    <Calculator :visible="ui.calcAbierto" @close="ui.calcAbierto = false" />
     <BackupPanel
       v-if="ui.backupPanelAbierto"
       @close="ui.backupPanelAbierto = false"
@@ -227,10 +217,10 @@ import BottomNav from './components/BottomNav.vue';
 import SheetMas from './components/SheetMas.vue';
 import SyncWifi from './components/SyncWifi.vue';
 import CuentaNube from './components/CuentaNube.vue';
+import SyncIndicador from './components/SyncIndicador.vue';
 import ModalConfirm from './components/ModalConfirm.vue';
 import ModalPrompt from './components/ModalPrompt.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
-import Calculator from './components/Calculator.vue';
 import BackupPanel from './components/BackupPanel.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import AjustesModal from './components/AjustesModal.vue';
@@ -350,13 +340,6 @@ watch(
     try {
       document.documentElement.style.setProperty('--font-scale', String(Number(v) || 1));
     } catch {}
-  }
-);
-
-watch(
-  () => cfg.calcActiva,
-  (v) => {
-    if (v === false) ui.calcAbierto = false;
   }
 );
 

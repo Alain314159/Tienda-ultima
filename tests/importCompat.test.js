@@ -173,7 +173,7 @@ describe('importarData con respaldo real v9', () => {
     };
     // Re-exportar a gzip y volver a entrar (como haría un usuario real)
     const { datosDeStores } = await import('../src/stores/exportar');
-    const gz = await gzipTexto(JSON.stringify(datosDeStores()));
+    const gz = await gzipTexto(JSON.stringify(await datosDeStores()));
     const b = useBackupStore();
     await b.importarData(await leerArchivoRespaldo(comoFile(gz, 'ida-y-vuelta.json.gz')));
     expect(await db.productos.count()).toBe(antes.productos);

@@ -19,7 +19,6 @@ export const useUIStore = defineStore('ui', () => {
   const aporteAbierto = ref(false);
   const shareSheetAbierto = ref(false);
   const busquedaGlobalAbierta = ref(false);
-  const calcAbierto = ref(false);
   const backupPanelAbierto = ref(false);
   const statusPanelAbierto = ref(false);
   const umbralesAbierto = ref(false);
@@ -153,7 +152,6 @@ export const useUIStore = defineStore('ui', () => {
     aporteAbierto,
     shareSheetAbierto,
     busquedaGlobalAbierta,
-    calcAbierto,
     backupPanelAbierto,
     statusPanelAbierto,
     umbralesAbierto,

@@ -14,6 +14,7 @@ import { useCajaStore } from '../src/stores/useCajaStore';
 import { useCierresStore } from '../src/stores/useCierresStore';
 import { useConfigStore } from '../src/stores/useConfigStore';
 import { useUIStore } from '../src/stores/useUIStore';
+import { inicioDiaLocal } from '../src/utils/fecha';
 import AppIcon from '../src/components/AppIcon.vue';
 import ReportesView from '../src/views/ReportesView.vue';
 
@@ -55,7 +56,7 @@ beforeEach(async () => {
   ]);
   const config = useConfigStore();
   config.cfg.capitalInicial = 1000;
-  config.cfg.periodoInicio = '2026-09-01T00:00:00.000Z';
+  config.cfg.periodoInicio = inicioDiaLocal('2026-09-01').toISOString();
   await useCajaStore().cargarTodo();
   await useCierresStore().cargarTodo();
 });
@@ -203,7 +204,9 @@ describe('ReportesView: cierre de período', () => {
 
     const cierre = (await db.cierres.toArray())[0];
     expect(cierre.ganancia).toBe(300);
-    expect(cierre.periodoInicio).toBe('2026-09-01T00:00:00.000Z');
+    // El cierre preserva el inicio de período tal cual: medianoche LOCAL
+    // del 1 de sep (en UTC-4 es '2026-08-31T04:00:00.000Z', no medianoche UTC).
+    expect(cierre.periodoInicio).toBe(inicioDiaLocal('2026-09-01').toISOString());
     // El período se reinicia
     expect(useConfigStore().cfg.periodoInicio > '2026-10-14').toBe(true);
     w.unmount();

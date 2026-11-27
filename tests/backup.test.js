@@ -160,6 +160,49 @@ describe('importarData', () => {
   });
 });
 
+describe('importarData: pasivos y auditorías sobreviven a export → import', () => {
+  it('datosDeStores los incluye y importarData los restaura', async () => {
+    const b = useBackupStore();
+    // Sembrar directamente en Dexie: pasivos y auditorías no tienen store propio
+    await db.pasivos.put({
+      id: 'pas_1',
+      fecha: '2026-10-01T12:00:00.000Z',
+      acreedor: 'Suplidor X',
+      monto: 5000,
+      pagado: false,
+      vencimiento: '2026-11-01',
+    });
+    await db.auditorias.put({ id: 'aud_1', fechaInicio: '2026-10-02T09:00:00.000Z', estado: 'completada' });
+    // El producto va por el store: datosDeStores() lee los stores, no Dexie
+    useProductosStore().productos = [{ id: 'p_1', nombre: 'Café' }];
+
+    const { datosDeStores } = await import('../src/stores/exportar');
+    const snap = await datosDeStores();
+    expect(snap.pasivos).toHaveLength(1);
+    expect(snap.pasivos[0].acreedor).toBe('Suplidor X');
+    expect(snap.auditorias).toHaveLength(1);
+    expect(snap.auditorias[0].estado).toBe('completada');
+    // Los asientos NO se exportan: se reconstruyen desde las tablas de origen
+    expect(snap.asientos).toEqual([]);
+
+    // Vaciar y restaurar desde la instantánea
+    await db.pasivos.clear();
+    await db.auditorias.clear();
+    await db.productos.clear();
+    await b.importarData(snap);
+    expect((await db.pasivos.get('pas_1'))?.acreedor).toBe('Suplidor X');
+    expect((await db.auditorias.get('aud_1'))?.estado).toBe('completada');
+    expect(await db.productos.get('p_1')).toBeTruthy();
+  });
+
+  it('un respaldo que no trae pasivos los vacía (la UI avisa antes vía tablasAusentes)', async () => {
+    await db.pasivos.put({ id: 'pas_viejo', fecha: '2026-10-01T12:00:00.000Z', acreedor: 'Viejo', pagado: false });
+    const b = useBackupStore();
+    await b.importarData({ productos: [{ id: 'p_1', nombre: 'X' }], ventas: [] });
+    expect(await db.pasivos.count()).toBe(0);
+  });
+});
+
 describe('cargarCfg', () => {
   it('mezcla la cfg guardada sobre los defaults sin perder claves', async () => {
     const configStore = useConfigStore();

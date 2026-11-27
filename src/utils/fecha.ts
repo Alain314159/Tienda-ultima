@@ -13,6 +13,13 @@
  * independencia de la hora a la que se inicializó o cerró.
  */
 export function inicioDiaLocal(iso: string | number | Date): Date {
+  // Un 'YYYY-MM-DD' sin hora se parsea como medianoche UTC: en zonas UTC-4
+  // eso es las 20:00 del día anterior en local, y setHours(0) caería en ese
+  // día anterior. Un día sin hora es un día del calendario local.
+  if (typeof iso === 'string') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
   const d = new Date(iso);
   if (isNaN(d.getTime())) return new Date(0);
   d.setHours(0, 0, 0, 0);

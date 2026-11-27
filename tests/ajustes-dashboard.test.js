@@ -1,8 +1,7 @@
 /**
  * Cobertura profunda de las áreas saltadas de la UI — ronda navegador:
  * AjustesModal (la configuración entera), DashboardView (chips, gráficos,
- * anomalías), useNotificacionesStore (web + nativo con mocks) y el teclado
- * de la Calculator.
+ * anomalías) y useNotificacionesStore (web + nativo con mocks).
  *
  * Todo por el DOM real, como el dueño: sin snapshots, conducta observable.
  */
@@ -21,7 +20,6 @@ import { useNotificacionesStore } from '../src/stores/useNotificacionesStore';
 import AppIcon from '../src/components/AppIcon.vue';
 import AjustesModal from '../src/components/AjustesModal.vue';
 import DashboardView from '../src/views/DashboardView.vue';
-import Calculator from '../src/components/Calculator.vue';
 
 // DashboardView navega con useRouter/ir: mock mínimo de vue-router
 vi.mock('vue-router', () => ({
@@ -135,16 +133,13 @@ describe('AjustesModal: secciones', () => {
     w.unmount();
   });
 
-  it('toggles de calculadora y búsqueda global actualizan la config', async () => {
+  it('el toggle de búsqueda global actualiza la config', async () => {
     const w = montarAjustes();
     const config = useConfigStore();
 
-    const filaCalc = w.findAll('.set-row').filter((r) => r.text().includes('Boton de calculadora'));
     const filaBusq = w.findAll('.set-row').filter((r) => r.text().includes('Busqueda global'));
-    await filaCalc[0].find('input[type="checkbox"]').setValue(false);
     await filaBusq[0].find('input[type="checkbox"]').setValue(false);
     await flushPromises();
-    expect(config.cfg.calcActiva).toBe(false);
     expect(config.cfg.busquedaGlobalActiva).toBe(false);
     w.unmount();
   });
@@ -346,98 +341,5 @@ describe('useNotificacionesStore: envío y permisos', () => {
     await s.probarNotif();
     // Sin crash: la prueba termina sin lanzar
     expect(true).toBe(true);
-  });
-});
-
-// ============================================================
-// CALCULATOR — teclado físico
-// ============================================================
-describe('Calculator: teclado físico', () => {
-  function montarCalc() {
-    return mount(Calculator, {
-      props: { visible: true },
-      global: { components: { Icon: AppIcon }, stubs: { teleport: true } },
-    });
-  }
-
-  function tecla(w, key) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true }));
-  }
-
-  it('teclado numérico y operadores construyen la expresión', async () => {
-    const w = montarCalc();
-    tecla(w, '7');
-    tecla(w, '*');
-    tecla(w, '8');
-    await flushPromises();
-    const display = w.find('.calc-expr');
-    expect(display.text()).toContain('7×8');
-
-    tecla(w, 'Enter');
-    await flushPromises();
-    await esperar(() => w.find('.calc-display').text().trim() === '56');
-    expect(w.find('.calc-display').text().trim()).toBe('56');
-    w.unmount();
-  });
-
-  it('Backspace borra el último carácter y Delete limpia todo', async () => {
-    const w = montarCalc();
-    tecla(w, '1');
-    tecla(w, '2');
-    tecla(w, '3');
-    await flushPromises();
-    expect(w.find('.calc-expr').text()).toContain('123');
-
-    tecla(w, 'Backspace');
-    await flushPromises();
-    expect(w.find('.calc-expr').text()).toContain('12');
-
-    tecla(w, 'Delete');
-    await flushPromises();
-    expect(w.find('.calc-expr').text().trim()).toBe('0');
-    w.unmount();
-  });
-
-  it('Escape cierra la calculadora (emite close)', async () => {
-    const w = montarCalc();
-    tecla(w, 'Escape');
-    await flushPromises();
-    expect(w.emitted('close')).toBeTruthy();
-    w.unmount();
-  });
-
-  it('paréntesis, división y coma funcionan por teclado y botones', async () => {
-    const w = montarCalc();
-    // ( 8 ÷ 2 ) = 4 — por botones (Igual es solo icono: localizar por title)
-    const btn = (sel) => w.findAll('button').filter((b) => b.attributes('title') === sel || b.text().trim() === sel);
-    await btn('(')[0].trigger('click');
-    await btn('8')[0].trigger('click');
-    await btn('Dividir')[0].trigger('click');
-    await btn('2')[0].trigger('click');
-    await btn(')')[0].trigger('click');
-    await btn('Igual')[0].trigger('click');
-    await esperar(() => w.find('.calc-display').text().trim() === '4');
-    expect(w.find('.calc-display').text().trim()).toBe('4');
-
-    // Coma: botón "," inserta punto decimal (.5)
-    await btn('Limpiar todo')[0].trigger('click');
-    await btn(',')[0].trigger('click');
-    await btn('5')[0].trigger('click');
-    await flushPromises();
-    expect(w.find('.calc-expr').text()).toContain('.5');
-    w.unmount();
-  });
-
-  it('± alterna el signo de la expresión', async () => {
-    const w = montarCalc();
-    const btn = (t) => w.findAll('button').filter((b) => b.text().trim() === t);
-    await btn('5')[0].trigger('click');
-    await btn('±')[0].trigger('click');
-    await flushPromises();
-    expect(w.find('.calc-expr').text()).toContain('−5');
-    await btn('±')[0].trigger('click');
-    await flushPromises();
-    expect(w.find('.calc-expr').text()).toContain('5');
-    w.unmount();
   });
 });

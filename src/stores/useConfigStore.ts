@@ -30,7 +30,6 @@ export const useConfigStore = defineStore('config', () => {
     periodoInicio: inicioDiaLocal(new Date()).toISOString(),
 
     // Comportamiento
-    calcActiva: true,
     busquedaGlobalActiva: true,
     calcBilletesActiva: false,
 
@@ -77,7 +76,6 @@ export const useConfigStore = defineStore('config', () => {
   const nombreTienda = computed(() => cfg.value.nombre);
   const pinActivo = computed(() => cfg.value.pinActivo);
   const capitalInicial = computed(() => cfg.value.capitalInicial);
-  const calcActiva = computed(() => cfg.value.calcActiva !== false);
   const busquedaGlobalActiva = computed(() => cfg.value.busquedaGlobalActiva !== false);
   const periodoInicio = computed(() => cfg.value.periodoInicio);
 
@@ -158,7 +156,6 @@ export const useConfigStore = defineStore('config', () => {
     nombreTienda,
     pinActivo,
     capitalInicial,
-    calcActiva,
     busquedaGlobalActiva,
     periodoInicio,
     guardarCfg,

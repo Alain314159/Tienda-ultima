@@ -33,6 +33,8 @@ const TABLAS_DATOS = [
   'socios',
   'distribuciones',
   'gastos',
+  'pasivos',
+  'auditorias',
 ] as const;
 
 export function tablasAusentes(d: Record<string, unknown> | undefined | null): string[] {
@@ -55,7 +57,16 @@ export function usarStores() {
 /** Construye la estructura de previsualización de importación. */
 export function crearPreview(d: Respaldo, actuales: ReturnType<typeof usarStores>) {
   const campos: {
-    key: 'productos' | 'lotes' | 'ventas' | 'compras' | 'gastos' | 'socios' | 'asientos' | 'pasivos';
+    key:
+      | 'productos'
+      | 'lotes'
+      | 'ventas'
+      | 'compras'
+      | 'gastos'
+      | 'socios'
+      | 'asientos'
+      | 'pasivos'
+      | 'auditorias';
     label: string;
   }[] = [
     { key: 'productos', label: 'Productos' },
@@ -66,6 +77,7 @@ export function crearPreview(d: Respaldo, actuales: ReturnType<typeof usarStores
     { key: 'socios', label: 'Socios' },
     { key: 'asientos', label: 'Asientos' },
     { key: 'pasivos', label: 'Pasivos' },
+    { key: 'auditorias', label: 'Auditorías' },
   ];
   const nuevos: Record<string, number> = {};
   campos.forEach((c) => {
