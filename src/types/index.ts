@@ -247,25 +247,11 @@ export interface Config {
   stockMinDefault: number;
   anomaliasDescartadas: string[];
   productosAvisados: string[];
-  tgAutoBackup: boolean;
-  tgUltimoBackup: string | null;
-  tgUltimoHash: string;
-  tgFallosConsecutivos: number;
-  tgMantenerN: number;
-  tgToken: string;
-  tgChatId: string;
   nombreTienda: string;
-  tiendaConfigurada: boolean;
   /** Datos de contacto para la lista de precios compartida (editables en Ajustes) */
   contactoDireccion?: string;
   contactoTelefonos?: string;
   contactoGrupoWa?: string;
-  tgNombre: string;
-  tgCarpetaActiva?: boolean;
-  tgCarpetaNombre?: string;
-  avisoTiendaDescartado: boolean;
-  /** Epoch-ms hasta el que el aviso de configuración queda pospuesto ("Recordarme después") */
-  avisoTiendaSnoozeHasta?: number;
   tutorialVisto: boolean;
   mostrarSplash: boolean;
   graficoVista: string;
@@ -306,16 +292,6 @@ export interface Respaldo {
   salt?: string;
   iv?: string;
   data?: string;
-}
-
-export interface ItemCola {
-  id: string;
-  ts: string;
-  estado: string;
-  intentos: number;
-  motivo: string;
-  datos: Respaldo;
-  ultimoError?: string;
 }
 
 export interface Recomendacion {

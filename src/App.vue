@@ -155,34 +155,6 @@
       "
     />
 
-    <!-- AVISO DE CONFIGURACION -->
-    <div v-if="mostrarAvisoTienda" class="modal no-print" @click.self="recordarAvisoTienda">
-      <div class="modal-box aviso-tienda" @click.stop>
-        <div class="aviso-icono">
-          <icon name="upload" :size="26" color="#fff"></icon>
-        </div>
-        <div class="aviso-titulo">Configura tu respaldo</div>
-        <div class="aviso-texto">
-          Asignale un <b>nombre unico</b> a tu tienda para activar el backup automatico en Telegram. Asi no pierdes tus
-          datos si se rompe o cambias el telefono.
-        </div>
-        <div class="aviso-pasos">
-          <div class="aviso-paso"><span class="aviso-num">1</span> Abre Telegram y busca <b>@mibot_backup_bot</b></div>
-          <div class="aviso-paso"><span class="aviso-num">2</span> Enviale <b>/start</b></div>
-          <div class="aviso-paso">
-            <span class="aviso-num">3</span> Aqui en Ajustes elige un nombre y una contrasena
-          </div>
-        </div>
-        <button class="btn pri" @click="abrirAjustesDesdeAviso">
-          <icon name="settings" :size="16" color="#fff"></icon> Configurar ahora
-        </button>
-        <button class="btn ghost" @click="recordarAvisoTienda">Recordarme despues</button>
-        <button class="btn ghost" style="font-size: 0.78rem; opacity: 0.7" @click="cerrarAvisoTienda">
-          No volver a mostrar
-        </button>
-      </div>
-    </div>
-
     <!-- ==================== SETTINGS MODAL ==================== -->
     <AjustesModal :otra-pestana="otraPestana" />
 
@@ -272,12 +244,9 @@ import { useCapitalStore } from './stores/useCapitalStore';
 import { useGastosStore } from './stores/useGastosStore';
 import { useUIStore } from './stores/useUIStore';
 import { useInsightsStore } from './stores/useInsightsStore';
-import { useTelegramStore } from './stores/useTelegramStore';
 import { useBackupStore } from './stores/useBackupStore';
 import { useNotificacionesStore } from './stores/useNotificacionesStore';
-import { datosDeStores } from './stores/exportar';
 import { recargarTodoStores } from './stores/recarga';
-import { cargarCarpetaHandle } from './services/backup';
 import { useGestos } from './composables/useGestos';
 import { ir as irA } from './utils/navegacion';
 import { TOAST } from './constants';
@@ -299,7 +268,6 @@ const cajaStore = useCajaStore();
 const capitalStore = useCapitalStore();
 const gastosStore = useGastosStore();
 const insights = useInsightsStore();
-const telegram = useTelegramStore();
 const backup = useBackupStore();
 const notificaciones = useNotificacionesStore();
 
@@ -314,7 +282,6 @@ const otraPestana = ref(false);
 const alertaPerdidaDatos = ref(false);
 const safeMode = ref(false);
 const hayUpdate = ref(false);
-const mostrarAvisoTienda = ref(false);
 
 let _tabId: string | null = null;
 let _bc: BroadcastChannel | null = null;
@@ -350,26 +317,6 @@ async function salirSafeMode() {
       location.reload();
     },
   });
-}
-
-// ===== AVISO DE CONFIGURACION INICIAL =====
-function abrirAjustesDesdeAviso() {
-  mostrarAvisoTienda.value = false;
-  ui.ajustesAbierto = true;
-}
-
-function cerrarAvisoTienda() {
-  mostrarAvisoTienda.value = false;
-  cfg.avisoTiendaDescartado = true;
-  configStore.guardarCfg();
-}
-
-function recordarAvisoTienda() {
-  mostrarAvisoTienda.value = false;
-  // Posponer 3 días (antes solo se ocultaba en la sesión y reaparecía
-  // en CADA arranque, bloqueando el uso normal de la app)
-  cfg.avisoTiendaSnoozeHasta = Date.now() + 3 * 24 * 60 * 60 * 1000;
-  configStore.guardarCfg();
 }
 
 // ===== PWA UPDATE =====
@@ -542,32 +489,12 @@ async function inicializar() {
       document.documentElement.style.setProperty('--font-scale', String(Number(cfg.fontScale) || 1));
     } catch {}
 
-    // Limpiar items viejos de la cola de backups
-    try {
-      const hace7d = new Date(Date.now() - 7 * 86400000).toISOString();
-      const viejos = await db.tgQueue.filter((x) => x.ts < hace7d).toArray();
-      if (viejos.length > 0) {
-        await db.tgQueue.bulkDelete(viejos.map((x) => x.id));
-        console.log('Limpiados ' + viejos.length + ' items viejos de tgQueue');
-      }
-    } catch (e) {
-      console.error('limpiar tgQueue', e);
-    }
-
-    // Aviso de configuracion inicial (respeta el snooze de 3 días)
-    const snoozed = Number(cfg.avisoTiendaSnoozeHasta) > Date.now();
-    if (!cfg.tiendaConfigurada && !cfg.avisoTiendaDescartado && !snoozed) {
-      setTimeout(() => {
-        mostrarAvisoTienda.value = true;
-      }, 800);
-    }
-
     await recargarTodoStores();
 
     // DETECCION DE PERDIDA DE DATOS
     try {
       const totalDatos = productosStore.productos.length + ventasStore.ventas.length + comprasStore.compras.length;
-      if (totalDatos === 0 && cfg.nombreTienda && cfg.tiendaConfigurada) {
+      if (totalDatos === 0 && cfg.nombreTienda) {
         console.warn('⚠ POSIBLE PERDIDA DE DATOS: app configurada pero base vacia');
         setTimeout(() => {
           alertaPerdidaDatos.value = true;
@@ -614,12 +541,6 @@ async function inicializar() {
 
     // B13: migrar gastos viejos
     await migrarGastosViejos();
-
-    // Telegram: estado inicial
-    telegram.sincronizarEstado();
-    if (!cfg.tgChatId) {
-      setTimeout(() => telegram.tgAutoDetectarChat(), 2000);
-    }
   } catch (e) {
     console.error(e);
     toastMsg('Error al cargar datos', TOAST.BAD);
@@ -632,40 +553,18 @@ async function inicializar() {
     splashVisible.value = false;
     console.log('Inicializacion: ' + (performance.now() - t0).toFixed(1) + 'ms');
 
-    // Cargar handle de carpeta si existe
-    try {
-      const rec = await cargarCarpetaHandle();
-      if (rec) {
-        cfg.tgCarpetaActiva = true;
-        cfg.tgCarpetaNombre = rec.nombre || 'Carpeta';
-      }
-    } catch {}
-
-    // Actualizar cola pendiente y pre-import info
-    await telegram.tgActualizarCola();
+    // Cargar info pre-import
     await backup.cargarPreImportInfo();
 
     // Timers de fondo
     backup.iniciarBackupInterval();
     notificaciones.iniciarChequeos();
-    telegram.iniciarTimers(() => datosDeStores());
-
-    // Si no hay chat de Telegram, empezar a buscar (no en safe mode)
-    if (!safeMode.value && !cfg.tgChatId) telegram.iniciarTgPoll();
-
-    // Auto-backup a Telegram si esta activo (no en safe mode)
-    if (!safeMode.value && cfg.tgAutoBackup) {
-      setTimeout(() => telegram.tgAutoBackupCheck(datosDeStores), 5000);
-    }
   }
 }
 
 // ===== CICLO DE VIDA =====
 const _onPwaUpdate = () => {
   hayUpdate.value = true;
-};
-const _onOnline = () => {
-  telegram.tgProcesarCola().catch(() => {});
 };
 const _onVisibility = () => {
   if (document.visibilityState === 'hidden') _flushPendientes();
@@ -675,7 +574,6 @@ onMounted(() => {
   inicializar();
 
   window.addEventListener('pwa:update', _onPwaUpdate);
-  window.addEventListener('online', _onOnline);
   // Flush al cerrar/cambiar de visibilidad (evita perder carrito por debounce)
   window.addEventListener('beforeunload', _flushPendientes);
   window.addEventListener('pagehide', _flushPendientes);
@@ -684,7 +582,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('pwa:update', _onPwaUpdate);
-  window.removeEventListener('online', _onOnline);
   window.removeEventListener('beforeunload', _flushPendientes);
   window.removeEventListener('pagehide', _flushPendientes);
   document.removeEventListener('visibilitychange', _onVisibility);
@@ -695,7 +592,6 @@ onBeforeUnmount(() => {
   }
   backup.detenerBackupInterval();
   notificaciones.detenerChequeos();
-  telegram.detenerTimers();
 });
 
 // Exponer la instancia para debugging (Eruda/F12)
@@ -703,7 +599,6 @@ defineExpose({
   ui,
   configStore,
   backup,
-  telegram,
   sec,
 });
 </script>

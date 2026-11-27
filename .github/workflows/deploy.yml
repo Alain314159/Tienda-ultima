@@ -10,10 +10,6 @@ name: Tests, Build & Deploy
 #   4. apk      → build Capacitor + APK RELEASE FIRMADO (keystore en secrets)
 #                 + APK debug, ambos como artifacts
 #
-# Nota: los `uses:` de workflows reusables requieren `secrets: inherit`
-# para que quality/e2e vean VITE_TG_APP_KEY — sin esto el build de E2E
-# hornea la key vacía y el proxy responde 401 (regresión de 2026-10-16).
-
 on:
   push:
     branches:
@@ -63,7 +59,6 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -116,7 +111,6 @@ jobs:
         run: CAPACITOR=1 npm run build
         env:
           NODE_ENV: production
-          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}
 
       - name: Sync Capacitor
         run: npx cap sync android

@@ -18,7 +18,6 @@ import type {
   Socio,
   Distribucion,
   Gasto,
-  ItemCola,
 } from './types';
 import type { Cambio, Descarte, RegistroSync } from './sync/tipos';
 import { instalarSeguimiento } from './sync/seguimiento';
@@ -48,7 +47,6 @@ export class TiendaProDB extends Dexie {
   asientos!: Table<Asiento, string>;
   pasivos!: Table<Record<string, unknown>, string>;
   auditorias!: Table<Record<string, unknown>, string>;
-  tgQueue!: Table<ItemCola, string>;
   config!: Table<RegistroConfig, string>;
   cambios!: Table<Cambio, number>;
   descartes!: Table<Descarte, number>;
@@ -150,8 +148,8 @@ export class TiendaProDB extends Dexie {
       config: 'key',
     });
 
-    // Version 8: indexar 'motivo' en la cola de Telegram — los
-    // where('motivo').equals('auto') de tgEncolar/backupAuto reventaban con
+    // Version 8: indexar 'motivo' en la cola de backups — los
+    // where('motivo').equals('auto') de la cola/backupAuto reventaban con
     // SchemaError (motivo no era índice) y los try/catch lo tragaban en
     // silencio: la anti-acumulación de backups 'auto' en cola estaba muerta.
     this.version(8).stores({
@@ -199,6 +197,32 @@ export class TiendaProDB extends Dexie {
       pasivos: 'id, fecha, acreedor, pagado, vencimiento',
       auditorias: 'id, fechaInicio, estado',
       tgQueue: 'id, estado, ts, motivo',
+      config: 'key',
+      cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
+      descartes: '++id, tabla, registroId, ts',
+      syncMeta: 'clave',
+    });
+
+    // Version 10: elimina la cola de Telegram (tgQueue). Telegram se retiró
+    // el 2026-11-27; la sincronización en la nube (Supabase) y por WiFi, más
+    // el backup local, sustituyen el respaldo por Telegram.
+    this.version(10).stores({
+      productos: 'id, nombre, archivado, [archivado+nombre]',
+      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+      ventas: 'id, fecha, anulada, [anulada+fecha]',
+      compras: 'id, productoId, fecha, [productoId+fecha]',
+      ajustes: 'id, productoId, fecha, [productoId+fecha]',
+      arqueos: 'id, fecha',
+      movCaja: 'id, fecha, tipo, [tipo+fecha]',
+      cierres: 'id, fechaCierre',
+      capital: 'id, fecha, socioId',
+      retiros: 'id, fecha',
+      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+      gastos: 'id, fecha, categoria, [categoria+fecha]',
+      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+      auditorias: 'id, fechaInicio, estado',
       config: 'key',
       cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
       descartes: '++id, tabla, registroId, ts',

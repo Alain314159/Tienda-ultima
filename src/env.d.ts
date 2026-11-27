@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_TG_APP_KEY?: string;
-}
-
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }

@@ -12,7 +12,6 @@ export { useGastosStore } from './useGastosStore';
 export { useCierresStore } from './useCierresStore';
 // Stores de servicios transversales
 export { useUIStore } from './useUIStore';
-export { useTelegramStore } from './useTelegramStore';
 export { useBackupStore } from './useBackupStore';
 export { useInsightsStore } from './useInsightsStore';
 export { useNotificacionesStore } from './useNotificacionesStore';

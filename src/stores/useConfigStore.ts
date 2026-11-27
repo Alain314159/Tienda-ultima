@@ -52,26 +52,14 @@ export const useConfigStore = defineStore('config', () => {
     anomaliasDescartadas: [],
     productosAvisados: [],
 
-    // Backup
-    tgAutoBackup: false,
-    tgUltimoBackup: null,
-    tgUltimoHash: '',
-    tgFallosConsecutivos: 0,
-    tgMantenerN: 10,
-
-    // Telegram
-    tgToken: '',
-    tgChatId: '',
+    // Tienda
     nombreTienda: '',
-    tiendaConfigurada: false,
     // Contacto de la lista de precios (editable en Ajustes > Personalización)
     contactoDireccion: 'Calle 27 #41, entre Manuel Angulo y Adel Calderón. Rpto 26 de Julio.',
     contactoTelefonos: '58154333 · 56763562 · 51438680 · 50102979 · 24429628',
     contactoGrupoWa: 'https://chat.whatsapp.com/I9U92wF5PmV7XGsvqbsfQm',
-    tgNombre: '',
 
     // UI
-    avisoTiendaDescartado: false,
     tutorialVisto: false,
     mostrarSplash: true,
 

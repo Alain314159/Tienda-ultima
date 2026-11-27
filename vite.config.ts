@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
             id: '/Tienda-ultima/',
             name: 'Tienda Pro',
             short_name: 'Tienda Pro',
-            description: 'Gestion de tienda con datos locales, contabilidad y respaldo en Telegram',
+            description: 'Gestion de tienda con datos locales, contabilidad, sincronización en la nube y respaldo local',
             lang: 'es',
             dir: 'ltr',
             theme_color: '#2196F3',

@@ -4,7 +4,7 @@
  * Contrato:
  * - toda escritura en una tabla sincronizable deja su entrada en `cambios`,
  *   también dentro de una transacción explícita y en operaciones masivas;
- * - un borrado (delete, clear) deja lápida; config, tgQueue y asientos no se registran;
+ * - un borrado (delete, clear) deja lápida; config y asientos no se registran;
  * - la marca lógica es estrictamente creciente y salta por encima de cualquier
  *   marca remota vista.
  */

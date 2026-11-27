@@ -1,9 +1,7 @@
 /**
  * Servicio de utilidades de respaldo: compresión gzip nativa,
- * hash de contenido, derivación de claves WebCrypto y guardado
- * en carpeta del dispositivo (File System Access API).
+ * hash de contenido y derivación de claves WebCrypto.
  */
-import { db } from '../db';
 import { hashContenido, hashRespaldoEstable } from './hash';
 
 export { hashContenido, hashRespaldoEstable };
@@ -128,56 +126,4 @@ export function desdeBase64(b64: string) {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
-}
-
-// Handle de carpeta persistido (File System Access API)
-let _carpetaHandle: FileSystemDirectoryHandle | null = null;
-
-/** Guarda un Blob en la carpeta configurada del teléfono. Devuelve true si tuvo éxito. */
-export async function guardarEnCarpeta(fileName: string, contenidoBlob: Blob) {
-  // 1. Verificar handle guardado
-  if (!_carpetaHandle) {
-    try {
-      const rec = await db.config.get('carpetaHandle');
-      if (rec && rec.value) _carpetaHandle = rec.value as FileSystemDirectoryHandle;
-    } catch {}
-  }
-  if (!_carpetaHandle) return false;
-  // 2. Verificar permiso
-  try {
-    const handle = _carpetaHandle as FileSystemDirectoryHandle & {
-      queryPermission?: (d: { mode: string }) => Promise<string>;
-      requestPermission?: (d: { mode: string }) => Promise<string>;
-    };
-    const perm = (await handle.queryPermission?.({ mode: 'readwrite' })) || 'denied';
-    if (perm !== 'granted') {
-      const req = (await handle.requestPermission?.({ mode: 'readwrite' })) || 'denied';
-      if (req !== 'granted') return false;
-    }
-  } catch {
-    return false;
-  }
-  // 3. Escribir archivo
-  try {
-    const fh = await _carpetaHandle.getFileHandle(fileName, { create: true });
-    const w = await fh.createWritable();
-    await w.write(contenidoBlob);
-    await w.close();
-    return true;
-  } catch (e) {
-    console.error('guardarEnCarpeta', e);
-    return false;
-  }
-}
-
-/** Carga el handle de carpeta guardado (al iniciar la app). */
-export async function cargarCarpetaHandle() {
-  try {
-    const rec = await db.config.get('carpetaHandle');
-    if (rec && rec.value) {
-      _carpetaHandle = rec.value as FileSystemDirectoryHandle;
-      return rec;
-    }
-  } catch {}
-  return null;
 }

@@ -4,7 +4,7 @@
  *
  * El panel del respaldo automático (lista, backup ahora, restaurar con
  * confirmación propia) con el servicio BackupFolder moqueado, y los flujos
- * del store: backupAuto (con y sin Telegram), safety net pre-import y la
+ * del store: backupAuto (local), safety net pre-import y la
  * zona peligrosa de borrarTodo con doble confirmación.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -17,7 +17,6 @@ import { db } from '../src/db';
 import { useBackupStore } from '../src/stores/useBackupStore';
 import { useUIStore } from '../src/stores/useUIStore';
 import { useConfigStore } from '../src/stores/useConfigStore';
-import { useTelegramStore } from '../src/stores/useTelegramStore';
 
 const mockInfo = vi.fn();
 const mockListar = vi.fn();
@@ -76,7 +75,7 @@ beforeEach(async () => {
   mockGuardar.mockReset().mockResolvedValue('backup-2026-10-14-1000.json.gz');
   mockLeer.mockReset().mockResolvedValue(null);
   mockRotar.mockReset().mockResolvedValue(undefined);
-  await Promise.all([db.config.clear(), db.productos.clear(), db.tgQueue.clear()]);
+  await Promise.all([db.config.clear(), db.productos.clear()]);
   await useConfigStore().cargarCfg?.();
 });
 
@@ -198,16 +197,7 @@ describe('BackupPanel', () => {
 // useBackupStore — backupAuto, safety net y zona peligrosa
 // ============================================================
 describe('useBackupStore: backupAuto', () => {
-  it('escribe el respaldo en db.config; con Telegram configurado y base VACÍA omite la subida', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const config = useConfigStore();
-    config.cfg.tgChatId = '12345';
-    config.cfg.nombreTienda = 'Mi Tienda';
-    config.cfg.tiendaConfigurada = true;
-    const tg = useTelegramStore();
-    const encolarSpy = vi.spyOn(tg, 'tgEncolar').mockResolvedValue(5);
-    vi.spyOn(tg, 'tgProcesarCola').mockResolvedValue(undefined);
-
+  it('escribe el respaldo local en db.config, también con la base vacía', async () => {
     const s = useBackupStore();
     await s.backupAuto();
 
@@ -215,39 +205,20 @@ describe('useBackupStore: backupAuto', () => {
     expect(rec).toBeTruthy();
     expect(rec.value).toHaveProperty('productos');
     expect(rec.fecha).toBeTruthy();
-    // Base vacía: NO se sube a Telegram aunque esté configurado
-    expect(encolarSpy).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('base vacia'));
   });
 
-  it('con datos y Telegram configurado: encola como auto solo si el hash cambió', async () => {
-    const config = useConfigStore();
-    config.cfg.tgChatId = '12345';
-    config.cfg.nombreTienda = 'Mi Tienda';
-    config.cfg.tiendaConfigurada = true;
-
+  it('con datos: guarda el respaldo local con los productos', async () => {
     const { useProductosStore } = await import('../src/stores/useProductosStore');
     await db.productos.put({ id: 'p1', nombre: 'Aceite', precio: 100 });
     await useProductosStore().cargarProductos();
 
-    const tg = useTelegramStore();
-    const encolarSpy = vi.spyOn(tg, 'tgEncolar').mockResolvedValue(1);
-    vi.spyOn(tg, 'tgProcesarCola').mockResolvedValue(undefined);
-
     const s = useBackupStore();
     await s.backupAuto();
-    expect(encolarSpy).toHaveBeenCalledTimes(1);
-    expect(encolarSpy.mock.calls[0][1]).toBe('auto');
 
-    // El envío real persiste tgUltimoHash al tener éxito (useTelegramStore):
-    // simularlo para que la segunda pasada vea el mismo hash y NO re-encole
-    const { hashRespaldoEstable } = await import('../src/services/hash');
-    const { datosDeStores } = await import('../src/stores/exportar');
-    // El envío real persiste este hash al triunfar (tgEnviarDatos paso 8)
-    config.cfg.tgUltimoHash = await hashRespaldoEstable(datosDeStores());
-
-    await s.backupAuto();
-    expect(encolarSpy).toHaveBeenCalledTimes(1);
+    const rec = await db.config.get('backupAuto');
+    expect(rec).toBeTruthy();
+    expect(rec.value.productos).toHaveLength(1);
+    expect(rec.value.productos[0].nombre).toBe('Aceite');
   });
 });
 

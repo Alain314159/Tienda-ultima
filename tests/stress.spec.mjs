@@ -180,16 +180,6 @@ function medir(nombre, ms, umbral) {
     const arranqueMs = Date.now() - tArranque;
     medir('Arranque con 1500 ventas', arranqueMs, UMBRALES.arranque);
 
-    // En instalación limpia aparece el aviso de respaldo de Telegram:
-    // cerrarlo ("Recordarme despues") para desbloquear la navegación
-    try {
-      const btnAviso = page.locator('.modal-box button:has-text("Recordarme despues")');
-      if (await btnAviso.isVisible({ timeout: 3000 })) {
-        await btnAviso.click({ timeout: 5000 });
-        await esperar(800);
-      }
-    } catch (_) {}
-
     // ============ 4. HISTORIAL DE VENTAS ============
     console.log('\n▶️  TEST: Historial de ventas (paginado, 1494 activas)');
     const tHist = Date.now();

@@ -6,7 +6,7 @@
  *    el bug del exportador: contenido GZIP con nombre .json)
  *
  * Los fixtures (tests/fixtures/) se generan con scripts/gen-fixture-backups.mjs
- * a partir de esos archivos reales, sanitizados (token TG, nombres) y
+ * a partir de esos archivos reales, sanitizados (token, nombres) y
  * recortados a 15 productos — las FORMAS de los registros son las originales.
  *
  * Regresiones cubiertas:

@@ -88,7 +88,6 @@ describe('AjustesModal: secciones', () => {
     expect(t).toContain('Seguridad');
     expect(t).toContain('Datos y respaldos');
     expect(t).toContain('Notificaciones y alertas');
-    expect(t).toContain('Backup en Telegram');
     expect(t).toContain('Zona peligrosa');
     w.unmount();
   });

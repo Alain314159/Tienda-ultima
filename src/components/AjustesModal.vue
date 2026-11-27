@@ -180,12 +180,12 @@
             Almacenamiento persistente por defecto. Android no borra los datos de apps instaladas.
           </span>
           <span v-else-if="storagePersistente">
-            El navegador no borrara tus datos automaticamente. Tus backups de Telegram siguen siendo tu red de
-            seguridad.
+            El navegador no borrara tus datos automaticamente. La sincronización en la nube y el backup local
+            siguen siendo tu red de seguridad.
           </span>
           <span v-else>
             ⚠ El navegador puede borrar los datos si el dispositivo se queda sin espacio o no abres la app por mucho
-            tiempo. <b>Activa los backups de Telegram</b> para tener un respaldo.
+            tiempo. <b>Activa la sincronización en la nube</b> para tener un respaldo fuera del dispositivo.
           </span>
         </div>
         <button
@@ -241,213 +241,6 @@
       </div>
       <div style="font-size: 0.72rem; color: var(--mut); margin-top: 0.2rem; margin-bottom: 0.5rem">
         Muestra un panel de denominaciones (10, 20, 50...) para contar el efectivo al cobrar.
-      </div>
-
-      <div class="set-group">Backup en Telegram</div>
-
-      <div v-if="!cfg.tgChatId">
-        <div class="info-box" style="font-size: 0.75rem">
-          Abre Telegram, busca <b>@mibot_backup_bot</b> y envíale <b>/start</b>. La app lo detecta automáticamente.
-        </div>
-        <div
-          v-if="tg.tgEstado === 'esperando-start' || tg.tgEstado === 'sin-config'"
-          class="info-box"
-          style="background: rgb(59 130 246 / 8%); border-color: var(--pri); font-size: 0.78rem"
-        >
-          <b>Esperando conexión...</b>
-          <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem">
-            <div class="tg-loading-dot"></div>
-            <span style="font-size: 0.72rem; color: var(--mut)">Buscando chat...</span>
-          </div>
-        </div>
-        <div
-          v-else-if="tg.tgEstado === 'error'"
-          class="info-box"
-          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.78rem"
-        >
-          Error de conexión. Verifica que el bot esté activo.
-        </div>
-        <button class="btn ghost" style="font-size: 0.72rem" @click="tg.tgAutoDetectarChat">
-          <icon name="refresh" :size="14" :color="mutColor"></icon> Buscar ahora
-        </button>
-      </div>
-
-      <div v-else-if="!cfg.tiendaConfigurada">
-        <div class="tg-conectado" style="background: rgb(59 130 246 / 6%); border-color: rgb(59 130 246 / 20%)">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem">
-            <div class="tg-dot" style="background: #3b82f6"></div>
-            <span style="font-size: 0.8rem"><b>Chat conectado:</b> {{ cfg.tgNombre }}</span>
-          </div>
-          <div style="font-size: 0.72rem; color: var(--mut); line-height: 1.6">
-            Falta asignarle un nombre único a esta tienda. Con el nombre y una contraseña podrás guardar backups
-            identificados y recuperarlos desde cualquier dispositivo.
-          </div>
-        </div>
-
-        <div style="font-size: 0.78rem; font-weight: 800; margin: 0.7rem 0 0.4rem">Registrar nueva tienda</div>
-        <input
-          v-model="tg.mtForm.nombre"
-          type="text"
-          placeholder="Nombre único (ej: tienda-central)"
-          maxlength="40"
-          style="font-size: 14px"
-        />
-        <div
-          v-if="tg.mtCheck.estado === 'ok'"
-          class="info-box"
-          style="background: rgb(34 197 94 / 10%); color: var(--ok-d); border-color: var(--ok); font-size: 0.72rem"
-        >
-          ✓ Nombre disponible
-        </div>
-        <div
-          v-else-if="tg.mtCheck.estado === 'ocupado' || tg.mtCheck.estado === 'error'"
-          class="info-box"
-          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
-        >
-          ✗ {{ tg.mtCheck.motivo || 'Nombre no disponible' }}
-        </div>
-        <button
-          class="btn ghost"
-          style="font-size: 0.72rem; padding: 0.5rem"
-          @click="tg.verificarNombreTienda"
-          :disabled="tg.mtCheck.verificando || tg.mtForm.nombre.length < 3"
-        >
-          {{ tg.mtCheck.verificando ? 'Verificando...' : 'Verificar disponibilidad' }}
-        </button>
-
-        <div style="font-size: 0.78rem; font-weight: 800; margin: 1rem 0 0.4rem">Contraseña de respaldo</div>
-        <input v-model="tg.mtForm.password" type="password" placeholder="Mínimo 6 caracteres" style="font-size: 14px" />
-        <input v-model="tg.mtForm.password2" type="password" placeholder="Repetir contraseña" style="font-size: 14px" />
-        <div
-          v-if="tg.mtForm.password && tg.mtForm.password.length < 6"
-          class="info-box"
-          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
-        >
-          La contraseña es muy corta
-        </div>
-        <div
-          v-else-if="tg.mtForm.password && tg.mtForm.password2 && tg.mtForm.password !== tg.mtForm.password2"
-          class="info-box"
-          style="background: rgb(239 68 68 / 10%); color: var(--bad); border-color: var(--bad); font-size: 0.72rem"
-        >
-          Las contraseñas no coinciden
-        </div>
-
-        <div
-          class="info-box"
-          style="
-            background: rgb(245 158 11 / 10%);
-            color: var(--warn-d);
-            border-color: var(--warn);
-            font-size: 0.72rem;
-            margin-top: 0.4rem;
-          "
-        >
-          ⚠ <b>Guarda esta contraseña.</b> Si pierdes el celular, la necesitarás para recuperar tus backups.
-        </div>
-
-        <button class="btn pri" style="margin-top: 0.5rem" :disabled="!tg.puedoRegistrar" @click="tg.registrarTienda">
-          {{ tg.mtProcesando ? 'Registrando...' : 'Registrar Tienda' }}
-        </button>
-
-        <div style="font-size: 0.72rem; color: var(--mut); text-align: center; margin-top: 0.8rem">
-          ¿Ya tienes un nombre registrado?
-          <button class="link-btn" @click="tg.mtForm.modo = tg.mtForm.modo === 'login' ? 'register' : 'login'">
-            {{ tg.mtForm.modo === 'login' ? 'Registrar nueva' : 'Iniciar sesión' }}
-          </button>
-        </div>
-
-        <div
-          v-if="tg.mtForm.modo === 'login'"
-          style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--brd)"
-        >
-          <div style="font-size: 0.78rem; font-weight: 800; margin-bottom: 0.4rem">Iniciar sesión</div>
-          <input v-model="tg.mtForm.loginNombre" type="text" placeholder="Nombre de tienda" style="font-size: 14px" />
-          <input v-model="tg.mtForm.loginPassword" type="password" placeholder="Contraseña" style="font-size: 14px" />
-          <button
-            class="btn ok"
-            @click="tg.loginTienda"
-            :disabled="!tg.mtForm.loginNombre || !tg.mtForm.loginPassword || tg.mtProcesando"
-          >
-            {{ tg.mtProcesando ? 'Entrando...' : 'Entrar' }}
-          </button>
-        </div>
-      </div>
-
-      <div v-else>
-        <div class="tg-conectado">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem">
-            <div class="tg-dot"></div>
-            <span style="font-size: 0.8rem"><b>Tienda:</b> {{ cfg.nombreTienda }}</span>
-          </div>
-          <div style="font-size: 0.72rem; color: var(--mut); margin-bottom: 0.6rem">
-            Chat: {{ cfg.tgNombre }} · Último backup: {{ cfg.tgUltimoBackup ? fmtFH(cfg.tgUltimoBackup) : 'nunca' }}
-            <span v-if="tg.tgColaPendiente > 0" style="color: var(--warn); font-weight: 700">
-              · {{ tg.tgColaPendiente }} en cola</span
-            >
-          </div>
-
-          <div v-if="tg.tgProgreso" class="tg-progreso">
-            <div class="tg-spinner"></div>
-            <span>{{ tg.tgProgreso }}</span>
-          </div>
-
-          <div class="set-row">
-            <span class="lbl" style="font-size: 0.78rem">Backup automático (cada 24h)</span>
-            <label class="switch">
-              <input type="checkbox" v-model="cfg.tgAutoBackup" @change="guardarCfg" />
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="grid2" style="margin-top: 0.6rem">
-            <button
-              class="btn pri"
-              style="margin: 0; font-size: 0.75rem; padding: 0.6rem"
-              :disabled="tg.tgCargando"
-              @click="hacerBackupAhora"
-            >
-              <icon name="upload" :size="14" color="#fff"></icon> Backup ahora
-            </button>
-            <button
-              class="btn ghost"
-              style="margin: 0; font-size: 0.75rem; padding: 0.6rem"
-              :disabled="tg.tgCargando"
-              @click="tg.tgListar"
-            >
-              <icon name="refresh" :size="14" :color="mutColor"></icon> Ver backups
-            </button>
-          </div>
-          <button
-            v-if="tg.tgColaPendiente > 0"
-            class="btn warn"
-            style="margin-top: 0.5rem; font-size: 0.72rem"
-            @click="tg.tgProcesarCola"
-          >
-            Procesar {{ tg.tgColaPendiente }} en cola
-          </button>
-          <button class="btn ghost" style="margin-top: 0.5rem; font-size: 0.72rem" @click="tg.tgDesconectar">
-            Desconectar Telegram
-          </button>
-        </div>
-
-        <div v-if="tg.tgBackups.length" class="tg-lista">
-          <div style="font-size: 0.75rem; font-weight: 800; margin-bottom: 0.4rem; color: var(--pri)">
-            Backups disponibles
-          </div>
-          <div v-for="bk in tg.tgBackups.slice(0, 10)" :key="bk.messageId" class="tg-bk">
-            <div style="flex: 1; min-width: 0">
-              <div style="font-size: 0.78rem; font-weight: 700">{{ fmtFH(bk.fecha) }}</div>
-              <div style="font-size: 0.68rem; color: var(--mut)">{{ (bk.fileSize / 1024).toFixed(1) }} KB</div>
-            </div>
-            <button class="icon-btn ok" @click="tg.tgRestaurar(bk, backup.importarData)" aria-label="Restaurar">
-              <icon name="download" :size="14" color="#16a34a"></icon>
-            </button>
-            <button class="icon-btn bad" @click="tg.tgEliminar(bk)" aria-label="Eliminar">
-              <icon name="trash" :size="14" color="#dc2626"></icon>
-            </button>
-          </div>
-        </div>
       </div>
 
       <div
@@ -617,11 +410,9 @@ import { useProductosStore } from '../stores/useProductosStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useComprasStore } from '../stores/useComprasStore';
 import { useUIStore } from '../stores/useUIStore';
-import { useTelegramStore } from '../stores/useTelegramStore';
 import { useBackupStore } from '../stores/useBackupStore';
 import { useNotificacionesStore } from '../stores/useNotificacionesStore';
 import { useStorageInfo } from '../composables/useStorageInfo';
-import { datosDeStores } from '../stores/exportar';
 
 defineOptions({ name: 'AjustesModal' });
 
@@ -631,7 +422,6 @@ defineProps({
 
 const configStore = useConfigStore();
 const ui = useUIStore();
-const tg = useTelegramStore();
 const backup = useBackupStore();
 const notificaciones = useNotificacionesStore();
 const productosStore = useProductosStore();
@@ -700,8 +490,4 @@ function aplicarEscalaFont() {
 // ===== NOTIFICACIONES =====
 const { pedirPermisoNotif, desactivarNotif, probarNotif } = notificaciones;
 
-// ===== TELEGRAM =====
-async function hacerBackupAhora() {
-  await tg.tgBackupAhora(datosDeStores());
-}
 </script>

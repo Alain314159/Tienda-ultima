@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { chromium, firefox, webkit } from 'playwright-core';
-import { filtrarTg409 } from './lib/tg409.mjs';
 
 const BASE_URL = process.env.BASE_URL || 'https://alain314159.github.io/Tienda-ultima/';
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH;
@@ -96,14 +95,6 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     errores.push('pageerror: ' + err.message);
     console.log('  ❌ pageerror: ' + err.message);
   });
-  // 409 reales del proxy TG (webhook pirata): se cuentan aqui y solo se
-  // perdonan los console.error emparejados al final (logica compartida
-  // con smoke.spec.mjs en tests/lib/tg409.mjs). Todo lo demas es fatal.
-  let http409Tg = 0;
-  page.on('response', res => {
-    if (res.status() === 409 && res.url().includes('tienda-proxy')) http409Tg++;
-  });
-
   page.on('console', msg => {
     if (msg.type() === 'error') {
       const t = msg.text();
@@ -128,16 +119,6 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     await esperar(500);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await esperar(3500);
-
-    // En instalación limpia aparece el aviso de configurar respaldo de Telegram:
-    // cerrarlo ("Recordarme despues") para desbloquear la navegación
-    try {
-      const btnAviso = page.locator('.modal-box button:has-text("Recordarme despues")');
-      if (await btnAviso.isVisible({ timeout: 3000 })) {
-        await btnAviso.click({ timeout: 5000 });
-        await esperar(800);
-      }
-    } catch (_) {}
 
     const appOk = (await page.content()).length > 500;
     check('App carga correctamente', appOk);
@@ -359,11 +340,7 @@ const leerDB = (page, store, fn) => page.evaluate(async ({ store, fnStr }) => {
     const ok = checks.filter(c => c.ok).length;
     const total = checks.length;
     console.log(' Checks: ' + ok + '/' + total);
-    const erroresFinales = filtrarTg409(errores, {
-      extra409: http409Tg,
-      avisar: (n) =>
-        console.log('  ⚠️  ' + n + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot; el Worker lo auto-sana)'),
-    });
+    const erroresFinales = errores;
     console.log(' Errores de ejecucion: ' + erroresFinales.length);
 
     if (erroresFinales.length > 0) {

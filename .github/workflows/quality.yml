@@ -33,4 +33,3 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          VITE_TG_APP_KEY: ${{ secrets.VITE_TG_APP_KEY }}

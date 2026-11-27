@@ -2,7 +2,7 @@
  * Store de Notificaciones (Pinia).
  * Responsable único de las notificaciones nativas (web y Capacitor)
  * y de los chequeos periódicos: stock bajo, arqueo pendiente,
- * anomalías críticas, cierre pendiente y fallos de backup.
+ * anomalías críticas y cierre pendiente.
  */
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
@@ -225,20 +225,6 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       cambio = true;
     }
 
-    // 5. Auto-backup fallando repetidamente
-    if (
-      configStore.cfg.tgAutoBackup &&
-      (configStore.cfg.tgFallosConsecutivos || 0) >= 3 &&
-      configStore.cfg.ultimaNotifBackupFail !== hoy
-    ) {
-      enviarNotif(
-        '⚠ Backup fallando',
-        'El backup automatico fallo ' + configStore.cfg.tgFallosConsecutivos + ' veces. Revisa Telegram.'
-      );
-      configStore.cfg.ultimaNotifBackupFail = hoy;
-      cambio = true;
-    }
-
     if (cambio) await configStore.guardarCfg();
   }
 
@@ -310,13 +296,6 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     } catch (e) {
       console.warn('chequearAgotados', e);
     }
-    // NOTA: antes habia un 4º paso que hacia fetch directo a
-    // api.telegram.org — codigo muerto de la era pre-proxy: (a) el CSP lo
-    // bloquea (connect-src no incluye api.telegram.org), (b) usaba el
-    // "token" tgTokenActual() que tras la migracion al Worker devuelve
-    // literal 'proxy', no un token real. El bot no acepta mensajes directos
-    // sin token: eliminado. Para avisar por Telegram hace falta una ruta
-    // /api/tg/sendMessage en el Worker (pendiente de diseno).
   }
 
   // ===== TIMERS =====

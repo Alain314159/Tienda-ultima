@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { chromium, firefox, webkit } from 'playwright-core';
-import { filtrarTg409 } from './lib/tg409.mjs';
 
 const BASE_URL = process.env.BASE_URL || 'https://alain314159.github.io/Tienda-ultima/';
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH;
@@ -11,19 +10,6 @@ const errors = [];
 const warnings = [];
 const logs = [];
 const acciones = [];
-
-// Excepción AMBIENTAL estrecha: 409 del proxy de Telegram. La lógica vive
-// compartida en tests/lib/tg409.mjs (la usa también functional.spec.mjs
-// para que las dos suites no se desincronicen). NO AMPLIAR la tolerancia:
-// el 401 (secret sin heredar) que este gate cazó el 2026-10-16 sigue
-// siendo FATAL, igual que cualquier otro 4xx/5xx o console.error.
-const perdonarTg409 = (lista) =>
-  filtrarTg409(lista, {
-    avisar: (n) => {
-      warnings.push({ tipo: 'http-409-tg', texto: n + ' getUpdates 409 (webhook de tercero en el bot; el Worker lo auto-sana)' });
-      console.log('  ⚠️  ' + n + '× 409 del proxy TG perdonado (webhook de tercero re-registrado en el bot)');
-    },
-  });
 
 const grabar = (nombre) => {
   acciones.push({ nombre, ts: new Date().toISOString() });
@@ -97,11 +83,6 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     grabar('Verificar header');
     const header = await page.$('.header');
     console.log(header ? '  ✅ Header visible' : '  ⚠️  Header no visible');
-
-    grabar('Cerrar aviso inicial si existe');
-    const btnAviso = await page.$('.modal-box.aviso-tienda button:has-text("Recordarme")') || await page.$('.aviso-tienda button');
-    if (btnAviso) { await btnAviso.click(); await esperar(600); console.log('  ✅ Aviso inicial cerrado'); }
-    else console.log('  ⚠️  Sin aviso inicial');
 
     grabar('Navegar a Ventas');
     await page.click('nav button:has-text("Ventas")');
@@ -186,7 +167,7 @@ const esperar = (ms) => new Promise(r => setTimeout(r, ms));
     console.log('\n═══════════════════════════════════════════');
     console.log(' RESUMEN');
     console.log('═══════════════════════════════════════════');
-    const erroresFinales = perdonarTg409(errors);
+    const erroresFinales = errors;
     console.log(' Acciones: ' + acciones.length);
     console.log(' Logs: ' + logs.length);
     console.log(' Warnings: ' + warnings.length);

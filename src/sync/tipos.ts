@@ -6,7 +6,7 @@
 /**
  * Tablas de datos que viajan entre dispositivos. `asientos` no viaja: el libro
  * diario se reconstruye en cada teléfono a partir de sus tablas fuente.
- * Tampoco viajan `config` (ajustes y PIN del teléfono) ni `tgQueue` (cola local).
+ * Tampoco viaja `config` (ajustes y PIN del teléfono).
  */
 export const TABLAS_SINCRONIZABLES = [
   'productos',

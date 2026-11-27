@@ -17,10 +17,9 @@ import { toastMsg } from '../utils/toast';
 import { esNativo } from '../services/platform';
 import { useConfigStore } from './useConfigStore';
 import { useUIStore } from './useUIStore';
-import { useTelegramStore } from './useTelegramStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
-import { derivarClave, hashRespaldoEstable, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
+import { derivarClave, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
 import type { Respaldo } from '../types';
 
 /** Tablas de datos incluidas en un respaldo (excluye asientos/pasivos/auditorias). */
@@ -42,7 +41,6 @@ type TablaDatos =
 export const useBackupStore = defineStore('backup', () => {
   const configStore = useConfigStore();
   const ui = useUIStore();
-  const telegram = useTelegramStore();
 
   // ===== ESTADO =====
   const ultimoBackup = ref<{ fecha: string; value: unknown } | null>(null);
@@ -600,39 +598,6 @@ export const useBackupStore = defineStore('backup', () => {
     try {
       const data = datosDeStores();
       await P(db.config, { key: 'backupAuto', value: data, fecha: new Date().toISOString() });
-
-      if (configStore.cfg.tgChatId && configStore.cfg.nombreTienda && configStore.cfg.tiendaConfigurada) {
-        const { useProductosStore } = await import('./useProductosStore.js');
-        const { useVentasStore } = await import('./useVentasStore.js');
-        const { useComprasStore } = await import('./useComprasStore.js');
-        const productosStore = useProductosStore();
-        const ventasStore = useVentasStore();
-        const comprasStore = useComprasStore();
-
-        if (
-          productosStore.productos.length === 0 &&
-          ventasStore.ventas.length === 0 &&
-          comprasStore.compras.length === 0
-        ) {
-          console.warn('backupAuto: base vacia, se omite subida a Telegram');
-        } else {
-          try {
-            const hash = await hashRespaldoEstable(data as unknown as Record<string, unknown>);
-            if (configStore.cfg.tgUltimoHash !== hash) {
-              // Limpiar TODOS los auto anteriores (pendientes, error, enviando)
-              try {
-                const viejos = await db.tgQueue.where('motivo').equals('auto').toArray();
-                if (viejos.length > 0) await db.tgQueue.bulkDelete(viejos.map((x) => x.id));
-              } catch {}
-
-              await telegram.tgEncolar(data, 'auto');
-              telegram.tgProcesarCola().catch((e) => console.warn('backupAuto cola', e));
-            }
-          } catch (e) {
-            console.warn('backupAuto telegram', e);
-          }
-        }
-      }
     } catch (e) {
       _backupFallos++;
       console.error('backupAuto fallo (intento ' + _backupFallos + ')', e);

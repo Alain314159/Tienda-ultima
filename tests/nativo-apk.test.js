@@ -2,7 +2,7 @@
  * Tests de las rutas NATIVAS de la app instalada (APK — Android WebView):
  * - enviarNotif via LocalNotifications con ícono de status bar REAL
  * - notificarAgotado sin window.Notification (el WebView no lo define)
- * - cero fetch a api.telegram.org (rama muerta pre-proxy eliminada)
+ * - cero fetch externos en este flujo
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
@@ -82,8 +82,7 @@ describe('notificarAgotado en APK instalado', () => {
     expect(mockSchedule).toHaveBeenCalledTimes(1);
     expect(mockSchedule.mock.calls[0][0].notifications[0].body).toContain('Leche');
 
-    // La rama muerta de api.telegram.org (bloqueada por CSP + token 'proxy')
-    // fue eliminada: no debe salir NINGÚN fetch de este flujo.
+    // No debe salir NINGÚN fetch de este flujo.
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });

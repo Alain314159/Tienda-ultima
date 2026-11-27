@@ -95,7 +95,8 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **PWA instalable** con soporte offline
 - Tema claro / oscuro
 - PIN de seguridad para operaciones sensibles
-- Backup automático diario + exportar / importar respaldo
+- Backup automático local + exportar / importar respaldo
+- Sincronización en la nube (Supabase) y por WiFi entre dispositivos
 - Consola de desarrollo (Eruda) activable desde Ajustes
 
 ---
@@ -120,7 +121,7 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **vite-plugin-pwa** — soporte PWA con Service Worker
 - **Capacitor 8** — empaquetado APK Android + notificaciones nativas
 
-Sin backend. Sin base de datos externa. **Todo vive en el navegador.**
+Datos locales primero: **todo vive en el navegador.** La sincronización opcional usa Supabase (nube) y WiFi directo entre dispositivos.
 
 ---
 
@@ -196,18 +197,17 @@ Tienda-ultima/
 ├── src/
 │   ├── App.vue               # Shell de la app (script setup)
 │   ├── main.ts               # Entry point + SW + botón back nativo
-│   ├── db.ts                 # Dexie tipado (TiendaProDB, versiones 1-7)
+│   ├── db.ts                 # Dexie tipado (TiendaProDB, versiones 1-10)
 │   ├── types/                # Interfaces de dominio (Producto, Venta, ...)
 │   ├── constants.ts          # Constantes globales
 │   ├── insights.ts           # Motor de recomendaciones
-│   ├── telegram.ts           # Cliente del bot (via Worker proxy)
 │   ├── router/               # Rutas con lazy loading
+│   ├── sync/                 # Sincronización (nube Supabase + WiFi directo)
 │   ├── stores/               # Pinia: un store por responsabilidad
 │   │   ├── useUIStore        # Modales, confirm/prompt, PIN
 │   │   ├── useConfigStore    # Configuración
 │   │   ├── useProductos/Lotes/Ventas/Compras/Ajustes/
 │   │   ├── useCaja/Capital/Gastos/Cierres
-│   │   ├── useTelegramStore  # Backups en Telegram
 │   │   ├── useBackupStore    # Export/import/cifrado
 │   │   ├── useNotificaciones # Notificaciones nativas
 │   │   └── useInsightsStore  # Recomendaciones
@@ -219,7 +219,7 @@ Tienda-ultima/
 │   ├── utils/                # numero, formato, id, toast, navegacion
 │   └── styles.css
 ├── tests/                    # vitest (db + montaje completo de la app)
-├── tools/worker/             # Cloudflare Worker (proxy del bot)
+├── supabase/                 # Migración de sincronización en la nube
 ├── tsconfig.json
 └── vite.config.ts
 ```

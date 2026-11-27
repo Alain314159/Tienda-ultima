@@ -12,8 +12,9 @@ por pasos, cada uno con tests y commit propio.
   sincronización propio y el mismo motor sirve para la nube y para el WiFi directo.
 - **WiFi directo sin internet**: canal de datos WebRTC entre los dos teléfonos,
   emparejados con un código QR (o el mismo código copiado como texto).
-- **Telegram pasa a opcional** y se retira cuando la nube esté validada en
-  teléfonos reales. Con él desaparecen tres secretos: el token del bot, la
+- **Telegram retirado el 2026-11-27.** La sincronización en la nube
+  (Supabase) y por WiFi, más el backup local, sustituyen el respaldo por
+  Telegram. Con él desaparecen tres secretos: el token del bot, la
   `APP_KEY` del Worker y el propio Worker.
 
 ## 2. Cómo funciona hoy
@@ -23,10 +24,10 @@ por pasos, cada uno con tests y commit propio.
   caracteres aleatorios), así que no hay que migrar ningún identificador.
 - No hay marca de tiempo de modificación por fila ni rastro de los borrados: un
   borrado es definitivo y invisible para cualquier otro dispositivo.
-- Los respaldos nubeados van por `src/telegram.ts` a un Worker de Cloudflare
-  (`tienda-proxy.…workers.dev`) con una `APP_KEY` incrustada en cada APK. El
-  Worker guarda «cuentas» de nombre de tienda y contraseña y usa el chat de
-  Telegram como almacén de archivos (`listBackups`, `sendDocument`, `getUpdates`).
+- Los respaldos fuera del dispositivo van por la sincronización en la nube
+  (Supabase) y por WiFi directo. El respaldo por Telegram (antes en
+  `src/telegram.ts`, con un Worker de Cloudflare como proxy) se retiró el
+  2026-11-27; ver §9.
 - Restaurar un respaldo reemplaza los datos (`src/stores/importacion.ts`): no hay
   combinación entre lo que hay en el teléfono y lo que trae el archivo.
 - Problemas de este diseño: depende de Telegram y de internet; la `APP_KEY` y el
@@ -158,7 +159,7 @@ de Telegram).
   <https://github.com/capawesome-team/capacitor-mlkit>,
   <https://www.nngroup.com/articles/qr-code-guidelines>
 
-## 9. Estado de la implementación (25 de noviembre de 2026)
+## 9. Estado de la implementación (25 de noviembre de 2026; actualizado el 27 de noviembre de 2026)
 
 Hecho, con pruebas automáticas:
 
@@ -170,6 +171,7 @@ Hecho, con pruebas automáticas:
 - **Panel «Nube y cuenta»** (`src/components/CuentaNube.vue`, entrada en el menú «Más»): entrar con Google, ver el estado, sincronizar ahora y cerrar sesión. Sincroniza sola al abrir, al volver a primer plano y cada 30 segundos.
 - **Acceso solo con Google**: el enlace profundo `tiendapro://auth` está declarado en el manifiesto de Android y es la dirección de regreso del proyecto; el plugin del navegador está registrado en el proyecto Android; el acceso con correo y clave está apagado en el proyecto.
 - **Que el proyecto no se pause** (`.github/workflows/supabase-keepalive.yml`): cuatro carreras al día, tres peticiones cada una a `sync_latido`; además un commit vacío en la rama `keepalive` cada 45 días. El horario solo corre con el archivo en la rama principal, así que también está en `main`.
+- **Telegram retirado (27 de noviembre de 2026):** se eliminaron `src/telegram.ts`, `src/stores/useTelegramStore.ts`, `tools/worker/` entero, la tabla `tgQueue` (esquema versión 10) y toda la UI y los tests de Telegram. El respaldo fuera del dispositivo es ahora la sincronización en la nube (Supabase) y por WiFi, más el backup local y el export/import. Queda pendiente, fuera del repo, borrar el secret `VITE_TG_APP_KEY` en GitHub, borrar el Worker en Cloudflare y revocar el token del bot.
 - Pruebas: `tests/sync-seguimiento`, `sync-motor`, `sync-codigo`, `sync-enlace` (40 casos), `tests/sync-nube` (6 casos: no devolver lo bajado, aislamiento entre cuentas, conflicto, borrado, relevo de WiFi a la nube, vueltas concurrentes) y `npm run test:enlace`, que conecta dos bases en un Chromium real pasando los códigos por QR.
 
 Comprobado contra el proyecto real el 25 de noviembre, con dos usuarios de prueba que se borraron al terminar (15 comprobaciones): el latido anónimo llega; sin sesión la nube no entrega nada (401); la tabla no se puede leer directamente ni con sesión (403); subida y bajada con versiones crecientes; una cuenta no ve los datos de otra; una versión más antigua no pisa la buena y una más nueva sí se acepta; solo viaja lo posterior al punto de lectura; un lote con una tabla que no viaja se rechaza entero y no cambia nada; un borrado viaja como lápida; el acceso por correo y clave queda apagado.
@@ -179,14 +181,14 @@ Pendiente (por este orden):
 1. **Conectar Google al proyecto.** Hace falta el ID de cliente y el secreto de Google, que solo los puede crear el dueño de la cuenta de Google (guía: `docs/GUIA-CONECTAR-GOOGLE.md`). Hasta entonces el botón «Entrar con Google» avisa de que falta ese paso.
 2. Probar en dos teléfonos Android reales: el enlace WiFi (alcance del QR en pantalla, permiso de cámara y conexión en la red local), el acceso con Google completo (navegador y regreso por el enlace profundo) y que un cambio hecho en un teléfono llega al otro. Hasta hacerlo se considera sin verificar en dispositivo.
 3. Vista general de `descartes` (hoy solo se ven al terminar un enlace).
-4. Retirar el bot de Telegram cuando la nube esté validada.
+4. ~~Retirar el bot de Telegram cuando la nube esté validada.~~ **Hecho el 2026-11-27** (ver arriba).
 
 Limitaciones conocidas:
 
 - Los datos que ya existían antes del registro de cambios no tienen fecha: viajan con marca 0 y pierden contra cualquier edición posterior; la copia antigua queda en `descartes`.
 - Importar o restaurar un respaldo cuenta como cambio nuevo: lo importado gana en los demás dispositivos, y lo que el respaldo no incluía se borra también allí (siempre con copia en `descartes`).
 - El que se une espera cinco minutos a que el otro teléfono escanee su código; después hay que empezar de nuevo.
-- Los respaldos por Telegram y por archivo no incluyen `cambios` ni `descartes`.
+- Los respaldos por archivo no incluyen `cambios` ni `descartes`.
 - Al entrar con una cuenta en un teléfono que ya tiene datos, los datos del teléfono se unen con los de esa cuenta: no se borran ni se reemplazan por los de la nube.
 - El regreso del acceso con Google solo funciona en la app instalada; en un navegador de escritorio no hay aplicación a la que volver.
 - El anti-pausa depende de GitHub: si el repositorio pasara 60 días sin actividad, GitHub apaga el horario. Un proyecto pausado se reanuda desde el panel de Supabase y conserva sus datos.
