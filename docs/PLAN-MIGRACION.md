@@ -1,5 +1,7 @@
 # Plan de Migración — Tienda Pro
 
+> **Documento histórico (octubre 2026):** plan ya ejecutado. Menciona Telegram y mathjs como si existieran; ambos se retiraron el 2026-11-27. Se conserva como referencia, no como guía vigente.
+
 Documento vivo. Marcar `[x]` al completar. Actualizar al añadir tareas.
 
 ---

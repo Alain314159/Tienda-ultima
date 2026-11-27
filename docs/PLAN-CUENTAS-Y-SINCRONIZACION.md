@@ -1,5 +1,7 @@
 # Plan: cuentas, sincronización y compartición por WiFi (noviembre 2026)
 
+> **Nota:** documento de diseño de noviembre 2026. Algunas secciones conservan el diseño con Telegram, retirado el 2026-11-27; su sección 9 ya marca el retiro como hecho. La documentación vigente está en [README.md](README.md).
+
 Rama: `migracion-pinia-nueva` · Estado: decisión tomada; la implementación avanza
 por pasos, cada uno con tests y commit propio.
 

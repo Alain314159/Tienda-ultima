@@ -138,8 +138,14 @@
       :sec="sec"
       @cerrar="ui.masAbierto = false"
       @ir="ir"
-      @abrir-sync="syncAbierto = true"
-      @abrir-cuenta="cuentaAbierta = true"
+      @abrir-sync="
+        ui.masAbierto = false;
+        syncAbierto = true;
+      "
+      @abrir-cuenta="
+        ui.masAbierto = false;
+        cuentaAbierta = true;
+      "
       @abrir-ajustes="
         ui.masAbierto = false;
         ui.ajustesAbierto = true;

@@ -113,7 +113,6 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 - **Zod** — validación de esquemas
 - **VueUse** — composables utilitarios (online, watchDebounced, useSwipe, …)
 - **Chart.js + vue-chartjs** — gráficos declarativos y reactivos (chunks diferidos)
-- **mathjs** — evaluador de la calculadora (sandbox, sin `eval`; carga diferida)
 - **MiniSearch** — búsqueda global con tolerancia a errores de tipeo
 - **@lucide/vue** — iconos como componentes (tree-shaken, sin `v-html`; sustituye a
   `lucide-vue-next`, que quedó depreciado en 1.0.0)
@@ -209,11 +208,12 @@ Tienda-ultima/
 │   │   ├── useProductos/Lotes/Ventas/Compras/Ajustes/
 │   │   ├── useCaja/Capital/Gastos/Cierres
 │   │   ├── useBackupStore    # Export/import/cifrado
+│   │   ├── useNubeStore      # Estado de sync en la nube
 │   │   ├── useNotificaciones # Notificaciones nativas
 │   │   └── useInsightsStore  # Recomendaciones
 │   ├── composables/          # useGestos, useHistorial, useGraficos,
 │   │                         # useCobro, useCompartir, useCuadre, ...
-│   ├── components/           # AjustesModal, BottomNav, Calculator, ...
+│   ├── components/           # AjustesModal, BottomNav, SheetMas, ...
 │   ├── views/                # 8 vistas (dashboard, ventas, compras, ...)
 │   ├── services/             # fifo, fechas, pdf, backup, logger, ...
 │   ├── utils/                # numero, formato, id, toast, navegacion
@@ -228,7 +228,7 @@ Tienda-ultima/
 
 ## 🗄️ Modelo de datos
 
-La app usa **IndexedDB** a través de Dexie con 15 tablas:
+La app usa **IndexedDB** a través de Dexie con 20 tablas (versión 10):
 
 | Tabla            | Propósito                                |
 | ---------------- | ---------------------------------------- |
@@ -247,7 +247,13 @@ La app usa **IndexedDB** a través de Dexie con 15 tablas:
 | `gastos`         | Gastos operativos con categoría          |
 | `asientos`       | Libro diario (partida doble)             |
 | `pasivos`        | Cuentas por pagar                        |
+| `auditorias`     | Auditorías físicas de inventario         |
 | `config`         | Configuración y backups                  |
+| `cambios`        | Registro de cambios para sincronización  |
+| `descartes`      | Versiones que perdieron un conflicto     |
+| `syncMeta`       | Cursores y estado de la sincronización   |
+
+De estas, **15 viajan en la sincronización** (productos, lotes, ventas, compras, ajustes, arqueos, movCaja, cierres, capital, retiros, socios, distribuciones, gastos, pasivos y auditorias). No viajan: los asientos (se reconstruyen en cada dispositivo), la configuración (por teléfono) ni el registro de transporte. Ver [docs/SINCRONIZACION.md](docs/SINCRONIZACION.md).
 
 ---
 
@@ -275,7 +281,7 @@ Venta: 15 kg a $12
 ## 🔒 Privacidad
 
 - **Sin servidores.** Todo se procesa en tu dispositivo.
-- **Sin cuentas.** No hay login.
+- **Sin cuentas propias.** La única cuenta es tu Google, y solo para la sincronización en la nube (opcional).
 - **Sin rastreo.** No hay analytics ni cookies de terceros.
 - **Tus datos son tuyos.** Puedes exportarlos e importarlos cuando quieras.
 - **PIN hasheado.** El PIN de seguridad se guarda como hash PBKDF2-SHA256 (nunca en claro).

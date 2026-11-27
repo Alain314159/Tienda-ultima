@@ -83,3 +83,56 @@ describe('Montaje de la app', () => {
     expect(graves).toEqual([]);
   });
 });
+
+// ============================================================
+// SHEET MÁS: abrir Nube y WiFi debe cerrar el sheet
+// (antes el sheet quedaba abierto con z-index 95 por encima de los
+// paneles, z-index 90, y tapaba "Nube y cuenta" y "Compartir por WiFi")
+// ============================================================
+describe('Sheet Más cierra al abrir Nube y WiFi', () => {
+  async function abrirSheet(contenedor) {
+    const { nextTick } = await import('vue');
+    const mas = [...contenedor.querySelectorAll('nav button')].find((b) =>
+      b.textContent.trim().includes('Más'),
+    );
+    expect(mas).toBeTruthy();
+    mas.click();
+    await nextTick();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(contenedor.querySelector('.sheet')).toBeTruthy();
+  }
+
+  async function abrirDesdeSheet(contenedor, textoBoton, textoPanel) {
+    const { nextTick } = await import('vue');
+    await abrirSheet(contenedor);
+    const btn = [...contenedor.querySelectorAll('.sheet-btn')].find((b) =>
+      b.textContent.includes(textoBoton),
+    );
+    expect(btn).toBeTruthy();
+    btn.click();
+    await nextTick();
+    await new Promise((r) => setTimeout(r, 50));
+    // El sheet ya no debe tapar nada
+    expect(contenedor.querySelector('.sheet')).toBeNull();
+    // Y el panel pedido debe estar visible
+    expect(contenedor.innerHTML).toContain(textoPanel);
+  }
+
+  it('Nube y cuenta cierra el sheet y muestra su panel', async () => {
+    const { app, contenedor, errores } = await montarApp();
+    await abrirDesdeSheet(contenedor, 'Nube y cuenta', 'Nube y cuenta');
+    const graves = errores.filter((e) => e.includes('Vue warn') || e.includes('ERROR_HANDLER'));
+    expect(graves).toEqual([]);
+    app.unmount();
+    contenedor.remove();
+  });
+
+  it('Compartir por WiFi cierra el sheet y muestra su panel', async () => {
+    const { app, contenedor, errores } = await montarApp();
+    await abrirDesdeSheet(contenedor, 'Compartir por WiFi', 'Compartir por WiFi');
+    const graves = errores.filter((e) => e.includes('Vue warn') || e.includes('ERROR_HANDLER'));
+    expect(graves).toEqual([]);
+    app.unmount();
+    contenedor.remove();
+  });
+});
