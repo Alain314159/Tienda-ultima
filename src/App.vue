@@ -243,7 +243,7 @@ import { useInsightsStore } from './stores/useInsightsStore';
 import { useBackupStore } from './stores/useBackupStore';
 import { useNotificacionesStore } from './stores/useNotificacionesStore';
 import { useNubeStore } from './stores/useNubeStore';
-import { recargarTodoStores } from './stores/recarga';
+import { cargarInicioStores } from './stores/recarga';
 import { useGestos } from './composables/useGestos';
 import { useStorageInfo } from './composables/useStorageInfo';
 import { esErrorCuota } from './services/backupFolder';
@@ -492,7 +492,10 @@ async function inicializar() {
       document.documentElement.style.setProperty('--font-scale', String(Number(cfg.fontScale) || 1));
     } catch {}
 
-    await recargarTodoStores();
+    // Arranque perezoso (4.8): solo el conjunto que el Dashboard necesita
+    // para sus totales. `arqueos` y `distribuciones` NO se cargan aquí:
+    // Reportes y Socios las aseguran al entrar a la vista.
+    await cargarInicioStores();
 
     // DETECCION DE PERDIDA DE DATOS
     try {

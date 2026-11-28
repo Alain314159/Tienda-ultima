@@ -13,6 +13,7 @@ import { useVentasStore } from './useVentasStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useConfigStore } from './useConfigStore';
 import { useComprasStore } from './useComprasStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useCajaStore = defineStore('caja', () => {
   // ===== STORES DEPENDIENTES =====
@@ -83,12 +84,18 @@ export const useCajaStore = defineStore('caja', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaMovCaja = crearCargaPerezosa(cargarMovCaja);
+  const cargaArqueos = crearCargaPerezosa(cargarArqueos);
+
   /**
    * Carga los movimientos de caja desde IndexedDB
    */
   async function cargarMovCaja() {
     try {
       movCaja.value = await db.movCaja.toArray();
+      cargaMovCaja.marcarCargado();
     } catch (e) {
       console.error('Error cargando movimientos de caja:', e);
     }
@@ -100,6 +107,7 @@ export const useCajaStore = defineStore('caja', () => {
   async function cargarArqueos() {
     try {
       arqueos.value = await db.arqueos.toArray();
+      cargaArqueos.marcarCargado();
     } catch (e) {
       console.error('Error cargando arqueos:', e);
     }
@@ -184,7 +192,11 @@ export const useCajaStore = defineStore('caja', () => {
     arqueosOrdenados,
     cajaNegativa,
     cargarMovCaja,
+    movCajaCargado: cargaMovCaja.cargado,
+    asegurarMovCaja: cargaMovCaja.asegurar,
     cargarArqueos,
+    arqueosCargado: cargaArqueos.cargado,
+    asegurarArqueos: cargaArqueos.asegurar,
     registrarMovimiento,
     hacerArqueo,
     cargarTodo,

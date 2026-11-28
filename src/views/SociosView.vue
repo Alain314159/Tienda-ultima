@@ -1,5 +1,6 @@
 <template>
   <section v-if="sec === 'socios'" class="fade-up">
+    <div v-if="cargandoDistribuciones" class="info-box">Cargando repartos…</div>
     <div class="balance morado">
       <div class="lbl"><icon name="users" :size="14" color="#fff"></icon> Socios activos</div>
       <div class="val">{{ sociosActivos.length }}</div>
@@ -250,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { n, m } from '../utils/numero';
 import { fmt, fmtFH } from '../utils/formato';
 import { P, genId, clean } from '../utils/id';
@@ -269,6 +270,24 @@ const capitalStore = useCapitalStore();
 const sec = 'socios';
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
 const txtColor = computed(() => (configStore.tema === 'dark' ? '#f1f5f9' : '#111827'));
+
+// Carga perezosa (4.8): `distribuciones` no se carga al arrancar (solo esta
+// vista la usa); el resto de tablas de capital sí vienen del arranque, pero
+// se aseguran igual para que la vista no dependa del orden de carga.
+const cargandoDistribuciones = ref(false);
+onMounted(async () => {
+  cargandoDistribuciones.value = true;
+  try {
+    await Promise.all([
+      capitalStore.asegurarCapital(),
+      capitalStore.asegurarRetiros(),
+      capitalStore.asegurarSocios(),
+      capitalStore.asegurarDistribuciones(),
+    ]);
+  } finally {
+    cargandoDistribuciones.value = false;
+  }
+});
 
 // ===== GETTERS =====
 const socios = computed(() => capitalStore.socios);

@@ -14,6 +14,7 @@ import { aplicarLotesEnBD } from '../services/fifo';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
 import { useConfigStore } from './useConfigStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useVentasStore = defineStore('ventas', () => {
   // ===== ESTORES DEPENDIENTES =====
@@ -222,12 +223,17 @@ export const useVentasStore = defineStore('ventas', () => {
 
   // ===== ACCIONES DE VENTAS =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaVentas = crearCargaPerezosa(cargarVentas);
+
   /**
    * Carga las ventas desde IndexedDB
    */
   async function cargarVentas() {
     try {
       ventas.value = await db.ventas.toArray();
+      cargaVentas.marcarCargado();
     } catch (e) {
       console.error('Error cargando ventas:', e);
     }
@@ -365,6 +371,8 @@ export const useVentasStore = defineStore('ventas', () => {
     validarPrecio,
     limpiarCarrito,
     cargarVentas,
+    cargado: cargaVentas.cargado,
+    asegurarVentas: cargaVentas.asegurar,
     anularVenta,
     anularProductoEnVenta,
     toggleExpandirVenta,

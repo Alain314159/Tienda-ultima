@@ -277,6 +277,7 @@
       <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI" :disabled="guardandoArqueo">
         {{ guardandoArqueo ? 'Registrando…' : 'Registrar arqueo' }}
       </button>
+      <div v-if="cargandoArqueos" class="det" style="margin-top: 0.6rem">Cargando arqueos…</div>
       <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
         <h3 class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</h3>
         <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
@@ -552,6 +553,7 @@ const cierresOrdenados = computed(() => cierresStore.cierresOrdenados);
 const gananciaNetaPeriodo = computed(() => cierresStore.gananciaNetaPeriodo);
 
 const cerrandoPeriodo = ref(false);
+const cargandoArqueos = ref(false);
 
 function cerrarPeriodo() {
   // Acción irreversible (reinicia contadores del período): confirmar como
@@ -680,13 +682,20 @@ function refrescarLibro() {
 }
 
 onMounted(async () => {
+  // Carga perezosa (4.8): `arqueos` no se carga al arrancar (solo esta vista
+  // y el aviso de arqueo la usan); se asegura al entrar, en paralelo con
+  // el libro diario, que ya se cargaba aquí y no al arrancar.
+  cargandoArqueos.value = true;
   try {
     const filas = await db.asientos.toArray();
+    await cajaStore.asegurarArqueos();
     libro.asientos = filas.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
     libro.balanza = balanzaDeComprobacion(libro.asientos);
     refrescarLibro();
   } catch (e) {
     console.warn('libro diario', e);
+  } finally {
+    cargandoArqueos.value = false;
   }
 });
 

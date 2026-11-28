@@ -17,6 +17,7 @@ import { useAjustesStore } from './useAjustesStore';
 import { useCajaStore } from './useCajaStore';
 import { diasEntre, formatoDisplay } from '../utils/formato';
 import { inicioDiaLocal, crearEnPeriodo } from '../utils/fecha';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useCierresStore = defineStore('cierres', () => {
   // ===== STORES DEPENDIENTES =====
@@ -106,12 +107,17 @@ export const useCierresStore = defineStore('cierres', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaCierres = crearCargaPerezosa(cargarCierres);
+
   /**
    * Carga los cierres desde IndexedDB
    */
   async function cargarCierres() {
     try {
       cierres.value = await db.cierres.toArray();
+      cargaCierres.marcarCargado();
     } catch (e) {
       console.error('Error cargando cierres:', e);
     }
@@ -226,6 +232,8 @@ export const useCierresStore = defineStore('cierres', () => {
     ultimoCierre,
     diasDesdeUltimoCierre,
     cargarCierres,
+    cargado: cargaCierres.cargado,
+    asegurarCierres: cargaCierres.asegurar,
     cerrarPeriodo,
     cargarTodo,
   };

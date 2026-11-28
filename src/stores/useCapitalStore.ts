@@ -12,6 +12,7 @@ import { programarRegeneracionAsientos } from '../services/libroDiario';
 import { useConfigStore } from './useConfigStore';
 import { useCierresStore } from './useCierresStore';
 import { recargarStores } from './recarga';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useCapitalStore = defineStore('capital', () => {
   // ===== STORES DEPENDIENTES =====
@@ -141,12 +142,20 @@ export const useCapitalStore = defineStore('capital', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaCapital = crearCargaPerezosa(cargarCapital);
+  const cargaRetiros = crearCargaPerezosa(cargarRetiros);
+  const cargaSocios = crearCargaPerezosa(cargarSocios);
+  const cargaDistribuciones = crearCargaPerezosa(cargarDistribuciones);
+
   /**
    * Carga el capital desde IndexedDB
    */
   async function cargarCapital() {
     try {
       capital.value = await db.capital.toArray();
+      cargaCapital.marcarCargado();
     } catch (e) {
       console.error('Error cargando capital:', e);
     }
@@ -158,6 +167,7 @@ export const useCapitalStore = defineStore('capital', () => {
   async function cargarRetiros() {
     try {
       retiros.value = await db.retiros.toArray();
+      cargaRetiros.marcarCargado();
     } catch (e) {
       console.error('Error cargando retiros:', e);
     }
@@ -169,6 +179,7 @@ export const useCapitalStore = defineStore('capital', () => {
   async function cargarSocios() {
     try {
       socios.value = await db.socios.toArray();
+      cargaSocios.marcarCargado();
     } catch (e) {
       console.error('Error cargando socios:', e);
     }
@@ -180,6 +191,7 @@ export const useCapitalStore = defineStore('capital', () => {
   async function cargarDistribuciones() {
     try {
       distribuciones.value = await db.distribuciones.toArray();
+      cargaDistribuciones.marcarCargado();
     } catch (e) {
       console.error('Error cargando distribuciones:', e);
     }
@@ -378,9 +390,17 @@ export const useCapitalStore = defineStore('capital', () => {
     totalDistribuido,
     movPatrimonio,
     cargarCapital,
+    capitalCargado: cargaCapital.cargado,
+    asegurarCapital: cargaCapital.asegurar,
     cargarRetiros,
+    retirosCargado: cargaRetiros.cargado,
+    asegurarRetiros: cargaRetiros.asegurar,
     cargarSocios,
+    sociosCargado: cargaSocios.cargado,
+    asegurarSocios: cargaSocios.asegurar,
     cargarDistribuciones,
+    distribucionesCargado: cargaDistribuciones.cargado,
+    asegurarDistribuciones: cargaDistribuciones.asegurar,
     registrarRetiro,
     registrarReparto,
     registrarAporte,

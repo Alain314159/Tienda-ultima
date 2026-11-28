@@ -370,7 +370,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { n } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
@@ -394,6 +394,11 @@ const { gananciaItem, validarPrecio, toggleExpandirVenta } = ventasStore;
 const { stock } = productosStore;
 
 const sec = 'ventas';
+// Carga perezosa (4.8): estas tablas ya vienen del arranque, así que esto
+// es un no-op; existe para que la vista no dependa del orden de carga.
+onMounted(() => {
+  void Promise.all([ventasStore.asegurarVentas(), productosStore.asegurarProductos()]);
+});
 const cfg = configStore.cfg;
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
 

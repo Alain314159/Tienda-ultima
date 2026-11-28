@@ -191,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { n, m } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
 import { P, genId } from '../utils/id';
@@ -214,6 +214,15 @@ const lotesStore = useLotesStore();
 const ajustesStore = useAjustesStore();
 
 const sec = 'inventario';
+// Carga perezosa (4.8): estas tablas ya vienen del arranque, así que esto
+// es un no-op; existe para que la vista no dependa del orden de carga.
+onMounted(() => {
+  void Promise.all([
+    productosStore.asegurarProductos(),
+    lotesStore.asegurarLotes(),
+    ajustesStore.asegurarAjustes(),
+  ]);
+});
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
 
 // ===== CATÁLOGO =====

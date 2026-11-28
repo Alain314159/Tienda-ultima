@@ -51,7 +51,17 @@ export async function datosDeStores() {
   const gastosStore = useGastosStore();
   const cierresStore = useCierresStore();
 
-  const [pasivos, auditorias] = await Promise.all([db.pasivos.toArray(), db.auditorias.toArray()]);
+  // Carga perezosa (4.8): `arqueos` y `distribuciones` NO se cargan al
+  // arrancar, pero un respaldo/autosave SÍ debe llevarlas: restaurar hace
+  // `clear()` + `bulkPut()` por tabla, así que fotografiarlas vacías las
+  // borraría. Se aseguran aquí, en paralelo con las lecturas directas
+  // (una sola ronda de espera), antes de leer los stores.
+  const [pasivos, auditorias] = await Promise.all([
+    db.pasivos.toArray(),
+    db.auditorias.toArray(),
+    cajaStore.asegurarArqueos(),
+    capitalStore.asegurarDistribuciones(),
+  ]);
 
   // El PIN NUNCA viaja en un respaldo: ni el hash ni el flag. Un respaldo
   // importado jamás cambia el PIN del teléfono que lo recibe (1.2), y un

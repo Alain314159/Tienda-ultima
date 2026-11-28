@@ -9,6 +9,7 @@ import { P } from '../utils/id';
 import { db } from '../db';
 import { esPinHasheado, hashPin } from '../services/pin';
 import { inicioDiaLocal } from '../utils/fecha';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useConfigStore = defineStore('config', () => {
   // ===== ESTADO =====
@@ -129,6 +130,10 @@ export const useConfigStore = defineStore('config', () => {
     guardarCfg();
   }
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaCfg = crearCargaPerezosa(cargarCfg);
+
   /**
    * Carga la configuración desde IndexedDB. Migra en segundo plano
    * los PIN legacy en claro a hash PBKDF2.
@@ -149,6 +154,7 @@ export const useConfigStore = defineStore('config', () => {
           void guardarCfg();
         }
       }
+      cargaCfg.marcarCargado();
     } catch (e) {
       console.error('Error cargando configuración:', e);
     }
@@ -168,6 +174,8 @@ export const useConfigStore = defineStore('config', () => {
     cambiarEscalaFont,
     actualizarCfg,
     cargarCfg,
+    cargado: cargaCfg.cargado,
+    asegurarCfg: cargaCfg.asegurar,
   };
 });
 

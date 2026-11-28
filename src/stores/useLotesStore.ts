@@ -9,6 +9,7 @@ import { n, m, q } from '../utils/numero';
 import { P } from '../utils/id';
 import { db } from '../db';
 import { calcFIFO as _calcFIFOBase } from '../services/fifo';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useLotesStore = defineStore('lotes', () => {
   // ===== ESTADO =====
@@ -101,12 +102,17 @@ export const useLotesStore = defineStore('lotes', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaLotes = crearCargaPerezosa(cargarLotes);
+
   /**
    * Carga los lotes desde IndexedDB
    */
   async function cargarLotes() {
     try {
       lotes.value = await db.lotes.toArray();
+      cargaLotes.marcarCargado();
     } catch (e) {
       console.error('Error cargando lotes:', e);
     }
@@ -184,6 +190,8 @@ export const useLotesStore = defineStore('lotes', () => {
     loteSinVentas,
     calcFIFO,
     cargarLotes,
+    cargado: cargaLotes.cargado,
+    asegurarLotes: cargaLotes.asegurar,
     guardarLote,
     eliminarLote,
     actualizarLotesBatch,

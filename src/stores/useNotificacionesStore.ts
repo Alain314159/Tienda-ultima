@@ -200,6 +200,10 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       const horaArq = new Date();
       horaArq.setHours(hh, mm, 0, 0);
       if (ahora >= horaArq) {
+        // Carga perezosa (4.8): los arqueos no se cargan al arrancar; sin
+        // asegurarlos aquí, `hayArqueoHoy` sería falso siempre y el aviso
+        // sonaría aunque el arqueo de hoy ya esté registrado.
+        await cajaStore.asegurarArqueos();
         const hayArqueoHoy = cajaStore.arqueos.some((a) => a.fecha && fechaLocal(a.fecha) === hoy);
         if (!hayArqueoHoy && configStore.cfg.ultimaNotifArqueo !== hoy) {
           enviarNotif('Arqueo pendiente', 'No hay arqueo registrado hoy');

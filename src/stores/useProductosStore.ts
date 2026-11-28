@@ -10,6 +10,7 @@ import { fmtCant } from '../utils/formato';
 import { P, genId } from '../utils/id';
 import { db } from '../db';
 import { useLotesStore } from './useLotesStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 import { productoSchema, validar } from '../schemas/index';
 
 export const useProductosStore = defineStore('productos', () => {
@@ -120,12 +121,17 @@ export const useProductosStore = defineStore('productos', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaProductos = crearCargaPerezosa(cargarProductos);
+
   /**
    * Carga los productos desde IndexedDB
    */
   async function cargarProductos() {
     try {
       productos.value = await db.productos.toArray();
+      cargaProductos.marcarCargado();
     } catch (e) {
       console.error('Error cargando productos:', e);
     }
@@ -229,6 +235,8 @@ export const useProductosStore = defineStore('productos', () => {
     badgeStock,
     txtBadge,
     cargarProductos,
+    cargado: cargaProductos.cargado,
+    asegurarProductos: cargaProductos.asegurar,
     guardarProducto,
     setBusqProd,
     toggleMostrarArchivados,

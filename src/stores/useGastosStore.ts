@@ -9,6 +9,7 @@ import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useGastosStore = defineStore('gastos', () => {
   // ===== STORES DEPENDIENTES =====
@@ -61,12 +62,17 @@ export const useGastosStore = defineStore('gastos', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaGastos = crearCargaPerezosa(cargarGastos);
+
   /**
    * Carga los gastos desde IndexedDB
    */
   async function cargarGastos() {
     try {
       gastos.value = await db.gastos.toArray();
+      cargaGastos.marcarCargado();
     } catch (e) {
       console.error('Error cargando gastos:', e);
     }
@@ -104,6 +110,8 @@ export const useGastosStore = defineStore('gastos', () => {
     gastosOpPeriodo,
     gastosPorCategoria,
     cargarGastos,
+    cargado: cargaGastos.cargado,
+    asegurarGastos: cargaGastos.asegurar,
     eliminarGasto,
   };
 });

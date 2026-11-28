@@ -9,6 +9,7 @@ import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useAjustesStore = defineStore('ajustes', () => {
   // ===== STORES DEPENDIENTES =====
@@ -48,12 +49,17 @@ export const useAjustesStore = defineStore('ajustes', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaAjustes = crearCargaPerezosa(cargarAjustes);
+
   /**
    * Carga los ajustes desde IndexedDB
    */
   async function cargarAjustes() {
     try {
       ajustes.value = await db.ajustes.toArray();
+      cargaAjustes.marcarCargado();
     } catch (e) {
       console.error('Error cargando ajustes:', e);
     }
@@ -66,6 +72,8 @@ export const useAjustesStore = defineStore('ajustes', () => {
     ajustesRecientes,
     mermasPeriodo,
     cargarAjustes,
+    cargado: cargaAjustes.cargado,
+    asegurarAjustes: cargaAjustes.asegurar,
   };
 });
 

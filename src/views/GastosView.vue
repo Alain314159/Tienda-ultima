@@ -130,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { n } from '../utils/numero';
 import { hoyLocal, fechaLocal } from '../utils/fecha';
 import { fmt, fmtFH } from '../utils/formato';
@@ -149,6 +149,11 @@ const ui = useUIStore();
 const gastosStore = useGastosStore();
 
 const sec = 'gastos';
+// Carga perezosa (4.8): estas tablas ya vienen del arranque, así que esto
+// es un no-op; existe para que la vista no dependa del orden de carga.
+onMounted(() => {
+  void gastosStore.asegurarGastos();
+});
 const mutColor = computed(() => (configStore.tema === 'dark' ? '#94a3b8' : '#6b7280'));
 const txtColor = computed(() => (configStore.tema === 'dark' ? '#f1f5f9' : '#111827'));
 

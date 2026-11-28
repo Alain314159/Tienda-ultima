@@ -53,7 +53,7 @@ hace commit y push al final tras verificar).
 - 4.5 Esquema Dexie por composición (base + overrides), esquema efectivo idéntico por versión: HECHO. Hallazgo: la v10 nunca borró realmente `tgQueue` (en Dexie, omitir una tabla no la borra; haría falta `tgQueue: null`); el store vacío es inocuo pero la doc que dice que la v10 lo elimina no es exacta — queda para decidir si se hace una v11.
 - 4.6 Catch vacíos con log de contexto (formato.ts y archivos del grupo): HECHO.
 - 4.7 `useBackupStore` god store: PENDIENTE (refactor grande, no asignado).
-- 4.8 Carga inicial full-table: PENDIENTE (grande, decisión de diseño).
+- 4.8 Carga inicial full-table: HECHO (2026-11-28, carga perezosa: el arranque solo lee las 12 tablas del Dashboard; `arqueos` y `distribuciones` se cargan al entrar a su vista; ver §4.8).
 - 4.9 Dynamic imports inefectivos eliminados (un solo mecanismo estático): HECHO.
 - `window.db` solo en DEV (db.ts): HECHO.
 - Limpieza sociosActivos/gastosOrdenadas: HECHO (salvo el re-filtro en ReportesView.vue:561, vista fuera del grupo — oleada 3).
@@ -328,6 +328,28 @@ hace commit y push al final tras verificar).
   `ref` reactivo. El arranque y la memoria crecen con el historial completo,
   aunque el usuario solo abra el Dashboard.
 - **Esfuerzo:** grande. **Impacto:** bajo hoy, medio a futuro.
+- **HECHO (2026-11-28, carga perezosa):** cada store expone `cargado` +
+  `asegurarX()` (idempotente, llamadas concurrentes comparten una lectura;
+  `cargarX()` sigue siendo recarga forzada) en `src/stores/cargaPerezosa.ts`.
+  El arranque (`cargarInicioStores()` en `recarga.ts`, usado por `App.vue`)
+  solo lee las 12 tablas que el Dashboard necesita para sus totales:
+  config, productos, lotes, ventas, compras, ajustes, gastos, movCaja,
+  capital, retiros, socios y cierres. Diferidas al entrar a su vista:
+  `arqueos` (ReportesView, con «Cargando arqueos…») y `distribuciones`
+  (SociosView, con «Cargando repartos…»); las demás vistas aseguran sus
+  tablas en `onMounted` (no-op tras el arranque). `asientos` sigue sin
+  cargarse al arrancar (ReportesView ya lo leía en su `onMounted`).
+  Seguridad: `datosDeStores()` asegura ambas tablas diferidas antes de
+  fotografiar (un respaldo con `[]` las borraría al restaurar, que hace
+  `clear()` + `bulkPut()` por tabla) y el aviso de arqueo de
+  `useNotificacionesStore` las asegura antes de comprobar si hay arqueo hoy.
+  **Sin hacer perezosas (a propósito):** las 12 tablas del arranque. Sus
+  totales se calculan sobre el historial completo en memoria (saldo de caja
+  acumulativo, ganancia disponible = cierres + neta del período, stock y
+  alertas): hacerlas perezosas exigiría reescribir los getters como
+  agregados Dexie en vez de `toArray()` + `reduce`, un cambio mayor con
+  riesgo de descuadrar ventas, FIFO, contabilidad y reportes. Tests nuevos:
+  `tests/carga-perezosa.test.js` (8 tests).
 
 ### 4.9 Bundle: precache PWA de 2,1 MB; dos dynamic imports inefectivos
 - **Dónde:** `vite.config.ts:115-120`, `src/stores/useCapitalStore.ts:318,346`.

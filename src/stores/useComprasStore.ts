@@ -15,6 +15,7 @@ import { n, m } from '../utils/numero';
 import { db } from '../db';
 import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
+import { crearCargaPerezosa } from './cargaPerezosa';
 
 export const useComprasStore = defineStore('compras', () => {
   // ===== STORES DEPENDIENTES =====
@@ -49,12 +50,17 @@ export const useComprasStore = defineStore('compras', () => {
 
   // ===== ACCIONES =====
 
+  // Carga perezosa (4.8): la vista asegura la tabla al entrar; el arranque
+  // solo la carga si forma parte del conjunto de inicio (ver recarga.ts).
+  const cargaCompras = crearCargaPerezosa(cargarCompras);
+
   /**
    * Carga las compras desde IndexedDB
    */
   async function cargarCompras() {
     try {
       compras.value = await db.compras.toArray();
+      cargaCompras.marcarCargado();
     } catch (e) {
       console.error('Error cargando compras:', e);
     }
@@ -67,6 +73,8 @@ export const useComprasStore = defineStore('compras', () => {
     comprasPeriodo,
     comprasTotal,
     cargarCompras,
+    cargado: cargaCompras.cargado,
+    asegurarCompras: cargaCompras.asegurar,
   };
 });
 
