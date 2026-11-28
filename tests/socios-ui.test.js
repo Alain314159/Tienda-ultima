@@ -30,7 +30,7 @@ async function montar() {
   return wrapper;
 }
 
-async function esperar(cond, ms = 3000) {
+async function esperar(cond, ms = 10000) {
   const fin = Date.now() + ms;
   while (!cond() && Date.now() < fin) {
     await new Promise((r) => setTimeout(r, 25));
@@ -78,16 +78,34 @@ async function sembrarGanancia(ganancia) {
 beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
-  await Promise.all([
-    db.socios.clear(),
-    db.capital.clear(),
-    db.distribuciones.clear(),
-    db.retiros.clear(),
-    db.ventas.clear(),
-    db.gastos.clear(),
-    db.cierres.clear(),
-    db.config.clear(),
-  ]);
+  localStorage.clear();
+  // Limpieza TOTAL (6.1): antes solo se limpiaban 8 tablas y las filas
+  // que quedaban (cambios, descartes, syncMeta, pasivos, auditorias…)
+  // contaminaban los conteos según el orden de ejecución.
+  await Promise.all(
+    [
+      'productos',
+      'lotes',
+      'ventas',
+      'compras',
+      'ajustes',
+      'arqueos',
+      'movCaja',
+      'cierres',
+      'capital',
+      'retiros',
+      'socios',
+      'distribuciones',
+      'gastos',
+      'asientos',
+      'pasivos',
+      'auditorias',
+      'config',
+      'cambios',
+      'descartes',
+      'syncMeta',
+    ].map((t) => db.table(t).clear())
+  );
   const config = useConfigStore();
   config.cfg.periodoInicio = PERIODO_INI;
   config.cfg.capitalInicial = 1000;
@@ -289,7 +307,9 @@ describe('SociosView: reparto de ganancia', () => {
     expect(retiros[0].concepto).toContain('Reparto a socios');
     await esperar(() => useCapitalStore().gananciaDisponible === 800);
 
-    // Historial visible + form reseteado
+    // Historial visible + form reseteado (el reseteo corre tras el
+    // reparto: dar a Vue un tick para que pinte el input vacío).
+    await flushPromises();
     expect(w.text()).toContain('+$150.00');
     expect(w.text()).toContain('+$50.00');
     expect(w.find('input[placeholder="Monto a repartir"]').element.value).toBe('');

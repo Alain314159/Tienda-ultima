@@ -65,10 +65,12 @@ describe('toastMsg (wrapper de vue-sonner)', () => {
 
     toastMsg('Guardado');
     expect(spyS).toHaveBeenCalledWith('Guardado', { duration: 3000 });
+    // Duraciones por tipo (5.6): los avisos duran 5 s y los errores 6 s
+    // para dar tiempo a leerlos (antes los tres duraban 3 s).
     toastMsg('Cuidado', 'warn');
-    expect(spyW).toHaveBeenCalledWith('Cuidado', { duration: 3000 });
+    expect(spyW).toHaveBeenCalledWith('Cuidado', { duration: 5000 });
     toastMsg('Error', 'bad');
-    expect(spyE).toHaveBeenCalledWith('Error', { duration: 3000 });
+    expect(spyE).toHaveBeenCalledWith('Error', { duration: 6000 });
     // ok vibra corto (20), problemas vibran más (40)
     expect(vib).toHaveBeenNthCalledWith(1, 20);
     expect(vib).toHaveBeenNthCalledWith(2, 40);

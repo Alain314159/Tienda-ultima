@@ -7,6 +7,7 @@ import { ref, computed } from 'vue';
 import type { Gasto } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
+import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
 
 export const useGastosStore = defineStore('gastos', () => {
@@ -19,13 +20,14 @@ export const useGastosStore = defineStore('gastos', () => {
   // ===== GETTERS =====
 
   /**
-   * Gastos ordenados por fecha (más reciente primero)
+   * Gastos ordenados por fecha (más reciente primero).
+   * Antes había dos computed con el mismo contenido (gastosOrdenadas /
+   * gastosOrdenados): solo se usaba gastosOrdenados (GastosView + tests),
+   * así que queda uno solo con el nombre que usan los consumidores.
    */
-  const gastosOrdenadas = computed(() => {
+  const gastosOrdenados = computed(() => {
     return gastos.value.slice().sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   });
-
-  const gastosOrdenados = computed(() => gastosOrdenadas.value);
 
   /**
    * Total de gastos acumulados
@@ -38,8 +40,8 @@ export const useGastosStore = defineStore('gastos', () => {
    * Gastos del período actual
    */
   const gastosOpPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
-    return m(gastos.value.filter((g) => new Date(g.fecha) >= ini).reduce((s, g) => s + n(g.monto), 0));
+    const enPeriodoActual = crearEnPeriodo(configStore.periodoInicio);
+    return m(gastos.value.filter((g) => enPeriodoActual(g.fecha)).reduce((s, g) => s + n(g.monto), 0));
   });
 
   /**
@@ -97,7 +99,6 @@ export const useGastosStore = defineStore('gastos', () => {
   // no sincroniza es peor que no tenerlo.)
   return {
     gastos,
-    gastosOrdenadas,
     gastosOrdenados,
     gastosTotalAcumulado,
     gastosOpPeriodo,

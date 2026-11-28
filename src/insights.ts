@@ -3,7 +3,7 @@
 // Sin detecciones de tendencia por producto ni predicciones.
 
 import type { Ajuste, Compra, Config, Cierre, Gasto, Lote, MovCaja, Producto, Recomendacion, Venta } from './types';
-import { inicioDiaLocal } from './utils/fecha';
+import { fechaMs } from './utils/fecha';
 import { stockMinEfectivo } from './utils/numero';
 
 /** Estado que inyecta useInsightsStore al motor de recomendaciones. */
@@ -23,9 +23,10 @@ export interface InsightsState {
   stockDe: (pid: string) => number;
 }
 
-/** Datos que necesita el contexto temporal. */
+/** Datos que necesita el contexto temporal (ya agregados: no re-filtra ventas). */
 interface ContextoData {
-  ventas: Venta[];
+  ventasHoy: number;
+  totalHoy: number;
   totalMes: number;
   diasSinCierre: number;
   formatMoney: (n: number) => string;
@@ -60,10 +61,53 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
     f: new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59),
   };
 
-  const ventasMes = ventas.filter((v) => !v.anulada && new Date(v.fecha) >= mesActual.i);
-  const ventasMesAnt = ventas.filter(
-    (v) => !v.anulada && new Date(v.fecha) >= mesAnterior.i && new Date(v.fecha) <= mesAnterior.f
-  );
+  // Índices pre-parseados (4.2/4.3): antes cada filtro hacía
+  // `new Date(v.fecha)` por registro — una venta se parseaba ~15 veces
+  // por ejecución — y `productos.find()` corría dentro de bucles.
+  // Ahora cada fecha se parsea UNA vez y los productos van por Map.
+  const hace30dMs = hace30d.getTime();
+  const hace90dMs = hace90d.getTime();
+  const umbralSinMovMs = umbralSinMov.getTime();
+  const mesActualIMs = mesActual.i.getTime();
+  const mesAnteriorIMs = mesAnterior.i.getTime();
+  const mesAnteriorFMs = mesAnterior.f.getTime();
+  const ventasConTs = ventas.map((v) => ({ v, ts: fechaMs(v.fecha) }));
+  const ventasActivas = ventasConTs.filter((x) => !x.v.anulada);
+  const productosPorId = new Map(productos.map((p) => [p.id, p]));
+  const comprasPorProducto = new Map<string, { c: Compra; ts: number }[]>();
+  for (const c of compras) {
+    if (c.anulada) continue;
+    const arr = comprasPorProducto.get(c.productoId) || [];
+    arr.push({ c, ts: fechaMs(c.fecha) });
+    comprasPorProducto.set(c.productoId, arr);
+  }
+  // Ordenadas por fecha descendente (el mismo criterio del sort anterior).
+  for (const arr of comprasPorProducto.values()) arr.sort((a, b) => b.ts - a.ts);
+  const movCajaConTs = movCaja.map((mv) => ({ mv, ts: fechaMs(mv.fecha) }));
+  const lotesPorProducto = new Map<string, { l: Lote; ts: number }[]>();
+  for (const l of lotes || []) {
+    const arr = lotesPorProducto.get(l.productoId) || [];
+    arr.push({ l, ts: fechaMs(l.fecha) });
+    lotesPorProducto.set(l.productoId, arr);
+  }
+  // Días con venta y ventas de hoy, en una sola pasada (racha + contexto).
+  const diasConVenta = new Set<string>();
+  const hoyKey = ahora.toDateString();
+  let ventasHoy = 0;
+  let totalHoy = 0;
+  for (const { v, ts } of ventasActivas) {
+    const key = new Date(ts).toDateString();
+    diasConVenta.add(key);
+    if (key === hoyKey) {
+      ventasHoy++;
+      totalHoy += Number(v.total || 0);
+    }
+  }
+
+  const ventasMes = ventasActivas.filter((x) => x.ts >= mesActualIMs).map((x) => x.v);
+  const ventasMesAnt = ventasActivas
+    .filter((x) => x.ts >= mesAnteriorIMs && x.ts <= mesAnteriorFMs)
+    .map((x) => x.v);
   const totalMes = ventasMes.reduce((s, v) => s + (v.total || 0), 0);
   const totalMesAnt = ventasMesAnt.reduce((s, v) => s + (v.total || 0), 0);
 
@@ -76,10 +120,10 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   semanaAnterior.i.setDate(semanaAnterior.f.getDate() - 6);
   semanaAnterior.i.setHours(0, 0, 0, 0);
 
-  const ventasSemana = ventas.filter((v) => !v.anulada && new Date(v.fecha) >= semanaActual.i);
-  const ventasSemanaAnt = ventas.filter(
-    (v) => !v.anulada && new Date(v.fecha) >= semanaAnterior.i && new Date(v.fecha) <= semanaAnterior.f
-  );
+  const ventasSemana = ventasActivas.filter((x) => x.ts >= semanaActual.i.getTime()).map((x) => x.v);
+  const ventasSemanaAnt = ventasActivas
+    .filter((x) => x.ts >= semanaAnterior.i.getTime() && x.ts <= semanaAnterior.f.getTime())
+    .map((x) => x.v);
   const totalSemana = ventasSemana.reduce((s, v) => s + (v.total || 0), 0);
   const totalSemanaAnt = ventasSemanaAnt.reduce((s, v) => s + (v.total || 0), 0);
   const gananciaSemana = ventasSemana.reduce((s, v) => s + (v.ganancia || 0), 0);
@@ -119,9 +163,9 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
       });
     });
 
-  const ventasBajoCosto = ventas
-    .filter((v) => !v.anulada && new Date(v.fecha) >= hace30d)
-    .flatMap((v) =>
+  const ventasBajoCosto = ventasActivas
+    .filter((x) => x.ts >= hace30dMs)
+    .flatMap(({ v }) =>
       v.items.filter((it) => !it.anulado && Number(it.ganancia) < -0.01).map((it) => ({ venta: v, item: it }))
     );
   if (ventasBajoCosto.length > 0) {
@@ -144,8 +188,8 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   const fechasCierre = cierres.map((c) => c.fechaCierre || c.fecha || '').filter(Boolean);
   const ultimoCierre =
     fechasCierre.length > 0
-      ? Math.max(...fechasCierre.map((f) => new Date(f).getTime()))
-      : inicioDiaLocal(cfg.periodoInicio).getTime();
+      ? Math.max(...fechasCierre.map((f) => fechaMs(f)))
+      : fechaMs(cfg.periodoInicio);
   const diasSinCierre = Math.floor((ahora.getTime() - ultimoCierre) / 86400000);
   if (diasSinCierre >= Number(cfg.umbralDiasCierre || 30)) {
     push({
@@ -160,7 +204,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   }
 
   const mermasMes = ajustes
-    .filter((a) => a.cantidad < 0 && new Date(a.fecha) >= mesActual.i)
+    .filter((a) => a.cantidad < 0 && fechaMs(a.fecha) >= mesActualIMs)
     .reduce((s, a) => s + Number(a.costoPerdida || 0), 0);
   if (mermasMes > 0 && totalMes > 0) {
     const pct = (mermasMes / totalMes) * 100;
@@ -177,9 +221,9 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
     }
   }
 
-  const faltantes30 = movCaja.filter(
-    (mv) => mv.concepto && mv.concepto.includes('Faltante') && new Date(mv.fecha) >= hace30d
-  );
+  const faltantes30 = movCajaConTs
+    .filter((x) => x.mv.concepto && x.mv.concepto.includes('Faltante') && x.ts >= hace30dMs)
+    .map((x) => x.mv);
   if (faltantes30.length >= Number(cfg.umbralFaltantesMes || 3)) {
     const total = faltantes30.reduce((s, f) => s + Number(f.monto || 0), 0);
     push({
@@ -193,9 +237,9 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
     });
   }
 
-  const sobrantes30 = movCaja.filter(
-    (mv) => mv.concepto && mv.concepto.includes('Sobrante') && new Date(mv.fecha) >= hace30d
-  );
+  const sobrantes30 = movCajaConTs
+    .filter((x) => x.mv.concepto && x.mv.concepto.includes('Sobrante') && x.ts >= hace30dMs)
+    .map((x) => x.mv);
   if (sobrantes30.length >= Number(cfg.umbralSobrantesMes || 3)) {
     const total = sobrantes30.reduce((s, f) => s + Number(f.monto || 0), 0);
     push({
@@ -212,11 +256,11 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   const umbralDesc = Number(cfg.umbralDescuentoPct || 20);
   if (umbralDesc > 0) {
     let descAltos = 0;
-    ventas
-      .filter((v) => !v.anulada && new Date(v.fecha) >= hace30d)
-      .forEach((v) => {
+    ventasActivas
+      .filter((x) => x.ts >= hace30dMs)
+      .forEach(({ v }) => {
         v.items.forEach((it) => {
-          const prod = productos.find((p) => p.id === it.productoId);
+          const prod = productosPorId.get(it.productoId);
           if (!prod || !prod.precio || Number(prod.precio) <= 0) return;
           if (Number(it.precio) <= 0) return;
           const pct = ((Number(prod.precio) - Number(it.precio)) / Number(prod.precio)) * 100;
@@ -237,7 +281,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   }
 
   const gastosMes = gastos
-    .filter((g) => new Date(g.fecha) >= mesActual.i)
+    .filter((g) => fechaMs(g.fecha) >= mesActualIMs)
     .reduce((s, g) => s + Number(g.monto || 0), 0);
   if (totalMes > 100 && gastosMes / totalMes > 0.3) {
     push({
@@ -254,15 +298,14 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   productos
     .filter((p) => !p.archivado)
     .forEach((p) => {
-      const comprasProd = compras
-        .filter((c) => c.productoId === p.id && !c.anulada)
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      // Compras del producto ya indexadas y ordenadas por fecha desc.
+      const comprasProd = comprasPorProducto.get(p.id) || [];
       if (comprasProd.length < 3) return;
-      const ult = Number(comprasProd[0].costo);
-      const ultFecha = new Date(comprasProd[0].fecha);
-      if (ultFecha < hace30d) return;
+      const ult = Number(comprasProd[0].c.costo);
+      const ultFechaMs = comprasProd[0].ts;
+      if (ultFechaMs < hace30dMs) return;
       const previas = comprasProd.slice(1, 6);
-      const prom = previas.reduce((s, c) => s + Number(c.costo), 0) / previas.length;
+      const prom = previas.reduce((s, x) => s + Number(x.c.costo), 0) / previas.length;
       if (prom > 0.01 && ult > prom * 1.3) {
         push({
           nivel: 'atencion',
@@ -271,13 +314,15 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
           titulo: p.nombre + ': compra ' + ((ult / prom - 1) * 100).toFixed(0) + '% mas caro',
           detalle: formatMoney(ult) + ' vs ' + formatMoney(prom) + ' promedio',
           sec: 'compras',
-          refId: comprasProd[0].id,
-          clave: 'compra-cara-' + comprasProd[0].id,
+          refId: comprasProd[0].c.id,
+          clave: 'compra-cara-' + comprasProd[0].c.id,
         });
       }
     });
 
-  const anuladas30 = ventas.filter((v) => v.anulada && v.fechaAnulacion && new Date(v.fechaAnulacion) >= hace30d);
+  const anuladas30 = ventasConTs
+    .filter((x) => x.v.anulada && x.v.fechaAnulacion && fechaMs(x.v.fechaAnulacion) >= hace30dMs)
+    .map((x) => x.v);
   if (anuladas30.length >= 5) {
     push({
       nivel: 'atencion',
@@ -316,9 +361,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(ahora);
     d.setDate(ahora.getDate() - i);
-    const key = d.toDateString();
-    const vendio = ventas.some((v) => !v.anulada && new Date(v.fecha).toDateString() === key);
-    ultimos7.push(vendio);
+    ultimos7.push(diasConVenta.has(d.toDateString()));
   }
   let racha = 0;
   for (let i = 0; i < 7; i++) {
@@ -426,7 +469,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   );
   const topProd = Object.keys(ganPorProd).sort((a, b) => ganPorProd[b] - ganPorProd[a])[0];
   if (topProd && ganPorProd[topProd] > 0) {
-    const p = productos.find((x) => x.id === topProd);
+    const p = productosPorId.get(topProd);
     if (p)
       push({
         nivel: 'info',
@@ -455,9 +498,9 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   }
 
   const porDia = [0, 0, 0, 0, 0, 0, 0];
-  const ventas90 = ventas.filter((v) => !v.anulada && new Date(v.fecha) >= hace90d);
-  ventas90.forEach((v) => {
-    porDia[new Date(v.fecha).getDay()] += Number(v.total || 0);
+  const ventas90 = ventasActivas.filter((x) => x.ts >= hace90dMs);
+  ventas90.forEach(({ v, ts }) => {
+    porDia[new Date(ts).getDay()] += Number(v.total || 0);
   });
   const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
   const mejorDia = porDia.indexOf(Math.max(...porDia));
@@ -490,28 +533,27 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
     }
   }
 
-  // Productos sin movimiento
+  // Productos sin movimiento: lotes indexados por producto y ventas
+  // recientes como conjunto de ids (antes: filter+reduce de lotes y
+  // ventas.some() por producto, con new Date() por registro).
+  const vendidosDesdeUmbral = new Set<string>();
+  for (const { v, ts } of ventasActivas) {
+    if (ts < umbralSinMovMs) continue;
+    for (const it of v.items) vendidosDesdeUmbral.add(it.productoId);
+  }
   const dormidos = productos.filter((p) => {
     if (p.archivado) return false;
     if (stockDe(p.id) <= 0) return false;
-    let fechaAlta = p.fechaCreacion ? new Date(p.fechaCreacion) : null;
-    if (!fechaAlta) {
-      const lotesProd = (lotes || []).filter((l) => l.productoId === p.id);
-      if (lotesProd.length) {
-        const masAntiguo = lotesProd.reduce((min, l) => {
-          const fL = new Date(l.fecha).getTime();
-          const fMin = new Date(min.fecha).getTime();
-          return fL < fMin ? l : min;
-        });
-        fechaAlta = new Date(masAntiguo.fecha);
-      }
+    let fechaAltaMs: number | null = null;
+    if (p.fechaCreacion) fechaAltaMs = fechaMs(p.fechaCreacion);
+    if (fechaAltaMs === null) {
+      const lotesProd = lotesPorProducto.get(p.id) || [];
+      const validos = lotesProd.map((x) => x.ts).filter((t) => t > 0);
+      if (validos.length) fechaAltaMs = Math.min(...validos);
     }
-    if (!fechaAlta || isNaN(fechaAlta.getTime())) return false;
-    if (fechaAlta > umbralSinMov) return false;
-    const ventasRecientes = ventas.some(
-      (v) => !v.anulada && new Date(v.fecha) >= umbralSinMov && v.items.some((it) => it.productoId === p.id)
-    );
-    return !ventasRecientes;
+    if (fechaAltaMs === null || fechaAltaMs === 0) return false;
+    if (fechaAltaMs > umbralSinMovMs) return false;
+    return !vendidosDesdeUmbral.has(p.id);
   });
   if (dormidos.length > 0) {
     push({
@@ -532,7 +574,7 @@ export function generarRecomendaciones(state: InsightsState): Recomendacion[] {
   // ============================================================
   // ============ CONTEXTO TEMPORAL =============================
   // ============================================================
-  const ctx = contextoDelMomento(ahora, { ventas, totalMes, diasSinCierre, formatMoney });
+  const ctx = contextoDelMomento(ahora, { ventasHoy, totalHoy, totalMes, diasSinCierre, formatMoney });
   if (ctx) push(ctx);
 
   // ============================================================
@@ -551,7 +593,7 @@ function contextoDelMomento(ahora: Date, data: ContextoData): Recomendacion | nu
   const hora = ahora.getHours();
   const diaMes = ahora.getDate();
   const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
-  const { ventas, diasSinCierre, formatMoney } = data;
+  const { ventasHoy, totalHoy, diasSinCierre, formatMoney } = data;
 
   if (diaMes === 1 && hora <= 11) {
     return {
@@ -578,9 +620,6 @@ function contextoDelMomento(ahora: Date, data: ContextoData): Recomendacion | nu
   }
 
   if (dia === 1 && hora >= 6 && hora <= 12) {
-    const ventasHoy = ventas.filter(
-      (v) => !v.anulada && new Date(v.fecha).toDateString() === ahora.toDateString()
-    ).length;
     return {
       nivel: 'info',
       peso: 18,
@@ -629,15 +668,13 @@ function contextoDelMomento(ahora: Date, data: ContextoData): Recomendacion | nu
   }
 
   if (hora >= 22) {
-    const ventasHoy = ventas.filter((v) => !v.anulada && new Date(v.fecha).toDateString() === ahora.toDateString());
-    const totalHoy = ventasHoy.reduce((s, v) => s + Number(v.total || 0), 0);
-    if (ventasHoy.length > 0) {
+    if (ventasHoy > 0) {
       return {
         nivel: 'info',
         peso: 16,
         icono: 'check',
         titulo: 'Cierre del dia: ' + formatMoney(totalHoy),
-        detalle: ventasHoy.length + ' venta(s) registradas',
+        detalle: ventasHoy + ' venta(s) registradas',
         sec: null,
         clave: 'ctx-cierre-dia',
       };

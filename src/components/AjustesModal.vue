@@ -91,7 +91,7 @@
         <input
           v-model="pinNuevo"
           type="password"
-          :placeholder="pinGuardado ? 'Nuevo PIN (vacío = sin cambio)' : 'PIN (4 dígitos)'"
+          :placeholder="pinGuardado ? 'Nuevo PIN (vacío = sin cambio)' : 'PIN (4 a 6 dígitos)'"
           maxlength="6"
           inputmode="numeric"
           @change="guardarPinNuevo"
@@ -100,18 +100,22 @@
       </div>
 
       <div class="set-group">Datos y respaldos</div>
-      <button class="btn pri" @click="backup.exportar">
-        <icon name="download" :size="16" color="#fff"></icon> Exportar respaldo (JSON)
+      <button class="btn pri" @click="backup.exportar" :disabled="backup.exportando || backup.importando">
+        <icon name="download" :size="16" color="#fff"></icon>
+        {{ backup.exportando ? 'Exportando…' : 'Exportar respaldo (JSON)' }}
       </button>
       <button
         class="btn pri"
         @click="backup.exportarCifrado"
+        :disabled="backup.exportando || backup.importando"
         style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)"
       >
-        <icon name="lock" :size="16" color="#fff"></icon> Exportar respaldo cifrado
+        <icon name="lock" :size="16" color="#fff"></icon>
+        {{ backup.exportando ? 'Exportando…' : 'Exportar respaldo cifrado' }}
       </button>
-      <button class="btn ghost" @click="backup.triggerImport">
-        <icon name="upload" :size="16" :color="mutColor"></icon> Importar datos
+      <button class="btn ghost" @click="backup.triggerImport" :disabled="backup.exportando || backup.importando">
+        <icon name="upload" :size="16" :color="mutColor"></icon>
+        {{ backup.importando ? 'Importando…' : 'Importar datos' }}
       </button>
       <!-- accept ampliado: los respaldos históricos incluyen .json.gz (carpeta
            de backups automáticos) y .json con gzip por dentro (pre-migración) -->
@@ -124,7 +128,9 @@
       />
       <div v-if="backup.ultimoBackup" style="font-size: 0.75rem; color: var(--mut); margin-top: 0.3rem">
         Último backup auto: {{ fmtFH(backup.ultimoBackup.fecha) }}
-        <button class="link-btn" @click="backup.restaurarBackupAuto">Restaurar backup automático</button>
+        <button class="link-btn" @click="backup.restaurarBackupAuto" :disabled="backup.importando">
+          {{ backup.importando ? 'Importando…' : 'Restaurar backup automático' }}
+        </button>
       </div>
 
       <div class="set-row" style="padding-top: 0.6rem; border-top: 1px solid var(--brd); margin-top: 0.6rem">
@@ -396,6 +402,9 @@ import { useUIStore } from '../stores/useUIStore';
 import { useBackupStore } from '../stores/useBackupStore';
 import { useNotificacionesStore } from '../stores/useNotificacionesStore';
 import { useStorageInfo } from '../composables/useStorageInfo';
+import { validarPinNuevo } from '../services/pin';
+import { toastMsg } from '../utils/toast';
+import { TOAST } from '../constants';
 
 defineOptions({ name: 'AjustesModal' });
 
@@ -420,6 +429,13 @@ async function guardarPinNuevo() {
   const v = pinNuevo.value.trim();
   // vacío = conservar el PIN actual (no tocar cfg.pin)
   if (!v) return;
+  // Longitud mínima (4 dígitos, solo números): antes se aceptaba cualquier
+  // cadena de hasta 6 caracteres aunque el placeholder dijera «4 dígitos».
+  const valido = validarPinNuevo(v);
+  if (!valido.ok) {
+    pinNuevo.value = '';
+    return toastMsg(valido.error, TOAST.BAD);
+  }
   cfg.pin = v;
   pinNuevo.value = '';
   await configStore.guardarCfg(); // hashea antes de persistir

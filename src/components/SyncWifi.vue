@@ -23,7 +23,7 @@ defineOptions({ name: 'SyncWifi' });
 defineProps({ abierto: Boolean });
 const emit = defineEmits(['cerrar']);
 
-type Fase = 'inicio' | 'creando' | 'codigo' | 'escaneando' | 'pegar' | 'sincronizando' | 'listo' | 'error';
+type Fase = 'inicio' | 'creando' | 'codigo' | 'escaneando' | 'pegar' | 'emparejar' | 'sincronizando' | 'listo' | 'error';
 
 const NOMBRES_TABLAS: Record<string, string> = {
   productos: 'Productos',
@@ -50,6 +50,12 @@ const codigoDibujado = ref(false);
 const textoVisible = ref(false);
 const pegado = ref('');
 const error = ref('');
+/** Código de emparejamiento (6 dígitos) que muestra el creador del enlace. */
+const codigoCreador = ref('');
+/** Código de emparejamiento que escribe quien se une. */
+const codigoEmparejamiento = ref('');
+/** Código de oferta escaneado por quien se une, a la espera del emparejamiento. */
+const codigoOfertaEscaneado = ref('');
 /** La cámara no se pudo abrir: se ofrece pegar el código en su lugar. */
 const camaraFallida = ref(false);
 const progreso = ref<ProgresoSync>({ fase: 'conectando', enviadas: 0, porEnviar: 0, recibidas: 0, porRecibir: 0 });
@@ -100,6 +106,9 @@ function reiniciar(): void {
   codigoDibujado.value = false;
   textoVisible.value = false;
   pegado.value = '';
+  codigoCreador.value = '';
+  codigoEmparejamiento.value = '';
+  codigoOfertaEscaneado.value = '';
   error.value = '';
   fase.value = 'inicio';
 }
@@ -123,6 +132,7 @@ async function iniciarCreador(): Promise<void> {
   fase.value = 'creando';
   try {
     enlace = await crearOferta();
+    codigoCreador.value = enlace.codigoEmparejamiento;
     await mostrarCodigo(enlace.codigo);
   } catch (e) {
     fallo('No se pudo crear el enlace en este teléfono.', e);
@@ -200,11 +210,11 @@ async function alDetectar(codigo: string): Promise<void> {
       await aceptarRespuesta(enlace, codigo);
       await conectar();
     } else {
-      enlace = await aceptarOferta(codigo);
-      await mostrarCodigo(enlace.codigo);
-      // La sincronización ya queda esperando: empieza cuando el otro teléfono
-      // escanee este código, mientras aquí se sigue mostrando.
-      void conectar();
+      // Quien se une primero escribe el código de emparejamiento que
+      // muestra el creador: sin él no se acepta el enlace (1.7).
+      codigoOfertaEscaneado.value = codigo;
+      codigoEmparejamiento.value = '';
+      fase.value = 'emparejar';
     }
   } catch (e) {
     fallo(
@@ -213,6 +223,25 @@ async function alDetectar(codigo: string): Promise<void> {
         : 'Ese código no es válido. Pide al otro teléfono que lo genere de nuevo.',
       e
     );
+  }
+}
+
+/** Quien se une, tras escribir el código de emparejamiento del creador. */
+async function conectarUnion(): Promise<void> {
+  const codigo = codigoEmparejamiento.value.trim();
+  if (!/^\d{6}$/.test(codigo)) {
+    error.value = 'Escribe el código de 6 dígitos que muestra el otro teléfono.';
+    fase.value = 'error';
+    return;
+  }
+  try {
+    enlace = await aceptarOferta(codigoOfertaEscaneado.value);
+    await mostrarCodigo(enlace.codigo);
+    // La sincronización ya queda esperando: empieza cuando el otro teléfono
+    // escanee este código, mientras aquí se sigue mostrando.
+    void conectar();
+  } catch (e) {
+    fallo('Ese código no es válido. Pide al otro teléfono que lo genere de nuevo.', e);
   }
 }
 
@@ -241,6 +270,12 @@ async function conectar(): Promise<void> {
     const r = await sincronizarPorCanal({ db, seg: seguimiento }, enlace.canal, {
       // El que se unió se queda esperando a que el otro teléfono escanee su código.
       esperaConexionMs: 300_000,
+      // Autenticación de emparejamiento (1.7): el creador verifica el código
+      // que muestra; quien se une envía el que escribió. Sin código no hay sync.
+      auth:
+        rol.value === 'creador'
+          ? { esperado: codigoCreador.value }
+          : { enviar: codigoEmparejamiento.value.trim() },
       enProgreso: (p) => {
         if (actual !== intento) return;
         progreso.value = p;
@@ -249,17 +284,25 @@ async function conectar(): Promise<void> {
     });
     if (actual !== intento) return;
     resultado.value = { enviado: r.enviado, aplicados: r.aplicados, descartes: r.descartes };
-    descartes.value = await db.descartes.orderBy('id').reverse().limit(30).toArray();
+    // Las filas remotas inválidas van a `descartes` con motivo
+    // 'remoto-invalido', pero no se ofrecen para restaurar: son datos
+    // que nunca debieron aplicarse.
+    descartes.value = (await db.descartes.orderBy('id').reverse().limit(30).toArray()).filter(
+      (d) => d.motivo !== 'remoto-invalido'
+    );
     await recargarTodoStores();
     toastMsg(`Teléfonos sincronizados: ${r.aplicados} cambios recibidos`);
     fase.value = 'listo';
   } catch (e) {
     if (actual !== intento) return;
     const sinRespuesta = e instanceof Error && e.message === 'tiempo-agotado';
+    const codigoMal = e instanceof Error && e.message === 'codigo-emparejamiento-incorrecto';
     fallo(
-      sinRespuesta
-        ? 'El otro teléfono tardó demasiado en conectarse. Revisa que los dos estén en la misma red WiFi y vuelve a intentarlo.'
-        : 'El enlace se perdió. Acerca los teléfonos, revisa que estén en la misma WiFi y vuelve a intentarlo.',
+      codigoMal
+        ? 'El código de emparejamiento no coincide. Revisa el código que muestra el teléfono que creó el enlace y vuelve a intentarlo.'
+        : sinRespuesta
+          ? 'El otro teléfono tardó demasiado en conectarse. Revisa que los dos estén en la misma red WiFi y vuelve a intentarlo.'
+          : 'El enlace se perdió. Acerca los teléfonos, revisa que estén en la misma WiFi y vuelve a intentarlo.',
       e
     );
   }
@@ -325,6 +368,11 @@ onBeforeUnmount(() => {
 
       <template v-else-if="fase === 'codigo'">
         <p class="sync-paso">{{ pasoQr }}</p>
+        <div v-if="rol === 'creador' && codigoCreador" class="sync-codigo">
+          <span class="sync-codigo-titulo">Código de emparejamiento</span>
+          <span class="sync-codigo-numero">{{ codigoCreador }}</span>
+          <span class="sync-codigo-ayuda">El otro teléfono debe escribir este código para conectar. Sin él, el enlace no se acepta.</span>
+        </div>
         <canvas v-show="codigoDibujado" ref="lienzoQr" class="sync-qr" />
         <p v-if="!codigoDibujado" class="sync-aviso">
           El código no cabe en un QR: usa «Copiar código» y pégalo en el otro teléfono.
@@ -355,6 +403,23 @@ onBeforeUnmount(() => {
         <button class="sync-boton sync-secundario" type="button" @click="abrirPegar">
           Pegar el código en vez de escanear
         </button>
+      </template>
+
+      <template v-else-if="fase === 'emparejar'">
+        <p class="sync-paso">Escribe el código de 6 dígitos que muestra el teléfono que creó el enlace. Sin ese código no se puede conectar.</p>
+        <input
+          v-model="codigoEmparejamiento"
+          class="sync-codigo-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="123456"
+          aria-label="Código de emparejamiento"
+          @keyup.enter="conectarUnion"
+        />
+        <button class="sync-boton" type="button" @click="conectarUnion">Conectar</button>
+        <button class="sync-boton sync-secundario" type="button" @click="reiniciar">Cancelar</button>
       </template>
 
       <template v-else-if="fase === 'pegar'">
@@ -515,6 +580,50 @@ onBeforeUnmount(() => {
   font-size: 0.8rem;
   color: var(--txt);
   word-break: break-all;
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: var(--r-sm);
+}
+
+.sync-codigo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--brd);
+  border-radius: var(--r-sm);
+}
+
+.sync-codigo-titulo {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.sync-codigo-numero {
+  font-family: monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+}
+
+.sync-codigo-ayuda {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--mut);
+  text-align: center;
+}
+
+.sync-codigo-input {
+  width: 100%;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-align: center;
+  color: var(--txt);
   background: var(--bg);
   border: 1px solid var(--brd);
   border-radius: var(--r-sm);

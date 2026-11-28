@@ -7,6 +7,7 @@ import { ref, computed } from 'vue';
 import type { Ajuste } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
+import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
 
 export const useAjustesStore = defineStore('ajustes', () => {
@@ -37,10 +38,10 @@ export const useAjustesStore = defineStore('ajustes', () => {
    * desde periodoInicio, valoradas a costoPerdida.
    */
   const mermasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
+    const enPeriodoActual = crearEnPeriodo(configStore.periodoInicio);
     return m(
       ajustes.value
-        .filter((a) => n(a.cantidad) < 0 && new Date(a.fecha) >= ini)
+        .filter((a) => n(a.cantidad) < 0 && enPeriodoActual(a.fecha))
         .reduce((s, a) => s + n(a.costoPerdida), 0)
     );
   });

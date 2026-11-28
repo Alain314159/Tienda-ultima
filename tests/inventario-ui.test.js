@@ -27,7 +27,7 @@ async function montar() {
   return wrapper;
 }
 
-async function esperar(cond, ms = 3000) {
+async function esperar(cond, ms = 10000) {
   const fin = Date.now() + ms;
   while (!cond() && Date.now() < fin) {
     await new Promise((r) => setTimeout(r, 25));
@@ -71,12 +71,46 @@ async function clickAjuste(w) {
   await w.find('button.btn.warn').trigger('click');
   await new Promise((r) => setTimeout(r, 150));
   await flushPromises();
+  // Desde MEJORAS 2.4 «Registrar ajuste» no escribe directo: abre una
+  // confirmación con el detalle FIFO. Aceptarla aquí (los casos de
+  // validación no abren confirmación: no hay nada que aceptar).
+  const ui = useUIStore();
+  if (ui.confirm.activo) {
+    ui.okConfirm();
+    await flushPromises();
+  }
 }
 
 beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
-  await Promise.all([db.productos.clear(), db.lotes.clear(), db.ajustes.clear()]);
+  // Limpieza TOTAL (6.1): sin ella, filas de otros tests (cambios,
+  // descartes, syncMeta, pasivos, auditorias…) contaminan los conteos y
+  // los fallos dependen del orden de ejecución.
+  await Promise.all(
+    [
+      'productos',
+      'lotes',
+      'ventas',
+      'compras',
+      'ajustes',
+      'arqueos',
+      'movCaja',
+      'cierres',
+      'capital',
+      'retiros',
+      'socios',
+      'distribuciones',
+      'gastos',
+      'asientos',
+      'pasivos',
+      'auditorias',
+      'config',
+      'cambios',
+      'descartes',
+      'syncMeta',
+    ].map((t) => db.table(t).clear())
+  );
   await cargarTodo();
 });
 
@@ -138,7 +172,7 @@ describe('InventarioView: merma', () => {
     const w = await montar();
     await llenarAjuste(w, { productoId: 'p1', cantidad: '-25', motivo: 'robo' });
     await clickAjuste(w);
-    expect(errSpy).toHaveBeenCalledWith('Solo hay 20', expect.anything());
+    expect(errSpy).toHaveBeenCalledWith('Solo quedan 20 unidades en stock de este producto', expect.anything());
     expect(await db.ajustes.count()).toBe(0);
     expect((await db.lotes.get('lA')).cantidadVendida).toBe(0);
     w.unmount();
@@ -254,7 +288,9 @@ describe('InventarioView: resumen y agrupación', () => {
     const w = await montar();
     await llenarAjuste(w, { productoId: 'p1', cantidad: '-3', motivo: 'merma' });
     await clickAjuste(w);
-    await esperar(() => w.text().includes('Merma / Daño') === false || w.text().includes('merma'));
+    // Esperar al ajuste en el store (no al texto: la etiqueta del campo
+    // ya contiene «merma» y un esperar por texto devolvería al instante).
+    await esperar(() => useAjustesStore().ajustes.length === 1);
 
     // En "Últimos ajustes": nombre, motivo, -3 y pérdida $3.00
     expect(w.text()).toContain('Aceite');

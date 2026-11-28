@@ -4,12 +4,21 @@
  * de la tienda en el header. Punto de color + texto corto; al tocarlo
  * abre la cuenta nube.
  *
- * Estados (sin conexión manda sobre todos, porque sin red no hay sync):
- * - Sin conexión (rojo): el navegador está offline.
+ * Rojo SOLO ante un error real de sync (3.3). «Sin conexión» y «sin
+ * sincronizar» son estados neutros (ámbar/gris, sin alarma): con internet
+ * intermitente lo normal es pasar ratos sin sync y los datos viven en el
+ * teléfono; el rojo permanente enseñaba a ignorarlo justo cuando apareciera
+ * un error real.
+ *
+ * Estados:
+ * - Sin conexión (ámbar): el navegador está offline.
  * - Al día (verde): sesión iniciada y última sync correcta reciente.
  * - Sincronizando… (amarillo): hay una vuelta en curso.
- * - Error de sync / Sin sincronizar (rojo): la última vuelta falló, o
- *   lleva más de 10 minutos sin una sync correcta.
+ * - Error de sync (rojo): la última vuelta falló de verdad.
+ * - Sin sincronizar (ámbar): sesión iniciada pero sin sync correcta
+ *   reciente (más de un día) o aún ninguna.
+ * - Reconectando… (ámbar): la sesión no se pudo comprobar (sin red al
+ *   arrancar); se reintenta sola, sin cerrar la sesión.
  * - Sin sesión (gris): no hay cuenta de Google conectada.
  */
 import { computed } from 'vue';
@@ -21,7 +30,7 @@ const emit = defineEmits(['abrir-cuenta']);
 const nube = useNubeStore();
 
 const estado = computed(() => {
-  if (!props.online) return { clave: 'sin-conexion', texto: 'Sin conexión', clase: 'off' };
+  if (!props.online) return { clave: 'sin-conexion', texto: 'Sin conexión', clase: 'warn' };
   switch (nube.estado) {
     case 'al-dia':
       return { clave: 'al-dia', texto: 'Al día', clase: 'ok' };
@@ -30,7 +39,9 @@ const estado = computed(() => {
     case 'error':
       return { clave: 'error', texto: 'Error de sync', clase: 'off' };
     case 'sin-sincronizar':
-      return { clave: 'sin-sincronizar', texto: 'Sin sincronizar', clase: 'off' };
+      return { clave: 'sin-sincronizar', texto: 'Sin sincronizar', clase: 'warn' };
+    case 'sesion-pendiente':
+      return { clave: 'sesion-pendiente', texto: 'Reconectando…', clase: 'warn' };
     default:
       return { clave: 'sin-sesion', texto: 'Sin sesión', clase: 'idle' };
   }
@@ -50,3 +61,15 @@ const estado = computed(() => {
     <span class="sync-txt">{{ estado.texto }}</span>
   </button>
 </template>
+
+<style scoped>
+/* Estado neutro de aviso (sin conexión / sin sync reciente / reconectando):
+ * ámbar, sin la alarma del rojo (.sync-off de styles.css, solo para error). */
+.sync-warn {
+  background: rgb(245 158 11 / 35%);
+}
+
+.sync-warn .sync-dot {
+  background: #fbbf24;
+}
+</style>

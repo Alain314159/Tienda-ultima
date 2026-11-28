@@ -2,9 +2,9 @@
   <section v-if="sec === 'reportes'" class="fade-up">
     <!-- Cerrar Período -->
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período
-      </div>
+      </h2>
       <div class="info-box" style="margin-bottom: 0.6rem">
         Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
       </div>
@@ -25,16 +25,17 @@
         Ganancia:
         <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
       </div>
-      <button class="btn warn" @click="cerrarPeriodo()">
-        <icon name="calendar" :size="16" color="#fff"></icon> Cerrar Período y Empezar Nuevo
+      <button class="btn warn" @click="cerrarPeriodo()" :disabled="cerrandoPeriodo">
+        <icon name="calendar" :size="16" color="#fff"></icon>
+        {{ cerrandoPeriodo ? 'Cerrando…' : 'Cerrar Período y Empezar Nuevo' }}
       </button>
     </div>
 
     <!-- Historial de Cierres -->
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres
-      </div>
+      </h2>
       <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
       <div
         v-for="c in cierresStore.cierresOrdenados"
@@ -55,16 +56,16 @@
           style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.7rem; margin-top: 0.2rem"
         >
           <div style="color: var(--mut)">
-            Ventas: <b style="color: var(--ok)">{{ fmt(c.ventas) }}</b>
+            Ventas: <b class="pos">{{ fmt(c.ventas) }}</b>
           </div>
           <div style="color: var(--mut)">
-            COGS: <b style="color: var(--bad)">-{{ fmt(c.cogs) }}</b>
+            COGS: <b class="neg">-{{ fmt(c.cogs) }}</b>
           </div>
           <div style="color: var(--mut)">
-            Gastos: <b style="color: var(--bad)">-{{ fmt(c.gastos) }}</b>
+            Gastos: <b class="neg">-{{ fmt(c.gastos) }}</b>
           </div>
           <div style="color: var(--mut)">
-            Mermas: <b style="color: var(--bad)">-{{ fmt(c.mermas) }}</b>
+            Mermas: <b class="neg">-{{ fmt(c.mermas) }}</b>
           </div>
         </div>
       </div>
@@ -72,9 +73,9 @@
 
     <!-- LIBRO DIARIO (PARTIDA DOBLE) -->
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="book" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Libro Diario
-      </div>
+      </h2>
       <div class="info-box" style="margin-bottom: 0.6rem">
         Contabilidad de partida doble generada automáticamente: cada operación produce un cargo y un abono por el mismo
         monto.
@@ -84,9 +85,9 @@
 
       <template v-else>
         <!-- Balanza de comprobación -->
-        <div class="card-title" style="margin-top: 0">
+        <h3 class="card-title" style="margin-top: 0">
           <icon name="chart" :size="16"></icon> Balanza de comprobación
-        </div>
+        </h3>
         <div style="overflow-x: auto">
           <table class="cuadre-table">
             <thead>
@@ -121,9 +122,9 @@
         </div>
 
         <!-- Balance general (estado de situación) -->
-        <div class="card-title" style="margin-top: 0.8rem">
+        <h3 class="card-title" style="margin-top: 0.8rem">
           <icon name="book" :size="16"></icon> Balance general (estado de situación)
-        </div>
+        </h3>
         <div style="overflow-x: auto">
           <table class="cuadre-table">
             <thead>
@@ -176,7 +177,7 @@
         </div>
 
         <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
-        <div class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</div>
+        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</h3>
         <div class="row">
           <span>Caja según libro vs sistema</span>
           <b :class="libro.cajaOk ? 'pos' : 'neg'"
@@ -197,7 +198,7 @@
         </div>
 
         <!-- Últimos asientos -->
-        <div class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</div>
+        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</h3>
         <div v-for="a in libro.ultimos" :key="a.id" class="item">
           <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
             <div>
@@ -215,16 +216,22 @@
     <!-- ARQUEO DE CAJA (restaurado: la notificación diaria existía pero la UI
          se perdió al eliminar la vista Caja) -->
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="dollar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Arqueo de Caja
-      </div>
+      </h2>
       <div class="row">
         <span>Caja según sistema</span>
         <b>{{ fmt(cajaStore.saldoCaja) }}</b>
       </div>
       <div class="grid2" style="margin-top: 0.4rem">
-        <input v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
-        <input v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
+        <div>
+          <label class="fld-label" for="arqueo-fisico">Contado físico en caja</label>
+          <input id="arqueo-fisico" v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
+        </div>
+        <div>
+          <label class="fld-label" for="arqueo-nota">Nota (opcional)</label>
+          <input id="arqueo-nota" v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
+        </div>
       </div>
       <div v-if="arqueoDiff !== null" class="row" style="margin-top: 0.4rem">
         <span>Diferencia (físico − sistema)</span>
@@ -236,9 +243,11 @@
           }}
         </b>
       </div>
-      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI">Registrar arqueo</button>
+      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI" :disabled="guardandoArqueo">
+        {{ guardandoArqueo ? 'Registrando…' : 'Registrar arqueo' }}
+      </button>
       <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
-        <div class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</div>
+        <h3 class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</h3>
         <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
           <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
             <div>
@@ -257,34 +266,42 @@
 
     <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="file" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cuadre por Período
-      </div>
+      </h2>
       <div class="grid2">
-        <input
-          v-model="rep.fechaInicio"
-          type="date"
-          @input="
-            rep.isoInicio = null;
-            rep.isoFin = null;
-            rep.periodoActivo = null;
-          "
-        />
-        <input
-          v-model="rep.fechaFin"
-          type="date"
-          @input="
-            rep.isoInicio = null;
-            rep.isoFin = null;
-            rep.periodoActivo = null;
-          "
-        />
+        <div>
+          <label class="fld-label" for="rep-inicio">Desde</label>
+          <input
+            id="rep-inicio"
+            v-model="rep.fechaInicio"
+            type="date"
+            @input="
+              rep.isoInicio = null;
+              rep.isoFin = null;
+              rep.periodoActivo = null;
+            "
+          />
+        </div>
+        <div>
+          <label class="fld-label" for="rep-fin">Hasta</label>
+          <input
+            id="rep-fin"
+            v-model="rep.fechaFin"
+            type="date"
+            @input="
+              rep.isoInicio = null;
+              rep.isoFin = null;
+              rep.periodoActivo = null;
+            "
+          />
+        </div>
       </div>
       <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; margin-bottom: 0.5rem">
         <button
           class="btn"
           :class="rep.periodoActivo === 'hoy' ? 'pri' : 'ghost'"
-          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          style="margin: 0; min-height: 2.75rem; padding: 0.8rem 0.2rem; font-size: 0.75rem"
           @click="setHoy()"
         >
           Hoy
@@ -292,7 +309,7 @@
         <button
           class="btn"
           :class="rep.periodoActivo === 'semana' ? 'pri' : 'ghost'"
-          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          style="margin: 0; min-height: 2.75rem; padding: 0.8rem 0.2rem; font-size: 0.75rem"
           @click="setSemana()"
         >
           7d
@@ -300,7 +317,7 @@
         <button
           class="btn"
           :class="rep.periodoActivo === 'mes' ? 'pri' : 'ghost'"
-          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          style="margin: 0; min-height: 2.75rem; padding: 0.8rem 0.2rem; font-size: 0.75rem"
           @click="setMesActual()"
         >
           Mes
@@ -308,7 +325,7 @@
         <button
           class="btn"
           :class="rep.periodoActivo === 'mes-ant' ? 'pri' : 'ghost'"
-          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          style="margin: 0; min-height: 2.75rem; padding: 0.8rem 0.2rem; font-size: 0.75rem"
           @click="setMesAnterior()"
         >
           Mes ant
@@ -316,7 +333,7 @@
         <button
           class="btn"
           :class="rep.periodoActivo === 'anio' ? 'pri' : 'ghost'"
-          style="margin: 0; padding: 0.5rem 0.2rem; font-size: 0.65rem"
+          style="margin: 0; min-height: 2.75rem; padding: 0.8rem 0.2rem; font-size: 0.75rem"
           @click="setAnio()"
         >
           Año
@@ -325,7 +342,7 @@
       <button
         class="btn"
         :class="rep.periodoActivo === 'actual' ? 'pri' : 'ghost'"
-        style="margin-bottom: 0.5rem; font-size: 0.72rem"
+        style="margin-bottom: 0.5rem; min-height: 2.75rem; font-size: 0.78rem"
         @click="setPeriodoActual()"
       >
         Periodo actual (desde {{ fmtFecha(cfg.periodoInicio) }})
@@ -340,7 +357,7 @@
             :key="c.id"
             class="btn"
             :class="rep.periodoActivo === c.id ? 'pri' : 'ghost'"
-            style="width: auto; padding: 0.35rem 0.7rem; font-size: 0.68rem; margin: 0"
+            style="width: auto; min-height: 2.75rem; padding: 0.65rem 0.8rem; font-size: 0.75rem; margin: 0"
             @click="setPeriodoCierre(c)"
           >
             {{ c.periodo }}
@@ -353,7 +370,7 @@
 
       <!-- Resumen del cuadre -->
       <div v-if="rep.resultado" style="margin-top: 0.8rem">
-        <div class="card-title" style="margin-top: 0"><icon name="chart" :size="18"></icon> Resumen</div>
+        <h3 class="card-title" style="margin-top: 0"><icon name="chart" :size="18"></icon> Resumen</h3>
         <div class="row">
           <span>Ingresos</span><b class="pos">{{ fmt(rep.resultado.ingresos) }}</b>
         </div>
@@ -382,7 +399,7 @@
 
       <!-- Tabla de cuadre por producto -->
       <div v-if="rep.resultado && rep.resultado.cuadre" style="margin-top: 1rem">
-        <div class="card-title"><icon name="package" :size="18"></icon> Cuadre por producto</div>
+        <h3 class="card-title"><icon name="package" :size="18"></icon> Cuadre por producto</h3>
         <div style="overflow-x: auto">
           <table class="cuadre-table">
             <thead>
@@ -471,13 +488,14 @@
         </div>
 
         <!-- Botón PDF (reemplaza CSV y Compartir) -->
-        <button class="btn ok" style="margin-top: 0.8rem" @click="generarPDFCuadre()">
-          <icon name="file" :size="16" color="#fff"></icon> Exportar PDF
+        <button class="btn ok" style="margin-top: 0.8rem" @click="generarPDFCuadre()" :disabled="generandoPDF">
+          <icon name="file" :size="16" color="#fff"></icon>
+          {{ generandoPDF ? 'Generando PDF…' : 'Exportar PDF' }}
         </button>
 
         <!-- Reparto entre socios -->
         <div v-if="sociosActivos.length" style="margin-top: 1.2rem">
-          <div class="card-title"><icon name="users" :size="18"></icon> Reparto entre socios</div>
+          <h3 class="card-title"><icon name="users" :size="18"></icon> Reparto entre socios</h3>
           <div class="info-box" style="margin-bottom: 0.5rem">
             Ganancia neta del periodo: <b>{{ fmt(rep.resultado.neta) }}</b>
           </div>
@@ -533,21 +551,33 @@ const cierres = computed(() => cierresStore.cierres);
 const cierresOrdenados = computed(() => cierresStore.cierresOrdenados);
 const gananciaNetaPeriodo = computed(() => cierresStore.gananciaNetaPeriodo);
 
+const cerrandoPeriodo = ref(false);
+
 function cerrarPeriodo() {
   // Acción irreversible (reinicia contadores del período): confirmar como
   // el resto de operaciones destructivas de la app
   ui.confirmar({
     titulo: 'Cerrar período',
     msg: 'Se acumulará la ganancia del período y los contadores empezarán de cero. El historial se conserva. ¿Continuar?',
-    onOk: () => cierresStore.cerrarPeriodo(),
+    onOk: async () => {
+      if (cerrandoPeriodo.value) return;
+      cerrandoPeriodo.value = true;
+      try {
+        await cierresStore.cerrarPeriodo();
+      } finally {
+        cerrandoPeriodo.value = false;
+      }
+    },
   });
 }
 
-// ===== SOCIOS (para el reparto del PDF) =====
-const sociosActivos = computed(() => capitalStore.socios.filter((s) => s.activo !== false));
+// ===== SOCIOS (para el reparto del PDF): el computed ya existe en el
+// store (4.1/oleada 2); no re-filtrar aquí.
+const sociosActivos = computed(() => capitalStore.sociosActivos);
 
 // ===== ARQUEO DE CAJA =====
 const arqueoForm = ref({ fisico: '', nota: '' });
+const guardandoArqueo = ref(false);
 const arqueoDiff = computed(() => {
   const f = n(arqueoForm.value.fisico);
   if (arqueoForm.value.fisico.trim() === '' || isNaN(f)) return null;
@@ -570,12 +600,16 @@ function hacerArqueoUI() {
     titulo: 'Registrar arqueo',
     msg: msg + '\n\n¿Confirmar?',
     onOk: async () => {
+      if (guardandoArqueo.value) return;
+      guardandoArqueo.value = true;
       try {
         await cajaStore.hacerArqueo(f, diff, arqueoForm.value.nota.trim());
         arqueoForm.value = { fisico: '', nota: '' };
         toastMsg('Arqueo registrado');
       } catch (e) {
         toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+      } finally {
+        guardandoArqueo.value = false;
       }
     },
   });
@@ -669,6 +703,19 @@ const {
   setPeriodoActual,
   toggleCuadreProducto,
   generarReporte,
-  generarPDFCuadre,
+  generarPDFCuadre: generarPDFCuadreBase,
 } = useCuadre();
+
+/** Estado de carga del PDF (MEJORAS 2.6/9): el botón muestra
+ * «Generando PDF…» y se deshabilita mientras jsPDF trabaja. */
+const generandoPDF = ref(false);
+async function generarPDFCuadre() {
+  if (generandoPDF.value) return;
+  generandoPDF.value = true;
+  try {
+    await generarPDFCuadreBase();
+  } finally {
+    generandoPDF.value = false;
+  }
+}
 </script>

@@ -6,25 +6,40 @@
       <div class="sub">Repartido: {{ fmt(totalDistribuido) }} · {{ sumaPorcentajes }}% en total</div>
     </div>
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="plus" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon>
         {{ socioForm.editId ? 'Editar' : 'Agregar' }} Socio
-      </div>
-      <input v-model="socioForm.nombre" type="text" maxlength="80" placeholder="Nombre del socio" />
+      </h2>
+      <label class="fld-label" for="socio-nombre">Nombre del socio</label>
+      <input id="socio-nombre" v-model="socioForm.nombre" type="text" maxlength="80" placeholder="Nombre del socio" />
       <div class="grid2">
-        <input
-          v-model="socioForm.porcentaje"
-          type="number"
-          inputmode="decimal"
-          step="0.01"
-          placeholder="% participacion"
-        />
-        <input v-model="socioForm.aporte" type="number" inputmode="decimal" step="0.01" placeholder="Aporte inicial" />
+        <div>
+          <label class="fld-label" for="socio-porcentaje">% de participación</label>
+          <input
+            id="socio-porcentaje"
+            v-model="socioForm.porcentaje"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            placeholder="% participacion"
+          />
+        </div>
+        <div>
+          <label class="fld-label" for="socio-aporte">Aporte inicial</label>
+          <input
+            id="socio-aporte"
+            v-model="socioForm.aporte"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            placeholder="Aporte inicial"
+          />
+        </div>
       </div>
       <div class="info-box" style="margin-bottom: 0.5rem">
         Suma actual: <b>{{ sumaPorcentajes }}%</b>
         <span v-if="Math.abs(sumaPorcentajes - 100) < 0.01"> OK</span>
-        <span v-else style="color: var(--warn)"> (debe sumar 100%)</span>
+        <span v-else style="color: var(--warn-txt)"> (debe sumar 100%)</span>
       </div>
       <button class="btn pri" @click="guardarSocio()">
         {{ socioForm.editId ? 'Actualizar' : 'Agregar Socio' }}
@@ -32,9 +47,9 @@
       <button v-if="socioForm.editId" class="btn ghost" @click="resetSocio()">Cancelar</button>
     </div>
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="users" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Socios
-      </div>
+      </h2>
       <div v-if="socios.length === 0" class="empty">Sin socios registrados</div>
       <div v-for="s in socios" :key="s.id" class="item">
         <div class="info">
@@ -55,16 +70,31 @@
       </div>
     </div>
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="dollar" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Movimientos de dinero
-      </div>
+      </h2>
       <div style="font-size: 0.82rem; color: var(--mut); margin-bottom: 0.7rem">
         Disponible para retiro: <b class="pos">{{ fmt(capitalStore.gananciaDisponible) }}</b>
       </div>
 
       <div class="sheet-group" style="margin-top: 0">Repartir ganancia entre socios</div>
-      <input v-model="repartoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto a repartir" />
-      <input v-model="repartoForm.concepto" type="text" maxlength="120" placeholder="Concepto (ej: Reparto mensual)" />
+      <label class="fld-label" for="reparto-monto">Monto a repartir</label>
+      <input
+        id="reparto-monto"
+        v-model="repartoForm.monto"
+        type="number"
+        inputmode="decimal"
+        step="0.01"
+        placeholder="Monto a repartir"
+      />
+      <label class="fld-label" for="reparto-concepto">Concepto</label>
+      <input
+        id="reparto-concepto"
+        v-model="repartoForm.concepto"
+        type="text"
+        maxlength="120"
+        placeholder="Concepto (ej: Reparto mensual)"
+      />
       <div v-if="n(repartoForm.monto) > 0 && sociosActivos.length" class="info-box" style="margin-bottom: 0.5rem">
         <div
           v-for="s in sociosActivos"
@@ -95,12 +125,13 @@
     </div>
 
     <div v-if="aportesSinSocio.length" class="card" style="border: 2px solid var(--warn)">
-      <div class="card-title"><icon name="alert" :size="18" :color="'#d97706'"></icon> Aportes sin asignar</div>
-      <div class="info-box" style="background: rgb(217 119 6 / 10%); color: var(--warn)">
+      <h2 class="card-title"><icon name="alert" :size="18" :color="'#d97706'"></icon> Aportes sin asignar</h2>
+      <div class="info-box" style="background: rgb(217 119 6 / 10%); color: var(--warn-txt)">
         Tienes <b>{{ aportesSinSocio.length }}</b> aporte(s) por <b>{{ fmt(aportesSinSocioTotal) }}</b> que no estan
         asignados a ningun socio (son de antes de crear el modulo de socios).
       </div>
-      <select v-model="migrarSocioId">
+      <label class="fld-label" for="migrar-socio">Socio al que se asignan los aportes</label>
+      <select id="migrar-socio" v-model="migrarSocioId">
         <option value="">Elegir socio...</option>
         <option v-for="s in sociosActivos" :key="s.id" :value="s.id">{{ s.nombre }}</option>
       </select>
@@ -108,9 +139,9 @@
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Historial de capital
-      </div>
+      </h2>
       <div v-if="movPatrimonio.length === 0" class="empty">Sin movimientos</div>
       <div v-for="mv in movPatrimonio" :key="mv.id" class="item">
         <div class="info">
@@ -122,10 +153,10 @@
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'socios' ? '#2196F3' : mutColor"></icon> Historial de
         Distribuciones
-      </div>
+      </h2>
       <div v-if="distribucionesOrdenadas.length === 0" class="empty">Sin distribuciones</div>
       <div v-for="d in distribucionesOrdenadas" :key="d.id" class="item">
         <div class="info">
@@ -166,14 +197,22 @@
             Ganancia disponible: <b class="pos">{{ fmt(capitalStore.gananciaDisponible) }}</b>
           </template>
         </div>
+        <label class="fld-label" for="retiro-monto">Monto a retirar</label>
         <input
+          id="retiro-monto"
           v-model="capitalStore.retiroForm.monto"
           type="number"
           inputmode="decimal"
           step="0.01"
           placeholder="Monto a retirar"
         />
-        <input v-model="capitalStore.retiroForm.concepto" type="text" placeholder="Concepto (obligatorio)" />
+        <label class="fld-label" for="retiro-concepto">Concepto (obligatorio)</label>
+        <input
+          id="retiro-concepto"
+          v-model="capitalStore.retiroForm.concepto"
+          type="text"
+          placeholder="Concepto (obligatorio)"
+        />
         <div class="grid2">
           <button class="btn bad" @click="registrarRetiro">Retirar</button>
           <button class="btn ghost" @click="ui.retiroAbierto = false">Cancelar</button>
@@ -185,15 +224,19 @@
     <div v-if="ui.aporteAbierto" class="modal no-print">
       <div class="modal-box">
         <div class="modal-title"><icon name="plus" :size="20"></icon> Aportar Capital</div>
+        <label class="fld-label" for="aporte-monto">Monto del aporte</label>
         <input
+          id="aporte-monto"
           v-model="capitalStore.aporteForm.monto"
           type="number"
           inputmode="decimal"
           step="0.01"
           placeholder="Monto del aporte"
         />
-        <input v-model="capitalStore.aporteForm.nota" type="text" placeholder="Nota (opcional)" />
-        <select v-model="capitalStore.aporteForm.socioId">
+        <label class="fld-label" for="aporte-nota">Nota (opcional)</label>
+        <input id="aporte-nota" v-model="capitalStore.aporteForm.nota" type="text" placeholder="Nota (opcional)" />
+        <label class="fld-label" for="aporte-socio">Socio</label>
+        <select id="aporte-socio" v-model="capitalStore.aporteForm.socioId">
           <option value="">Sin asignar (capital general)</option>
           <option v-for="s in sociosActivos" :key="s.id" :value="s.id">{{ s.nombre }}</option>
         </select>

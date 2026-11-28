@@ -30,6 +30,128 @@ export interface RegistroConfig {
   nombre?: string;
 }
 
+/**
+ * Esquema Dexie por versión, compuesto como base + overrides (4.5).
+ *
+ * Dexie exige el esquema COMPLETO en cada versión, pero antes cada versión
+ * re-listaba las 20 tablas a mano (las v6-10 eran copias casi idénticas) y
+ * un índice añadido había que repetirlo en todas las posteriores — así se
+ * coló el bug silencioso de la v8 (un índice que faltaba en una versión).
+ * Ahora cada versión es la anterior + solo lo que cambia.
+ *
+ * CONTRATO: el esquema EFECTIVO de cada versión es idéntico al anterior
+ * (mismo conjunto de tablas e índices por versión); las migraciones
+ * v1→v10 deben seguir siendo las mismas. Lo verifica
+ * tests/db-esquema.test.js, que compara cada versión contra el esquema
+ * literal que había antes de la composición.
+ */
+type EsquemaDexie = Record<string, string>;
+
+/** Versión 1: esquema inicial. */
+const ESQUEMA_V1: EsquemaDexie = {
+  productos: 'id, nombre, archivado',
+  lotes: 'id, productoId, compraId, fecha',
+  ventas: 'id, fecha, anulada',
+  compras: 'id, productoId, fecha',
+  ajustes: 'id, productoId, fecha',
+  arqueos: 'id, fecha',
+  movCaja: 'id, fecha, tipo',
+  cierres: 'id, fechaCierre',
+  capital: 'id, fecha',
+  retiros: 'id, fecha',
+  socios: 'id, nombre, aporte, porcentaje, fecha, activo',
+  distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
+  config: 'key',
+};
+
+/** Versión 2: agrega gastos operativos. */
+const ESQUEMA_V2: EsquemaDexie = { ...ESQUEMA_V1, gastos: 'id, fecha, categoria' };
+
+/** Versión 3: agrega libro diario. */
+const ESQUEMA_V3: EsquemaDexie = {
+  ...ESQUEMA_V2,
+  asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
+};
+
+/** Versión 4: agrega pasivos (deudas). */
+const ESQUEMA_V4: EsquemaDexie = {
+  ...ESQUEMA_V3,
+  pasivos: 'id, fecha, acreedor, pagado, vencimiento',
+};
+
+/** Versión 5: auditorías físicas. */
+const ESQUEMA_V5: EsquemaDexie = {
+  ...ESQUEMA_V4,
+  auditorias: 'id, fechaInicio, estado',
+};
+
+/** Versión 6: índices compuestos para consultas rápidas. */
+const ESQUEMA_V6: EsquemaDexie = {
+  ...ESQUEMA_V5,
+  productos: 'id, nombre, archivado, [archivado+nombre]',
+  lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
+  ventas: 'id, fecha, anulada, [anulada+fecha]',
+  compras: 'id, productoId, fecha, [productoId+fecha]',
+  ajustes: 'id, productoId, fecha, [productoId+fecha]',
+  movCaja: 'id, fecha, tipo, [tipo+fecha]',
+  capital: 'id, fecha, socioId',
+  gastos: 'id, fecha, categoria, [categoria+fecha]',
+};
+
+/** Versión 7: cola de backups pendientes. */
+const ESQUEMA_V7: EsquemaDexie = { ...ESQUEMA_V6, tgQueue: 'id, estado, ts' };
+
+/**
+ * Versión 8: indexar 'motivo' en la cola de backups — los
+ * where('motivo').equals('auto') de la cola/backupAuto reventaban con
+ * SchemaError (motivo no era índice) y los try/catch lo tragaban en
+ * silencio: la anti-acumulación de backups 'auto' en cola estaba muerta.
+ */
+const ESQUEMA_V8: EsquemaDexie = { ...ESQUEMA_V7, tgQueue: 'id, estado, ts, motivo' };
+
+/**
+ * Versión 9: sincronización entre dispositivos.
+ * - cambios: registro de altas, modificaciones y borrados (lápidas) que
+ *   alimenta la nube y el WiFi directo. `++id` da el orden y el cursor;
+ *   `propagar` separa lo nacido aquí (1) de lo aplicado desde fuera (0).
+ * - descartes: versión local que pierde un conflicto, para poder recuperarla.
+ * - syncMeta: cursores y estado de los transportes.
+ */
+const ESQUEMA_V9: EsquemaDexie = {
+  ...ESQUEMA_V8,
+  cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
+  descartes: '++id, tabla, registroId, ts',
+  syncMeta: 'clave',
+};
+
+/** Quita una tabla del esquema (copia; el original no se toca). */
+function sinTabla(esquema: EsquemaDexie, tabla: string): EsquemaDexie {
+  const copia = { ...esquema };
+  delete copia[tabla];
+  return copia;
+}
+
+/**
+ * Versión 10: elimina la cola de Telegram (tgQueue). Telegram se retiró
+ * el 2026-11-27; la sincronización en la nube (Supabase) y por WiFi, más
+ * el backup local, sustituyen el respaldo por Telegram.
+ */
+const ESQUEMA_V10: EsquemaDexie = sinTabla(ESQUEMA_V9, 'tgQueue');
+
+/** Esquema efectivo por versión (exportado para tests/db-esquema.test.js). */
+export const ESQUEMAS_POR_VERSION: Record<number, EsquemaDexie> = {
+  1: ESQUEMA_V1,
+  2: ESQUEMA_V2,
+  3: ESQUEMA_V3,
+  4: ESQUEMA_V4,
+  5: ESQUEMA_V5,
+  6: ESQUEMA_V6,
+  7: ESQUEMA_V7,
+  8: ESQUEMA_V8,
+  9: ESQUEMA_V9,
+  10: ESQUEMA_V10,
+};
+
 export class TiendaProDB extends Dexie {
   productos!: Table<Producto, string>;
   lotes!: Table<Lote, string>;
@@ -59,175 +181,9 @@ export class TiendaProDB extends Dexie {
   }
 
   private _definirVersiones(): void {
-    const ESQUEMA_BASE = {
-      productos: 'id, nombre, archivado',
-      lotes: 'id, productoId, compraId, fecha',
-      ventas: 'id, fecha, anulada',
-      compras: 'id, productoId, fecha',
-      ajustes: 'id, productoId, fecha',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      config: 'key',
-    };
-
-    // Version 1: esquema inicial
-    this.version(1).stores(ESQUEMA_BASE);
-
-    // Version 2: agrega gastos operativos
-    this.version(2).stores({ ...ESQUEMA_BASE, gastos: 'id, fecha, categoria' });
-
-    // Version 3: agrega libro diario
-    this.version(3).stores({
-      ...ESQUEMA_BASE,
-      gastos: 'id, fecha, categoria',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-    });
-
-    // Version 4: agrega pasivos (deudas)
-    this.version(4).stores({
-      ...ESQUEMA_BASE,
-      gastos: 'id, fecha, categoria',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-    });
-
-    // Version 5: auditorias fisicas
-    this.version(5).stores({
-      ...ESQUEMA_BASE,
-      gastos: 'id, fecha, categoria',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-    });
-
-    // Version 6: indices compuestos para consultas rapidas
-    this.version(6).stores({
-      productos: 'id, nombre, archivado, [archivado+nombre]',
-      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-      ventas: 'id, fecha, anulada, [anulada+fecha]',
-      compras: 'id, productoId, fecha, [productoId+fecha]',
-      ajustes: 'id, productoId, fecha, [productoId+fecha]',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo, [tipo+fecha]',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha, socioId',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      gastos: 'id, fecha, categoria, [categoria+fecha]',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-      config: 'key',
-    });
-
-    // Version 7: cola de backups pendientes
-    this.version(7).stores({
-      productos: 'id, nombre, archivado, [archivado+nombre]',
-      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-      ventas: 'id, fecha, anulada, [anulada+fecha]',
-      compras: 'id, productoId, fecha, [productoId+fecha]',
-      ajustes: 'id, productoId, fecha, [productoId+fecha]',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo, [tipo+fecha]',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha, socioId',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      gastos: 'id, fecha, categoria, [categoria+fecha]',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-      tgQueue: 'id, estado, ts',
-      config: 'key',
-    });
-
-    // Version 8: indexar 'motivo' en la cola de backups — los
-    // where('motivo').equals('auto') de la cola/backupAuto reventaban con
-    // SchemaError (motivo no era índice) y los try/catch lo tragaban en
-    // silencio: la anti-acumulación de backups 'auto' en cola estaba muerta.
-    this.version(8).stores({
-      productos: 'id, nombre, archivado, [archivado+nombre]',
-      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-      ventas: 'id, fecha, anulada, [anulada+fecha]',
-      compras: 'id, productoId, fecha, [productoId+fecha]',
-      ajustes: 'id, productoId, fecha, [productoId+fecha]',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo, [tipo+fecha]',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha, socioId',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      gastos: 'id, fecha, categoria, [categoria+fecha]',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-      tgQueue: 'id, estado, ts, motivo',
-      config: 'key',
-    });
-
-    // Version 9: sincronización entre dispositivos.
-    // - cambios: registro de altas, modificaciones y borrados (lápidas) que
-    //   alimenta la nube y el WiFi directo. `++id` da el orden y el cursor;
-    //   `propagar` separa lo nacido aquí (1) de lo aplicado desde fuera (0).
-    // - descartes: versión local que pierde un conflicto, para poder recuperarla.
-    // - syncMeta: cursores y estado de los transportes.
-    this.version(9).stores({
-      productos: 'id, nombre, archivado, [archivado+nombre]',
-      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-      ventas: 'id, fecha, anulada, [anulada+fecha]',
-      compras: 'id, productoId, fecha, [productoId+fecha]',
-      ajustes: 'id, productoId, fecha, [productoId+fecha]',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo, [tipo+fecha]',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha, socioId',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      gastos: 'id, fecha, categoria, [categoria+fecha]',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-      tgQueue: 'id, estado, ts, motivo',
-      config: 'key',
-      cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
-      descartes: '++id, tabla, registroId, ts',
-      syncMeta: 'clave',
-    });
-
-    // Version 10: elimina la cola de Telegram (tgQueue). Telegram se retiró
-    // el 2026-11-27; la sincronización en la nube (Supabase) y por WiFi, más
-    // el backup local, sustituyen el respaldo por Telegram.
-    this.version(10).stores({
-      productos: 'id, nombre, archivado, [archivado+nombre]',
-      lotes: 'id, productoId, compraId, fecha, [productoId+fecha]',
-      ventas: 'id, fecha, anulada, [anulada+fecha]',
-      compras: 'id, productoId, fecha, [productoId+fecha]',
-      ajustes: 'id, productoId, fecha, [productoId+fecha]',
-      arqueos: 'id, fecha',
-      movCaja: 'id, fecha, tipo, [tipo+fecha]',
-      cierres: 'id, fechaCierre',
-      capital: 'id, fecha, socioId',
-      retiros: 'id, fecha',
-      socios: 'id, nombre, aporte, porcentaje, fecha, activo',
-      distribuciones: 'id, fecha, montoTotal, socioId, monto, concepto',
-      gastos: 'id, fecha, categoria, [categoria+fecha]',
-      asientos: 'id, fecha, refTipo, refId, cuentaDebe, cuentaHaber',
-      pasivos: 'id, fecha, acreedor, pagado, vencimiento',
-      auditorias: 'id, fechaInicio, estado',
-      config: 'key',
-      cambios: '++id, tabla, registroId, [tabla+registroId], ts, propagar',
-      descartes: '++id, tabla, registroId, ts',
-      syncMeta: 'clave',
-    });
+    for (const [version, esquema] of Object.entries(ESQUEMAS_POR_VERSION)) {
+      this.version(Number(version)).stores(esquema);
+    }
   }
 }
 
@@ -236,5 +192,10 @@ export const db = new TiendaProDB();
 /** Seguimiento de cambios de la base principal (ver sync/seguimiento.ts). */
 export const seguimiento = instalarSeguimiento(db);
 
-// Exponer db en window para debugging (útil con Eruda/F12)
-if (typeof window !== 'undefined') (window as unknown as Record<string, unknown>).db = db;
+// Exponer db en window para debugging (útil con Eruda/F12). SOLO en
+// desarrollo: en producción exponer la BD entera en window es regalar el
+// acceso a toda la contabilidad a cualquier script inyectado (mismo
+// criterio que window.__app en main.ts).
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).db = db;
+}

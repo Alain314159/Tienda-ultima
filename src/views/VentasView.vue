@@ -1,11 +1,14 @@
 <template>
   <section v-if="sec === 'ventas'" class="fade-up">
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="cart" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Nueva Venta
-      </div>
+      </h2>
       <div class="search">
+        <label class="sr-only" for="busq-venta">Buscar producto por nombre o código</label>
         <input
+          id="busq-venta"
+          ref="buscadorVentaRef"
           v-model="ventasStore.busqVenta"
           @input="ventasStore.setBusqVenta(($event.target as HTMLInputElement).value)"
           @focus="focusVenta = true"
@@ -34,8 +37,7 @@
           v-for="p in ventasStore.listaVenta"
           :key="p.id"
           class="drop-item"
-          @click="ventasStore.agregarCarrito(p)"
-          @click.stop
+          @click.stop="agregarAlCarrito(p)"
         >
           <span>{{ p.nombre }}</span>
           <span style="color: var(--mut); white-space: nowrap"
@@ -48,28 +50,30 @@
         <div v-for="(it, i) in ventasStore.carrito" :key="i" class="cart-item">
           <div class="cart-top">
             <div class="nm">{{ it.nombre }}</div>
-            <button class="del-btn" @click="ventasStore.carrito.splice(i, 1)" @click.stop aria-label="Quitar">
+            <button class="del-btn" @click="quitarDelCarrito(i, it)" @click.stop aria-label="Quitar">
               <icon name="x" :size="14" color="#fff"></icon>
             </button>
           </div>
           <div class="cart-controls">
             <div class="cart-field">
-              <label>Cantidad</label>
+              <label :for="'cant-' + i">Cantidad</label>
               <div class="qty-input">
-                <button type="button" @click="ventasStore.cambiarCant(it, -1)" @click.stop>−</button>
+                <button type="button" @click="ventasStore.cambiarCant(it, -1)" @click.stop aria-label="Quitar una unidad">−</button>
                 <input
+                  :id="'cant-' + i"
                   :value="it.cant"
                   type="text"
                   inputmode="decimal"
                   @input="ventasStore.actualizarCantidadInput(it, ($event.target as HTMLInputElement).value)"
                   @blur="ventasStore.validarCant(it)"
                 />
-                <button type="button" @click="ventasStore.cambiarCant(it, 1)" @click.stop>+</button>
+                <button type="button" @click="ventasStore.cambiarCant(it, 1)" @click.stop aria-label="Agregar una unidad">+</button>
               </div>
             </div>
             <div class="cart-field">
-              <label>Precio</label>
+              <label :for="'precio-' + i">Precio</label>
               <input
+                :id="'precio-' + i"
                 class="price-input"
                 :value="it.precio"
                 type="text"
@@ -82,7 +86,7 @@
           <div class="cart-total-line">
             <span
               >{{ fmt(it.precio) }} × {{ fmtCant(it.cant) }} =
-              <b style="color: var(--pri)">{{ fmt(ventasStore.subTotalItem(it)) }}</b></span
+              <b style="color: var(--pri-txt)">{{ fmt(ventasStore.subTotalItem(it)) }}</b></span
             >
             <span class="pos">+{{ fmt(gananciaItem(it)) }}</span>
             <span
@@ -101,7 +105,7 @@
         <button class="btn ok" @click="iniciarCobro()" :disabled="procesandoVenta">
           {{ procesandoVenta ? 'Procesando...' : 'Cobrar Venta' }}
         </button>
-        <button class="btn ghost" @click="carrito = []">
+        <button class="btn ghost" @click="limpiarCarritoConfirmado()">
           <icon name="trash" :size="14" :color="mutColor"></icon> Limpiar carrito
         </button>
       </div>
@@ -115,11 +119,12 @@
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'ventas' ? '#2196F3' : mutColor"></icon> Historial de Ventas
-      </div>
+      </h2>
       <div class="search">
-        <input v-model="busqHist" type="text" placeholder="Buscar en historial..." />
+        <label class="sr-only" for="busq-hist-ventas">Buscar en el historial de ventas</label>
+        <input id="busq-hist-ventas" v-model="busqHist" type="text" placeholder="Buscar en historial..." />
       </div>
       <div v-if="ventasFiltradas.length === 0" class="empty">Sin ventas</div>
 
@@ -155,7 +160,7 @@
               }}
             </div>
             <div class="det">
-              {{ fmtFH(v.fecha) }} · <b style="color: var(--pri)">{{ fmt(v.total) }}</b> ·
+              {{ fmtFH(v.fecha) }} · <b style="color: var(--pri-txt)">{{ fmt(v.total) }}</b> ·
               <span class="pos">+{{ fmt(v.ganancia) }}</span>
             </div>
             <div
@@ -221,7 +226,7 @@
                 }}
               </div>
               <div class="det">
-                {{ fmtFH(v.fecha) }} · <b style="color: var(--pri)">{{ fmt(v.total) }}</b> ·
+                {{ fmtFH(v.fecha) }} · <b style="color: var(--pri-txt)">{{ fmt(v.total) }}</b> ·
                 <span class="pos">+{{ fmt(v.ganancia) }}</span>
               </div>
               <div
@@ -271,6 +276,51 @@
         <div class="modal-title"><icon name="check" :size="20"></icon> Cobrar Venta</div>
         <div class="cobro-modal">Total a Pagar: {{ fmt(cobroModal.total) }}</div>
 
+        <!-- Dinero recibido: siempre visible (MEJORAS 2.2). Sin él no se
+             puede confirmar el pago: antes, con la calculadora cerrada, la
+             venta se procesaba sin preguntar cuánto se recibió. -->
+        <div style="margin-bottom: 0.5rem">
+          <label
+            for="cobro-recibido"
+            style="font-size: 0.75rem; color: var(--mut); font-weight: 700; display: block; margin-bottom: 0.25rem"
+            >Dinero recibido</label
+          >
+          <div style="display: flex; gap: 0.4rem">
+            <input
+              id="cobro-recibido"
+              v-model="cobroModal.recibido"
+              type="text"
+              inputmode="decimal"
+              placeholder="0.00"
+              autocomplete="off"
+              style="flex: 1; min-width: 0"
+              @input="actualizarRecibido"
+            />
+            <button
+              class="btn ghost"
+              type="button"
+              style="width: auto; margin: 0; min-height: 2.75rem; padding: 0.65rem 0.9rem; font-size: 0.75rem; white-space: nowrap"
+              @click="montoExacto"
+            >
+              Monto exacto
+            </button>
+          </div>
+        </div>
+        <div class="calc-total" style="margin-bottom: 0.5rem">
+          <div v-if="cobroModal.falta > 0.01" class="row">
+            <span>Falta</span><b class="neg">{{ fmt(cobroModal.falta) }}</b>
+          </div>
+          <div v-else-if="cobroModal.sobra > 0.01" class="row">
+            <span>Vuelto</span><b class="pos">{{ fmt(cobroModal.sobra) }}</b>
+          </div>
+          <div v-else-if="n(cobroModal.recibido) > 0" class="row">
+            <span>Estado</span><b class="pos">Exacto ✓</b>
+          </div>
+          <div v-else class="row">
+            <span>Recibido</span><b>{{ fmt(0) }}</b>
+          </div>
+        </div>
+
         <button
           v-if="cfg.calcBilletesActiva"
           class="btn ghost"
@@ -282,31 +332,37 @@
         </button>
 
         <div v-if="cfg.calcBilletesActiva && cobroModal.calcAbierta" class="calc-billetes">
-          <div v-for="d in denominaciones" :key="d" class="denom-row">
+          <div
+            v-for="d in denominaciones"
+            :key="d"
+            class="denom-row"
+            style="grid-template-columns: 72px 70px auto 1fr"
+          >
             <span class="denom-label">{{ fmt(d) }}</span>
             <input
               type="number"
               inputmode="numeric"
               min="0"
               step="1"
+              :aria-label="'Cantidad de billetes de ' + fmt(d)"
               v-model.number="cobroModal.billetes[d]"
               @input="calcBilletes"
               placeholder="0"
             />
+            <button
+              type="button"
+              class="link-btn"
+              style="font-size: 0.8rem; padding: 0.2rem 0.4rem"
+              @click="sumarBillete(d)"
+              :aria-label="'Sumar un billete de ' + fmt(d)"
+            >
+              +1
+            </button>
             <span class="denom-sub">{{ fmt(d * (n(cobroModal.billetes[d]) || 0)) }}</span>
           </div>
           <div class="calc-total">
             <div class="row">
               <span>Total contado</span><b>{{ fmt(cobroModal.totalContado) }}</b>
-            </div>
-            <div v-if="cobroModal.falta > 0.01" class="row">
-              <span>Falta</span><b class="neg">{{ fmt(cobroModal.falta) }}</b>
-            </div>
-            <div v-else-if="cobroModal.sobra > 0.01" class="row">
-              <span>Vuelto</span><b class="pos">{{ fmt(cobroModal.sobra) }}</b>
-            </div>
-            <div v-else-if="cobroModal.totalContado > 0" class="row">
-              <span>Estado</span><b class="pos">Exacto ✓</b>
             </div>
           </div>
         </div>
@@ -321,10 +377,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { n } from '../utils/numero';
 import { fmt, fmtCant, fmtFH } from '../utils/formato';
+import type { Producto, ItemCarrito } from '../types';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useProductosStore } from '../stores/useProductosStore';
 import { useConfigStore } from '../stores/useConfigStore';
@@ -368,8 +425,60 @@ const histToggle = (id: string) => hist.toggle(id);
 const histAbierto = (id: string) => hist.abierto(id);
 
 // ===== CARRITO =====
+const buscadorVentaRef = ref<HTMLInputElement | null>(null);
+
+/**
+ * Añade un producto y DEJA EL BUSCADOR ABIERTO con el texto y el foco
+ * (MEJORAS 2.1): vender varios productos ya no exige reabrir el buscador
+ * por cada uno. Los errores de stock se muestran en lenguaje claro.
+ */
+async function agregarAlCarrito(p: Producto) {
+  try {
+    ventasStore.agregarCarrito(p);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    toastMsg(
+      msg === 'Sin stock'
+        ? 'No hay stock de "' + p.nombre + '"'
+        : msg === 'Stock máximo'
+          ? 'Ya agregaste todo el stock disponible de "' + p.nombre + '"'
+          : msg,
+      TOAST.BAD
+    );
+    return;
+  }
+  // El store conserva busqVenta y focusVenta; aquí solo se devuelve el
+  // foco al input para seguir escribiendo sin tocar la pantalla.
+  await nextTick();
+  buscadorVentaRef.value?.focus();
+}
+
 function agregarPrimero() {
-  if (listaVenta.value.length > 0) ventasStore.agregarCarrito(listaVenta.value[0]);
+  if (listaVenta.value.length > 0) void agregarAlCarrito(listaVenta.value[0]);
+}
+
+/** Quitar una línea del carrito pide confirmación (MEJORAS 2.3). */
+function quitarDelCarrito(i: number, it: ItemCarrito) {
+  ui.confirmar({
+    titulo: 'Quitar del carrito',
+    msg: `¿Quitar "${it.nombre}" (${fmtCant(it.cant)} × ${fmt(it.precio)}) del carrito?`,
+    onOk: () => {
+      ventasStore.carrito.splice(i, 1);
+    },
+  });
+}
+
+/** Vaciar el carrito pide confirmación (MEJORAS 2.3). Sin PIN: no es BD. */
+function limpiarCarritoConfirmado() {
+  const nItems = ventasStore.carrito.length;
+  if (nItems === 0) return;
+  ui.confirmar({
+    titulo: 'Limpiar carrito',
+    msg: `¿Vaciar el carrito? Se quitarán ${nItems} producto(s) por un total de ${fmt(ventasStore.totalCarrito)}.`,
+    onOk: () => {
+      ventasStore.limpiarCarrito();
+    },
+  });
 }
 
 // ===== ANULACIONES (confirmación + PIN) =====
@@ -415,5 +524,15 @@ function anularVenta(id: string) {
 }
 
 // ===== COBRO =====
-const { cobroModal, denominaciones, procesandoVenta, iniciarCobro, calcBilletes, confirmarPago } = useCobro();
+const {
+  cobroModal,
+  denominaciones,
+  procesandoVenta,
+  iniciarCobro,
+  calcBilletes,
+  actualizarRecibido,
+  sumarBillete,
+  montoExacto,
+  confirmarPago,
+} = useCobro();
 </script>

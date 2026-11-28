@@ -31,15 +31,19 @@ describe('Log (logger de auditoría)', () => {
     // El console original sigue emitiendo (no se silencia)
   });
 
-  it('evento/info/warn/error registran eventos del negocio', async () => {
+  it('evento/info/warn/error registran eventos del negocio (datos sensibles redactados)', async () => {
     await Log.init();
-    Log.evento('venta-guardada', { total: 250 });
+    // Los datos del negocio (totales, montos, precios) se redactan por
+    // diseño (1.11): el valor no queda en el log persistido, solo la clave.
+    // Un campo inocuo sí se guarda tal cual.
+    Log.evento('venta-guardada', { codigo: 7, total: 250 });
     Log.info('arranque listo');
     Log.warn('stock bajo', 'Café');
     Log.error('fallo pdf');
     await Log.flush();
     const out = leido();
-    expect(out).toContain('[EVENT] venta-guardada · {total: 250}');
+    expect(out).toContain('[EVENT] venta-guardada · {codigo: 7, total: [redactado]}');
+    expect(out).not.toContain('total: 250');
     expect(out).toContain('[INFO] arranque listo');
     expect(out).toContain('[WARN] stock bajo · Café');
     expect(out).toContain('[ERROR] fallo pdf');

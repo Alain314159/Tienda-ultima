@@ -1,9 +1,23 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { esNativo } from './platform';
 import { textoDesdeBytes } from './backup';
+import { Log } from './logger';
 
 const CARPETA = 'backups';
 const MAX_BACKUPS = 30;
+
+/**
+ * ¿El error es por falta de espacio? El nombre estándar es
+ * QuotaExceededError (IndexedDB/localStorage/Filesystem); en algunos
+ * WebView llega como DOMException con code 22 o en el mensaje.
+ */
+export function esErrorCuota(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  const o = e as Record<string, unknown>;
+  if (o.name === 'QuotaExceededError' || o.code === 22) return true;
+  const msg = typeof o.message === 'string' ? o.message : '';
+  return /quotaexceeded|quota exceeded|no space|enospc|espacio insuficiente/i.test(msg);
+}
 
 // Comprimir texto a Blob (gzip si el navegador lo soporta)
 async function comprimirGzip(texto: string) {
@@ -55,15 +69,33 @@ export const BackupFolder = {
       return nombre;
     }
 
-    // Nativo: comprimir y escribir en Directory.Documents
+    // Nativo: comprimir y escribir en Directory.Documents.
+    // Escritura atómica (1.4): primero a un archivo temporal y luego
+    // renombrado al nombre final. Un corte (apagón, app cerrada) a mitad
+    // ya no deja un respaldo a medias con nombre de respaldo válido: o
+    // está el viejo completo, o el nuevo completo; el .tmp huérfano se
+    // ignora al listar y se limpia en la siguiente rotación.
     const blob = await comprimirGzip(json);
     const b64 = await blobABase64(blob);
-    await Filesystem.writeFile({
-      path: `${CARPETA}/${nombre}`,
-      data: b64,
-      directory: Directory.Documents,
-      recursive: true,
-    });
+    const temporal = `${CARPETA}/${nombre}.tmp`;
+    try {
+      await Filesystem.writeFile({
+        path: temporal,
+        data: b64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+      await Filesystem.rename({ from: temporal, to: `${CARPETA}/${nombre}`, directory: Directory.Documents });
+    } catch (e) {
+      // No dejar el temporal a medias: si el renombrado falló, el
+      // respaldo no existe y el temporal es basura.
+      try {
+        await Filesystem.deleteFile({ path: temporal, directory: Directory.Documents });
+      } catch (e2) {
+        Log.warn('BackupFolder: no se pudo limpiar el temporal tras fallo', e2);
+      }
+      throw e;
+    }
     return nombre;
   },
 
@@ -75,7 +107,8 @@ export const BackupFolder = {
         directory: Directory.Documents,
       });
       return (r.files || []).filter((f) => f.name.endsWith('.json.gz')).sort((a, b) => b.name.localeCompare(a.name));
-    } catch {
+    } catch (e) {
+      Log.warn('BackupFolder: no se pudo listar la carpeta de respaldos', e);
       return [];
     }
   },
@@ -108,7 +141,9 @@ export const BackupFolder = {
         path: `${CARPETA}/${nombre}`,
         directory: Directory.Documents,
       });
-    } catch {}
+    } catch (e) {
+      Log.warn('BackupFolder: no se pudo borrar ' + nombre, e);
+    }
   },
 
   async rotar(max = MAX_BACKUPS) {
@@ -116,6 +151,16 @@ export const BackupFolder = {
     const sobrantes = archivos.slice(max);
     for (const a of sobrantes) {
       await this.eliminar(a.name);
+    }
+    // Temporales huérfanos de escrituras interrumpidas (apagón a mitad del
+    // guardado): nunca son respaldos válidos y no los lista `listar()`.
+    try {
+      const r = await Filesystem.readdir({ path: CARPETA, directory: Directory.Documents });
+      for (const f of r.files || []) {
+        if (f.name.endsWith('.tmp')) await this.eliminar(f.name);
+      }
+    } catch (e) {
+      Log.warn('BackupFolder: no se pudieron limpiar los temporales', e);
     }
     return sobrantes.length;
   },

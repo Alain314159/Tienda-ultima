@@ -16,7 +16,7 @@ import { useComprasStore } from './useComprasStore';
 import { useAjustesStore } from './useAjustesStore';
 import { useCajaStore } from './useCajaStore';
 import { diasEntre, formatoDisplay } from '../utils/formato';
-import { inicioDiaLocal } from '../utils/fecha';
+import { inicioDiaLocal, crearEnPeriodo } from '../utils/fecha';
 
 export const useCierresStore = defineStore('cierres', () => {
   // ===== STORES DEPENDIENTES =====
@@ -138,25 +138,22 @@ export const useCierresStore = defineStore('cierres', () => {
     _cerrando.value = true;
 
     try {
-      // Filtros del período: desde la MEDIANOCHE local del día de inicio
-      // (los registros de ese día guardan fecha local-mediodía)
+      // Filtros del período: desde el MOMENTO EXACTO de periodoInicio
+      // (tras un cierre, un registro de ese día pero anterior al cierre
+      // pertenece al período cerrado; el primer período ya viene
+      // normalizado a medianoche local, así que ahí coincide).
       const ini = new Date(configStore.periodoInicio);
       // El cierre preserva el ISO EXACTO del arranque del período (contrato
       // testeado); la normalización a día aplica solo al filtrar
       const iniExacta = new Date(configStore.periodoInicio);
       const f = new Date();
 
-      // Filtrar datos del período
-      const ventasRango = ventasStore.ventas.filter(
-        (v) => !v.anulada && new Date(v.fecha) >= ini && new Date(v.fecha) <= f
-      );
-      const comprasRango = comprasStore.compras.filter(
-        (c) => !c.anulada && new Date(c.fecha) >= ini && new Date(c.fecha) <= f
-      );
-      const gastosRango = gastosStore.gastos.filter((g) => new Date(g.fecha) >= ini && new Date(g.fecha) <= f);
-      const mermasRango = ajustesStore.ajustes.filter(
-        (a) => a.cantidad < 0 && new Date(a.fecha) >= ini && new Date(a.fecha) <= f
-      );
+      // Filtrar datos del período (límites pre-parseados una sola vez)
+      const enRango = crearEnPeriodo(ini, f);
+      const ventasRango = ventasStore.ventas.filter((v) => !v.anulada && enRango(v.fecha));
+      const comprasRango = comprasStore.compras.filter((c) => !c.anulada && enRango(c.fecha));
+      const gastosRango = gastosStore.gastos.filter((g) => enRango(g.fecha));
+      const mermasRango = ajustesStore.ajustes.filter((a) => a.cantidad < 0 && enRango(a.fecha));
 
       // Calcular totales
       const totVentas = m(ventasRango.reduce((s, v) => s + n(v.total), 0));

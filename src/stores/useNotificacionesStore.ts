@@ -18,6 +18,10 @@ import { useProductosStore } from './useProductosStore';
 import { useCajaStore } from './useCajaStore';
 import { useCierresStore } from './useCierresStore';
 import { useInsightsStore } from './useInsightsStore';
+import { useNubeStore } from './useNubeStore';
+import { CLAVE_ENVIADO } from '../sync/nube';
+import { P } from '../utils/id';
+import { Log } from '../services/logger';
 import { db } from '../db';
 import type { Producto } from '../types';
 import { inicioDiaLocal } from '../utils/fecha';
@@ -261,6 +265,67 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
       );
       configStore.cfg.ultimaNotifRespaldo = hoy;
       cambio = true;
+    }
+
+    // 6. Sync pendiente (3.7): hay cambios sin subir (la tabla `cambios`
+    // va por delante del cursor de subida) y lleva al menos un día sin una
+    // sync correcta con la nube. Solo con sesión activa: sin sesión el
+    // remedio es entrar con Google, no un aviso. Como el resto: como mucho
+    // una vez al día (marca en db.config 'ultimaNotifSyncPendiente').
+    try {
+      const nube = useNubeStore();
+      if (nube.sesionCorreo) {
+        const enviado = (await db.syncMeta.get(CLAVE_ENVIADO))?.value;
+        const ultimoCambio = await db.cambios.orderBy('id').last();
+        const hayPendientes =
+          !!ultimoCambio && (typeof enviado !== 'number' || (ultimoCambio.id ?? 0) > enviado);
+        if (hayPendientes) {
+          const recSync = await db.config.get('ultimaSyncNube');
+          const ultimaSyncMs =
+            recSync && typeof recSync.value === 'string' ? new Date(recSync.value).getTime() : NaN;
+          const diasSinSync = isNaN(ultimaSyncMs) ? Infinity : Math.floor((ahora.getTime() - ultimaSyncMs) / 86400000);
+          const avisado = (await db.config.get('ultimaNotifSyncPendiente'))?.value;
+          if (diasSinSync >= 1 && avisado !== hoy) {
+            enviarNotif(
+              'Sincronización pendiente',
+              'Tienes cambios sin subir a la nube desde hace ' +
+                (diasSinSync === Infinity ? 'más de un día' : diasSinSync + (diasSinSync === 1 ? ' día' : ' días')) +
+                '. Abre «Nube y cuenta» para sincronizar.'
+            );
+            await P(db.config, { key: 'ultimaNotifSyncPendiente', value: hoy });
+          }
+        }
+      }
+    } catch (e) {
+      Log.warn('chequearNotificaciones: no se pudo comprobar la sync pendiente', e);
+    }
+
+    // 7. Deuda vencida (3.7): pasivos con vencimiento pasado y no pagados.
+    // Como el resto: como mucho una vez al día (marca en db.config
+    // 'ultimaNotifDeudaVencida').
+    try {
+      const pasivos = await db.table('pasivos').toArray();
+      const vencidas = pasivos.filter((p) => {
+        const pas = p as Record<string, unknown>;
+        if (pas.pagado) return false;
+        const v = pas.vencimiento;
+        if (typeof v !== 'string' || !v) return false;
+        return v.slice(0, 10) < hoy;
+      });
+      if (vencidas.length > 0) {
+        const avisado = (await db.config.get('ultimaNotifDeudaVencida'))?.value;
+        if (avisado !== hoy) {
+          enviarNotif(
+            'Deuda vencida',
+            vencidas.length === 1
+              ? 'Tienes 1 deuda con el vencimiento pasado'
+              : 'Tienes ' + vencidas.length + ' deudas con el vencimiento pasado'
+          );
+          await P(db.config, { key: 'ultimaNotifDeudaVencida', value: hoy });
+        }
+      }
+    } catch (e) {
+      Log.warn('chequearNotificaciones: no se pudieron comprobar las deudas vencidas', e);
     }
 
     if (cambio) await configStore.guardarCfg();

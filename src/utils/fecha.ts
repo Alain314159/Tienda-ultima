@@ -47,6 +47,68 @@ export function hoyLocal(): string {
 }
 
 /**
+ * Timestamp (ms) de una fecha, con el mismo contrato que inicioDiaLocal:
+ * un 'YYYY-MM-DD' sin hora es un día del calendario LOCAL (medianoche
+ * local), nunca medianoche UTC; un ISO completo, un Date o un número son
+ * el instante exacto que dicen. Fecha inválida → 0 (época: incluye todo
+ * el histórico, igual que inicioDiaLocal).
+ *
+ * Es el parse ÚNICO que deben usar los filtros de período: parsear con
+ * `new Date()` crudo un 'YYYY-MM-DD' desplaza el día 4-5 h en Cuba.
+ */
+export function fechaMs(fecha: string | number | Date): number {
+  if (typeof fecha === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.test(fecha.trim())) {
+    return inicioDiaLocal(fecha).getTime();
+  }
+  if (fecha instanceof Date) {
+    const t = fecha.getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  if (typeof fecha === 'number') return isNaN(fecha) ? 0 : fecha;
+  const t = new Date(fecha).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+/**
+ * Predicado «en el período»: fecha >= inicio y (si hay fin) fecha <= fin.
+ *
+ * El inicio es el INSTANTE que dice periodoInicio, sin normalizarlo a
+ * medianoche: tras un cierre el nuevo período arranca en el momento exacto
+ * del cierre y un registro de ese mismo día pero anterior al cierre
+ * pertenece al período CERRADO (contarlo también aquí sería doble conteo
+ * de ganancia). El primer período ya viene normalizado a medianoche local
+ * (default del config + migración one-shot en cargarCierres), así que el
+ * instante exacto y la medianoche coinciden ahí.
+ */
+export function enPeriodo(
+  fecha: string | number | Date,
+  inicio: string | number | Date,
+  fin?: string | number | Date
+): boolean {
+  const f = fechaMs(fecha);
+  if (f < fechaMs(inicio)) return false;
+  if (fin !== undefined && f > fechaMs(fin)) return false;
+  return true;
+}
+
+/**
+ * Fábrica del predicado «en el período» con los límites pre-parseados
+ * UNA sola vez. Para filtros sobre muchos registros: parsear el inicio
+ * (y el fin) en cada registro es el coste que se evita con esto.
+ */
+export function crearEnPeriodo(
+  inicio: string | number | Date,
+  fin?: string | number | Date
+): (fecha: string | number | Date) => boolean {
+  const ini = fechaMs(inicio);
+  const hasta = fin === undefined ? Infinity : fechaMs(fin);
+  return (fecha: string | number | Date) => {
+    const f = fechaMs(fecha);
+    return f >= ini && f <= hasta;
+  };
+}
+
+/**
  * Interpreta un 'YYYY-MM-DD' (input type=date) como día del calendario
  * LOCAL: medianoche local si `fin` es falso, 23:59:59.999 local si es true.
  *

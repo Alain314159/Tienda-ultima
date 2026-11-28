@@ -1,60 +1,62 @@
 <script setup lang="ts">
 /**
  * Nube y cuenta: entrar con Google, ver el estado y forzar la sincronización.
- * También lleva el ritmo automático: al abrir, al volver a primer plano y cada
- * 30 segundos (cada vuelta solo mueve lo que haya cambiado).
+ *
+ * La sync automática ya no vive aquí (3.1): el temporizador de fondo está en
+ * useNubeStore y lo arranca App.vue, así que sincroniza aunque el panel esté
+ * cerrado. Aquí queda el estado, el botón manual y el regreso a primer plano.
+ * Cerrar sesión pide confirmación (con PIN si está activo) y ofrece borrar
+ * los datos locales (1.10): sin eso la IndexedDB quedaba en el teléfono y
+ * se mezclaba con la siguiente cuenta.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { db, seguimiento } from '../db';
 import { recargarTodoStores } from '../stores/recarga';
 import { useNubeStore } from '../stores/useNubeStore';
+import { useUIStore } from '../stores/useUIStore';
 import { toastMsg } from '../utils/toast';
+import { TOAST } from '../constants';
+import { Log } from '../services/logger';
 import {
   alVolverDeGoogle,
-  clienteNubeDe,
-  entrarConGoogle,
-  googleListo,
   salirDeNube,
   sesionNube,
-  sincronizarNube,
-  supabase,
+  entrarConGoogle,
+  googleListo,
 } from '../sync/nube';
-import type { SesionNube } from '../sync/nube';
 
 defineOptions({ name: 'CuentaNube' });
 
 defineProps({ abierto: Boolean });
 const emit = defineEmits(['cerrar']);
 
-const sesion = ref<SesionNube | null>(null);
+// La sesión y el estado de sync viven en el store compartido para que el
+// indicador del header los lea sin duplicar lógica; aquí solo queda el
+// texto local y el diálogo de cierre de sesión.
+const nube = useNubeStore();
+const ui = useUIStore();
+const sesion = computed(() => (nube.sesionCorreo ? { correo: nube.sesionCorreo } : null));
 const ocupado = ref(false);
 const aviso = ref('');
-const resumen = ref('');
-// El estado de sync vive en el store compartido para que el indicador del
-// header lo lea sin duplicar lógica; aquí solo queda el texto local.
-const nube = useNubeStore();
+const resumen = computed(() => nube.ultimoResumen);
+const confirmandoSalida = ref(false);
 const ultima = computed(() => (nube.ultimaSync ? new Date(nube.ultimaSync) : null));
-
-let temporizador: ReturnType<typeof setInterval> | undefined;
-let quitarEnlace: (() => void) | undefined;
 
 const textoUltima = computed(() => (ultima.value ? ultima.value.toLocaleTimeString() : 'aún no'));
 
-/** Una vuelta de sincronización. Silenciosa salvo si hay novedades o falla. */
+/** Una vuelta de sincronización manual. Silenciosa salvo si hay novedades o falla. */
 async function sincronizar(): Promise<void> {
   if (ocupado.value || !sesion.value) return;
   ocupado.value = true;
   aviso.value = '';
-  nube.marcarInicio();
   try {
-    const r = await sincronizarNube({ db, seg: seguimiento }, clienteNubeDe(await supabase()));
-    if (r.tablas.length) await recargarTodoStores();
-    await nube.marcarExito();
-    resumen.value = `${r.enviado} enviados · ${r.aplicados} recibidos${r.descartes ? ` · ${r.descartes} guardados en versiones que perdieron` : ''}`;
+    const ok = await nube.sincronizarAhora({ origen: 'manual' });
+    if (!ok && nube.ultimoError) {
+      aviso.value = 'No se pudo sincronizar con la nube. Revisa la conexión a internet.';
+    }
   } catch (e) {
     aviso.value = 'No se pudo sincronizar con la nube. Revisa la conexión a internet.';
-    nube.marcarError('No se pudo sincronizar con la nube.');
-    console.error('[nube]', e);
+    Log.error('CuentaNube: sincronización manual falló', e);
   } finally {
     ocupado.value = false;
   }
@@ -72,48 +74,72 @@ async function entrar(): Promise<void> {
     await entrarConGoogle();
   } catch (e) {
     aviso.value = 'No se pudo abrir el acceso con Google.';
-    console.error('[nube]', e);
+    Log.error('CuentaNube: entrar con Google falló', e);
   } finally {
     ocupado.value = false;
   }
 }
 
-async function salir(): Promise<void> {
+/** Primer toque a «Cerrar sesión»: pide el PIN (si está activo) y abre la confirmación. */
+function pedirSalir(): void {
+  confirmandoSalida.value = false;
+  ui.pedirPin(() => {
+    confirmandoSalida.value = true;
+  });
+}
+
+async function salir(borrarDatos: boolean): Promise<void> {
   ocupado.value = true;
+  confirmandoSalida.value = false;
   try {
-    await salirDeNube({ db, seg: seguimiento });
-    sesion.value = null;
+    await salirDeNube({ db, seg: seguimiento }, { borrarDatosLocales: borrarDatos });
     nube.setSesion(null);
-    resumen.value = '';
+    nube.ultimoResumen = '';
+    if (borrarDatos) {
+      // La BD quedó vacía: recargar los stores para que la UI no siga
+      // mostrando los datos borrados.
+      await recargarTodoStores();
+      toastMsg('Sesión cerrada y datos locales borrados', TOAST.WARN);
+    } else {
+      toastMsg('Sesión cerrada. Los datos quedan en este teléfono.');
+    }
   } catch (e) {
     aviso.value = 'No se pudo cerrar la sesión.';
-    console.error('[nube]', e);
+    Log.error('CuentaNube: cerrar sesión falló', e);
   } finally {
     ocupado.value = false;
   }
 }
 
 function alCambiarVisibilidad(): void {
-  if (document.visibilityState === 'visible') void sincronizar();
+  if (document.visibilityState === 'visible') void nube.sincronizarAhora({ origen: 'fondo' });
 }
+
+let quitarEnlace: (() => void) | undefined;
 
 onMounted(async () => {
   await nube.cargarUltimaSync();
-  sesion.value = await sesionNube();
-  nube.setSesion(sesion.value?.correo ?? null);
+  // App.vue ya restaura la sesión al arrancar; si el panel se abre antes
+  // de que termine (o la sesión quedó pendiente por falta de red), se
+  // intenta aquí para no mostrar «Sin sesión» con una sesión guardada.
+  if (!nube.sesionCorreo && !nube.sesionPendiente) {
+    try {
+      const s = await sesionNube();
+      nube.setSesion(s?.correo ?? null);
+    } catch (e) {
+      Log.warn('CuentaNube: no se pudo leer la sesión al abrir el panel', e);
+    }
+  }
   quitarEnlace = alVolverDeGoogle((s) => {
-    sesion.value = s;
     nube.setSesion(s?.correo ?? null);
     toastMsg('Sesión iniciada con Google');
-    void sincronizar();
+    void nube.sincronizarAhora({ origen: 'manual' });
   });
-  void sincronizar();
-  temporizador = setInterval(() => void sincronizar(), 30_000);
+  void nube.sincronizarAhora({ origen: 'fondo' });
   document.addEventListener('visibilitychange', alCambiarVisibilidad);
 });
 
 onBeforeUnmount(() => {
-  clearInterval(temporizador);
   document.removeEventListener('visibilitychange', alCambiarVisibilidad);
   quitarEnlace?.();
 });
@@ -135,7 +161,7 @@ onBeforeUnmount(() => {
         <button class="nube-boton" type="button" :disabled="ocupado" @click="entrar">Entrar con Google</button>
       </template>
 
-      <template v-else>
+      <template v-else-if="!confirmandoSalida">
         <p class="nube-texto">
           Sesión iniciada como <strong>{{ sesion.correo ?? 'usuario de Google' }}</strong>.
         </p>
@@ -144,8 +170,25 @@ onBeforeUnmount(() => {
         <button class="nube-boton" type="button" :disabled="ocupado" @click="sincronizar">
           {{ ocupado ? 'Sincronizando…' : 'Sincronizar ahora' }}
         </button>
-        <button class="nube-boton nube-secundario" type="button" :disabled="ocupado" @click="salir">
+        <button class="nube-boton nube-secundario" type="button" :disabled="ocupado" @click="pedirSalir">
           Cerrar sesión
+        </button>
+      </template>
+
+      <template v-else>
+        <p class="nube-texto"><strong>¿Cerrar la sesión de {{ sesion.correo ?? 'Google' }}?</strong></p>
+        <p class="nube-texto">
+          Si borras los datos locales, este teléfono quedará vacío y la próxima cuenta descargará solo lo suyo desde la
+          nube. Si los conservas, seguirán en este teléfono y se mezclarán con la siguiente cuenta.
+        </p>
+        <button class="nube-boton" type="button" :disabled="ocupado" @click="salir(false)">
+          Cerrar sesión y conservar los datos
+        </button>
+        <button class="nube-boton nube-peligro" type="button" :disabled="ocupado" @click="salir(true)">
+          Cerrar sesión y borrar los datos locales
+        </button>
+        <button class="nube-boton nube-secundario" type="button" :disabled="ocupado" @click="confirmandoSalida = false">
+          Cancelar
         </button>
       </template>
 
@@ -230,6 +273,12 @@ onBeforeUnmount(() => {
   color: var(--txt);
   background: transparent;
   border-color: var(--brd);
+}
+
+.nube-peligro {
+  color: #fff;
+  background: var(--bad);
+  border-color: var(--bad);
 }
 
 @media (width >= 640px) {

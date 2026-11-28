@@ -2,6 +2,10 @@
  * Formateadores de dinero, cantidades y fechas para la UI.
  */
 import { n } from './numero';
+import { Log } from '../services/logger';
+
+// Log.warn?.(): algunos tests mockean el logger solo con init/evento;
+// el ?. evita reventar ahí. En la app real Log.warn existe siempre.
 
 // Crear el formateador es lo caro: se cachea una única instancia en el
 // módulo (~5-10x más rápido que toLocaleString por llamada en listas largas).
@@ -11,14 +15,17 @@ const FMT_MONEDA = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, ma
 export const vib = (ms: number | number[]): void => {
   try {
     if (navigator.vibrate) navigator.vibrate(ms);
-  } catch {}
+  } catch (e) {
+    Log.warn?.('formato: vib', e);
+  }
 };
 
 /** Formato moneda: $1,234.56 */
 export function fmt(v: unknown): string {
   try {
     return '$' + FMT_MONEDA.format(n(v));
-  } catch {
+  } catch (e) {
+    Log.warn?.('formato: fmt', e);
     return '$0.00';
   }
 }
@@ -44,7 +51,8 @@ export function fmtFecha(iso: string | Date): string {
       '/' +
       String(d.getFullYear()).slice(2)
     );
-  } catch {
+  } catch (e) {
+    Log.warn?.('formato: fmtFecha', e);
     return '';
   }
 }
@@ -55,7 +63,8 @@ export function fmtFH(iso: string | Date): string {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '';
     return fmtFecha(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  } catch {
+  } catch (e) {
+    Log.warn?.('formato: fmtFH', e);
     return '';
   }
 }

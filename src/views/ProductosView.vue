@@ -1,22 +1,39 @@
 <template>
   <section v-if="sec === 'productos'" class="fade-up">
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon>
         {{ prodForm.editId ? 'Editar' : 'Agregar' }} Producto
-      </div>
-      <input v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" maxlength="120" />
+      </h2>
+      <label class="fld-label" for="prod-nombre">Nombre del producto</label>
+      <input id="prod-nombre" v-model="prodForm.nombre" type="text" placeholder="Nombre del producto" maxlength="120" />
       <div class="grid2">
-        <input
-          v-model="prodForm.precio"
-          type="number"
-          inputmode="decimal"
-          step="0.01"
-          placeholder="Precio base venta"
-        />
-        <input v-model="prodForm.stockMin" type="number" inputmode="decimal" step="0.1" placeholder="Stock mín." />
+        <div>
+          <label class="fld-label" for="prod-precio">Precio base de venta</label>
+          <input
+            id="prod-precio"
+            v-model="prodForm.precio"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            placeholder="Precio base venta"
+          />
+        </div>
+        <div>
+          <label class="fld-label" for="prod-stockmin">Stock mínimo</label>
+          <input
+            id="prod-stockmin"
+            v-model="prodForm.stockMin"
+            type="number"
+            inputmode="decimal"
+            step="0.1"
+            placeholder="Stock mín."
+          />
+        </div>
       </div>
+      <label class="fld-label" for="prod-unidad">Unidad (opcional)</label>
       <input
+        id="prod-unidad"
         v-model="prodForm.unidad"
         type="text"
         placeholder="Unidad (opcional: und, kg, lt...)"
@@ -34,12 +51,13 @@
           Ej: "caja" = 24 unidades, "bandeja" = 30. Aparecen al registrar compras.
         </div>
         <div v-for="(e, i) in prodForm.empaques" :key="'emp' + i" class="prod-subform-row">
-          <input v-model="e.nombre" type="text" placeholder="Nombre (caja...)" maxlength="40" />
+          <input v-model="e.nombre" type="text" placeholder="Nombre (caja...)" maxlength="40" :aria-label="'Nombre del empaque ' + (i + 1)" />
           <input
             v-model="e.unidades"
             type="text"
             inputmode="decimal"
             placeholder="Unidades"
+            :aria-label="'Unidades por empaque ' + (i + 1)"
             @blur="e.unidades = String(n(e.unidades) || '')"
           />
           <button type="button" class="icon-btn bad" @click="quitarEmpaque(i)" aria-label="Quitar">
@@ -63,6 +81,7 @@
             type="text"
             inputmode="decimal"
             placeholder="Desde (cant)"
+            :aria-label="'Precio por cantidad: desde ' + (i + 1) + ' unidades'"
             @blur="e.min = String(n(e.min) || '')"
           />
           <input
@@ -70,6 +89,7 @@
             type="text"
             inputmode="decimal"
             placeholder="Precio c/u"
+            :aria-label="'Precio por cantidad: precio por unidad ' + (i + 1)"
             @blur="e.precio = String(n(e.precio) || '')"
           />
           <button type="button" class="icon-btn bad" @click="quitarEscalon(i)" aria-label="Quitar">
@@ -78,7 +98,9 @@
         </div>
       </div>
 
+      <label class="fld-label" for="prod-nota">Nota interna (opcional)</label>
       <textarea
+        id="prod-nota"
         v-model="prodForm.nota"
         placeholder="Nota interna (opcional)"
         rows="2"
@@ -86,23 +108,24 @@
         style="resize: none; font-family: inherit; font-size: 0.85rem"
       ></textarea>
 
-      <button class="btn pri" @click="guardarProducto()">
-        {{ prodForm.editId ? 'Actualizar' : 'Guardar' }}
+      <button class="btn pri" @click="guardarProducto()" :disabled="guardandoProducto">
+        {{ guardandoProducto ? 'Guardando…' : prodForm.editId ? 'Actualizar' : 'Guardar' }}
       </button>
       <button v-if="prodForm.editId" class="btn ghost" @click="resetProd()">Cancelar</button>
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="tag" :size="18" :color="sec === 'productos' ? '#2196F3' : mutColor"></icon> Productos
-      </div>
+      </h2>
       <div class="search">
-        <input v-model="busqProd" type="text" placeholder="Buscar..." />
+        <label class="sr-only" for="busq-prod">Buscar producto</label>
+        <input id="busq-prod" v-model="busqProd" type="text" placeholder="Buscar..." />
       </div>
       <div style="text-align: right; margin-bottom: 0.4rem">
         <button
           class="btn ghost"
-          style="width: auto; display: inline-block; padding: 0.3rem 0.7rem; font-size: 0.72rem"
+          style="width: auto; display: inline-block; min-height: 2.75rem; padding: 0.6rem 0.9rem; font-size: 0.78rem"
           @click="mostrarArchivados = !mostrarArchivados"
         >
           {{ mostrarArchivados ? 'Ocultar archivados' : 'Ver archivados' }}
@@ -289,13 +312,19 @@ function quitarEmpaque(i: number) {
   prodForm.value.empaques.splice(i, 1);
 }
 
+const guardandoProducto = ref(false);
+
 async function guardarProducto() {
+  if (guardandoProducto.value) return;
+  guardandoProducto.value = true;
   try {
     await productosStore.guardarProducto(prodForm.value);
     toastMsg(prodForm.value.editId ? 'Producto actualizado' : 'Producto guardado');
     resetProd();
   } catch (e) {
     toastMsg(e instanceof Error ? e.message : String(e), TOAST.BAD);
+  } finally {
+    guardandoProducto.value = false;
   }
 }
 

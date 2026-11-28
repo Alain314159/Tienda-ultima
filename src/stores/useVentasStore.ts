@@ -8,7 +8,8 @@ import type { Venta, ItemCarrito, Producto } from '../types';
 import { n, m } from '../utils/numero';
 import { P } from '../utils/id';
 import { db } from '../db';
-import { regenerarAsientos } from '../services/libroDiario';
+import { crearEnPeriodo } from '../utils/fecha';
+import { programarRegeneracionAsientos } from '../services/libroDiario';
 import { aplicarLotesEnBD } from '../services/fifo';
 import { useLotesStore } from './useLotesStore';
 import { useProductosStore } from './useProductosStore';
@@ -85,11 +86,20 @@ export const useVentasStore = defineStore('ventas', () => {
   }
 
   /**
+   * Ventas no anuladas del período actual (lista única).
+   * ventasPeriodo y gananciaBrutaPeriodo derivan de aquí: antes cada uno
+   * filtraba y parseaba las fechas por su cuenta (mismo total 2 veces).
+   */
+  const ventasPeriodoLista = computed(() => {
+    const enPeriodoActual = crearEnPeriodo(configStore.periodoInicio);
+    return ventas.value.filter((v) => !v.anulada && enPeriodoActual(v.fecha));
+  });
+
+  /**
    * Ventas del período actual
    */
   const ventasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
-    return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.total), 0));
+    return m(ventasPeriodoLista.value.reduce((s, v) => s + n(v.total), 0));
   });
 
   /**
@@ -105,8 +115,7 @@ export const useVentasStore = defineStore('ventas', () => {
    * Ganancia bruta del período
    */
   const gananciaBrutaPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
-    return m(ventas.value.filter((v) => !v.anulada && new Date(v.fecha) >= ini).reduce((s, v) => s + n(v.ganancia), 0));
+    return m(ventasPeriodoLista.value.reduce((s, v) => s + n(v.ganancia), 0));
   });
 
   /**
@@ -147,8 +156,10 @@ export const useVentasStore = defineStore('ventas', () => {
       });
     }
 
-    busqVenta.value = '';
-    focusVenta.value = false;
+    // El buscador se queda ABIERTO y conserva el texto (MEJORAS 2.1):
+    // vender varios productos no exige reabrirlo y escribir de nuevo por
+    // cada uno. La vista vuelve a poner el foco en el input tras añadir.
+    focusVenta.value = true;
   }
 
   /**
@@ -281,7 +292,7 @@ export const useVentasStore = defineStore('ventas', () => {
       await cargarVentas();
       await lotesStore.cargarLotes();
       // El libro diario excluye ventas anuladas: regenerarlo en background
-      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
+      programarRegeneracionAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
       // La transacción revirtió la BD, pero el flag optimista del guard
       // anti doble-tap quedó puesto: resincronizar desde la BD
@@ -335,7 +346,7 @@ export const useVentasStore = defineStore('ventas', () => {
       await cargarVentas();
       await lotesStore.cargarLotes();
       // La anulación parcial cambia totales y COGS: regenerar libro
-      regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
+      programarRegeneracionAsientos().catch((e) => console.warn('regenerar asientos', e));
     } catch (e) {
       // Ídem anularVenta: resync si la transacción revirtió
       await Promise.allSettled([cargarVentas(), lotesStore.cargarLotes()]);
@@ -372,6 +383,7 @@ export const useVentasStore = defineStore('ventas', () => {
     gananciaItem,
     subTotalItem,
     ventasPeriodo,
+    ventasPeriodoLista,
     ventasTotal,
     gananciaBrutaPeriodo,
     agregarCarrito,

@@ -12,6 +12,7 @@ import { useCajaStore } from './useCajaStore';
 import { useCapitalStore } from './useCapitalStore';
 import { useGastosStore } from './useGastosStore';
 import { useCierresStore } from './useCierresStore';
+import { useConfigStore } from './useConfigStore';
 import { regenerarAsientos } from '../services/libroDiario';
 
 /**
@@ -62,7 +63,6 @@ export function recargarTodoStores() {
 
 /** Carga inicial de todos los stores (incluye cfg). */
 export async function cargarTodoStores() {
-  const { useConfigStore } = await import('./useConfigStore.js');
   await Promise.all([
     useConfigStore().cargarCfg(),
     useLotesStore().cargarLotes(),

@@ -17,6 +17,10 @@ export interface Enlace {
   canal: Canal;
   /** Código para el otro teléfono (oferta al crear, respuesta al unirse). */
   codigo: string;
+  /** Código de emparejamiento (6 dígitos) que muestra el creador del enlace:
+   * el otro teléfono debe escribirlo para que se acepte la conexión (1.7).
+   * Solo lo tiene quien crea; al unirse va vacío. */
+  codigoEmparejamiento: string;
 }
 
 /** Sin servidores: solo candidatos de la red local. */
@@ -83,13 +87,25 @@ function esperarCandidatos(pc: RTCPeerConnection): Promise<void> {
   });
 }
 
+/** Código de emparejamiento de 6 dígitos (100000–999999), aleatorio. */
+export function generarCodigoEmparejamiento(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  const n = new DataView(bytes.buffer).getUint32(0, false);
+  return String(100000 + (n % 900000));
+}
+
 /** El teléfono que crea el enlace. Devuelve el código (oferta) para el otro. */
 export async function crearOferta(): Promise<Enlace> {
   const pc = new RTCPeerConnection(CONFIG_RTC);
   const canal = canalDe(pc.createDataChannel('sync', { ordered: true }));
   await pc.setLocalDescription(await pc.createOffer());
   await esperarCandidatos(pc);
-  return { pc, canal, codigo: await codificarCodigo(pc.localDescription?.sdp ?? '', 'oferta') };
+  return {
+    pc,
+    canal,
+    codigo: await codificarCodigo(pc.localDescription?.sdp ?? '', 'oferta'),
+    codigoEmparejamiento: generarCodigoEmparejamiento(),
+  };
 }
 
 /** El teléfono que se une, a partir del código (oferta) del otro. */
@@ -109,6 +125,7 @@ export async function aceptarOferta(codigo: string): Promise<Enlace> {
       pc,
       canal: canalDe(canalRemoto),
       codigo: await codificarCodigo(pc.localDescription?.sdp ?? '', 'respuesta'),
+      codigoEmparejamiento: '',
     };
   } catch (e) {
     pc.close();

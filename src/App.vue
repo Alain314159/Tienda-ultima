@@ -93,7 +93,7 @@
     <header class="header no-print">
       <div class="hbrand">
         <h1><icon name="store" :size="20" color="#fff"></icon> {{ configStore.nombreTienda || 'Tienda Pro' }}</h1>
-        <SyncIndicador :online="online" @abrir-cuenta="cuentaAbierta = true" />
+        <SyncIndicador :online="online" @abrir-cuenta="ui.cuentaAbierta = true" />
       </div>
       <div class="hacts">
         <button
@@ -129,8 +129,8 @@
       @toggle-mas="ui.masAbierto = !ui.masAbierto"
     />
 
-    <SyncWifi :abierto="syncAbierto" @cerrar="syncAbierto = false" />
-    <CuentaNube :abierto="cuentaAbierta" @cerrar="cuentaAbierta = false" />
+    <SyncWifi :abierto="ui.syncAbierto" @cerrar="ui.syncAbierto = false" />
+    <CuentaNube :abierto="ui.cuentaAbierta" @cerrar="ui.cuentaAbierta = false" />
 
     <!-- MORE MENU SHEET -->
     <SheetMas
@@ -140,11 +140,11 @@
       @ir="ir"
       @abrir-sync="
         ui.masAbierto = false;
-        syncAbierto = true;
+        ui.syncAbierto = true;
       "
       @abrir-cuenta="
         ui.masAbierto = false;
-        cuentaAbierta = true;
+        ui.cuentaAbierta = true;
       "
       @abrir-ajustes="
         ui.masAbierto = false;
@@ -242,8 +242,12 @@ import { useUIStore } from './stores/useUIStore';
 import { useInsightsStore } from './stores/useInsightsStore';
 import { useBackupStore } from './stores/useBackupStore';
 import { useNotificacionesStore } from './stores/useNotificacionesStore';
+import { useNubeStore } from './stores/useNubeStore';
 import { recargarTodoStores } from './stores/recarga';
 import { useGestos } from './composables/useGestos';
+import { useStorageInfo } from './composables/useStorageInfo';
+import { esErrorCuota } from './services/backupFolder';
+import { Log } from './services/logger';
 import { ir as irA } from './utils/navegacion';
 import { TOAST } from './constants';
 import { toastMsg } from './utils/toast';
@@ -255,8 +259,6 @@ const online = useOnline();
 
 const configStore = useConfigStore();
 const ui = useUIStore();
-const syncAbierto = ref(false);
-const cuentaAbierta = ref(false);
 const productosStore = useProductosStore();
 const ventasStore = useVentasStore();
 const comprasStore = useComprasStore();
@@ -266,6 +268,8 @@ const gastosStore = useGastosStore();
 const insights = useInsightsStore();
 const backup = useBackupStore();
 const notificaciones = useNotificacionesStore();
+const nube = useNubeStore();
+const { avisarSiPocoEspacio } = useStorageInfo();
 
 const cfg = configStore.cfg;
 const sec = computed(() => String(router.currentRoute.value.name || 'dashboard'));
@@ -309,7 +313,9 @@ async function salirSafeMode() {
     onOk: async () => {
       try {
         await P(db.config, { key: 'safeModeCounter', value: 0 });
-      } catch {}
+      } catch (e) {
+        Log.warn('App: no se pudo resetear el contador al salir de modo seguro', e);
+      }
       location.reload();
     },
   });
@@ -362,7 +368,9 @@ watchDebounced(
   (val) => {
     try {
       localStorage.setItem('carritoPro', JSON.stringify(val));
-    } catch {}
+    } catch (e) {
+      Log.warn('App: no se pudo persistir el carrito', e);
+    }
   },
   { deep: true, debounce: 300 }
 );
@@ -447,7 +455,9 @@ async function inicializar() {
       };
       _bc.postMessage({ tipo: 'hello', tabId: _tabId as string });
     }
-  } catch {}
+  } catch (e) {
+    Log.warn('App: no se pudo detectar otra pestaña', e);
+  }
 
   try {
     // SAFE MODE: contar intentos fallidos
@@ -455,14 +465,18 @@ async function inicializar() {
     try {
       const sm = await db.config.get('safeModeCounter');
       intentos = sm && sm.value ? Number(sm.value) : 0;
-    } catch {}
+    } catch (e) {
+      Log.warn('App: no se pudo leer el contador de modo seguro', e);
+    }
     if (intentos >= 3) {
       safeMode.value = true;
       console.warn('SAFE MODE activado (3+ intentos fallidos)');
     }
     try {
       await P(db.config, { key: 'safeModeCounter', value: intentos + 1 });
-    } catch {}
+    } catch (e) {
+      Log.warn('App: no se pudo guardar el contador de modo seguro', e);
+    }
 
     const c = await db.config.get('cfg');
     // Object.assign IN-PLACE (no spread): no crear un objeto nuevo que deje
@@ -531,13 +545,24 @@ async function inicializar() {
     // B13: migrar gastos viejos
     await migrarGastosViejos();
   } catch (e) {
-    console.error(e);
-    toastMsg('Error al cargar datos', TOAST.BAD);
+    // Sin espacio no se puede ni abrir la BD: el mensaje genérico no ayuda.
+    if (esErrorCuota(e)) {
+      Log.error('App: inicialización sin espacio en el teléfono', e);
+      toastMsg(
+        'Queda poco espacio en el teléfono: exporta un respaldo y libera espacio antes de seguir.',
+        TOAST.BAD
+      );
+    } else {
+      console.error(e);
+      toastMsg('Error al cargar datos', TOAST.BAD);
+    }
   } finally {
     // Si todo fue bien, resetear contador
     try {
       await P(db.config, { key: 'safeModeCounter', value: 0 });
-    } catch {}
+    } catch (e) {
+      Log.warn('App: no se pudo resetear el contador de modo seguro', e);
+    }
     cargando.value = false;
     splashVisible.value = false;
     console.log('Inicializacion: ' + (performance.now() - t0).toFixed(1) + 'ms');
@@ -548,6 +573,26 @@ async function inicializar() {
     // Timers de fondo
     backup.iniciarBackupInterval();
     notificaciones.iniciarChequeos();
+
+    // Sesión de nube: restaurarla al arrancar para que la sync de fondo
+    // funcione sin abrir el panel y la sesión no se pierda al reiniciar.
+    // Si el refresh falla por falta de red, la sesión queda pendiente y
+    // la sync de fondo la reintenta; solo se avisa si Supabase dice que
+    // la sesión es inválida (eso lo hace el propio store).
+    try {
+      await nube.cargarUltimaSync();
+      await nube.restaurarSesion();
+      nube.iniciarSyncFondo();
+    } catch (e) {
+      Log.error('App: no se pudo restaurar la sesión de nube al arrancar', e);
+    }
+
+    // Aviso de poco espacio antes de que las escrituras empiecen a fallar.
+    try {
+      await avisarSiPocoEspacio();
+    } catch (e) {
+      Log.warn('App: no se pudo comprobar el espacio disponible', e);
+    }
   }
 }
 
@@ -581,6 +626,7 @@ onBeforeUnmount(() => {
   }
   backup.detenerBackupInterval();
   notificaciones.detenerChequeos();
+  nube.detenerSyncFondo();
 });
 
 // Exponer la instancia para debugging (Eruda/F12)

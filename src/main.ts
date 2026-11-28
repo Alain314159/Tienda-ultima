@@ -35,8 +35,19 @@ app.config.errorHandler = (err, instance, info) => {
 };
 
 const vm = app.mount('#app');
-window.__app = vm;
-window.Log = Log;
+// Depuración en `window` SOLO en desarrollo (1.11): en producción la
+// instancia de la app, el logger y la base de datos no se exponen.
+// `window.db` lo pone db.ts al importar; aquí se retira en producción
+// (el cambio de origen en db.ts queda para otro trabajador).
+if (import.meta.env.DEV) {
+  window.__app = vm;
+  window.Log = Log;
+} else {
+  const w = window as unknown as Record<string, unknown>;
+  delete w.db;
+  delete w.__app;
+  delete w.Log;
+}
 setTimeout(() => {
   try {
     Log.evento('app-boot', {
@@ -63,7 +74,7 @@ if (Capacitor.isNativePlatform()) {
   CapApp.addListener('backButton', () => {
     const ui = useUIStore();
     // Prioridad: cobro > ajustes > mas > retiro > aporte > confirm > prompt >
-    // share > busqueda > backup > status > navegar a inicio
+    // share > busqueda > backup > status > cuenta > sync > navegar a inicio
     if (ui.cobroAbierto) {
       ui.cobroAbierto = false;
       return;
@@ -106,6 +117,17 @@ if (Capacitor.isNativePlatform()) {
     }
     if (ui.statusPanelAbierto) {
       ui.statusPanelAbierto = false;
+      return;
+    }
+    // 5.4: «Nube y cuenta» y «Compartir por WiFi» también se cierran con
+    // atrás (antes saltaban al dashboard o minimizaban la app). Viven en
+    // el store desde esta oleada para que este listener pueda verlos.
+    if (ui.cuentaAbierta) {
+      ui.cuentaAbierta = false;
+      return;
+    }
+    if (ui.syncAbierto) {
+      ui.syncAbierto = false;
       return;
     }
     const ruta = router.currentRoute.value.name;

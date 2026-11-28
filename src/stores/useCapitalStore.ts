@@ -8,9 +8,10 @@ import type { MovCapital, Retiro, Socio, Distribucion } from '../types';
 import { n, m } from '../utils/numero';
 import { P, genId, clean } from '../utils/id';
 import { db } from '../db';
-import { regenerarAsientos } from '../services/libroDiario';
+import { programarRegeneracionAsientos } from '../services/libroDiario';
 import { useConfigStore } from './useConfigStore';
 import { useCierresStore } from './useCierresStore';
+import { recargarStores } from './recarga';
 
 export const useCapitalStore = defineStore('capital', () => {
   // ===== STORES DEPENDIENTES =====
@@ -33,6 +34,9 @@ export const useCapitalStore = defineStore('capital', () => {
 
   // ===== GETTERS =====
 
+  /** Socios activos. */
+  const sociosActivos = computed(() => socios.value.filter((s) => s.activo !== false));
+
   /**
    * Total de aportes: entradas de capital registradas MÁS los aportes
    * iniciales de los socios activos (dinero real que entró al negocio).
@@ -41,7 +45,7 @@ export const useCapitalStore = defineStore('capital', () => {
    */
   const aportesTotal = computed(() => {
     const capitalSum = capital.value.reduce((s, x) => s + n(x.monto), 0);
-    const sociosSum = socios.value.filter((x) => x.activo !== false).reduce((s, x) => s + n(x.aporte), 0);
+    const sociosSum = sociosActivos.value.reduce((s, x) => s + n(x.aporte), 0);
     return m(capitalSum + sociosSum);
   });
 
@@ -104,9 +108,6 @@ export const useCapitalStore = defineStore('capital', () => {
     // localeCompare y mataba SociosView completa (render defensivo)
     return socios.value.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   });
-
-  /** Socios activos. */
-  const sociosActivos = computed(() => socios.value.filter((s) => s.activo !== false));
 
   /** Suma de porcentajes de participación de socios activos. */
   const sumaPorcentajes = computed(() => m(sociosActivos.value.reduce((acc, s) => acc + n(s.porcentaje), 0)));
@@ -229,7 +230,7 @@ export const useCapitalStore = defineStore('capital', () => {
 
     await cargarRetiros();
     // Los retiros entran al libro diario
-    regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
+    programarRegeneracionAsientos().catch((e) => console.warn('regenerar asientos', e));
 
     retiroForm.value = { monto: '', concepto: '', tipo: 'ganancia' };
 
@@ -256,7 +257,7 @@ export const useCapitalStore = defineStore('capital', () => {
 
     await cargarCapital();
     // Los aportes entran al libro diario
-    regenerarAsientos().catch((e) => console.warn('regenerar asientos', e));
+    programarRegeneracionAsientos().catch((e) => console.warn('regenerar asientos', e));
 
     aporteForm.value = { monto: '', nota: '', socioId: '' };
 
@@ -314,8 +315,9 @@ export const useCapitalStore = defineStore('capital', () => {
       repartido = dists.length;
     });
 
-    // Import dinámico: recarga.ts importa este store (ciclo)
-    const { recargarStores } = await import('./recarga.js');
+    // recarga.ts se importa estáticamente (un solo mecanismo): el ciclo
+    // capital → recarga → capital es seguro porque recarga solo LLAMA a
+    // los stores dentro de sus funciones, nunca al importar el módulo.
     await recargarStores('distribuciones', 'retiros', 'asientos');
     return repartido;
   }
@@ -342,8 +344,7 @@ export const useCapitalStore = defineStore('capital', () => {
         });
       await db.socios.delete(id);
     });
-    // Import dinámico: recarga.ts importa este store (ciclo)
-    const { recargarStores } = await import('./recarga.js');
+    // Import estático (ver registrarReparto): un solo mecanismo.
     await recargarStores('socios', 'capital', 'asientos');
     return aporte;
   }

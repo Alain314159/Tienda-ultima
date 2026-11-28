@@ -1,12 +1,14 @@
 <template>
   <section v-if="sec === 'compras'" class="fade-up">
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="bag" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Registrar Compra
-      </div>
+      </h2>
       <div v-if="!compraForm.productoId">
         <div class="search">
+          <label class="sr-only" for="busq-compra">Buscar producto para comprar</label>
           <input
+            id="busq-compra"
             v-model="busqCompra"
             type="text"
             placeholder="Buscar producto..."
@@ -41,10 +43,12 @@
         </div>
 
         <div v-if="empaquesCompraActual.length" style="margin-bottom: 0.55rem">
-          <label style="font-size: 0.75rem; color: var(--mut); font-weight: 700; display: block; margin-bottom: 0.3rem"
+          <label
+            for="compra-empaque"
+            style="font-size: 0.75rem; color: var(--mut); font-weight: 700; display: block; margin-bottom: 0.3rem"
             >Empaque</label
           >
-          <select v-model="compraForm.empaqueSel">
+          <select id="compra-empaque" v-model="compraForm.empaqueSel">
             <option value="">Por unidad (sin empaque)</option>
             <option v-for="e in empaquesCompraActual" :key="e.nombre" :value="e.nombre">
               {{ e.nombre }} ({{ e.unidades }} und)
@@ -53,26 +57,34 @@
         </div>
 
         <div class="grid2">
-          <input
-            v-model="compraForm.cantidad"
-            type="number"
-            inputmode="decimal"
-            step="0.001"
-            :placeholder="compraForm.empaqueSel ? 'Cant. empaques' : 'Cantidad'"
-          />
-          <input
-            v-model="compraForm.costo"
-            type="number"
-            inputmode="decimal"
-            step="0.01"
-            :placeholder="compraForm.costoPorEmpaque ? 'Costo por empaque' : 'Costo por unidad'"
-          />
+          <div>
+            <label class="fld-label" for="compra-cantidad">Cantidad</label>
+            <input
+              id="compra-cantidad"
+              v-model="compraForm.cantidad"
+              type="number"
+              inputmode="decimal"
+              step="0.001"
+              :placeholder="compraForm.empaqueSel ? 'Cant. empaques' : 'Cantidad'"
+            />
+          </div>
+          <div>
+            <label class="fld-label" for="compra-costo">Costo</label>
+            <input
+              id="compra-costo"
+              v-model="compraForm.costo"
+              type="number"
+              inputmode="decimal"
+              step="0.01"
+              :placeholder="compraForm.costoPorEmpaque ? 'Costo por empaque' : 'Costo por unidad'"
+            />
+          </div>
         </div>
 
         <div v-if="compraForm.empaqueSel" class="set-row" style="margin-bottom: 0.4rem">
           <span class="lbl" style="font-size: 0.78rem">El costo ingresado es por empaque completo</span>
           <label class="switch">
-            <input type="checkbox" v-model="compraForm.costoPorEmpaque" />
+            <input type="checkbox" v-model="compraForm.costoPorEmpaque" aria-label="El costo ingresado es por empaque completo" />
             <span class="slider"></span>
           </label>
         </div>
@@ -93,18 +105,18 @@
             <b>{{ fmt(m(compraCantidadFinal() * compraCostoUnitarioFinal())) }}</b>
           </div>
         </div>
-        <button class="btn pri" @click="guardarCompra()">
+        <button class="btn pri" @click="guardarCompra()" :disabled="guardandoCompra">
           <icon name="bag" :size="16" color="#fff"></icon>
-          {{ compraForm.editId ? 'Actualizar' : 'Registrar Compra' }}
+          {{ guardandoCompra ? 'Guardando…' : compraForm.editId ? 'Actualizar' : 'Registrar Compra' }}
         </button>
         <button class="btn ghost" @click="resetCompra()">Cancelar</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Historial de Compras
-      </div>
+      </h2>
       <div v-if="comprasOrdenadas.length === 0" class="empty">Sin compras</div>
 
       <div v-if="comprasPorPeriodo.actual.length" class="hist-grupo">
@@ -334,7 +346,7 @@ function eliminarCompra(id: string) {
             // huérfanos referenciados por ventas con lotesUsados rotos
             const l = await db.lotes.where('compraId').equals(id).first();
             if (l && n(l.cantidadVendida) > 0)
-              throw new Error('El lote ya tiene ventas: no se puede eliminar la compra');
+              throw new Error('Esta compra ya tiene ventas registradas y no se puede eliminar');
             await db.compras.delete(id);
             if (l) await db.lotes.delete(l.id);
           });
@@ -347,6 +359,8 @@ function eliminarCompra(id: string) {
     });
   });
 }
+
+const guardandoCompra = ref(false);
 
 async function guardarCompra() {
   const f = compraForm.value;
@@ -368,6 +382,8 @@ async function guardarCompra() {
   const unidadProd = prodSel ? prodSel.unidad || '' : '';
 
   const ejecutar = async () => {
+    if (guardandoCompra.value) return;
+    guardandoCompra.value = true;
     try {
       if (f.editId) {
         await db.transaction('rw', db.compras, db.lotes, async () => {
@@ -376,9 +392,10 @@ async function guardarCompra() {
           // otra pestaña, y el spread del lote obsoleto PISABA su
           // cantidadVendida (stock inflado en silencio)
           const c = await db.compras.get(f.editId);
-          if (!c) throw new Error('La compra ya no existe');
+          if (!c) throw new Error('Esta compra ya no existe: pudo eliminarse en otro dispositivo. Vuelve a cargar la lista.');
           const l = await db.lotes.where('compraId').equals(f.editId).first();
-          if (l && n(l.cantidadVendida) > 0) throw new Error('Lote con ventas: no editable');
+          if (l && n(l.cantidadVendida) > 0)
+            throw new Error('Este lote ya tiene ventas registradas, por eso no se puede editar la compra');
           await P(db.compras, {
             ...c,
             productoId: f.productoId,
@@ -438,6 +455,8 @@ async function guardarCompra() {
       try {
         if (window.Log) window.Log.evento('compra-error', { mensaje: e instanceof Error ? e.message : String(e) });
       } catch {}
+    } finally {
+      guardandoCompra.value = false;
     }
   };
 

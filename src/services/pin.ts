@@ -12,6 +12,114 @@
 const PREFIJO = 'pbkdf2$';
 const ITERACIONES = 600000;
 
+/**
+ * Reglas del PIN nuevo: 4–6 dígitos, solo números. El mínimo de 4 se valida
+ * al crear/cambiar el PIN (antes el placeholder decía «4 dígitos» pero se
+ * aceptaba cualquier cadena de hasta 6 caracteres).
+ */
+export const PIN_MIN_DIGITOS = 4;
+export const PIN_MAX_DIGITOS = 6;
+
+/** Valida un PIN nuevo antes de guardarlo. */
+export function validarPinNuevo(pin: string): { ok: true } | { ok: false; error: string } {
+  const v = (pin ?? '').trim();
+  if (!/^\d+$/.test(v)) return { ok: false, error: 'El PIN solo puede tener dígitos' };
+  if (v.length < PIN_MIN_DIGITOS)
+    return { ok: false, error: `El PIN debe tener al menos ${PIN_MIN_DIGITOS} dígitos` };
+  if (v.length > PIN_MAX_DIGITOS)
+    return { ok: false, error: `El PIN debe tener como máximo ${PIN_MAX_DIGITOS} dígitos` };
+  return { ok: true };
+}
+
+// ============================================================
+// Bloqueo por intentos fallidos (1.1)
+// ============================================================
+// El contador vive en localStorage (no solo en memoria): sobrevive a cerrar
+// el modal, a recargar la app y a cambiar de vista. Tras 5 fallos el PIN se
+// bloquea un tiempo que crece con cada fallo posterior (1, 2, 4… min, tope
+// 15 min). Un acierto resetea el contador.
+export const PIN_MAX_INTENTOS = 5;
+const PIN_BLOQUEO_BASE_MS = 60_000;
+const PIN_BLOQUEO_TOPE_MS = 15 * 60_000;
+const CLAVE_BLOQUEO_PIN = 'tp_pin_bloqueo';
+
+export interface EstadoBloqueoPin {
+  /** Fallos acumulados desde el último acierto. */
+  fallos: number;
+  /** Epoch ms hasta el que el PIN está bloqueado (0 = sin bloqueo). */
+  bloqueadoHasta: number;
+}
+
+function leerBloqueoPin(): EstadoBloqueoPin {
+  try {
+    const crudo = localStorage.getItem(CLAVE_BLOQUEO_PIN);
+    if (!crudo) return { fallos: 0, bloqueadoHasta: 0 };
+    const parsed = JSON.parse(crudo) as Partial<EstadoBloqueoPin>;
+    return {
+      fallos: typeof parsed.fallos === 'number' && parsed.fallos > 0 ? Math.floor(parsed.fallos) : 0,
+      bloqueadoHasta:
+        typeof parsed.bloqueadoHasta === 'number' && parsed.bloqueadoHasta > 0 ? parsed.bloqueadoHasta : 0,
+    };
+  } catch {
+    return { fallos: 0, bloqueadoHasta: 0 };
+  }
+}
+
+function guardarBloqueoPin(estado: EstadoBloqueoPin): void {
+  try {
+    localStorage.setItem(CLAVE_BLOQUEO_PIN, JSON.stringify(estado));
+  } catch {
+    // Sin almacenamiento: el bloqueo solo vive en memoria de esta sesión.
+  }
+}
+
+/** Estado actual del bloqueo (fallos acumulados y hasta cuándo está bloqueado). */
+export function estadoBloqueoPin(): EstadoBloqueoPin {
+  return leerBloqueoPin();
+}
+
+/** ¿Está el PIN bloqueado ahora mismo? */
+export function pinBloqueado(): boolean {
+  return leerBloqueoPin().bloqueadoHasta > Date.now();
+}
+
+/** Milisegundos que quedan de bloqueo (0 si no hay bloqueo). */
+export function msRestantesBloqueoPin(): number {
+  return Math.max(0, leerBloqueoPin().bloqueadoHasta - Date.now());
+}
+
+/**
+ * Registra un intento fallido. A partir del 5.º fallo bloquea el PIN un
+ * tiempo creciente. Devuelve el estado resultante.
+ */
+export function registrarFalloPin(): EstadoBloqueoPin {
+  const estado = leerBloqueoPin();
+  estado.fallos += 1;
+  if (estado.fallos >= PIN_MAX_INTENTOS) {
+    const pasos = estado.fallos - PIN_MAX_INTENTOS;
+    const duracion = Math.min(PIN_BLOQUEO_BASE_MS * 2 ** pasos, PIN_BLOQUEO_TOPE_MS);
+    estado.bloqueadoHasta = Date.now() + duracion;
+  }
+  guardarBloqueoPin(estado);
+  return estado;
+}
+
+/** Un acierto limpia fallos y bloqueo. */
+export function registrarAciertoPin(): void {
+  try {
+    localStorage.removeItem(CLAVE_BLOQUEO_PIN);
+  } catch {
+    // Sin almacenamiento: nada que limpiar.
+  }
+}
+
+/** Intentos que quedan antes del bloqueo (0 si ya está bloqueado). */
+export function intentosPinRestantes(): number {
+  const estado = leerBloqueoPin();
+  if (estado.bloqueadoHasta > Date.now()) return 0;
+  return Math.max(0, PIN_MAX_INTENTOS - estado.fallos);
+}
+
 function b64(bytes: Uint8Array): string {
   let s = '';
   for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);

@@ -7,47 +7,62 @@
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="plus" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon>
         {{ gastoForm.editId ? 'Editar' : 'Registrar' }} Gasto
-      </div>
+      </h2>
       <div class="grid2">
-        <input v-model="gastoForm.fecha" type="date" />
-        <select v-model="gastoForm.categoria">
-          <option value="">Categoria...</option>
-          <option v-for="c in CATEGORIAS_GASTO" :key="c" :value="c">{{ c }}</option>
-        </select>
+        <div>
+          <label class="fld-label" for="gasto-fecha">Fecha</label>
+          <input id="gasto-fecha" v-model="gastoForm.fecha" type="date" />
+        </div>
+        <div>
+          <label class="fld-label" for="gasto-categoria">Categoría</label>
+          <select id="gasto-categoria" v-model="gastoForm.categoria">
+            <option value="">Categoria...</option>
+            <option v-for="c in CATEGORIAS_GASTO" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
       </div>
+      <label class="fld-label" for="gasto-concepto">Concepto</label>
       <input
+        id="gasto-concepto"
         v-model="gastoForm.concepto"
         type="text"
         maxlength="120"
         placeholder="Concepto (ej: Recibo de luz agosto)"
       />
       <div class="grid2">
-        <input v-model="gastoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto" />
-        <select v-model="gastoForm.metodoPago">
-          <option v-for="mp in METODOS_PAGO" :key="mp.value" :value="mp.value">{{ mp.label }}</option>
-        </select>
+        <div>
+          <label class="fld-label" for="gasto-monto">Monto</label>
+          <input id="gasto-monto" v-model="gastoForm.monto" type="number" inputmode="decimal" step="0.01" placeholder="Monto" />
+        </div>
+        <div>
+          <label class="fld-label" for="gasto-metodo">Método de pago</label>
+          <select id="gasto-metodo" v-model="gastoForm.metodoPago">
+            <option v-for="mp in METODOS_PAGO" :key="mp.value" :value="mp.value">{{ mp.label }}</option>
+          </select>
+        </div>
       </div>
-      <input v-model="gastoForm.nota" type="text" maxlength="300" placeholder="Nota (opcional)" />
+      <label class="fld-label" for="gasto-nota">Nota (opcional)</label>
+      <input id="gasto-nota" v-model="gastoForm.nota" type="text" maxlength="300" placeholder="Nota (opcional)" />
       <div class="set-row">
         <span class="lbl"><icon name="wallet" :size="18"></icon> Sale de caja</span>
         <label class="switch">
-          <input type="checkbox" v-model="gastoForm.saleDeCaja" />
+          <input type="checkbox" v-model="gastoForm.saleDeCaja" aria-label="Sale de caja" />
           <span class="slider"></span>
         </label>
       </div>
-      <button class="btn warn" @click="guardarGasto()">
-        {{ gastoForm.editId ? 'Actualizar' : 'Registrar Gasto' }}
+      <button class="btn warn" @click="guardarGasto()" :disabled="guardandoGasto">
+        {{ guardandoGasto ? 'Guardando…' : gastoForm.editId ? 'Actualizar' : 'Registrar Gasto' }}
       </button>
       <button v-if="gastoForm.editId" class="btn ghost" @click="resetGasto()">Cancelar</button>
     </div>
 
     <div class="card" v-if="gastosPorCategoria.length">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="chart" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> Por categoria (acumulado)
-      </div>
+      </h2>
       <div v-for="g in gastosPorCategoria" :key="g.cat" class="row">
         <span>{{ g.cat }}</span>
         <b class="neg">{{ fmt(g.monto) }}</b>
@@ -55,9 +70,9 @@
     </div>
 
     <div class="card">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'gastos' ? '#2196F3' : mutColor"></icon> Historial
-      </div>
+      </h2>
       <div v-if="gastosOrdenados.length === 0" class="empty">Sin gastos registrados</div>
 
       <div v-if="gastosPorPeriodo.actual.length" class="hist-grupo">
@@ -171,6 +186,8 @@ function resetGasto() {
   };
 }
 
+const guardandoGasto = ref(false);
+
 async function guardarGasto() {
   const f = gastoForm.value;
   const categoria = (f.categoria || '').trim();
@@ -182,7 +199,9 @@ async function guardarGasto() {
   // isFinite: "1e999" colaba por "<= 0" (Infinity <= 0 es false) — el mismo
   // agujero que cerramos en el store, pero por el camino REAL de la vista.
   if (!isFinite(monto) || monto <= 0) return toastMsg('Monto debe ser > 0', TOAST.BAD);
-
+  if (guardandoGasto.value) return;
+  guardandoGasto.value = true;
+  try {
   if (f.editId) {
     const o = gastosStore.gastos.find((x) => x.id === f.editId);
     if (!o) return;
@@ -255,6 +274,9 @@ async function guardarGasto() {
   }
   resetGasto();
   await recargarStores('gastos', 'movCaja', 'asientos');
+  } finally {
+    guardandoGasto.value = false;
+  }
 }
 
 function editarGasto(id: string) {

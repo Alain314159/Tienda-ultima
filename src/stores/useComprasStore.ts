@@ -13,6 +13,7 @@ import { ref, computed } from 'vue';
 import type { Compra } from '../types';
 import { n, m } from '../utils/numero';
 import { db } from '../db';
+import { crearEnPeriodo } from '../utils/fecha';
 import { useConfigStore } from './useConfigStore';
 
 export const useComprasStore = defineStore('compras', () => {
@@ -35,8 +36,8 @@ export const useComprasStore = defineStore('compras', () => {
    * Compras del período actual
    */
   const comprasPeriodo = computed(() => {
-    const ini = new Date(configStore.periodoInicio);
-    return m(compras.value.filter((c) => !c.anulada && new Date(c.fecha) >= ini).reduce((s, c) => s + n(c.total), 0));
+    const enPeriodoActual = crearEnPeriodo(configStore.periodoInicio);
+    return m(compras.value.filter((c) => !c.anulada && enPeriodoActual(c.fecha)).reduce((s, c) => s + n(c.total), 0));
   });
 
   /**

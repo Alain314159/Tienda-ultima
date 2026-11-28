@@ -58,14 +58,24 @@ describe('SyncIndicador: estados', () => {
     expect(w.classes()).toContain('sync-off');
   });
 
-  it('sin sincronizar: rojo cuando la última sync correcta es vieja', () => {
+  it('sin sincronizar: ámbar (no rojo) cuando la última sync correcta es vieja', () => {
+    const nube = useNubeStore();
+    nube.setSesion('dueño@example.com');
+    nube.ultimaSync = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const w = montar();
+    expect(w.attributes('data-estado')).toBe('sin-sincronizar');
+    expect(w.text()).toContain('Sin sincronizar');
+    expect(w.classes()).toContain('sync-warn');
+    expect(w.classes()).not.toContain('sync-off');
+  });
+
+  it('sin rojo falso: una sync de hace 60 minutos sigue siendo "Al día"', () => {
     const nube = useNubeStore();
     nube.setSesion('dueño@example.com');
     nube.ultimaSync = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const w = montar();
-    expect(w.attributes('data-estado')).toBe('sin-sincronizar');
-    expect(w.text()).toContain('Sin sincronizar');
-    expect(w.classes()).toContain('sync-off');
+    expect(w.attributes('data-estado')).toBe('al-dia');
+    expect(w.classes()).toContain('sync-ok');
   });
 
   it('sin sesión pero con sync vieja: sigue siendo "Sin sesión"', () => {
@@ -75,14 +85,24 @@ describe('SyncIndicador: estados', () => {
     expect(w.attributes('data-estado')).toBe('sin-sesion');
   });
 
-  it('sin conexión: rojo "Sin conexión" aunque haya sesión y sync al día', async () => {
+  it('sin conexión: ámbar "Sin conexión" aunque haya sesión y sync al día', async () => {
     const nube = useNubeStore();
     nube.setSesion('dueño@example.com');
     await nube.marcarExito();
     const w = montar({ online: false });
     expect(w.attributes('data-estado')).toBe('sin-conexion');
     expect(w.text()).toContain('Sin conexión');
-    expect(w.classes()).toContain('sync-off');
+    expect(w.classes()).toContain('sync-warn');
+    expect(w.classes()).not.toContain('sync-off');
+  });
+
+  it('sesión pendiente (refresh sin red): ámbar "Reconectando…"', () => {
+    const nube = useNubeStore();
+    nube.sesionPendiente = true;
+    const w = montar();
+    expect(w.attributes('data-estado')).toBe('sesion-pendiente');
+    expect(w.text()).toContain('Reconectando');
+    expect(w.classes()).toContain('sync-warn');
   });
 
   it('tocarlo emite abrir-cuenta', async () => {

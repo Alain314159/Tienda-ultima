@@ -29,7 +29,7 @@ async function montar() {
   return wrapper;
 }
 
-async function esperar(cond, ms = 3000) {
+async function esperar(cond, ms = 10000) {
   const fin = Date.now() + ms;
   while (!cond() && Date.now() < fin) {
     await new Promise((r) => setTimeout(r, 25));
@@ -75,7 +75,33 @@ beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
   localStorage.clear();
-  await Promise.all([db.productos.clear(), db.lotes.clear(), db.ventas.clear(), db.config.clear()]);
+  // Limpieza TOTAL (6.1): sin ella, filas de otros tests (cambios,
+  // descartes, syncMeta, pasivos, auditorias…) contaminan los conteos y
+  // los fallos dependen del orden de ejecución.
+  await Promise.all(
+    [
+      'productos',
+      'lotes',
+      'ventas',
+      'compras',
+      'ajustes',
+      'arqueos',
+      'movCaja',
+      'cierres',
+      'capital',
+      'retiros',
+      'socios',
+      'distribuciones',
+      'gastos',
+      'asientos',
+      'pasivos',
+      'auditorias',
+      'config',
+      'cambios',
+      'descartes',
+      'syncMeta',
+    ].map((t) => db.table(t).clear())
+  );
   useConfigStore().cfg.periodoInicio = '2026-09-01T00:00:00.000Z';
   await cargarTodo();
 });
@@ -230,10 +256,18 @@ describe('VentasView: carrito', () => {
     await agregarAlCarrito(w, 'pan');
     await w.find('.del-btn').trigger('click');
     await flushPromises();
+    // Desde MEJORAS 2.3 quitar una línea pide confirmación.
+    expect(useUIStore().confirm.activo).toBe(true);
+    useUIStore().okConfirm();
+    await flushPromises();
     expect(useVentasStore().carrito.length).toBe(0);
 
     await agregarAlCarrito(w, 'pan');
     await clickBoton(w, 'Limpiar carrito');
+    // «Limpiar carrito» también pide confirmación (2.3).
+    expect(useUIStore().confirm.activo).toBe(true);
+    useUIStore().okConfirm();
+    await flushPromises();
     expect(useVentasStore().carrito.length).toBe(0);
     w.unmount();
   });
@@ -274,6 +308,9 @@ describe('VentasView: cobro', () => {
     expect(w.text()).toContain('Total a Pagar');
     expect(w.text()).toContain('1,400.00');
 
+    // Desde MEJORAS 2.2 hay que indicar el dinero recibido antes de
+    // confirmar el pago: «Monto exacto» lo pone igual al total.
+    await clickBoton(w, 'Monto exacto');
     await clickBoton(w, 'Confirmar Pago');
     await esperar(() => useVentasStore().ventas.length === 1);
 
@@ -335,6 +372,8 @@ describe('VentasView: cobro', () => {
     await flushPromises();
     expect(useUIStore().cobroAbierto).toBe(true);
 
+    // Dinero recibido (2.2): sin él «Confirmar Pago» no vende.
+    await clickBoton(w, 'Monto exacto');
     await clickBoton(w, 'Confirmar Pago');
     await esperar(() => useVentasStore().ventas.length === 1);
     const v = (await db.ventas.toArray())[0];

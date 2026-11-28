@@ -24,7 +24,7 @@ export function calcFIFO(productoId: string, cantidad: number, lotes: Lote[]): R
     .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime() || (a.id < b.id ? -1 : 1));
 
   if (lotesDisponibles.length === 0) {
-    return { costoTotal: 0, costoUnitario: 0, lotesUsados: [], error: 'No hay lotes disponibles' };
+    return { costoTotal: 0, costoUnitario: 0, lotesUsados: [], error: 'No hay stock suficiente de este producto' };
   }
 
   let cantidadRestante = n(cantidad);
@@ -52,7 +52,12 @@ export function calcFIFO(productoId: string, cantidad: number, lotes: Lote[]): R
   }
 
   if (cantidadRestante > 0) {
-    return { costoTotal: 0, costoUnitario: 0, lotesUsados: [], error: 'Stock insuficiente' };
+    return {
+      costoTotal: 0,
+      costoUnitario: 0,
+      lotesUsados: [],
+      error: 'No hay stock suficiente para esa cantidad: revisa la existencia e inténtalo con menos unidades',
+    };
   }
 
   const costoUnitario = costoTotal / n(cantidad);

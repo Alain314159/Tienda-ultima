@@ -12,10 +12,19 @@
   --pri: #3b82f6;
   --pri-d: #2563eb;
   --pri-l: #60a5fa;
+  /* Texto en color primario: #3b82f6 da 3,68:1 sobre blanco (falla AA);
+     #1d4ed8 da 6,70:1. En oscuro #93c5fd da 8,11:1 sobre la tarjeta. */
+  --pri-txt: #1d4ed8;
   --ok: #22c55e;
   --ok-d: #16a34a;
+  /* Texto en color verde: #16a34a da 3,30:1 sobre blanco (falla AA);
+     #15803d da 5,02:1. En oscuro #4ade80 da 8,40:1 sobre la tarjeta. */
+  --ok-txt: #15803d;
   --warn: #f59e0b;
   --warn-d: #d97706;
+  /* Texto en color aviso: #d97706 da 3,19:1 sobre blanco (falla AA);
+     #b45309 da 5,02:1. En oscuro #fbbf24 da 8,76:1 sobre la tarjeta. */
+  --warn-txt: #b45309;
   --bad: #ef4444;
   --bad-d: #dc2626;
   --purple: #8b5cf6;
@@ -73,6 +82,9 @@
   /* mut-2 era #64748b: 2.8:1 sobre las tarjetas oscuras (fallaba AA) */
   --mut: #94a3b8;
   --mut-2: #94a3b8;
+  --pri-txt: #93c5fd;
+  --warn-txt: #fbbf24;
+  --ok-txt: #4ade80;
 
   --brd: #334155;
   --brd-2: #475569;
@@ -342,25 +354,25 @@ main {
 }
 
 .balance.azul {
-  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   box-shadow:
     0 8px 24px -6px rgba(59, 130, 246, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .balance.verde {
-  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
   box-shadow:
     0 8px 24px -6px rgba(34, 197, 94, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .balance.morado {
-  background: linear-gradient(135deg, #a855f7 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   box-shadow:
     0 8px 24px -6px rgba(168, 85, 247, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .balance.neg {
-  background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   box-shadow:
     0 8px 24px -6px rgba(239, 68, 68, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
@@ -441,7 +453,7 @@ main {
    (generada vs retirada). Solo visible cuando hay retiros. */
 .stat .stat-sub {
   margin-top: 0.3rem;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: var(--mut);
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
@@ -452,7 +464,7 @@ main {
   display: inline-block;
   padding: 0.18rem 0.55rem;
   border-radius: 99px;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -462,19 +474,23 @@ main {
 }
 
 .badge.ok {
-  background: var(--ok);
+  background: #15803d;
   box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
 }
 .badge.low {
-  background: var(--warn);
+  background: #b45309;
   box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
 }
 .badge.out {
-  background: var(--bad);
+  background: #b91c1c;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 .badge.arch {
   background: var(--mut);
+}
+/* En oscuro --mut es #94a3b8: blanco sobre él da 2,83:1. */
+[data-theme='dark'] .badge.arch {
+  background: #475569;
 }
 
 /* ============================================ FORMS ============================================ */
@@ -503,6 +519,30 @@ textarea:focus {
   border-color: var(--pri);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
   background: var(--card);
+}
+
+/* Etiqueta visible de campo de formulario (5.3): mismo estilo que ya
+   usaban las etiquetas sueltas de Ventas/Compras, ahora reutilizable. */
+.fld-label {
+  font-size: 0.75rem;
+  color: var(--mut);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+/* Etiqueta solo para lectores de pantalla (buscadores y campos cuyo
+   propósito ya explica el placeholder o el contexto visual). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 input::placeholder,
@@ -543,22 +583,22 @@ textarea::placeholder {
 }
 
 .btn.pri {
-  background: linear-gradient(135deg, var(--pri) 0%, var(--pri-d) 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: #fff;
   box-shadow: var(--sh-pri);
 }
 .btn.ok {
-  background: linear-gradient(135deg, var(--ok) 0%, var(--ok-d) 100%);
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
   color: #fff;
   box-shadow: var(--sh-ok);
 }
 .btn.bad {
-  background: linear-gradient(135deg, var(--bad) 0%, var(--bad-d) 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
   box-shadow: var(--sh-bad);
 }
 .btn.warn {
-  background: linear-gradient(135deg, var(--warn) 0%, var(--warn-d) 100%);
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
   color: #fff;
   box-shadow: var(--sh-warn);
 }
@@ -664,7 +704,7 @@ textarea::placeholder {
 }
 
 .nav button.activo {
-  color: var(--pri);
+  color: var(--pri-txt);
   background: rgba(59, 130, 246, 0.1);
 }
 .nav button.activo::before {
@@ -751,7 +791,7 @@ textarea::placeholder {
 }
 .sheet-btn.activo {
   background: rgba(59, 130, 246, 0.12);
-  color: var(--pri);
+  color: var(--pri-txt);
   border-color: rgba(59, 130, 246, 0.3);
 }
 
@@ -841,6 +881,12 @@ body > .modal-box {
   box-shadow: var(--sh-md);
 }
 
+.drop-head button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 1.1rem;
+}
+
 .drop-head {
   display: flex;
   justify-content: space-between;
@@ -919,13 +965,13 @@ body > .modal-box {
 }
 
 .toast.ok {
-  background: linear-gradient(135deg, var(--ok-d) 0%, #15803d 100%);
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
 }
 .toast.bad {
-  background: linear-gradient(135deg, var(--bad-d) 0%, #991b1b 100%);
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
 }
 .toast.warn {
-  background: linear-gradient(135deg, var(--warn-d) 0%, #b45309 100%);
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
 }
 
 .toast button {
@@ -997,7 +1043,7 @@ body > .modal-box {
 }
 
 .pos {
-  color: var(--ok-d);
+  color: var(--ok-txt);
   font-weight: 700;
 }
 .neg {
@@ -1067,11 +1113,11 @@ body > .modal-box {
 }
 
 .del-btn {
-  background: linear-gradient(135deg, var(--bad) 0%, var(--bad-d) 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
   border: none;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1098,7 +1144,7 @@ body > .modal-box {
   display: flex;
   justify-content: space-between;
   font-weight: 800;
-  color: var(--ok-d);
+  color: var(--ok-txt);
   margin: 0.7rem 0;
   letter-spacing: -0.01em;
   font-size: 1.05rem;
@@ -1112,7 +1158,7 @@ body > .modal-box {
   padding: 0.85rem 1rem;
   font-size: 0.84rem;
   font-weight: 700;
-  color: var(--warn-d);
+  color: var(--warn-txt);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1169,7 +1215,7 @@ body > .modal-box {
   background: rgba(59, 130, 246, 0.1);
   border-radius: 0.85rem;
   box-sizing: content-box;
-  color: var(--pri);
+  color: var(--pri-txt);
   transition: transform var(--tr-bounce);
 }
 
@@ -1240,8 +1286,8 @@ body > .modal-box {
 .icon-btn {
   background: var(--bg);
   border: none;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 0.65rem;
   display: flex;
   align-items: center;
@@ -1356,7 +1402,12 @@ body > .modal-box {
 .link-btn {
   background: none;
   border: none;
-  color: var(--pri);
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  color: var(--pri-txt);
   font-size: 0.74rem;
   text-decoration: underline;
   cursor: pointer;
@@ -1384,18 +1435,21 @@ body > .modal-box {
 
 .arqueo-prev.cuadre {
   background: rgba(34, 197, 94, 0.1);
-  color: var(--ok-d);
+  color: var(--ok-txt);
   border-color: var(--ok);
 }
 .arqueo-prev.sobrante {
   background: rgba(245, 158, 11, 0.1);
-  color: var(--warn-d);
+  color: var(--warn-txt);
   border-color: var(--warn);
 }
 .arqueo-prev.faltante {
   background: rgba(239, 68, 68, 0.1);
   color: var(--bad-d);
   border-color: var(--bad);
+}
+[data-theme='dark'] .arqueo-prev.faltante {
+  color: #f87171;
 }
 
 /* ============================================ SALES ============================================ */
@@ -1432,7 +1486,7 @@ body > .modal-box {
 .stock-num {
   font-weight: 800;
   font-size: 0.82rem;
-  color: var(--pri);
+  color: var(--pri-txt);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1456,7 +1510,7 @@ body > .modal-box {
 .cobro-vuelto {
   font-size: 2.2rem;
   font-weight: 800;
-  color: var(--ok-d);
+  color: var(--ok-txt);
   text-align: center;
   margin: 0.6rem 0;
   padding: 1.15rem;
@@ -1481,7 +1535,7 @@ body > .modal-box {
   font-weight: 800;
   white-space: nowrap;
   text-transform: uppercase;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   letter-spacing: 0.03em;
   color: var(--mut);
 }
@@ -1596,7 +1650,7 @@ body > .modal-box {
 /* ============================================ SHEET BUTTON ACTIVO ============================================ */
 .sheet-btn.activo {
   background: rgba(59, 130, 246, 0.15);
-  color: var(--pri);
+  color: var(--pri-txt);
 }
 
 /* ============================================ CUADRE: FILA PRODUCTO / SUB-FILA ============================================ */
@@ -1610,7 +1664,7 @@ body > .modal-box {
   background: rgba(59, 130, 246, 0.12);
 }
 .cuadre-table tr.sub-row {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--mut);
   background: rgba(59, 130, 246, 0.02);
 }
@@ -1621,7 +1675,7 @@ body > .modal-box {
   text-align: left;
 }
 .cuadre-table tr.sub-row .det-cell {
-  color: var(--pri);
+  color: var(--pri-txt);
   font-weight: 600;
 }
 
@@ -1656,8 +1710,8 @@ body > .modal-box {
   padding: 0.15rem 0.5rem;
   border-radius: 99px;
   background: rgba(59, 130, 246, 0.15);
-  color: var(--pri);
-  font-size: 0.6rem;
+  color: var(--pri-txt);
+  font-size: 0.7rem;
   font-weight: 800;
   vertical-align: middle;
   letter-spacing: 0.02em;
@@ -1670,13 +1724,13 @@ body > .modal-box {
   text-align: left !important;
 }
 .sub-arrow {
-  color: var(--pri);
+  color: var(--pri-txt);
   font-weight: 800;
   margin-right: 0.3rem;
 }
 .sub-num {
   font-weight: 700;
-  color: var(--pri);
+  color: var(--pri-txt);
   margin-right: 0.5rem;
   font-size: 0.66rem;
 }
@@ -1808,7 +1862,7 @@ body > .modal-box {
 .denom-sub {
   font-weight: 800;
   font-size: 0.82rem;
-  color: var(--pri);
+  color: var(--pri-txt);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -1952,7 +2006,7 @@ body > .modal-box {
 .compra-resumen .row.total {
   font-size: 0.95rem;
   font-weight: 800;
-  color: var(--pri);
+  color: var(--pri-txt);
   border-top: 1px solid var(--brd) !important;
   padding-top: 0.3rem !important;
 }
@@ -1984,12 +2038,12 @@ body > .modal-box {
   font-size: 1.1rem;
 }
 .alert-chip.alert-out {
-  background: linear-gradient(135deg, var(--bad) 0%, var(--bad-d) 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: #fff;
   box-shadow: var(--sh-bad);
 }
 .alert-chip.alert-low {
-  background: linear-gradient(135deg, var(--warn) 0%, var(--warn-d) 100%);
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
   color: #fff;
   box-shadow: var(--sh-warn);
 }
@@ -2239,7 +2293,7 @@ html {
   width: 14px;
   height: 14px;
   border: 2px solid var(--brd-2);
-  border-top-color: var(--pri);
+  border-top-color: var(--pri-txt);
   border-radius: 50%;
 }
 .pull-spinner.spin {
@@ -2293,7 +2347,7 @@ html {
 /* ===== CARRITO: LAYOUT FINAL ===== */
 
 .cart-field label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--mut);
   font-weight: 700;
   text-transform: uppercase;
@@ -2317,7 +2371,7 @@ html {
   align-items: center;
   padding: 0.15rem 0.5rem;
   border-radius: 99px;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -2328,7 +2382,7 @@ html {
 }
 .cart-tag.tag-esc {
   background: rgba(22, 163, 74, 0.15);
-  color: var(--ok-d);
+  color: var(--ok-txt);
 }
 
 /* ===== CONTABILIDAD COLAPSABLE ===== */
@@ -2436,10 +2490,12 @@ html {
   background: none;
   border: none;
   color: var(--mut);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 0.2rem 0.4rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.6rem 0.9rem;
   font-family: inherit;
 }
 .onb-skip:hover {
@@ -2474,7 +2530,7 @@ html {
   margin-bottom: 0.8rem;
 }
 .onb-text b {
-  color: var(--pri);
+  color: var(--pri-txt);
   font-weight: 800;
 }
 
@@ -2538,7 +2594,7 @@ html {
   min-width: 0 !important;
 }
 .cart-field > label {
-  font-size: 0.65rem !important;
+  font-size: 0.7rem !important;
   color: var(--mut) !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -2548,7 +2604,7 @@ html {
 .cart-field .qty-input {
   width: 100% !important;
   display: flex !important;
-  height: 2.6rem !important;
+  height: 2.75rem !important;
   border: 1.5px solid var(--brd) !important;
   border-radius: 0.65rem !important;
   overflow: hidden !important;
@@ -2558,11 +2614,11 @@ html {
 .cart-field .qty-input button {
   background: var(--bg) !important;
   border: none !important;
-  width: 2.2rem !important;
+  width: 2.75rem !important;
   height: 100% !important;
   font-size: 1.15rem !important;
   font-weight: 800 !important;
-  color: var(--pri) !important;
+  color: var(--pri-txt) !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
@@ -2587,7 +2643,7 @@ html {
 }
 .cart-field .price-input {
   width: 100% !important;
-  height: 2.6rem !important;
+  height: 2.75rem !important;
   padding: 0.55rem 0.7rem !important;
   font-weight: 800 !important;
   border: 1.5px solid var(--brd) !important;
@@ -2677,18 +2733,18 @@ html {
   gap: 0.3rem;
   padding: 0.18rem 0.5rem;
   border-radius: 99px;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 .storage-badge.ok {
   background: rgba(34, 197, 94, 0.15);
-  color: var(--ok-d);
+  color: #15803d;
 }
 .storage-badge.warn {
   background: rgba(245, 158, 11, 0.15);
-  color: var(--warn-d);
+  color: var(--warn-txt);
 }
 .storage-badge.bad {
   background: rgba(239, 68, 68, 0.15);
@@ -2729,18 +2785,18 @@ html {
   gap: 0.3rem;
   padding: 0.18rem 0.5rem;
   border-radius: 99px;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 .storage-badge.ok {
   background: rgba(34, 197, 94, 0.15);
-  color: var(--ok-d);
+  color: #15803d;
 }
 .storage-badge.warn {
   background: rgba(245, 158, 11, 0.15);
-  color: var(--warn-d);
+  color: var(--warn-txt);
 }
 .storage-badge.bad {
   background: rgba(239, 68, 68, 0.15);
@@ -2780,7 +2836,7 @@ html {
 .font-scale-val {
   font-weight: 800;
   font-size: 0.82rem;
-  color: var(--pri);
+  color: var(--pri-txt);
   min-width: 2.4rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -2919,7 +2975,7 @@ html {
   color: var(--txt);
 }
 .rec-detail {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--mut);
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -2928,15 +2984,15 @@ html {
 .rec-x {
   background: transparent;
   border: none;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  opacity: 0.3;
+  opacity: 0.6;
   transition: opacity var(--tr);
 }
 .rec-x:hover,
@@ -2987,9 +3043,10 @@ html {
   background: transparent;
   border: none;
   color: var(--mut);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  padding: 0.35rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 99px;
   cursor: pointer;
   font-family: inherit;
@@ -2998,7 +3055,7 @@ html {
 }
 .chart-toggle button.activo {
   background: var(--card);
-  color: var(--pri);
+  color: var(--pri-txt);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
 }
 [data-theme='dark'] .chart-toggle button.activo {
@@ -3020,9 +3077,10 @@ html {
   background: transparent;
   border: none;
   color: var(--mut);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  padding: 0.35rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 99px;
   cursor: pointer;
   font-family: inherit;
@@ -3031,7 +3089,7 @@ html {
 }
 .chart-toggle button.activo {
   background: var(--card);
-  color: var(--pri);
+  color: var(--pri-txt);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
 }
 [data-theme='dark'] .chart-toggle button.activo {
@@ -3073,7 +3131,7 @@ html {
 .status-badge {
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -3081,15 +3139,21 @@ html {
 }
 .status-ok {
   background: rgba(34, 197, 94, 0.15);
-  color: var(--ok);
+  color: var(--ok-txt);
 }
 .status-bad {
   background: rgba(239, 68, 68, 0.15);
-  color: var(--bad);
+  color: var(--bad-d);
 }
 .status-run {
   background: rgba(245, 158, 11, 0.15);
-  color: var(--warn);
+  color: var(--warn-txt);
+}
+[data-theme='dark'] .status-bad {
+  color: #f87171;
+}
+[data-theme='dark'] .status-run {
+  color: #fbbf24;
 }
 .status-warn {
   background: rgba(100, 116, 139, 0.15);
@@ -3128,4 +3192,44 @@ html {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ============================================ ACCESIBILIDAD (5.6) ============================================
+   :focus-visible con anillo visible en botones, inputs, nav y switches.
+   Los inputs ya tenían borde+anillo en :focus; esto lo extiende a todo lo
+   enfocable por teclado sin tocar el estilo del ratón. */
+:focus-visible {
+  outline: 3px solid var(--pri-txt);
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--pri-txt);
+  outline-offset: 1px;
+}
+/* El input de cantidad lleva outline:none !important: el anillo va igual. */
+.cart-field .qty-input input:focus-visible,
+.cart-field .qty-input button:focus-visible {
+  outline: 3px solid var(--pri-txt) !important;
+  outline-offset: -3px;
+}
+/* El switch esconde su input (opacity 0): el anillo va en el slider. */
+.switch input:focus-visible + .slider {
+  outline: 3px solid var(--pri-txt);
+  outline-offset: 2px;
+}
+
+/* prefers-reduced-motion: se desactivan las animaciones infinitas
+   (pulse, shimmer, splash, spin) y las transiciones cuando el sistema
+   lo pide. Las animaciones de una sola vez quedan en su estado final. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

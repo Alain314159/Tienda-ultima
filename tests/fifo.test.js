@@ -39,19 +39,19 @@ describe('calcFIFO: casos base', () => {
 
   it('sin lotes del producto devuelve error explícito', () => {
     const r = calcFIFO('otro', 1, [lote()]);
-    expect(r.error).toBe('No hay lotes disponibles');
+    expect(r.error).toBe('No hay stock suficiente de este producto');
     expect(r.costoTotal).toBe(0);
     expect(r.lotesUsados).toEqual([]);
   });
 
   it('ignora lotes agotados (cantidadVendida >= cantidadInicial)', () => {
     const r = calcFIFO('p1', 1, [lote({ cantidadInicial: 5, cantidadVendida: 5 })]);
-    expect(r.error).toBe('No hay lotes disponibles');
+    expect(r.error).toBe('No hay stock suficiente de este producto');
   });
 
   it('stock insuficiente devuelve error y no calcula costo a medias', () => {
     const r = calcFIFO('p1', 11, [lote()]);
-    expect(r.error).toBe('Stock insuficiente');
+    expect(r.error).toBe('No hay stock suficiente para esa cantidad: revisa la existencia e inténtalo con menos unidades');
     expect(r.costoTotal).toBe(0);
     expect(r.lotesUsados).toEqual([]);
   });
@@ -115,7 +115,7 @@ describe('calcFIFO: robustez numérica', () => {
   it('lote con campos inválidos no rompe el cálculo (saneo a 0)', () => {
     const r = calcFIFO('p1', 1, [lote({ cantidadInicial: undefined, cantidadVendida: null, costo: 'x' })]);
     // cantidadInicial 0 - vendida 0 = 0 => lote sin stock => no disponible
-    expect(r.error).toBe('No hay lotes disponibles');
+    expect(r.error).toBe('No hay stock suficiente de este producto');
   });
 });
 

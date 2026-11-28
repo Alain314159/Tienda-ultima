@@ -270,7 +270,11 @@ describe('property: FIFO (services/fifo)', () => {
         const r = calcFIFO('p_1', cantPedida, lotes);
         const stock = stockTotal(lotes);
         if (cantPedida > stock) {
-          return r.error === 'Stock insuficiente' && r.lotesUsados.length === 0 && r.costoTotal === 0;
+          return (
+            r.error === 'No hay stock suficiente para esa cantidad: revisa la existencia e inténtalo con menos unidades' &&
+            r.lotesUsados.length === 0 &&
+            r.costoTotal === 0
+          );
         }
         if (cantPedida === 0 || stock === 0) return true; // casos triviales
         const tomado = r.lotesUsados.reduce((s, u) => s + n(u.cantidad), 0);
@@ -326,7 +330,7 @@ describe('property: FIFO (services/fifo)', () => {
         const stock = stockTotal(lotes);
         if (stock === 0) return true;
         const r = calcFIFO('p_1', Math.min(cant, stock), ajenos);
-        return r.error === 'No hay lotes disponibles' && r.costoTotal === 0;
+        return r.error === 'No hay stock suficiente de este producto' && r.costoTotal === 0;
       }),
       { numRuns: 100 }
     );

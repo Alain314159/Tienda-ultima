@@ -20,7 +20,183 @@ import { useUIStore } from './useUIStore';
 import { datosDeStores } from './exportar';
 import { recargarTodoStores } from './recarga';
 import { derivarClave, aBase64, desdeBase64, leerArchivoRespaldo } from '../services/backup';
-import type { Respaldo } from '../types';
+import type { Config, Respaldo } from '../types';
+
+// ============================================================
+// Seguridad de importación (1.2 / 1.9)
+// ============================================================
+
+/**
+ * Iteraciones PBKDF2 mínimas y máximas aceptadas al importar un respaldo
+ * cifrado. Las controla el archivo: con `iter: 1` la fuerza bruta sería
+ * trivial, y con un valor absurdo el teléfono se quedaría colgado
+ * derivando la clave. Los respaldos propios usan 600k (v2) o 100k (v1).
+ */
+export const MIN_ITERACIONES_RESPALDO = 100000;
+export const MAX_ITERACIONES_RESPALDO = 2_000_000;
+
+/** ¿Son aceptables las iteraciones PBKDF2 que declara el archivo? */
+export function validarIteracionesKdf(iter: unknown): { ok: true } | { ok: false; error: string } {
+  if (typeof iter !== 'number' || !Number.isFinite(iter) || !Number.isInteger(iter)) {
+    return { ok: false, error: 'El respaldo no declara iteraciones PBKDF2 válidas' };
+  }
+  if (iter < MIN_ITERACIONES_RESPALDO) {
+    return {
+      ok: false,
+      error: `Respaldo con parámetros de cifrado débiles (${iter} iteraciones; mínimo ${MIN_ITERACIONES_RESPALDO})`,
+    };
+  }
+  if (iter > MAX_ITERACIONES_RESPALDO) {
+    return { ok: false, error: `Respaldo con iteraciones PBKDF2 excesivas (${iter})` };
+  }
+  return { ok: true };
+}
+
+// --- Límite de intentos de contraseña del respaldo cifrado ---
+// Vive en el módulo (no en el store): el archivo se vuelve a elegir con
+// cada reintento y el contador debe sobrevivir entre elecciones. Tras 5
+// contraseñas fallidas hay que esperar 1 minuto antes de probar otra vez.
+export const MAX_INTENTOS_CLAVE_RESPALDO = 5;
+const ESPERA_CLAVE_RESPALDO_MS = 60_000;
+let _intentosClave = 0;
+let _bloqueoClaveHasta = 0;
+
+/** ¿Se puede probar otra contraseña ahora mismo? */
+export function puedeIntentarClave(): { ok: boolean; esperaMs: number } {
+  const esperaMs = Math.max(0, _bloqueoClaveHasta - Date.now());
+  return { ok: esperaMs === 0, esperaMs };
+}
+
+/** Registra una contraseña fallida; al 5.º fallo activa la espera. */
+export function registrarClaveFallida(): void {
+  _intentosClave += 1;
+  if (_intentosClave >= MAX_INTENTOS_CLAVE_RESPALDO) {
+    _bloqueoClaveHasta = Date.now() + ESPERA_CLAVE_RESPALDO_MS;
+  }
+}
+
+/** Un descifrado correcto (o un archivo nuevo) resetea el contador. */
+export function reiniciarIntentosClave(): void {
+  _intentosClave = 0;
+  _bloqueoClaveHasta = 0;
+}
+
+/** Intentos de contraseña que quedan antes de la espera. */
+export function intentosClaveRestantes(): number {
+  return Math.max(0, MAX_INTENTOS_CLAVE_RESPALDO - _intentosClave);
+}
+
+// --- Saneado de cfg al importar ---
+// La importación NUNCA toca `pin` ni `pinActivo`: un archivo manipulado no
+// puede fijar un PIN conocido ni desactivar el PIN. El resto de campos se
+// valida uno a uno (tipo y rango); lo inválido se ignora con aviso y nunca
+// rompe la importación de los datos.
+const CFG_TEXTO: Record<string, number> = {
+  nombre: 120,
+  nombreTienda: 120,
+  contactoDireccion: 500,
+  contactoTelefonos: 200,
+  contactoGrupoWa: 500,
+};
+const CFG_NUMERO_MIN0: Record<string, number | null> = {
+  capitalInicial: null,
+  umbralDiasCierre: 3650,
+  umbralMermasSemana: 365,
+  umbralFaltantesMes: 365,
+  umbralSobrantesMes: 365,
+  umbralBackupDias: 3650,
+  umbralSinMovimientoDias: 3650,
+  stockMinDefault: 100000,
+  ultimoBackupAuto: null,
+};
+const CFG_BOOLEANO = [
+  'busquedaGlobalActiva',
+  'calcBilletesActiva',
+  'notifActivo',
+  'tutorialVisto',
+  'mostrarSplash',
+  'safeMode',
+];
+const CFG_FECHA_ISO = [
+  'periodoInicio',
+  'ultimoExport',
+  'ultimaNotifStock',
+  'ultimaNotifArqueo',
+  'ultimaNotifCriticas',
+  'ultimaNotifCierre',
+  'ultimaNotifRespaldo',
+  'ultimaNotifBackupFail',
+];
+const CFG_ARREGLO_TEXTO = ['anomaliasDescartadas', 'productosAvisados'];
+const CFG_ENUM: Record<string, string[]> = {
+  tema: ['light', 'dark'],
+  graficoVista: ['dia', 'semana', 'mes'],
+  graficoProdPeriodo: ['dia', 'semana', 'mes'],
+  graficoProdTipo: ['vendidos', 'margen'],
+};
+
+/**
+ * Sanea la `cfg` de un respaldo: devuelve solo los campos válidos (sin
+ * `pin` ni `pinActivo`, que nunca se importan) y los avisos de lo ignorado.
+ */
+export function sanearCfgImportada(cfg: unknown): { cfg: Partial<Config>; avisos: string[] } {
+  const limpia: Partial<Config> = {};
+  const avisos: string[] = [];
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) {
+    return { cfg: limpia, avisos };
+  }
+  const entrada = cfg as Record<string, unknown>;
+  // El PIN no se importa jamás, ni siquiera para avisar: no hay nada que
+  // decidir, el PIN local se conserva siempre.
+  if ('pin' in entrada || 'pinActivo' in entrada) {
+    avisos.push('El PIN del respaldo se ignoró (se conserva el PIN de este teléfono)');
+  }
+  const fechaValida = (v: unknown): v is string => typeof v === 'string' && !isNaN(new Date(v).getTime());
+  for (const [clave, valor] of Object.entries(entrada)) {
+    if (clave === 'pin' || clave === 'pinActivo') continue;
+    if (clave in CFG_TEXTO) {
+      if (typeof valor === 'string' && valor.length <= CFG_TEXTO[clave]) {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (texto no válido)`);
+    } else if (clave === 'fontScale') {
+      if (typeof valor === 'number' && isFinite(valor) && valor >= 1 && valor <= 2) {
+        limpia.fontScale = valor;
+      } else avisos.push('Ajuste "fontScale" ignorado (debe ser entre 1 y 2)');
+    } else if (clave === 'umbralDescuentoPct') {
+      if (typeof valor === 'number' && isFinite(valor) && valor >= 0 && valor <= 100) {
+        limpia.umbralDescuentoPct = valor;
+      } else avisos.push('Ajuste "umbralDescuentoPct" ignorado (debe ser entre 0 y 100)');
+    } else if (clave in CFG_NUMERO_MIN0) {
+      const tope = CFG_NUMERO_MIN0[clave];
+      if (typeof valor === 'number' && isFinite(valor) && valor >= 0 && (tope === null || valor <= tope)) {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (número no válido)`);
+    } else if (CFG_BOOLEANO.includes(clave)) {
+      if (typeof valor === 'boolean') {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (debe ser sí/no)`);
+    } else if (CFG_FECHA_ISO.includes(clave)) {
+      if (fechaValida(valor)) {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (fecha no válida)`);
+    } else if (clave === 'horaArqueo') {
+      if (typeof valor === 'string' && (valor === '' || /^([01]\d|2[0-3]):[0-5]\d$/.test(valor))) {
+        limpia.horaArqueo = valor;
+      } else avisos.push('Ajuste "horaArqueo" ignorado (debe ser HH:MM)');
+    } else if (CFG_ARREGLO_TEXTO.includes(clave)) {
+      if (Array.isArray(valor) && valor.every((x) => typeof x === 'string')) {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (debe ser una lista de textos)`);
+    } else if (clave in CFG_ENUM) {
+      if (typeof valor === 'string' && CFG_ENUM[clave].includes(valor)) {
+        (limpia as Record<string, unknown>)[clave] = valor;
+      } else avisos.push(`Ajuste "${clave}" ignorado (valor no válido)`);
+    } else {
+      avisos.push(`Ajuste "${clave}" ignorado (desconocido)`);
+    }
+  }
+  return { cfg: limpia, avisos };
+}
 
 /** Tablas de datos incluidas en un respaldo. Asientos NO viaja: se reconstruye
  * localmente desde las tablas de origen (ver exportar.ts). */
@@ -59,6 +235,13 @@ export const useBackupStore = defineStore('backup', () => {
   const preImportDisponible = ref(false);
   const preImportFecha = ref<string | null>(null);
   const importFile = ref<File | null>(null);
+  // Estados de carga de exportar/importar (2.9): los botones de Ajustes
+  // muestran «Exportando…» / «Importando…» y se deshabilitan mientras dura
+  // la operación. Viven en el store (no en el componente) porque la
+  // importación cruza el diálogo de confirmación: el componente no puede
+  // saber cuándo termina el trabajo real.
+  const exportando = ref(false);
+  const importando = ref(false);
   // Datos del respaldo YA parseados (y descifrados si aplicaba) durante la
   // previsualización. ejecutarImport usa ESTE objeto en vez de re-leer el
   // archivo: re-leer rompía los respaldos cifrados (el sobre no tiene
@@ -104,24 +287,29 @@ export const useBackupStore = defineStore('backup', () => {
     return 'Documentos/' + nombre;
   }
 
-  function exportar() {
-    void (async () => {
-      try {
-        const d = await datosDeStores();
-        const destino = await entregarArchivoTexto(
-          JSON.stringify(d, null, 2),
-          'respaldo-tienda-' + hoyLocal() + '.json'
-        );
-        toastMsg(destino ? 'Respaldo guardado en ' + destino : 'Respaldo descargado');
-      } catch (e) {
-        toastMsg('Error exportando: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
-      }
-    })();
-    configStore.cfg.ultimoExport = new Date().toISOString();
-    configStore.guardarCfg();
+  /** Exporta un respaldo JSON plano. Devuelve una promesa para que la UI pueda mostrar el estado de carga. */
+  async function exportar() {
+    if (exportando.value) return;
+    exportando.value = true;
+    try {
+      const d = await datosDeStores();
+      const destino = await entregarArchivoTexto(
+        JSON.stringify(d, null, 2),
+        'respaldo-tienda-' + hoyLocal() + '.json'
+      );
+      toastMsg(destino ? 'Respaldo guardado en ' + destino : 'Respaldo descargado');
+      // Solo cuenta si el export terminó bien (antes se marcaba al lanzar).
+      configStore.cfg.ultimoExport = new Date().toISOString();
+      configStore.guardarCfg();
+    } catch (e) {
+      toastMsg('Error exportando: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+    } finally {
+      exportando.value = false;
+    }
   }
 
   async function exportarCifrado() {
+    if (exportando.value) return;
     const pass = await ui.preguntar({
       titulo: 'Contraseña de cifrado',
       msg: 'Se guardara el respaldo cifrado con AES-256. Guarda la contraseña: si la pierdes, no se puede recuperar.',
@@ -129,6 +317,7 @@ export const useBackupStore = defineStore('backup', () => {
       type: 'password',
     });
     if (!pass || pass.length < 6) return toastMsg('Contrasena muy corta (min 6)', TOAST.BAD);
+    exportando.value = true;
     try {
       const data = await datosDeStores();
       const enc = new TextEncoder();
@@ -157,6 +346,8 @@ export const useBackupStore = defineStore('backup', () => {
       configStore.guardarCfg();
     } catch (e) {
       toastMsg('Error cifrado: ' + (e instanceof Error ? e.message : String(e)), TOAST.BAD);
+    } finally {
+      exportando.value = false;
     }
   }
 
@@ -171,32 +362,68 @@ export const useBackupStore = defineStore('backup', () => {
     if (!file) return;
     importFile.value = file;
     (e.target as HTMLInputElement).value = '';
+    // Estado de carga (2.9): cubre leer, descifrar y validar el archivo.
+    // Al mostrarse el diálogo de confirmación se apaga: ahí decide el
+    // usuario y la app no está trabajando. La escritura real vuelve a
+    // encenderlo dentro de importarData.
+    importando.value = true;
     void (async () => {
       try {
         // Acepta JSON plano, .json.gz y los .json que son gzip por dentro
         // (export de versiones pre-migración) — detección por magic bytes
         let d = (await leerArchivoRespaldo(file)) as Record<string, unknown>;
-        // Si esta cifrado, pedir contrasena
+        // Si esta cifrado, pedir contrasena (con límite de intentos)
         if (d.cifrado === true) {
-          const pass = await ui.preguntar({
-            titulo: 'Respaldo cifrado',
-            msg: 'Este respaldo esta protegido. Ingresa la contrasena.',
-            placeholder: 'Contrasena',
-            type: 'password',
-          });
-          if (!pass) return toastMsg('Cancelado', TOAST.WARN);
-          try {
-            const salt = desdeBase64(String(d.salt));
-            const iv = desdeBase64(String(d.iv));
-            const cipher = desdeBase64(String(d.data));
-            // v1 usaba 100k iteraciones y no lo declaraba; v2+ lo declara
-            const iter = (d.kdf as { iter?: number } | undefined)?.iter || 100000;
-            const key = await derivarClave(pass, salt, iter);
-            const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
-            d = JSON.parse(new TextDecoder().decode(json));
-          } catch {
-            return toastMsg('Contrasena incorrecta', TOAST.BAD);
+          // Las iteraciones las declara el archivo: sin mínimo, `iter: 1`
+          // haría trivial la fuerza bruta (1.9). v1 usaba 100k y no lo
+          // declaraba; v2+ lo declara.
+          const iter = (d.kdf as { iter?: number } | undefined)?.iter ?? 100000;
+          const iterOk = validarIteracionesKdf(iter);
+          if (!iterOk.ok) return toastMsg(iterOk.error, TOAST.BAD);
+          const puede = puedeIntentarClave();
+          if (!puede.ok) {
+            return toastMsg(
+              'Demasiados intentos con la contraseña. Espera ' +
+                Math.ceil(puede.esperaMs / 1000) +
+                ' s antes de probar otra vez.',
+              TOAST.BAD
+            );
           }
+          let descifrado: Record<string, unknown> | null = null;
+          // Hasta 5 intentos por archivo: cada fallo avisa cuántos quedan y
+          // al 5.º se bloquea 1 minuto (el contador sobrevive a elegir el
+          // archivo de nuevo). Cancelar no cuenta como intento.
+          for (;;) {
+            const pass = await ui.preguntar({
+              titulo: 'Respaldo cifrado',
+              msg: 'Este respaldo esta protegido. Ingresa la contrasena.',
+              placeholder: 'Contrasena',
+              type: 'password',
+            });
+            if (!pass) return toastMsg('Cancelado', TOAST.WARN);
+            try {
+              const salt = desdeBase64(String(d.salt));
+              const iv = desdeBase64(String(d.iv));
+              const cipher = desdeBase64(String(d.data));
+              const key = await derivarClave(pass, salt, iter);
+              const json = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+              descifrado = JSON.parse(new TextDecoder().decode(json));
+              reiniciarIntentosClave();
+              break;
+            } catch {
+              registrarClaveFallida();
+              const restantes = intentosClaveRestantes();
+              if (restantes <= 0) {
+                return toastMsg(
+                  'Contrasena incorrecta. Demasiados intentos: espera 1 minuto antes de probar otra vez.',
+                  TOAST.BAD
+                );
+              }
+              toastMsg(`Contrasena incorrecta (quedan ${restantes} intentos)`, TOAST.BAD);
+            }
+          }
+          if (!descifrado) return toastMsg('No se pudo descifrar el respaldo', TOAST.BAD);
+          d = descifrado;
         }
         if (!d.productos && !d.ventas) throw new Error('Archivo invalido');
         // Validación profunda ANTES de la preview: un archivo editado a mano
@@ -235,10 +462,17 @@ export const useBackupStore = defineStore('backup', () => {
             '.\nEsas tablas quedarán VACÍAS al importar.' +
             (adv ? '\n\n' + adv : '');
         }
+        // Ajustes del respaldo que se ignorarán (p. ej. el PIN, que nunca se
+        // importa, o campos con valores no válidos): se avisa antes de confirmar.
+        if (val.avisos && val.avisos.length) {
+          adv += (adv ? '\n\n' : '') + 'Ajustes ignorados:\n· ' + val.avisos.join('\n· ');
+        }
 
         ui.confirmar({ titulo: 'Importar datos', msg: adv, onOk: () => ejecutarImport() });
       } catch (err) {
         toastMsg('Error: ' + (err instanceof Error ? err.message : String(err)), TOAST.BAD);
+      } finally {
+        importando.value = false;
       }
     })();
   }
@@ -287,6 +521,12 @@ export const useBackupStore = defineStore('backup', () => {
     }
     if (d.cfg !== undefined && (typeof d.cfg !== 'object' || d.cfg === null || Array.isArray(d.cfg))) {
       errores.push('"cfg" no es un objeto');
+    }
+    // La cfg se sanea campo a campo al importar (1.2): aquí solo se avisa
+    // de lo que se ignorará, sin romper la importación de los datos.
+    if (d.cfg !== undefined && typeof d.cfg === 'object' && d.cfg !== null && !Array.isArray(d.cfg)) {
+      const { avisos: avisosCfg } = sanearCfgImportada(d.cfg);
+      avisos.push(...avisosCfg);
     }
     const tablas: TablaDatos[] = [
       'productos',
@@ -549,57 +789,72 @@ export const useBackupStore = defineStore('backup', () => {
     if (!v.ok) throw new Error('Datos invalidos:\n· ' + v.errores.join('\n· '));
     if (v.avisos && v.avisos.length) console.warn('Import con avisos:', v.avisos);
 
-    const tables: TablaDatos[] = [
-      'productos',
-      'lotes',
-      'ventas',
-      'compras',
-      'ajustes',
-      'arqueos',
-      'movCaja',
-      'cierres',
-      'capital',
-      'retiros',
-      'socios',
-      'distribuciones',
-      'gastos',
-      'pasivos',
-      'auditorias',
-    ];
-    // Snapshot antes por si falla
-    const respaldo: Record<string, unknown[]> = {};
+    // Estado de carga (2.9): cubre la escritura de la importación, venga
+    // de un archivo, del backup automático o de deshacer la importación.
+    importando.value = true;
     try {
-      for (const t of tables) respaldo[t] = await db.table(t).toArray();
-    } catch (e) {
-      console.warn('No pude tomar snapshot', e);
-    }
-
-    try {
-      await db.transaction('rw', [...tables, 'config'], async () => {
-        for (const t of tables) {
-          await db.table(t).clear();
-          if (Array.isArray(d[t])) await db.table(t).bulkPut(clean(d[t]));
-        }
-        if (d.cfg) await P(db.config, { key: 'cfg', value: d.cfg });
-      });
-    } catch (err) {
+      const tables: TablaDatos[] = [
+        'productos',
+        'lotes',
+        'ventas',
+        'compras',
+        'ajustes',
+        'arqueos',
+        'movCaja',
+        'cierres',
+        'capital',
+        'retiros',
+        'socios',
+        'distribuciones',
+        'gastos',
+        'pasivos',
+        'auditorias',
+      ];
+      // Snapshot antes por si falla
+      const respaldo: Record<string, unknown[]> = {};
       try {
-        await db.transaction('rw', tables, async () => {
+        for (const t of tables) respaldo[t] = await db.table(t).toArray();
+      } catch (e) {
+        console.warn('No pude tomar snapshot', e);
+      }
+
+      try {
+        // La cfg del archivo se sanea campo a campo y NUNCA trae pin ni
+        // pinActivo: el PIN de este teléfono se conserva siempre (1.2).
+        const { cfg: cfgSaneada, avisos: avisosCfg } = d.cfg
+          ? sanearCfgImportada(d.cfg)
+          : { cfg: {}, avisos: [] as string[] };
+        if (avisosCfg.length) console.warn('Import: ajustes ignorados:', avisosCfg);
+        const cfgFinal = { ...configStore.cfg, ...cfgSaneada };
+        await db.transaction('rw', [...tables, 'config'], async () => {
           for (const t of tables) {
             await db.table(t).clear();
-            if (respaldo[t] && respaldo[t].length) await db.table(t).bulkPut(respaldo[t]);
+            if (Array.isArray(d[t])) await db.table(t).bulkPut(clean(d[t]));
           }
+          if (d.cfg) await P(db.config, { key: 'cfg', value: cfgFinal });
         });
-        throw new Error(
-          'Fallo la importacion (rollback aplicado): ' + (err instanceof Error ? err.message : String(err))
-        );
-      } catch {
-        throw new Error('Fallo la importacion Y el rollback: ' + (err instanceof Error ? err.message : String(err)));
+        // Object.assign IN-PLACE (no spread): mantener vivas las referencias capturadas
+        if (d.cfg) Object.assign(configStore.cfg, cfgSaneada);
+      } catch (err) {
+        try {
+          await db.transaction('rw', tables, async () => {
+            for (const t of tables) {
+              await db.table(t).clear();
+              if (respaldo[t] && respaldo[t].length) await db.table(t).bulkPut(respaldo[t]);
+            }
+          });
+          throw new Error(
+            'Fallo la importacion (rollback aplicado): ' + (err instanceof Error ? err.message : String(err))
+          );
+        } catch {
+          throw new Error('Fallo la importacion Y el rollback: ' + (err instanceof Error ? err.message : String(err)));
+        }
       }
+      // La cfg ya se fusionó (saneada, sin PIN) dentro de la transacción.
+      await recargarTodoStores();
+    } finally {
+      importando.value = false;
     }
-    // Object.assign IN-PLACE (no spread): mantener vivas las referencias capturadas
-    if (d.cfg) Object.assign(configStore.cfg, d.cfg);
-    await recargarTodoStores();
   }
 
   async function onRestoreBackup(data: Respaldo) {
@@ -738,6 +993,8 @@ export const useBackupStore = defineStore('backup', () => {
     preImportDisponible,
     preImportFecha,
     importFile,
+    exportando,
+    importando,
     exportar,
     exportarCifrado,
     triggerImport,

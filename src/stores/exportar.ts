@@ -53,10 +53,17 @@ export async function datosDeStores() {
 
   const [pasivos, auditorias] = await Promise.all([db.pasivos.toArray(), db.auditorias.toArray()]);
 
+  // El PIN NUNCA viaja en un respaldo: ni el hash ni el flag. Un respaldo
+  // importado jamás cambia el PIN del teléfono que lo recibe (1.2), y un
+  // archivo plano perdido no expone ni siquiera el hash para fuerza bruta
+  // offline (1.11). El export cifrado tampoco lo necesita: al importar, el
+  // PIN local se conserva tal cual.
+  const { pin: _pin, pinActivo: _pinActivo, ...cfgSinPin } = configStore.cfg;
+
   return clean({
     version: 10,
     fecha: new Date().toISOString(),
-    cfg: configStore.cfg,
+    cfg: cfgSinPin,
     productos: productosStore.productos,
     lotes: lotesStore.lotes,
     ventas: ventasStore.ventas,

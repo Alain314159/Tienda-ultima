@@ -277,7 +277,10 @@ describe('useNotificacionesStore: chequeos periódicos', () => {
     await db.productos.put({ id: 'p1', nombre: 'Agotado', precio: 10, archivado: false, stockMinimo: 5 });
     await useProductosStore().cargarProductos();
     await s.chequearNotificaciones();
-    const hoy = new Date().toISOString().slice(0, 10);
+    // El store marca con el día local (hoyLocal), no con la fecha UTC:
+    // a las 22:00 en UTC-4, toISOString() ya es el día siguiente.
+    const { hoyLocal } = await import('../src/utils/fecha');
+    const hoy = hoyLocal();
     expect(config.cfg.ultimaNotifStock.slice(0, 10)).toBe(hoy.slice(0, 10));
 
     // Segunda pasada el MISMO día: no duplica (marcador ya puesto)

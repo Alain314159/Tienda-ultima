@@ -10,6 +10,68 @@ después lo que ahorra toques cada día, y al final lo interno.
 > No incluye el `.env` trackeado en el repo público (alerta aparte, pendiente
 > de decisión) ni el bug del menú «Más» (ya arreglado el 2026-11-27).
 
+## Estado de implementación
+
+Implementación por oleadas a partir del 2026-11-28 (sin commit aún; el padre
+hace commit y push al final tras verificar).
+
+**Oleada 1 — Seguridad y Ventas/cobro (terminada 2026-11-28):**
+- 1.1 PIN con bloqueo (5 fallos → 1 min, duplicando hasta 15 min, persistido) y mínimo 4 dígitos: HECHO.
+- 1.2 Importar respaldo nunca sobrescribe pin/pinActivo; cfg validada campo a campo: HECHO.
+- 1.6 Deep link con state/nonce (TTL 10 min, un solo uso): HECHO (sin verificar en dispositivo real si Supabase preserva el state hasta `tiendapro://auth`).
+- 1.7 Sync WiFi con código de emparejamiento de 6 dígitos y handshake con huella SHA-256: HECHO.
+- 1.8 Sync valida contenido remoto con `validarFilaRemota()`; lo inválido va a `descartes` (motivo `remoto-invalido`, no restaurable): HECHO.
+- 1.9 Mínimo 100 000 iteraciones PBKDF2 al importar; 5 intentos de contraseña y espera de 1 min: HECHO.
+- 1.10 Cerrar sesión borra datos locales: HECHO la función (`salirDeNube` con `borrarDatosLocales`), PENDIENTE el diálogo de confirmación + PIN en CuentaNube.vue (oleada 2).
+- 1.11 Export plano sin hash del PIN; `window.__app`/`Log` solo en DEV (falta `window.db`, que se pone en db.ts — oleada 2); Eruda eliminada; CSP sin jsdelivr y con supabase.co + Google; logs redactados: HECHO (salvo cifrado en reposo, pendiente con plan).
+- Capgo `appId`: VERIFICADO que no coincide (`com.tiendapro.tiendapro` en el plugin frente a `com.tiendapro.app` de la app); NO cambiado por no poder verificar cuál es el correcto en el panel de Capgo.
+- 2.1 Buscador que no se cierra al añadir: HECHO.
+- 2.2 Confirmar pago valida lo recibido siempre (campo «Dinero recibido» visible): HECHO.
+- 2.3 «Limpiar carrito» y × de línea con confirmación: HECHO.
+- 2.4 Ajuste de inventario con confirmación (lotes FIFO detallados): HECHO.
+- 2.5 Atajos de billetes (+1 por denominación, «Monto exacto»): HECHO.
+- 2.6 Errores en lenguaje claro (fifo, cobro, compras, inventario, ventas): HECHO en los sitios tocados.
+- 2.9 Estados de carga en export/import (botones «Exportando…»/«Importando…»): HECHO. PDF «Generando PDF…»: HECHO.
+- Pendiente de la oleada 1: actualizar `tests/logger.test.js` (afirma el comportamiento anterior que la redacción debe impedir) y 14 tests que afirman comportamientos viejos (`fifo`, `property`, `inventario-ui`, `ventas-ui`) — oleada 3 (tests).
+
+**Oleada 2 — terminada:** Sync y persistencia de Supabase + Código interno.
+- Persistencia de sesión (requisito extra, prioritario): HECHO. Cliente con `persistSession`/`autoRefreshToken` explícitos; `restaurarSesionNube()` al arrancar; ante fallo de refresh transitorio NO se cierra sesión (reintenta, estado «Reconectando…»); solo se cierra si Supabase dice `refresh_token_not_found`/`invalid_grant`. Comprobado con tests de cliente falso (sesión restaurada tras «reinicio», refresh fallido no cierra sesión).
+- 3.1 Sync de fondo cada 45 s con sesión activa y online (aunque el panel esté cerrado): HECHO.
+- 3.2 Aviso visible (toast con «Sincronizar ahora») cuando la sync de fondo falla: HECHO.
+- 3.3 Indicador: rojo solo ante error real; «Sin conexión»/«Sin sincronizar» en ámbar; umbral de 10 min → 24 h; nuevo estado «Reconectando…»: HECHO.
+- 3.4 Reintento con backoff (3 intentos, 1 s → 2 s → 4 s, solo errores transitorios): HECHO.
+- 3.5 `compactar()` tras sync exitosa: HECHO en nube; PENDIENTE en WiFi (oleada 3).
+- 3.6 bulkGet en el motor de sync (precarga por tabla): HECHO.
+- 3.7 Recordatorios de sync pendiente y deuda vencida (1/día): HECHO.
+- Autosave atómico (temporal + rename) y aviso visible si falla: HECHO.
+- Aviso de poco espacio (QuotaExceededError, 80 %/90 %): HECHO.
+- 1.10 Diálogo al cerrar sesión (confirmación + PIN, borrar datos o conservarlos): HECHO.
+- 4.1 Predicado de período centralizado (`enPeriodo`/`fechaMs` en fecha.ts, 8 sitios, sin `new Date` crudo): HECHO. Reutilización parcial: `generarReporte`/`cerrarPeriodo` siguen con sus propios totales porque usan rangos arbitrarios, no el período actual.
+- 4.2 Pre-parseo de fechas a timestamp en insights/cuadre/historial: HECHO.
+- 4.3 Insights optimizado (Map por id, sin `find()` en bucles): HECHO. Troceado/debounce del computed: PENDIENTE (cambiaría cuándo se actualiza el punto rojo).
+- 4.4 Libro diario con debounce/coalescing (250 ms, promesa compartida): HECHO.
+- 4.5 Esquema Dexie por composición (base + overrides), esquema efectivo idéntico por versión: HECHO. Hallazgo: la v10 nunca borró realmente `tgQueue` (en Dexie, omitir una tabla no la borra; haría falta `tgQueue: null`); el store vacío es inocuo pero la doc que dice que la v10 lo elimina no es exacta — queda para decidir si se hace una v11.
+- 4.6 Catch vacíos con log de contexto (formato.ts y archivos del grupo): HECHO.
+- 4.7 `useBackupStore` god store: PENDIENTE (refactor grande, no asignado).
+- 4.8 Carga inicial full-table: PENDIENTE (grande, decisión de diseño).
+- 4.9 Dynamic imports inefectivos eliminados (un solo mecanismo estático): HECHO.
+- `window.db` solo en DEV (db.ts): HECHO.
+- Limpieza sociosActivos/gastosOrdenadas: HECHO (salvo el re-filtro en ReportesView.vue:561, vista fuera del grupo — oleada 3).
+
+**Oleada 3 — terminada:** Accesibilidad y tests.
+- 5.1 Contraste ≥ 4,5:1 (variables `--pri-txt`/`--warn-txt`/`--ok-txt`, badges y textos oscurecidos en claro y oscuro) y textos críticos de 8-11 px subidos a ~11-12 px: HECHO.
+- 5.2 Objetivos táctiles ~44 px (eliminar/editar/quitar, +/− de cantidad, cierre de buscador): HECHO (switches quedan en 46×26 px, por encima del mínimo WCAG de 24 px).
+- 5.3 `<label>` asociados en los 8 formularios; PIN con teclado numérico + autocomplete: HECHO.
+- 5.4 Botón atrás cubre Nube y WiFi (refs movidas a useUIStore; hayModalAbierto incluye todos los paneles): HECHO.
+- 5.5 Arqueo enterrado al fondo de Reportes: PENDIENTE (requiere reordenar ReportesView; no se hizo).
+- 5.6 `:focus-visible` con anillo de 3 px, `prefers-reduced-motion`, h2 en las 8 vistas: HECHO. Toasts de error 6 s (avisos 5 s) con aria-live: HECHO.
+- 3.5 `compactar()` tras sync WiFi: HECHO.
+- 6.1 Tests inestables: HECHO (limpieza de las 20 tablas antes de cada test; `vi.useFakeTimers` no es viable: congela fake-indexeddb).
+- 6.2 Huecos de cobertura: PARCIAL (solo accesibilidad, 28 tests nuevos). Sigue pendiente: cambio de teléfono E2E, sync contra Supabase real, tests de notificaciones/autosave, y smoke/funcional de anular/arqueo/cierre/restaurar.
+- 15 tests de comportamientos viejos actualizados: HECHO.
+
+**Verificación final del coordinador (2026-11-28):** typecheck OK, lint OK, build OK, suite Vitest completa **80 archivos, 912 tests, todos pasan** (socios-ui 16/16 en aislamiento), smoke en Chromium real **16/16 TODO OK**. Sin commit ni push (lo hace el padre).
+
 ---
 
 ## 1. Seguridad y no perder dinero

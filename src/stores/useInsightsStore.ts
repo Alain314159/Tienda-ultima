@@ -28,6 +28,11 @@ export const useInsightsStore = defineStore('insights', () => {
   const cajaStore = useCajaStore();
   const cierresStore = useCierresStore();
 
+  // El computed se mantiene entero a propósito: trocearlo por secciones o
+  // con debounce cambiaría cuándo se actualiza el punto rojo (las
+  // recomendaciones se cortan a 8 y las urgentes se cuentan DESPUÉS del
+  // corte). El coste se atacó dentro de generarRecomendaciones (4.3):
+  // cada fecha se parsea una vez y los productos van por Map.
   const recomendaciones = computed(() => {
     try {
       const list = generarRecomendaciones({

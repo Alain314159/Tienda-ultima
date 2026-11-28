@@ -5,6 +5,7 @@
  * Cada vista (ventas/compras/gastos) crea su propia instancia.
  */
 import { reactive, ref } from 'vue';
+import { fechaMs, enPeriodo } from '../utils/fecha';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useCierresStore } from '../stores/useCierresStore';
 import type { Cierre } from '../types';
@@ -39,20 +40,22 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
    * @param {string} keyFecha campo de fecha
    */
   function agrupar(items: T[], keyFecha: 'fecha' = 'fecha') {
+    // Límites de cada cierre pre-parseados una sola vez (antes se hacía
+    // new Date() por registro y por cierre dentro del bucle).
     const cierresProc = cierresStore.cierres.map((c) => ({
       cierre: c,
-      ci: new Date(c.periodoInicio || c.fechaCierre || '').getTime(),
-      cf: new Date(c.periodoFin || c.fechaCierre || '').getTime(),
+      ci: fechaMs(c.periodoInicio || c.fechaCierre || ''),
+      cf: fechaMs(c.periodoFin || c.fechaCierre || ''),
     }));
-    const ini = new Date(configStore.cfg.periodoInicio).getTime();
+    const ini = configStore.cfg.periodoInicio;
     const actual: T[] = [];
     const cerradosMap: Record<string, { cierre: Cierre; items: T[] }> = {};
     const cerrados: { cierre: Cierre; items: T[] }[] = [];
     const sinCierre: T[] = [];
 
     for (const it of items) {
-      const f = new Date(it[keyFecha]).getTime();
-      if (f >= ini) {
+      const f = fechaMs(it[keyFecha]);
+      if (enPeriodo(f, ini)) {
         actual.push(it);
         continue;
       }
@@ -86,8 +89,8 @@ export function useHistorial<T extends { id: string; fecha: string }>(getItems: 
       cerrados.push({ cierre: cierreAntiguos, items: sinCierre });
     }
     cerrados.sort((a, b) => {
-      const fa = a.cierre.fechaCierre ? new Date(a.cierre.fechaCierre).getTime() : 0;
-      const fb = b.cierre.fechaCierre ? new Date(b.cierre.fechaCierre).getTime() : 0;
+      const fa = a.cierre.fechaCierre ? fechaMs(a.cierre.fechaCierre) : 0;
+      const fb = b.cierre.fechaCierre ? fechaMs(b.cierre.fechaCierre) : 0;
       return fb - fa;
     });
 

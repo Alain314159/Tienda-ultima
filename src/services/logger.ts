@@ -17,6 +17,35 @@ let _originalConsole: Record<string, (...data: unknown[]) => void> | null = null
 // ============================================================
 // Serializacion segura (evita circular, funciones, etc.)
 // ============================================================
+
+/**
+ * Claves de datos del negocio que NUNCA se persisten en los logs (1.11):
+ * totales, ganancias, montos, precios, costos y nombres de productos.
+ * Un log es para depurar errores, no para guardar la contabilidad: un
+ * archivo de log perdido no debe revelar cuánto se vendió ni a qué precio.
+ * Se compara por prefijo/sufijo para cazar también `totalVentas`,
+ * `montoTotal` o `nombreProducto`.
+ */
+const CLAVES_SENSIBLES = [
+  'total',
+  'ganancia',
+  'monto',
+  'precio',
+  'costo',
+  'importe',
+  'saldo',
+  'producto',
+  'items',
+  'venta',
+  'compra',
+  'cliente',
+];
+
+function esClaveSensible(clave: string): boolean {
+  const k = clave.toLowerCase();
+  return CLAVES_SENSIBLES.some((s) => k === s || k.startsWith(s) || k.endsWith(s));
+}
+
 function serializar(valor: unknown, depth = 0): string {
   if (depth > 3) return '[max depth]';
   if (valor === null) return 'null';
@@ -48,6 +77,9 @@ function serializar(valor: unknown, depth = 0): string {
     const keys = Object.keys(valor).slice(0, 15);
     const partes = keys.map((k) => {
       try {
+        // Datos del negocio: se redacta el valor, no la clave (así el log
+        // sigue mostrando qué campo había, sin su contenido).
+        if (esClaveSensible(k)) return k + ': [redactado]';
         return k + ': ' + serializar((valor as Record<string, unknown>)[k], depth + 1);
       } catch {
         return k + ': [error]';

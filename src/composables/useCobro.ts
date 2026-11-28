@@ -11,7 +11,7 @@ import { db } from '../db';
 import { aplicarLotesEnBD } from '../services/fifo';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
-import { conWatchdog } from '../utils/watchdog';
+import { conWatchdogVerificado } from '../utils/watchdog';
 import { useUIStore } from '../stores/useUIStore';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useLotesStore } from '../stores/useLotesStore';
@@ -26,10 +26,15 @@ export function useCobro() {
   const lotesStore = useLotesStore();
   const notificaciones = useNotificacionesStore();
 
+  // `recibido` es la fuente de verdad del dinero que entregó el cliente
+  // (MEJORAS 2.2): campo siempre visible en el modal, no solo cuando la
+  // calculadora está abierta. La calculadora, cuando se usa, lo rellena
+  // con el total contado; `falta`/`sobra` siempre se calculan contra él.
   const cobroModal = reactive({
     total: 0,
     calcAbierta: false,
     billetes: {} as Record<number, number | string>,
+    recibido: '',
     totalContado: 0,
     falta: 0,
     sobra: 0,
@@ -56,6 +61,7 @@ export function useCobro() {
       cobroModal.total = ventasStore.totalCarrito;
       cobroModal.calcAbierta = false;
       cobroModal.billetes = {};
+      cobroModal.recibido = '';
       cobroModal.totalContado = 0;
       cobroModal.falta = 0;
       cobroModal.sobra = 0;
@@ -81,15 +87,35 @@ export function useCobro() {
     abrirCobro();
   }
 
-  function calcBilletes() {
-    const contado = denominaciones.reduce((s, d) => s + d * (n(cobroModal.billetes[d]) || 0), 0);
-    cobroModal.totalContado = m(contado);
-    const diff = m(contado - cobroModal.total);
+  /** Recalcula falta/sobra contra el total a partir del dinero recibido. */
+  function actualizarRecibido() {
+    const recibido = n(cobroModal.recibido);
+    const diff = m(recibido - cobroModal.total);
     cobroModal.falta = diff < 0 ? Math.abs(diff) : 0;
     cobroModal.sobra = diff > 0 ? diff : 0;
   }
 
-  async function procesarVenta() {
+  function calcBilletes() {
+    const contado = denominaciones.reduce((s, d) => s + d * (n(cobroModal.billetes[d]) || 0), 0);
+    cobroModal.totalContado = m(contado);
+    // El conteo alimenta el campo de recibido: es el mismo dinero.
+    cobroModal.recibido = String(contado);
+    actualizarRecibido();
+  }
+
+  /** Atajo (MEJORAS 2.5): suma un billete/moneda de la denominación. */
+  function sumarBillete(d: number) {
+    cobroModal.billetes[d] = n(cobroModal.billetes[d]) + 1;
+    calcBilletes();
+  }
+
+  /** Atajo (MEJORAS 2.5): el cliente paga el monto exacto, sin vuelto. */
+  function montoExacto() {
+    cobroModal.recibido = String(cobroModal.total);
+    actualizarRecibido();
+  }
+
+  async function procesarVenta(timeoutMs = 15000) {
     procesandoVenta.value = true;
     try {
       // Revalidación en el momento de cobrar (defensa en profundidad):
@@ -98,8 +124,10 @@ export function useCobro() {
       for (const it of ventasStore.carrito) {
         const c = n(it.cant);
         const pr = n(it.precio);
-        if (!isFinite(c) || c <= 0) throw new Error('Cantidad inválida en ' + it.nombre);
-        if (!isFinite(pr) || pr <= 0) throw new Error('Precio inválido en ' + it.nombre);
+        if (!isFinite(c) || c <= 0)
+          throw new Error('La cantidad de "' + it.nombre + '" no es válida: debe ser mayor que 0');
+        if (!isFinite(pr) || pr <= 0)
+          throw new Error('El precio de "' + it.nombre + '" no es válido: debe ser mayor que 0');
       }
       const items: import('../types').ItemVenta[] = [];
       let tot = 0;
@@ -109,7 +137,7 @@ export function useCobro() {
         const c = n(it.cant);
         const pr = n(it.precio);
         const f = lotesStore.calcFIFO(it.productoId, c);
-        if (f.error) throw new Error(f.error + ' en ' + it.nombre);
+        if (f.error) throw new Error(it.nombre + ': ' + f.error);
         const sub = pr * c;
         items.push({
           productoId: it.productoId,
@@ -134,7 +162,12 @@ export function useCobro() {
         anulada: false,
       };
 
-      await conWatchdog(
+      // Watchdog verificado (MEJORAS 1.3): si la operación supera el
+      // timeout, antes de darla por perdida se comprueba si la venta
+      // quedó guardada en la BD por su id; si se guardó, el flujo sigue
+      // como éxito y el usuario NO vuelve a cobrarla.
+      let guardadaTrasTimeout = false;
+      await conWatchdogVerificado(
         'venta',
         db.transaction('rw', db.ventas, db.lotes, async () => {
           await P(db.ventas, venta);
@@ -143,7 +176,13 @@ export function useCobro() {
           // reactivo y el bulkPut del objeto entero pisaba ventas de otra
           // pestaña (last-writer-wins → stock corrupto en silencio)
           await aplicarLotesEnBD(todos, 1);
-        })
+        }),
+        async () => {
+          const guardada = (await db.ventas.get(venta.id)) != null;
+          if (guardada) guardadaTrasTimeout = true;
+          return guardada;
+        },
+        timeoutMs
       );
 
       await recargarStores('ventas', 'lotes', 'asientos');
@@ -154,7 +193,11 @@ export function useCobro() {
       localStorage.removeItem('carritoPro');
       ui.cobroAbierto = false;
       procesandoVenta.value = false;
-      toastMsg(`Venta exitosa: ${fmt(tot)}`);
+      toastMsg(
+        guardadaTrasTimeout
+          ? `Venta guardada (tardó más de lo normal): ${fmt(tot)} — revisa el historial, no la cobres de nuevo`
+          : `Venta exitosa: ${fmt(tot)}`
+      );
       try {
         if (window.Log)
           window.Log.evento('venta-guardada', { id: venta.id, items: items.length, total: tot, ganancia: gan });
@@ -184,19 +227,29 @@ export function useCobro() {
   }
 
   /**
-   * Confirmar Pago: si el conteo de billetes está abierto y falta dinero,
-   * pedir confirmación explícita antes de procesar (antes el botón procesaba
-   * la venta completa aunque el contador gritara "Falta $X" en rojo)
+   * Confirmar Pago: el dinero recibido se valida SIEMPRE (MEJORAS 2.2),
+   * no solo con la calculadora abierta. Sin recibido no se puede
+   * confirmar la venta; si falta dinero, se pide confirmación explícita
+   * antes de procesar (antes el botón procesaba la venta completa aunque
+   * el contador gritara "Falta $X" en rojo).
    */
   function confirmarPago() {
-    if (cobroModal.calcAbierta && cobroModal.falta > 0.01) {
+    const recibido = n(cobroModal.recibido);
+    if (!isFinite(recibido) || recibido <= 0) {
+      toastMsg('Ingresa cuánto dinero recibiste antes de confirmar el pago', TOAST.BAD);
+      return;
+    }
+    const falta = m(cobroModal.total - recibido);
+    if (falta > 0.01) {
       ui.confirmar({
         titulo: '⚠ Falta dinero',
         msg:
-          'El conteo indica que faltan ' +
-          fmt(cobroModal.falta) +
-          ' para completar el total de ' +
+          'Recibiste ' +
+          fmt(recibido) +
+          ' y el total es ' +
           fmt(cobroModal.total) +
+          ': faltan ' +
+          fmt(falta) +
           '.\n\n¿Confirmar el cobro completo de todos modos?',
         onOk: () => void procesarVenta(),
       });
@@ -211,6 +264,9 @@ export function useCobro() {
     procesandoVenta,
     iniciarCobro,
     calcBilletes,
+    actualizarRecibido,
+    sumarBillete,
+    montoExacto,
     procesarVenta,
     confirmarPago,
     cerrarCobro,

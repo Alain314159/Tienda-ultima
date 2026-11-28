@@ -391,3 +391,76 @@ export async function regenerarAsientos(): Promise<number> {
 
   return asientos.length;
 }
+
+// ============================================================
+// Coalescing / debounce de la regeneración (4.4)
+// ============================================================
+// La regeneración es completa e idempotente (mismo estado => mismos
+// asientos), pero cuesta 9 toArray() + clear() + bulkPut(). Antes cada
+// venta/compra/retiro disparaba una: 3 ventas seguidas eran 3
+// reconstrucciones completas. Las peticiones que llegan en la misma
+// ventana comparten UNA regeneración; si llega una mientras otra corre,
+// se programa otra al terminar (los cambios de en medio no se pierden).
+// La ruta de recarga explícita (recarga.ts) sigue usando
+// regenerarAsientos() directo: ahí quien llama espera el libro al día.
+const REGENERACION_DEBOUNCE_MS = 250;
+
+let _temporizadorRegeneracion: ReturnType<typeof setTimeout> | null = null;
+let _promesaProgramada: Promise<number> | null = null;
+let _enCurso: Promise<number> | null = null;
+let _pedidaDuranteCurso = false;
+
+/** ¿Hay una regeneración programada (en espera) o en curso? */
+export function hayRegeneracionAsientosPendiente(): boolean {
+  return _promesaProgramada !== null || _enCurso !== null;
+}
+
+/**
+ * Programa una regeneración del libro diario, coalescando las peticiones
+ * que lleguen dentro de `retrasoMs` en una sola ejecución. Devuelve la
+ * promesa compartida de esa ejecución (mismo objeto para todas las
+ * peticiones de la ventana). No cambia el diseño regenerativo: la
+ * ejecución sigue siendo regenerarAsientos() completa e idempotente.
+ */
+export function programarRegeneracionAsientos(retrasoMs = REGENERACION_DEBOUNCE_MS): Promise<number> {
+  // Una regeneración en curso ya leerá el estado que haya cuando corra...
+  // salvo los cambios que lleguen DESPUÉS de sus lecturas: esos piden
+  // otra vuelta al terminar, y sus peticionarios esperan a esa vuelta.
+  if (_enCurso) {
+    _pedidaDuranteCurso = true;
+    return _enCurso.then(
+      () => programarRegeneracionAsientos(retrasoMs),
+      () => programarRegeneracionAsientos(retrasoMs)
+    );
+  }
+  if (_promesaProgramada) return _promesaProgramada;
+
+  _promesaProgramada = new Promise<number>((resolver, rechazar) => {
+    _temporizadorRegeneracion = setTimeout(() => {
+      _temporizadorRegeneracion = null;
+      _promesaProgramada = null;
+      _enCurso = regenerarAsientos();
+      _enCurso.then(
+        (n) => {
+          _enCurso = null;
+          resolver(n);
+          if (_pedidaDuranteCurso) {
+            _pedidaDuranteCurso = false;
+            // Vuelta extra fire-and-forget: sus peticionarios ya están
+            // encadenados a ella desde la rama _enCurso de arriba.
+            void programarRegeneracionAsientos(retrasoMs);
+          }
+        },
+        (e) => {
+          _enCurso = null;
+          rechazar(e);
+          if (_pedidaDuranteCurso) {
+            _pedidaDuranteCurso = false;
+            void programarRegeneracionAsientos(retrasoMs);
+          }
+        }
+      );
+    }, retrasoMs);
+  });
+  return _promesaProgramada;
+}

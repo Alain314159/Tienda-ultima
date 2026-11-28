@@ -26,7 +26,7 @@
     <div class="grid2">
       <div class="stat">
         <div class="lbl"><icon name="trend" :size="13" :color="mutColor"></icon> Ventas</div>
-        <div class="val" style="color: var(--pri)">{{ fmt(ventasStore.ventasPeriodo) }}</div>
+        <div class="val" style="color: var(--pri-txt)">{{ fmt(ventasStore.ventasPeriodo) }}</div>
       </div>
       <div class="stat">
         <div class="lbl"><icon name="dollar" :size="13" :color="mutColor"></icon> Ganancia</div>
@@ -47,13 +47,13 @@
       </div>
       <div class="stat">
         <div class="lbl"><icon name="chart" :size="13" :color="mutColor"></icon> Margen</div>
-        <div class="val" style="color: var(--pri)">{{ cierresStore.margenPeriodo }}%</div>
+        <div class="val" style="color: var(--pri-txt)">{{ cierresStore.margenPeriodo }}%</div>
       </div>
     </div>
 
     <!-- GRAFICO_CIRCULAR_V1 -->
     <div class="card" style="margin-top: 0.8rem">
-      <div
+      <h2
         class="card-title"
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem"
       >
@@ -66,13 +66,13 @@
           <button :class="{ activo: cfg.graficoVista === 'semana' }" @click="setGraficoVista('semana')">Semana</button>
           <button :class="{ activo: cfg.graficoVista === 'mes' }" @click="setGraficoVista('mes')">Mes</button>
         </span>
-      </div>
+      </h2>
       <div class="chart-wrap"><ChartVentas :dark="isDark" /></div>
     </div>
 
     <!-- GRAFICO_PRODUCTOS_CIRCULAR -->
     <div class="card">
-      <div
+      <h2
         class="card-title"
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem"
       >
@@ -88,7 +88,7 @@
             Mes
           </button>
         </span>
-      </div>
+      </h2>
       <div
         class="chart-toggle"
         style="display: flex; justify-content: center; margin-bottom: 0.5rem; background: transparent"
@@ -104,13 +104,13 @@
     </div>
 
     <div class="card rec-card" v-if="recomendaciones.length">
-      <div class="card-title">
+      <h2 class="card-title">
         <icon name="zap" :size="18" :color="'#D97706'"></icon>
         Recomendaciones
         <span v-if="recomendacionesUrgentes > 0" class="badge out" style="margin-left: auto"
           >{{ recomendacionesUrgentes }} urgente(s)</span
         >
-      </div>
+      </h2>
       <div
         v-for="(rec, i) in recomendaciones"
         :key="i"

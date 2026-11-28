@@ -6,6 +6,15 @@ import { ref, computed } from 'vue';
 import { useVentasStore } from '../stores/useVentasStore';
 import { useComprasStore } from '../stores/useComprasStore';
 import { useProductosStore } from '../stores/useProductosStore';
+import { Log } from '../services/logger';
+import { TOAST } from '../constants';
+import { toastMsg } from '../utils/toast';
+
+/** A partir de este uso se avisa (1.5): antes solo cambiaba un color en Ajustes. */
+export const UMBRAL_ESPACIO_AVISO_PCT = 80;
+/** A partir de aquí el aviso es urgente: las escrituras están a punto de fallar. */
+export const UMBRAL_ESPACIO_CRITICO_PCT = 90;
+const CLAVE_AVISO_ESPACIO = 'avisoEspacioFecha';
 
 export function useStorageInfo() {
   const ventasStore = useVentasStore();
@@ -79,5 +88,52 @@ export function useStorageInfo() {
     return 'ok';
   });
 
-  return { storagePersistente, storageInfo, pedirPersistenciaStorage, actualizarInfoStorage, fmtBytes, storageClase };
+  /**
+   * Avisa antes de que sea tarde (1.5): si el almacenamiento está al 80% o
+   * más, toast claro («queda poco espacio, exporta un respaldo»). Como
+   * mucho una vez al día, para no molestar cada vez que se abre la app.
+   * Devuelve true si hay poco espacio (haya avisado o no).
+   */
+  async function avisarSiPocoEspacio(): Promise<boolean> {
+    await actualizarInfoStorage();
+    const pct = storageInfo.value.porcentaje;
+    if (!storageInfo.value.cuota || pct < UMBRAL_ESPACIO_AVISO_PCT) return false;
+    const hoy = new Date().toISOString().slice(0, 10);
+    try {
+      if (localStorage.getItem(CLAVE_AVISO_ESPACIO) === hoy) return true;
+    } catch (e) {
+      Log.warn('useStorageInfo: no se pudo leer la fecha del último aviso de espacio', e);
+    }
+    try {
+      localStorage.setItem(CLAVE_AVISO_ESPACIO, hoy);
+    } catch (e) {
+      Log.warn('useStorageInfo: no se pudo guardar la fecha del aviso de espacio', e);
+    }
+    try {
+      if (pct >= UMBRAL_ESPACIO_CRITICO_PCT) {
+        toastMsg(
+          'Queda muy poco espacio en el teléfono (' + pct + '% usado). Exporta un respaldo y libera espacio: las ventas pueden dejar de guardarse.',
+          TOAST.BAD
+        );
+      } else {
+        toastMsg(
+          'El almacenamiento está al ' + pct + '%. Exporta un respaldo por si acaso.',
+          TOAST.WARN
+        );
+      }
+    } catch (e) {
+      Log.warn('useStorageInfo: no se pudo mostrar el aviso de poco espacio', e);
+    }
+    return true;
+  }
+
+  return {
+    storagePersistente,
+    storageInfo,
+    pedirPersistenciaStorage,
+    actualizarInfoStorage,
+    avisarSiPocoEspacio,
+    fmtBytes,
+    storageClase,
+  };
 }

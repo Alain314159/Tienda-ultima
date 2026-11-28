@@ -5,7 +5,7 @@
  */
 import { ref, reactive } from 'vue';
 import { n, m, q } from '../utils/numero';
-import { hoyLocal, diaLocal, fechaLocal } from '../utils/fecha';
+import { hoyLocal, diaLocal, fechaLocal, crearEnPeriodo } from '../utils/fecha';
 import type { Cierre, ResultadoCuadre, SubfilaCuadre } from '../types';
 import { useConfigStore } from '../stores/useConfigStore';
 import { useVentasStore } from '../stores/useVentasStore';
@@ -136,15 +136,19 @@ export function useCuadre() {
     const f = rep.isoFin ? new Date(rep.isoFin) : diaLocal(rep.fechaFin, true);
     if (i > f) return toastMsg('Fecha inicio > fin', TOAST.BAD);
 
-    const vp = ventasStore.ventas.filter((v) => !v.anulada && new Date(v.fecha) >= i && new Date(v.fecha) <= f);
+    // Límites pre-parseados una sola vez: antes cada filtro parseaba la
+    // fecha de cada registro (2 veces por filtro) y el inicio/fin por
+    // registro. El rango es arbitrario (no el período actual), así que no
+    // puede reutilizar los totales de período de los stores.
+    const enRango = crearEnPeriodo(i, f);
+
+    const vp = ventasStore.ventas.filter((v) => !v.anulada && enRango(v.fecha));
     // Las compras anuladas revierten su lote: no deben contar como compras del período
-    const cp = comprasStore.compras.filter((c) => !c.anulada && new Date(c.fecha) >= i && new Date(c.fecha) <= f);
-    const gp = ajustesStore.ajustes.filter((a) => a.cantidad < 0 && new Date(a.fecha) >= i && new Date(a.fecha) <= f);
+    const cp = comprasStore.compras.filter((c) => !c.anulada && enRango(c.fecha));
+    const gp = ajustesStore.ajustes.filter((a) => a.cantidad < 0 && enRango(a.fecha));
 
     const gastosTotal = m(
-      gastosStore.gastos
-        .filter((g) => new Date(g.fecha) >= i && new Date(g.fecha) <= f)
-        .reduce((s, g) => s + n(g.monto), 0)
+      gastosStore.gastos.filter((g) => enRango(g.fecha)).reduce((s, g) => s + n(g.monto), 0)
     );
 
     const ing = m(vp.reduce((s, v) => s + n(v.total), 0));
@@ -331,7 +335,7 @@ export function useCuadre() {
       // Gastos pagados con dinero fuera del cajón (transferencia, bolsillo):
       // explica la diferencia entre activos (caja + inventario) y patrimonio neto
       gastosFueraCaja: m(gastosStore.gastos.filter((g) => g.saleDeCaja === false).reduce((s, g) => s + n(g.monto), 0)),
-      socios: capitalStore.socios.filter((s) => s.activo !== false),
+      socios: capitalStore.sociosActivos,
     });
     // En nativo el PDF se escribe en Documentos/ (la descarga blob del
     // WebView no funciona); en web el navegador lo descarga.

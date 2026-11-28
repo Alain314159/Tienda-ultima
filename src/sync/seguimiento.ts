@@ -16,6 +16,7 @@ import Dexie, { type Table, type Transaction } from 'dexie';
 import { genId } from '../utils/id';
 import { TABLAS_SINCRONIZABLES } from './tipos';
 import type { Cambio, TipoCambio } from './tipos';
+import { Log } from '../services/logger';
 
 const CLAVE_DISPOSITIVO = 'tp_dispositivo';
 
@@ -46,6 +47,8 @@ export interface Seguimiento {
   sinRegistrar<T>(fn: () => Promise<T>): Promise<T>;
   /** Última entrada (propia o aplicada) de una fila, si existe. */
   ultima(tabla: string, registroId: string): Promise<Cambio | undefined>;
+  /** Últimas entradas de varias filas de la misma tabla, en una sola consulta. */
+  ultimas(tabla: string, registroIds: string[]): Promise<Map<string, Cambio>>;
   /** Quita entradas obsoletas dejando la última de cada fila. Devuelve cuántas quitó. */
   compactar(hasta: number): Promise<number>;
 }
@@ -86,11 +89,11 @@ export function instalarSeguimiento(db: Dexie, opciones: { dispositivo?: string 
       try {
         Dexie.ignoreTransaction(() => db.transaction('rw', ['cambios'], () => cambios().add(entrada))).catch(
           (e: unknown) => {
-            console.error('[sync] no se pudo registrar el cambio', e);
+            Log.error('sync: no se pudo registrar el cambio', e);
           }
         );
       } catch (e) {
-        console.error('[sync] no se pudo registrar el cambio', e);
+        Log.error('sync: no se pudo registrar el cambio', e);
       }
     };
 
@@ -134,6 +137,20 @@ export function instalarSeguimiento(db: Dexie, opciones: { dispositivo?: string 
     },
     async ultima(tabla: string, registroId: string): Promise<Cambio | undefined> {
       return cambios().where('[tabla+registroId]').equals([tabla, registroId]).last();
+    },
+    async ultimas(tabla: string, registroIds: string[]): Promise<Map<string, Cambio>> {
+      const mapa = new Map<string, Cambio>();
+      if (!registroIds.length) return mapa;
+      const unicos = [...new Set(registroIds)];
+      const filas = await cambios()
+        .where('[tabla+registroId]')
+        .anyOf(unicos.map((id) => [tabla, id]))
+        .toArray();
+      for (const e of filas) {
+        const anterior = mapa.get(e.registroId);
+        if (!anterior || (e.id ?? 0) > (anterior.id ?? 0)) mapa.set(e.registroId, e);
+      }
+      return mapa;
     },
     async compactar(hasta: number): Promise<number> {
       const viejas = await cambios().where('id').below(hasta).toArray();

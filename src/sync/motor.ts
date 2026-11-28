@@ -72,6 +72,148 @@ function esValida(f: FilaRemota): boolean {
   return typeof f.ts === 'number' && !!f.datos && typeof f.datos === 'object';
 }
 
+// ============================================================
+// Validación de contenido remoto (1.8)
+// ============================================================
+// Antes solo se comprobaban tabla, id, ts numérico y datos objeto: montos
+// negativos, fechas imposibles o una lápida con ts futuro se aplicaban sin
+// más. Ahora cada fila pasa por su especificación de tabla (montos finitos
+// y >= 0 donde aplica, fechas en rango 2000–2100, ids válidos) y lo que no
+// la cumple se descarta a `descartes` con motivo 'remoto-invalido' en vez
+// de aplicarse. La validación es deliberadamente laxa en lo que no es
+// peligroso (no exige los schemas de formulario: una fila vieja sin un
+// campo opcional sigue siendo válida).
+
+/** Marca lógica máxima aceptable: ahora + 1 día (relojes desajustados). */
+const TS_FUTURO_MAX_MS = 24 * 60 * 60 * 1000;
+
+const fechaEnRango = (v: unknown): boolean => {
+  if (v === undefined || v === null || v === '') return true; // ausente: no es su campo
+  const t = new Date(v as string | number | Date).getTime();
+  if (isNaN(t)) return false;
+  const anio = new Date(t).getUTCFullYear();
+  return anio >= 2000 && anio <= 2100;
+};
+
+/** Número (o texto numérico) finito, o null/undefined si el campo no viene. */
+const esNumero = (v: unknown): boolean => {
+  if (v === undefined || v === null || v === '') return true;
+  const x = typeof v === 'number' ? v : Number(v);
+  return typeof x === 'number' && isFinite(x);
+};
+
+const esNoNegativo = (v: unknown): boolean => {
+  if (v === undefined || v === null || v === '') return true;
+  const x = typeof v === 'number' ? v : Number(v);
+  return typeof x === 'number' && isFinite(x) && x >= 0;
+};
+
+const esPorcentaje = (v: unknown): boolean => {
+  if (v === undefined || v === null || v === '') return true;
+  const x = typeof v === 'number' ? v : Number(v);
+  return typeof x === 'number' && isFinite(x) && x >= 0 && x <= 100;
+};
+
+interface EspecTabla {
+  fechas?: string[];
+  /** Campos numéricos que deben ser finitos y >= 0 si vienen. */
+  noNeg?: string[];
+  /** Campos numéricos que deben ser finitos (pueden ser negativos). */
+  finitos?: string[];
+  /** Campos de porcentaje 0–100 si vienen. */
+  porcentajes?: string[];
+  /** El campo `nombre` (si la tabla lo tiene) no puede venir vacío. */
+  nombreObligatorio?: boolean;
+}
+
+const ESPEC_TABLAS: Record<string, EspecTabla> = {
+  productos: { fechas: ['fechaCreacion'], noNeg: ['precio', 'stockMinimo', 'stockMin'], nombreObligatorio: true },
+  lotes: { fechas: ['fecha'], noNeg: ['cantidadInicial', 'cantidadVendida', 'costo'] },
+  ventas: { fechas: ['fecha', 'fechaAnulacion'], noNeg: ['total'], finitos: ['ganancia'] },
+  compras: { fechas: ['fecha', 'fechaAnulacion'], noNeg: ['cantidad', 'costo', 'total'] },
+  ajustes: { fechas: ['fecha'], finitos: ['cantidad'], noNeg: ['costoPerdida'] },
+  arqueos: { fechas: ['fecha'] },
+  movCaja: { fechas: ['fecha'], noNeg: ['monto'] },
+  cierres: {
+    fechas: ['fechaCierre', 'periodoInicio', 'periodoFin', 'fecha'],
+    noNeg: ['totalVentas', 'cogs', 'gastos', 'mermas', 'numVentas', 'ventas', 'compras', 'gananciaBruta', 'valorInventario', 'cajaFinal'],
+    finitos: ['ganancia'],
+  },
+  capital: { fechas: ['fecha'], noNeg: ['monto'] },
+  retiros: { fechas: ['fecha'], noNeg: ['monto'] },
+  socios: { fechas: ['fecha'], noNeg: ['aporte'], porcentajes: ['porcentaje'], nombreObligatorio: true },
+  distribuciones: { fechas: ['fecha'], noNeg: ['monto', 'montoTotal'], porcentajes: ['porcentaje'] },
+  gastos: { fechas: ['fecha'], noNeg: ['monto'] },
+  pasivos: { fechas: ['fecha', 'vencimiento'], noNeg: ['monto'] },
+  auditorias: { fechas: ['fechaInicio', 'fecha'] },
+};
+
+/** Valida el contenido de una fila remota. Devuelve el motivo o null si es válida. */
+export function validarFilaRemota(f: FilaRemota): string | null {
+  if (!ES_SYNC.has(f.tabla)) return 'tabla no sincronizable';
+  if (typeof f.id !== 'string' || !f.id) return 'id inválido';
+  if (typeof f.ts !== 'number' || !isFinite(f.ts) || f.ts < 0) return 'marca temporal inválida';
+  if (f.ts > Date.now() + TS_FUTURO_MAX_MS) return 'marca temporal en el futuro';
+  if (typeof f.dispositivo !== 'string') return 'dispositivo inválido';
+  if (f.ts !== 0 && !f.dispositivo) return 'dispositivo vacío con marca temporal';
+  if (f.borrado) return null; // la lápida solo necesita tabla, id y marca válidos
+  if (!f.datos || typeof f.datos !== 'object' || Array.isArray(f.datos)) return 'datos inválidos';
+  const datos = f.datos as Record<string, unknown>;
+  const espec = ESPEC_TABLAS[f.tabla];
+  if (!espec) return 'tabla sin especificación de validación';
+  if (espec.nombreObligatorio && 'nombre' in datos) {
+    if (typeof datos.nombre !== 'string' || !datos.nombre.trim()) return 'nombre vacío';
+  }
+  for (const campo of espec.fechas ?? []) {
+    if (!fechaEnRango(datos[campo])) return `fecha inválida en "${campo}"`;
+  }
+  for (const campo of espec.noNeg ?? []) {
+    if (!esNoNegativo(datos[campo])) return `monto inválido en "${campo}"`;
+  }
+  for (const campo of espec.finitos ?? []) {
+    if (!esNumero(datos[campo])) return `número no finito en "${campo}"`;
+  }
+  for (const campo of espec.porcentajes ?? []) {
+    if (!esPorcentaje(datos[campo])) return `porcentaje inválido en "${campo}"`;
+  }
+  if (f.tabla === 'ventas') {
+    if (!Array.isArray(datos.items)) return 'items no es un array';
+    for (const item of datos.items as unknown[]) {
+      if (!item || typeof item !== 'object') return 'ítem de venta inválido';
+      const it = item as Record<string, unknown>;
+      if (!esNoNegativo(it.precio) || !esNoNegativo(it.cantidad) || !esNoNegativo(it.costo)) {
+        return 'ítem de venta con precio/cantidad/costo inválidos';
+      }
+      if (typeof it.nombre !== 'string' || !it.nombre.trim()) return 'ítem de venta sin nombre';
+    }
+  }
+  if (f.tabla === 'productos') {
+    if (Array.isArray(datos.preciosEscalonados)) {
+      for (const e of datos.preciosEscalonados as unknown[]) {
+        if (!e || typeof e !== 'object') return 'escalón de precio inválido';
+        const esc = e as Record<string, unknown>;
+        if (!esNoNegativo(esc.precio) || !esNoNegativo(esc.min)) return 'escalón de precio inválido';
+      }
+    }
+    if (Array.isArray(datos.empaques)) {
+      for (const e of datos.empaques as unknown[]) {
+        if (!e || typeof e !== 'object') return 'empaque inválido';
+        if (!esNoNegativo((e as Record<string, unknown>).unidades)) return 'empaque con unidades inválidas';
+      }
+    }
+  }
+  if (f.tabla === 'distribuciones' && Array.isArray(datos.detalles)) {
+    for (const d of datos.detalles as unknown[]) {
+      if (!d || typeof d !== 'object') return 'detalle de distribución inválido';
+      const det = d as Record<string, unknown>;
+      if (!esNoNegativo(det.monto) || !esPorcentaje(det.porcentaje)) {
+        return 'detalle de distribución inválido';
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Estado completo: todas las filas vivas con su marca (0 si no hay seguimiento
  * de ellas) y todas las lápidas. Es lo que se envía la primera vez que se une
@@ -144,12 +286,42 @@ export async function obtenerCambiosDesde(
   }
 
   const filas: FilaRemota[] = [];
+  // Precarga por tabla (3.6): antes cada fila costaba un get() + un
+  // ultima() secuenciales; ahora son un bulkGet y una consulta por tabla.
+  const porTabla = new Map<string, Cambio[]>();
   for (const e of ultima.values()) {
-    const fila = e.tipo === 'put' ? await db.table(e.tabla).get(e.registroId) : undefined;
-    if (e.tipo === 'put' && fila) {
+    if (e.tipo !== 'put') continue;
+    const lista = porTabla.get(e.tabla);
+    if (lista) lista.push(e);
+    else porTabla.set(e.tabla, [e]);
+  }
+  const vivas = new Map<string, Record<string, unknown> | undefined>();
+  const marcas = new Map<string, Cambio | undefined>();
+  for (const [tabla, lista] of porTabla) {
+    const ids = lista.map((e) => e.registroId);
+    const leidas = await db.table(tabla).bulkGet(ids);
+    lista.forEach((e, i) => vivas.set(clave(tabla, e.registroId), leidas[i] as Record<string, unknown> | undefined));
+    const ult = await seg.ultimas(tabla, ids);
+    for (const e of lista) marcas.set(clave(tabla, e.registroId), ult.get(e.registroId));
+  }
+  for (const e of ultima.values()) {
+    if (e.tipo !== 'put') {
+      // Borrado: viaja como lápida.
+      filas.push({
+        tabla: e.tabla,
+        id: e.registroId,
+        datos: null,
+        borrado: true,
+        ts: e.ts,
+        dispositivo: e.dispositivo,
+      });
+      continue;
+    }
+    const fila = vivas.get(clave(e.tabla, e.registroId));
+    if (fila) {
       // La fila puede tener después una versión aplicada desde otro dispositivo:
       // la marca que la describe es la de esa versión, no la de la entrada propia.
-      const real = await seg.ultima(e.tabla, e.registroId);
+      const real = marcas.get(clave(e.tabla, e.registroId));
       filas.push({
         tabla: e.tabla,
         id: e.registroId,
@@ -159,7 +331,7 @@ export async function obtenerCambiosDesde(
         dispositivo: real?.dispositivo ?? e.dispositivo,
       });
     } else {
-      // Borrado, o fila que ya no existe: viaja como lápida.
+      // Fila que ya no existe: viaja como lápida.
       filas.push({
         tabla: e.tabla,
         id: e.registroId,
@@ -187,15 +359,55 @@ export async function aplicarRemotas(
 
   await db.transaction('rw', [...TABLAS_SINCRONIZABLES, 'cambios', 'descartes'], () =>
     seg.sinRegistrar(async () => {
+      // Precarga por tabla (3.6): antes cada fila remota costaba un get() +
+      // un ultima() secuenciales; ahora son un bulkGet y una consulta por
+      // tabla al registro de cambios. Las escrituras siguen siendo por fila
+      // porque dependen del resultado del conflicto de cada una.
+      // Solo se precargan las filas válidas: una fila de una tabla que no
+      // viaja no tiene almacén en esta transacción y su bulkGet la rompería
+      // (el bucle las sigue contando como ignoradas, como antes).
+      const porTabla = new Map<string, FilaRemota[]>();
+      for (const f of filas) {
+        if (!esValida(f)) continue;
+        const lista = porTabla.get(f.tabla);
+        if (lista) lista.push(f);
+        else porTabla.set(f.tabla, [f]);
+      }
+      const locales = new Map<string, Record<string, unknown> | undefined>();
+      const ultimas = new Map<string, Cambio | undefined>();
+      for (const [tabla, lista] of porTabla) {
+        const ids = [...new Set(lista.map((f) => f.id))];
+        const leidas = await db.table(tabla).bulkGet(ids);
+        ids.forEach((id, i) => locales.set(clave(tabla, id), leidas[i] as Record<string, unknown> | undefined));
+        const ult = await seg.ultimas(tabla, ids);
+        for (const id of ids) ultimas.set(clave(tabla, id), ult.get(id));
+      }
+
       for (const f of filas) {
         if (!esValida(f)) {
           res.ignorados++;
           continue;
         }
+        // Contenido hostil o corrupto: no se aplica; se guarda en
+        // `descartes` con motivo 'remoto-invalido' para que quede rastro
+        // (1.8). No se ofrece para restaurar desde la UI.
+        const motivoInvalido = validarFilaRemota(f);
+        if (motivoInvalido) {
+          await descartes.add({
+            tabla: f.tabla,
+            registroId: f.id,
+            ts: Date.now(),
+            origen,
+            motivo: 'remoto-invalido',
+            datos: { motivo: motivoInvalido, fila: f },
+          });
+          res.descartes++;
+          continue;
+        }
         seg.ver(f.ts);
         const tabla = db.table(f.tabla);
-        const local = await tabla.get(f.id);
-        const ult = await seg.ultima(f.tabla, f.id);
+        const local = locales.get(clave(f.tabla, f.id));
+        const ult = ultimas.get(clave(f.tabla, f.id));
         const tsLocal = local ? (ult?.tipo === 'put' ? ult.ts : 0) : -1;
         const dispLocal = ult?.tipo === 'put' ? ult.dispositivo : seg.idDispositivo;
 
@@ -208,13 +420,19 @@ export async function aplicarRemotas(
           if (f.borrado) {
             if (ult?.tipo !== 'delete') {
               // Se anota la lápida para que una copia vieja que llegue después no resucite la fila.
-              await cambios.add(anotada(f, 'delete', origen));
+              const lapida = anotada(f, 'delete', origen);
+              await cambios.add(lapida);
+              ultimas.set(clave(f.tabla, f.id), lapida);
             }
             res.ignorados++;
             continue;
           }
-          await tabla.put(conDatos(f));
-          await cambios.add(anotada(f, 'put', origen));
+          const datosNuevos = conDatos(f);
+          await tabla.put(datosNuevos);
+          const entradaNueva = anotada(f, 'put', origen);
+          await cambios.add(entradaNueva);
+          locales.set(clave(f.tabla, f.id), datosNuevos);
+          ultimas.set(clave(f.tabla, f.id), entradaNueva);
           res.aplicados++;
           tocadas.add(f.tabla);
           continue;
@@ -228,7 +446,9 @@ export async function aplicarRemotas(
         if (!f.borrado && mismoContenido(local, conDatos(f))) {
           // Mismo contenido: solo se anota la marca, sin tocar la fila ni alarmar con un descarte.
           if (ult?.tipo !== 'put' || ult.ts !== f.ts || ult.dispositivo !== f.dispositivo) {
-            await cambios.add(anotada(f, 'put', origen));
+            const entradaIgual = anotada(f, 'put', origen);
+            await cambios.add(entradaIgual);
+            ultimas.set(clave(f.tabla, f.id), entradaIgual);
           }
           res.ignorados++;
           continue;
@@ -242,9 +462,13 @@ export async function aplicarRemotas(
           motivo: f.borrado ? 'borrado-remoto' : 'reemplazado',
           datos: local,
         });
+        const datosFinales = f.borrado ? undefined : conDatos(f);
         if (f.borrado) await tabla.delete(f.id);
-        else await tabla.put(conDatos(f));
-        await cambios.add(anotada(f, f.borrado ? 'delete' : 'put', origen));
+        else await tabla.put(datosFinales as Record<string, unknown>);
+        const entradaFinal = anotada(f, f.borrado ? 'delete' : 'put', origen);
+        await cambios.add(entradaFinal);
+        locales.set(clave(f.tabla, f.id), datosFinales);
+        ultimas.set(clave(f.tabla, f.id), entradaFinal);
         res.aplicados++;
         res.descartes++;
         tocadas.add(f.tabla);

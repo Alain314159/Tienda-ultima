@@ -10,7 +10,7 @@
     <meta name="description" content="Gestión de tienda con datos locales" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss: https://api.capgo.app; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss: https://api.capgo.app https://*.supabase.co https://accounts.google.com https://oauth2.googleapis.com; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'"
     />
     <title>Tienda Pro</title>
     <link rel="icon" href="/favicon.ico" />
@@ -19,7 +19,8 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
-    <!-- Eruda: se carga dinamicamente desde Ajustes cuando se activa -->
-    <script src="./eruda.js"></script>
+    <!-- Eruda se eliminó: se cargaba desde CDN en producción y nada la
+         llegaba a iniciar (no hay ningún uso de __loadEruda en src).
+         Para depurar en desarrollo, devtools del navegador. -->
   </body>
 </html>

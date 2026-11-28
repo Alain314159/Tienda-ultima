@@ -22,6 +22,14 @@ vi.mock('@capacitor/filesystem', () => ({
       if (!f) throw new Error('ENOENT');
       return { data: f.data };
     }),
+    // rename existe en @capacitor/filesystem 8: guardar escribe al temporal
+    // y renombra al final (escritura atómica); el mock lo modela igual.
+    rename: vi.fn(async (o) => {
+      const f = archivos.get(o.from);
+      if (!f) throw new Error('ENOENT');
+      archivos.set(o.to, f);
+      archivos.delete(o.from);
+    }),
     readdir: vi.fn(async () => ({
       // readdir real devuelve solo NOMBRES dentro de la carpeta
       files: [...archivos.keys()].map((k) => ({ name: k.replace('backups/', '') })),
