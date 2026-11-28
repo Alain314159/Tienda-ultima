@@ -22,7 +22,7 @@ hace commit y push al final tras verificar).
 - 1.7 Sync WiFi con código de emparejamiento de 6 dígitos y handshake con huella SHA-256: HECHO.
 - 1.8 Sync valida contenido remoto con `validarFilaRemota()`; lo inválido va a `descartes` (motivo `remoto-invalido`, no restaurable): HECHO.
 - 1.9 Mínimo 100 000 iteraciones PBKDF2 al importar; 5 intentos de contraseña y espera de 1 min: HECHO.
-- 1.10 Cerrar sesión borra datos locales: HECHO la función (`salirDeNube` con `borrarDatosLocales`), PENDIENTE el diálogo de confirmación + PIN en CuentaNube.vue (oleada 2).
+- 1.10 Cerrar sesión borra datos locales: HECHO la función (`salirDeNube` con `borrarDatosLocales`) y HECHO el diálogo de confirmación + PIN en CuentaNube.vue (oleada 2): el PIN protege el botón de borrar en sí, no solo la entrada al diálogo; cancelar o PIN incorrecto no borra nada. Tests en `tests/cuenta-nube-salir.test.js` (8 tests).
 - 1.11 Export plano sin hash del PIN; `window.__app`/`Log` solo en DEV (falta `window.db`, que se pone en db.ts — oleada 2); Eruda eliminada; CSP sin jsdelivr y con supabase.co + Google; logs redactados: HECHO (salvo cifrado en reposo, pendiente con plan).
 - Capgo `appId`: VERIFICADO que no coincide (`com.tiendapro.tiendapro` en el plugin frente a `com.tiendapro.app` de la app); NO cambiado por no poder verificar cuál es el correcto en el panel de Capgo.
 - 2.1 Buscador que no se cierra al añadir: HECHO.
@@ -40,17 +40,17 @@ hace commit y push al final tras verificar).
 - 3.2 Aviso visible (toast con «Sincronizar ahora») cuando la sync de fondo falla: HECHO.
 - 3.3 Indicador: rojo solo ante error real; «Sin conexión»/«Sin sincronizar» en ámbar; umbral de 10 min → 24 h; nuevo estado «Reconectando…»: HECHO.
 - 3.4 Reintento con backoff (3 intentos, 1 s → 2 s → 4 s, solo errores transitorios): HECHO.
-- 3.5 `compactar()` tras sync exitosa: HECHO en nube; PENDIENTE en WiFi (oleada 3).
+- 3.5 `compactar()` tras sync exitosa: HECHO en nube y en WiFi. Nube (`src/sync/nube.ts`): `compactar(enviadoFinal)` tras la vuelta, solo si el cursor `nube_enviado_hasta > 0`, en `try/catch`. WiFi (`src/sync/enlace.ts`, `comprobar()` en `sincronizarPorCanal`): `compactar(enviadoHasta)` solo cuando ambos sentidos cierran (`fin`/`fin-ok`), solo si `enviadoHasta > 0`, en `try/catch`; una sync fallida no compacta. Tests en `tests/wifi-compactar.test.js` (3 tests: éxito compacta, segunda sync sin nada nuevo no borra, sync fallida no compacta).
 - 3.6 bulkGet en el motor de sync (precarga por tabla): HECHO.
 - 3.7 Recordatorios de sync pendiente y deuda vencida (1/día): HECHO.
 - Autosave atómico (temporal + rename) y aviso visible si falla: HECHO.
 - Aviso de poco espacio (QuotaExceededError, 80 %/90 %): HECHO.
-- 1.10 Diálogo al cerrar sesión (confirmación + PIN, borrar datos o conservarlos): HECHO.
+- 1.10 Diálogo al cerrar sesión (confirmación + PIN, borrar datos o conservarlos): HECHO (oleada 2; revisado 2026-11-28: el PIN ahora protege el botón de borrar en sí, no solo la entrada al diálogo).
 - 4.1 Predicado de período centralizado (`enPeriodo`/`fechaMs` en fecha.ts, 8 sitios, sin `new Date` crudo): HECHO. Reutilización parcial: `generarReporte`/`cerrarPeriodo` siguen con sus propios totales porque usan rangos arbitrarios, no el período actual.
 - 4.2 Pre-parseo de fechas a timestamp en insights/cuadre/historial: HECHO.
-- 4.3 Insights optimizado (Map por id, sin `find()` en bucles): HECHO. Troceado/debounce del computed: PENDIENTE (cambiaría cuándo se actualiza el punto rojo).
+- 4.3 Insights optimizado (Map por id, sin `find()` en bucles) + debounce del recálculo (250 ms, maxWait 1 s): HECHO. El punto rojo se actualiza como mucho 250 ms después del último cambio (1 s en ráfagas continuas); las reglas y la lista son las mismas.
 - 4.4 Libro diario con debounce/coalescing (250 ms, promesa compartida): HECHO.
-- 4.5 Esquema Dexie por composición (base + overrides), esquema efectivo idéntico por versión: HECHO. Hallazgo: la v10 nunca borró realmente `tgQueue` (en Dexie, omitir una tabla no la borra; haría falta `tgQueue: null`); el store vacío es inocuo pero la doc que dice que la v10 lo elimina no es exacta — queda para decidir si se hace una v11.
+- 4.5 Esquema Dexie por composición (base + overrides), esquema efectivo idéntico por versión: HECHO. Hallazgo: la v10 nunca borró realmente `tgQueue` (en Dexie, omitir una tabla no la borra; haría falta `tgQueue: null`); el store vacío es inocuo pero la doc que dice que la v10 lo elimina no es exacta — resuelto 2026-11-28 con la v11 (`tgQueue: null`, borra el store de verdad).
 - 4.6 Catch vacíos con log de contexto (formato.ts y archivos del grupo): HECHO.
 - 4.7 `useBackupStore` god store: PENDIENTE (refactor grande, no asignado).
 - 4.8 Carga inicial full-table: HECHO (2026-11-28, carga perezosa: el arranque solo lee las 12 tablas del Dashboard; `arqueos` y `distribuciones` se cargan al entrar a su vista; ver §4.8).
@@ -63,11 +63,11 @@ hace commit y push al final tras verificar).
 - 5.2 Objetivos táctiles ~44 px (eliminar/editar/quitar, +/− de cantidad, cierre de buscador): HECHO (switches quedan en 46×26 px, por encima del mínimo WCAG de 24 px).
 - 5.3 `<label>` asociados en los 8 formularios; PIN con teclado numérico + autocomplete: HECHO.
 - 5.4 Botón atrás cubre Nube y WiFi (refs movidas a useUIStore; hayModalAbierto incluye todos los paneles): HECHO.
-- 5.5 Arqueo enterrado al fondo de Reportes: PENDIENTE (requiere reordenar ReportesView; no se hizo).
+- 5.5 Arqueo enterrado al fondo de Reportes: HECHO (2026-11-28, reorganización de pestañas: el Arqueo quedó 2º, tras el Cuadre por Período, en ReportesView).
 - 5.6 `:focus-visible` con anillo de 3 px, `prefers-reduced-motion`, h2 en las 8 vistas: HECHO. Toasts de error 6 s (avisos 5 s) con aria-live: HECHO.
 - 3.5 `compactar()` tras sync WiFi: HECHO.
 - 6.1 Tests inestables: HECHO (limpieza de las 20 tablas antes de cada test; `vi.useFakeTimers` no es viable: congela fake-indexeddb).
-- 6.2 Huecos de cobertura: PARCIAL (solo accesibilidad, 28 tests nuevos). Sigue pendiente: cambio de teléfono E2E, sync contra Supabase real, tests de notificaciones/autosave, y smoke/funcional de anular/arqueo/cierre/restaurar.
+- 6.2 Huecos de cobertura: PARCIAL (accesibilidad + anular/arqueo/cierre/restaurar/notificaciones/autosave, 28 tests Vitest nuevos + spec funcional de 22 checks). Sigue pendiente: cambio de teléfono E2E, sync contra Supabase real, notificaciones nativas en Android y fallos a mitad de arqueo/cierre.
 - 15 tests de comportamientos viejos actualizados: HECHO.
 
 **Verificación final del coordinador (2026-11-28):** typecheck OK, lint OK, build OK, suite Vitest completa **80 archivos, 912 tests, todos pasan** (socios-ui 16/16 en aislamiento), smoke en Chromium real **16/16 TODO OK**. Sin commit ni push (lo hace el padre).
@@ -151,6 +151,11 @@ hace commit y push al final tras verificar).
 - **Qué:** `salirDeNube()` solo cierra la sesión y borra el cursor; la
   IndexedDB completa queda en el teléfono y se mezcla con la siguiente cuenta.
 - **Esfuerzo:** pequeño. **Impacto:** medio.
+- **Resolución (2026-11-28):** el diálogo ofrece conservar o borrar; borrar
+  pide el PIN (`ui.pedirPin`) y solo con el PIN correcto ejecuta
+  `salirDeNube({ borrarDatosLocales: true })`. Antes el PIN se pedía al abrir
+  el diálogo y el botón rojo borraba de un toque. Tests en
+  `tests/cuenta-nube-salir.test.js` (8 tests).
 
 ### 1.11 Datos en claro en reposo (hash del PIN incluido)
 - **Dónde:** `src/db.ts`, `src/services/backupFolder.ts:38-70`,
@@ -247,6 +252,9 @@ hace commit y push al final tras verificar).
   sync hace `toArray()` de toda la tabla, así que su coste crece con la vida
   de la tienda. Basta llamar a `compactar(cursor)` tras una sync exitosa.
 - **Esfuerzo:** pequeño. **Impacto:** medio-alto.
+- **Resolución (2026-11-28):** ya la llamaban nube y WiFi desde el commit
+  0550923; solo faltaba el test de que una sync fallida no compacta, añadido
+  en `tests/wifi-compactar.test.js` (3 tests).
 
 ### 3.6 El motor de sync hace lecturas N+1 secuenciales por fila
 - **Dónde:** `src/sync/motor.ts:134-160,199-258`.
@@ -293,6 +301,15 @@ hace commit y push al final tras verificar).
   dispara ~15 escaneos completos, con `productos.find()` dentro de bucles.
   Corre siempre (el punto rojo de la barra lo usa), no solo en el Dashboard.
 - **Esfuerzo:** mediano. **Impacto:** medio.
+- **Resolución (2026-11-28):** el computed síncrono pasó a `ref` +
+  `watchDebounced` en `src/stores/useInsightsStore.ts` (debounce 250 ms,
+  maxWait 1000 ms, `deep: true` sobre las 9 fuentes; primer cálculo síncrono
+  al crear el store). No se troceó el motor: partirlo obligaría a rehacer la
+  ordenación (las urgentes se cuentan DESPUÉS del corte a 8) y una sola pasada
+  ya está acotada con los Map. Verificado con `tests/insights-debounce.test.js`
+  (5 tests): 10 cambios seguidos = 1 recálculo, aviso tras la pausa,
+  actualización por maxWait en ráfaga continua, lista idéntica al cálculo
+  directo y descartar anomalía con debounce.
 
 ### 4.4 El libro diario se reconstruye completo (9 tablas) en cada venta o compra
 - **Dónde:** `src/services/libroDiario.ts:360-393`, disparado desde 6 sitios.
@@ -422,18 +439,31 @@ hace commit y push al final tras verificar).
 ### 6.2 Huecos de cobertura
 - Cambio de teléfono de punta a punta (BD vacía + importar; el momento de
   mayor riesgo de pérdida de datos). Esfuerzo mediano, impacto alto.
+  PENDIENTE: exige dos teléfonos reales (o teléfono + VM con el enlace
+  WiFi/WebRTC, que en este VM no abre el canal de datos).
 - Sync contra Supabase real (hoy solo cliente falso en memoria). Esfuerzo
-  mediano, impacto medio.
-- Notificaciones de stock/arqueo/cierre (solo el recordatorio de respaldo
-  tiene tests). Esfuerzo pequeño, impacto medio.
+  mediano, impacto medio. PENDIENTE: exige proyecto Supabase real y sesión
+  de Google activa; el token de Management API no lee/escribe datos.
+- Notificaciones de stock/arqueo/cierre: HECHO en la ruta web (título y
+  cuerpo exactos, una vez al día, condiciones de cada aviso;
+  `tests/notificaciones-flujo.test.js`, 7 tests). PENDIENTE la ruta nativa
+  de Android (LocalNotifications), que solo se puede probar en el teléfono.
 - Fallos de autosave/`backupAuto` y de las operaciones en dos pasos
   (arqueo y cierre de período no son transaccionales:
   `src/stores/useCajaStore.ts:132-165`, `src/stores/useCierresStore.ts:135-210`).
-  Esfuerzo pequeño, impacto medio.
+  PARCIAL: `backupAuto` guarda los datos actuales y el intervalo de 2 h
+  está probado (`tests/autosave-flujo.test.js`, 4 tests); el camino feliz
+  de arqueo con sobrante/faltante y de cierres encadenados está probado
+  (`tests/arqueo-cierre-flujo.test.js`, 6 tests). PENDIENTE inyectar un
+  fallo a mitad de la operación, que exigiría reescribir los stores.
 - Accesibilidad: ningún test (ni axe ni contraste). Esfuerzo pequeño,
   impacto bajo-medio.
-- Smoke/funcional no cubren anular venta, arqueo, cierre ni restaurar
-  respaldo en el navegador real. Esfuerzo mediano, impacto medio.
+- Anular venta, arqueo, cierre y restaurar respaldo: HECHO. A nivel de
+  store (`tests/anular-venta-flujo.test.js`, 7 tests;
+  `tests/restaurar-respaldo-flujo.test.js`, 4 tests, incluido que el PIN
+  local no cambia) y en el navegador real
+  (`tests/flujos-anular-arqueo-cierre.spec.mjs`, 22/22 checks contra build
+  local: exportar → arqueo con sobrante → anular → cerrar → restaurar).
 
 ---
 
