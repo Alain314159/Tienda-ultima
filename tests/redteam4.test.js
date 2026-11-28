@@ -47,7 +47,7 @@ beforeEach(async () => {
 function respaldoSano() {
   const hoy = new Date().toISOString();
   return {
-    version: 10,
+    version: 11,
     fecha: hoy,
     cfg: { nombre: 'Tienda Prueba', periodoInicio: hoy },
     productos: [

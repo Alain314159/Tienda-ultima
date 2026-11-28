@@ -113,7 +113,7 @@ describe('datosDeStores() - exportacion', () => {
     setActivePinia(createPinia());
     const { datosDeStores } = await import('../src/stores/exportar');
     const data = await datosDeStores();
-    expect(data.version).toBe(10);
+    expect(data.version).toBe(11);
     expect(Array.isArray(data.productos)).toBe(true);
     expect(Array.isArray(data.ventas)).toBe(true);
     expect(Array.isArray(data.gastos)).toBe(true);

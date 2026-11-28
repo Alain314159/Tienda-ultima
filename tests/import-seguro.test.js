@@ -39,7 +39,7 @@ beforeEach(async () => {
 });
 
 const respaldoMinimo = (cfg) => ({
-  version: 10,
+  version: 11,
   fecha: '2026-11-27T12:00:00.000Z',
   cfg,
   productos: [{ id: 'p1', nombre: 'Arroz' }],

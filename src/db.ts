@@ -41,11 +41,14 @@ export interface RegistroConfig {
  *
  * CONTRATO: el esquema EFECTIVO de cada versión es idéntico al anterior
  * (mismo conjunto de tablas e índices por versión); las migraciones
- * v1→v10 deben seguir siendo las mismas. Lo verifica
+ * v1→v10 deben seguir siendo las mismas y la v11 solo añade
+ * `tgQueue: null` (borra el store). Lo verifica
  * tests/db-esquema.test.js, que compara cada versión contra el esquema
  * literal que había antes de la composición.
  */
-type EsquemaDexie = Record<string, string>;
+// `null` borra el object store (Dexie): omitir una tabla del esquema NO
+// la borra, el store vacío sigue existiendo.
+type EsquemaDexie = Record<string, string | null>;
 
 /** Versión 1: esquema inicial. */
 const ESQUEMA_V1: EsquemaDexie = {
@@ -135,8 +138,20 @@ function sinTabla(esquema: EsquemaDexie, tabla: string): EsquemaDexie {
  * Versión 10: elimina la cola de Telegram (tgQueue). Telegram se retiró
  * el 2026-11-27; la sincronización en la nube (Supabase) y por WiFi, más
  * el backup local, sustituyen el respaldo por Telegram.
+ *
+ * En la práctica la v10 solo la omitió del esquema y el store vacío
+ * seguía existiendo en la base (en Dexie omitir una tabla no la borra);
+ * la v11 lo borra de verdad.
  */
 const ESQUEMA_V10: EsquemaDexie = sinTabla(ESQUEMA_V9, 'tgQueue');
+
+/**
+ * Versión 11: borra de verdad la cola de Telegram (tgQueue). La v10 la
+ * omitió del esquema, pero en Dexie omitir una tabla NO borra el object
+ * store: el store vacío seguía existiendo. `tgQueue: null` lo elimina.
+ * Nada más cambia: el resto del esquema es idéntico al de la v10.
+ */
+const ESQUEMA_V11: EsquemaDexie = { ...ESQUEMA_V10, tgQueue: null };
 
 /** Esquema efectivo por versión (exportado para tests/db-esquema.test.js). */
 export const ESQUEMAS_POR_VERSION: Record<number, EsquemaDexie> = {
@@ -150,6 +165,7 @@ export const ESQUEMAS_POR_VERSION: Record<number, EsquemaDexie> = {
   8: ESQUEMA_V8,
   9: ESQUEMA_V9,
   10: ESQUEMA_V10,
+  11: ESQUEMA_V11,
 };
 
 export class TiendaProDB extends Dexie {

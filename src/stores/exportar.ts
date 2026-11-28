@@ -61,7 +61,7 @@ export async function datosDeStores() {
   const { pin: _pin, pinActivo: _pinActivo, ...cfgSinPin } = configStore.cfg;
 
   return clean({
-    version: 10,
+    version: 11,
     fecha: new Date().toISOString(),
     cfg: cfgSinPin,
     productos: productosStore.productos,

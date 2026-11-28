@@ -44,7 +44,7 @@ beforeEach(async () => {
 /** Respaldo mínimo pero COMPLETO y sano (todos los checks en verde). */
 function respaldoSano() {
   return {
-    version: 10,
+    version: 11,
     fecha: new Date().toISOString(),
     cfg: { nombre: 'Tienda Prueba', periodoInicio: new Date().toISOString() },
     productos: [
