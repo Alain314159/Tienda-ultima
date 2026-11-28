@@ -104,7 +104,7 @@ La barra inferior muestra Inicio, Ventas, Compras e Inventario; el resto vive en
 
 ## Base de datos local
 
-Base **TiendaProDB** (IndexedDB vía Dexie), actualmente en la **versión 10**. Hay 20 tablas:
+Base **TiendaProDB** (IndexedDB vía Dexie), actualmente en la **versión 11**. Hay 20 tablas:
 
 | Tabla | Contenido |
 | --- | --- |
@@ -129,7 +129,7 @@ Base **TiendaProDB** (IndexedDB vía Dexie), actualmente en la **versión 10**. 
 | `descartes` | Versiones locales que perdieron un conflicto |
 | `syncMeta` | Cursores y estado de los transportes |
 
-Historial de versiones: v1 esquema base; v2 gastos; v3 libro diario; v4 pasivos; v5 auditorías; v6 índices compuestos; v7–v8 cola de Telegram (eliminada en v10); v9 sincronización (`cambios`, `descartes`, `syncMeta`); **v10 elimina la cola de Telegram** y deja el esquema actual.
+Historial de versiones: v1 esquema base; v2 gastos; v3 libro diario; v4 pasivos; v5 auditorías; v6 índices compuestos; v7–v8 cola de Telegram (omitida del esquema en v10; el store vacío se borra de verdad en v11); v9 sincronización (`cambios`, `descartes`, `syncMeta`); **v10 omite la cola de Telegram del esquema** y **v11 la borra (`tgQueue: null`)** y deja el esquema actual.
 
 ### Lógica de costos (FIFO)
 

@@ -44,7 +44,6 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 
 - Saldo acumulativo con desglose completo
 - Arqueo con detección de faltantes / sobrantes
-- Movimientos recientes
 - Alertas de caja negativa
 
 ### 💎 Patrimonio
@@ -70,20 +69,19 @@ Aplicación web progresiva (PWA) para gestión completa de tienda: ventas, compr
 
 ### 📈 Contabilidad
 
-- **Balance de situación** (activos, pasivos, patrimonio)
-- **Estado de resultados** (ingresos, COGS, bruta, gastos, mermas, neta)
-- **Balance general** con partida doble
-- **Flujo de caja** (entradas vs salidas detalladas)
+- **Balance general** con partida doble (activos: caja e inventario; patrimonio: capital, resultado histórico y retiros)
+- **Estado de resultados del período** en el Resumen del Cuadre (ingresos, COGS, bruta, gastos, mermas, neta)
 - **Libro diario** con asientos automáticos por cada movimiento
 - **Balanza de comprobación** (debe = haber)
-- **Cuentas por pagar** (pasivos reales con seguimiento de vencimiento)
 - Cierres de período con desglose completo
+
+> El Libro Diario es histórico (todos los asientos desde el inicio) y no se filtra por período. No hay reporte de flujo de caja ni pantalla de cuentas por pagar: la base guarda una tabla de pasivos, pero no hay forma de ver, crear o pagar deudas desde la app.
 
 ### 📄 Reportes
 
 - Cuadre por período personalizable (día / mes / rango)
 - Tabla consolidada por producto **con desglose por costo/precio**
-- Alineación con el dashboard cuando usas "Período actual"
+- Alineación con el dashboard cuando usas "Período actual" (ventas, compras y margen; la Ganancia del dashboard es la disponible acumulada, no la neta del período)
 - **Exportar PDF profesional**:
   - Página 1: resumen financiero + situación + reparto socios
   - Página 2+: tabla única consolidada con subfilas por lote
@@ -228,7 +226,7 @@ Tienda-ultima/
 
 ## 🗄️ Modelo de datos
 
-La app usa **IndexedDB** a través de Dexie con 20 tablas (versión 10):
+La app usa **IndexedDB** a través de Dexie con 20 tablas (versión 11):
 
 | Tabla            | Propósito                                |
 | ---------------- | ---------------------------------------- |

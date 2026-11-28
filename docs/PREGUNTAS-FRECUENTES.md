@@ -9,7 +9,7 @@ Sí. Todo (ventas, compras, inventario, caja, reportes) funciona sin internet po
 **Más → Ajustes → Nombre de la tienda**. Se muestra en el encabezado y en los reportes.
 
 ### ¿Cómo cambio el tema o el tamaño de la letra?
-**Más → Ajustes**: interruptor de tema (claro/oscuro) y botones **A− / A+** para el tamaño de letra (de 1× a 2×).
+El **tema (claro/oscuro)** se cambia con el botón del **encabezado** (arriba, junto a la lupa y a Ajustes): muestra una luna o un sol y el texto **Oscuro** o **Claro**. No está en Ajustes. El **tamaño de letra** sí está en Ajustes: **Más → Ajustes → Apariencia**, botones **A− / A+** (de 1× a 2×).
 
 ### ¿Dónde está la sección de Nube o la de Compartir por WiFi?
 En el botón **Más** de la barra inferior, en el grupo **Sincronización y ajustes**: «Nube y cuenta» y «Compartir por WiFi». Al abrirlas, la hoja de «Más» se cierra sola y el panel queda a la vista.
@@ -77,10 +77,10 @@ Es el recordatorio de respaldo: si pasan más de 7 días (o el umbral que pongas
 ## Reportes y contabilidad
 
 ### La balanza dice «Descuadre»
-El libro diario debería estar balanceado (debe = haber). Un descuadre indica un asiento incompleto o un dato inconsistente. Revisa los movimientos recientes del período; si el problema persiste tras un cierre, anota qué período y qué cifras no cuadran y revísalo con el dueño de la app. No edites asientos a mano: se reconstruyen desde los datos.
+El libro diario debería estar balanceado (debe = haber). Un descuadre indica un asiento incompleto o un dato inconsistente. Revisa los movimientos recientes (el libro cubre toda la historia, no solo el período elegido arriba); si el problema persiste tras un cierre, anota qué período y qué cifras no cuadran y revísalo con el dueño de la app. No edites asientos a mano: se reconstruyen desde los datos.
 
 ### El dashboard no cuadra con Reportes
-Asegúrate de estar mirando el **mismo período** en los dos sitios: el dashboard usa el período actual (desde la fecha de inicio hasta hoy) y Reportes muestra el período que elijas arriba. Con «Período actual» seleccionado, ambos deben coincidir.
+Asegúrate de estar mirando el **mismo período** en los dos sitios: el dashboard usa el período actual (desde la fecha de inicio hasta hoy) y Reportes muestra el período que elijas arriba. Con «Período actual» seleccionado, ventas, compras y margen deben coincidir. La **Ganancia** es la excepción: en el dashboard es la **ganancia disponible** (acumulada de siempre menos lo ya retirado), mientras que en Reportes el Cuadre muestra la **ganancia neta del período** elegido, así que no tienen por qué coincidir si hubo retiros o períodos anteriores.
 
 ### ¿Cerrar el período borra mis datos?
 No. El cierre solo guarda el resumen del período y reinicia la fecha de inicio para que las cifras del dashboard empiecen desde cero. Ventas, compras y demás siguen en el historial, y el cierre queda guardado para consultarlo en Reportes.

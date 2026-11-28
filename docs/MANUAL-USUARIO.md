@@ -10,14 +10,15 @@ La barra inferior tiene cuatro secciones fijas — **Inicio, Ventas, Compras, In
 
 ## Inicio (dashboard)
 
-Es la primera pantalla al abrir la app. Muestra el estado del negocio para el período actual (desde la fecha de inicio del período configurada en Ajustes hasta hoy):
+Es la primera pantalla al abrir la app. Muestra el estado del negocio: el saldo de caja y el valor de inventario son los actuales, y las ventas, compras y margen son del período actual (desde la fecha de inicio del período configurada en Ajustes hasta hoy). La **Ganancia** es la excepción: no es la del período, sino la **ganancia disponible** — la ganancia acumulada de siempre menos lo ya retirado (ver [Socios y patrimonio](#socios-y-patrimonio)).
 
 - **Efectivo en Caja:** saldo actual de la caja.
 - **Valor de inventario:** lo que valen las existencias a costo.
-- **Ventas y ganancia del período.**
+- **Ventas, Compras y Margen del período.**
+- **Ganancia:** ganancia disponible (acumulada menos retirada). Si ya retiraste ganancia, debajo aparece el desglose «Generada: … · Retirada: …».
 - **Accesos rápidos:** justo debajo de las cuatro estadísticas, cuatro botones para lo más usado: **Nueva venta**, **Nueva compra**, **Nuevo gasto** y **Registrar arqueo**. Este último abre **Reportes** y baja directo a la tarjeta **Arqueo de Caja**.
-- **Gráfico de ventas vs ganancia** de los últimos 6 meses.
-- **Top productos:** los más rentables del período.
+- **Gráfico de ventas vs ganancia:** por defecto, los últimos 6 meses (vista **Mes**); se puede cambiar a **Días** (últimos 14 días) o **Semana** (últimas 8 semanas).
+- **Top productos:** los 6 primeros de la última semana (**Sem**) o del mes en curso (**Mes**), por cantidad vendida (**Más vendidos**) o por ganancia (**Más margen**). No es el período actual: es la última semana o el mes en curso.
 - **Anomalías:** avisos con nivel (baja / media / alta) cuando algo no cuadra — por ejemplo, muchos días sin cerrar el período, ventas con descuento alto o productos sin movimiento. Cada anomalía se puede descartar; las descartadas se pueden restaurar.
 - **Recomendaciones:** sugerencias concretas (por ejemplo, cerrar el período para acumular la ganancia).
 
@@ -103,7 +104,7 @@ Muestra el stock real por producto y por lote, con el costo de cada lote y el va
 4. Para un sobrante, la app pide el **costo** con el que entra ese stock (si no lo sabes, usa el costo del último lote).
 5. Guarda. El ajuste queda en el historial de «Últimos ajustes».
 
-Las mermas restan valor al inventario y se descuentan de la ganancia en el período (aparecen como «mermas» en el cuadre y en el estado de resultados).
+Las mermas restan valor al inventario y se descuentan de la ganancia en el período (aparecen como «mermas» en el Resumen del cuadre).
 
 ## Caja y arqueos
 
@@ -111,7 +112,7 @@ La caja vive en el **Inicio** (saldo) y en **Reportes** (arqueos y movimientos).
 
 ### Movimientos de caja
 
-Todo lo que entra o sale de la caja queda registrado automáticamente: ventas en efectivo, gastos pagados en efectivo, aportes y retiros de capital, repartos a socios y pagos de pasivos. Cada movimiento guarda fecha, tipo, monto, concepto y método de pago. Si el saldo baja de cero, la app muestra una **alerta de caja negativa**.
+Todo lo que entra o sale de la caja queda registrado automáticamente: ventas en efectivo, gastos pagados en efectivo, aportes y retiros de capital y repartos a socios. Cada movimiento guarda fecha, tipo, monto, concepto y método de pago. Si el saldo baja de cero, la app muestra una **alerta de caja negativa**. Los movimientos no tienen una lista propia visible: se ven reflejados en el saldo de caja, en el arqueo y en los asientos del Libro Diario.
 
 ### Arqueo
 
@@ -134,7 +135,7 @@ Esta sección agrupa el capital de la tienda, los socios y los repartos.
 
 - **Aporte:** dinero que entra como capital de la tienda (inversión inicial o aportes posteriores). Se puede asociar a un socio.
 - **Retiro:** sacar dinero de la tienda. Hay dos tipos:
-  - **Retiro de ganancia:** saca de la ganancia disponible del período.
+  - **Retiro de ganancia:** saca de la ganancia disponible (la acumulada menos lo ya retirado, no solo la del período).
   - **Retiro de capital:** saca del capital aportado.
 - La pantalla muestra el **capital disponible** y la **ganancia disponible** para retirar, y el **historial de capital** con todos los movimientos.
 
@@ -172,11 +173,11 @@ La pantalla tiene cinco tarjetas, en este orden: **Cuadre por Período**, **Arqu
 
 ### Período
 
-Arriba, en la tarjeta de Cuadre por Período, se elige el período del reporte: **Hoy, 7d, Mes, Mes ant, Año, Periodo actual** (desde la fecha de inicio del período hasta hoy) o cualquiera de los **períodos cerrados** anteriores. Todo el reporte — resumen, cuadre, libro diario y balances — se recalcula para ese período.
+Arriba, en la tarjeta de Cuadre por Período, se elige el período del reporte: **Hoy, 7d, Mes, Mes ant, Año, Periodo actual** (desde la fecha de inicio del período hasta hoy) o cualquiera de los **períodos cerrados** anteriores. Ese período solo afecta al **Cuadre por Período** (resumen, cuadre por producto y reparto entre socios). El **Libro Diario no se filtra por período**: siempre muestra todos los asientos desde el inicio, con sus balances históricos.
 
 ### 1. Cuadre por Período
 
-- **Resumen:** ventas, compras, gastos y ganancia neta del período.
+- **Resumen:** el estado de resultados del período: ingresos, costos (COGS), ganancia bruta (con su margen), mermas, gastos operativos y ganancia neta (con su margen), además del número de ventas realizadas. (No hay un apartado aparte llamado «Estado de resultados»: estas son sus cifras, aquí en el Cuadre.)
 - **Cuadre por producto:** tabla consolidada con lo vendido de cada producto, **con desglose por costo y precio** (subfilas por lote), para ver de dónde sale cada cifra.
 - **Reparto entre socios:** cuánto le toca a cada socio de la ganancia neta del período, según su porcentaje.
 - **Exportar PDF:** genera un PDF profesional con jsPDF: página 1 con el resumen financiero, la situación y el reparto de socios, y páginas siguientes con la tabla consolidada. Todas las páginas llevan pie.
@@ -200,13 +201,14 @@ Lista los cierres anteriores con su período, ganancia, fecha de cierre y desglo
 
 ### 5. Libro Diario
 
+El Libro Diario **no depende del período elegido arriba**: carga todos los asientos desde el inicio y sus cifras son históricas, no del período. Lo que tiene es:
+
 - **Balanza de comprobación:** muestra si el libro diario está balanceado (debe = haber). Si aparece «Descuadre», algo no cuadra y hay que revisarlo.
-- **Balance general (estado de situación):** activos, pasivos y patrimonio del período, con la identidad deudores = acreedores.
-- **Estado de resultados:** ingresos, costo de lo vendido, ganancia bruta, gastos, mermas y ganancia neta.
-- **Flujo de caja:** entradas y salidas de efectivo detalladas.
+- **Balance general (estado de situación):** activos (caja e inventario) y patrimonio (capital aportado, resultado histórico, retiros de ganancia y partidas fuera de caja), con la identidad activo = patrimonio. No muestra pasivos como apartado: las deudas no tienen pantalla propia en la app (ver la nota al final).
 - **Libro diario:** asientos automáticos de partida doble por cada movimiento (cada venta, compra, gasto, aporte o retiro genera su asiento). Los asientos **no se editan a mano**: se reconstruyen desde los datos. **Últimos asientos** muestra los 30 más recientes.
 - **Diagnóstico:** compara la caja, el inventario y el resultado neto según el libro con los saldos del sistema.
-- **Cuentas por pagar:** pasivos reales (deudas) con acreedor, monto y fecha de vencimiento, y su estado (pendiente o pagado).
+
+> **Lo que el Libro Diario no tiene:** no hay apartados de «Estado de resultados» (sus cifras están en el Resumen del Cuadre por Período, arriba), ni de «Flujo de caja» (no existe ese reporte: las entradas y salidas de efectivo solo se ven reflejadas en el saldo de caja, el arqueo y los asientos), ni de «Cuentas por pagar» (la base guarda una tabla de pasivos con acreedor, monto y vencimiento, y la app avisa si una deuda vence, pero no hay ninguna pantalla para ver, crear o pagar deudas).
 
 ## Búsqueda global
 

@@ -34,7 +34,7 @@ El respaldo cifrado usa **AES-256-GCM** (cifrado autenticado: si el archivo se a
 | --- | --- | --- |
 | **Nube (Supabase)** | Las 15 tablas sincronizables (ver [SINCRONIZACION.md](SINCRONIZACION.md)) | Solo si entras con Google y sincronizas |
 | **Otro teléfono (WiFi)** | Las mismas 15 tablas | Solo cuando tú inicias «Compartir por WiFi» |
-| **Archivo de respaldo** | Todos los datos (formato v10) | Solo cuando tú exportas |
+| **Archivo de respaldo** | Todos los datos (formato v11) | Solo cuando tú exportas |
 | **Google** | Tu correo electrónico, solo para confirmar quién eres | Solo al entrar con Google |
 
 Lo que **nunca** sale del teléfono:

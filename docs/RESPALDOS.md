@@ -34,7 +34,7 @@ En Android, la exportación usa el diálogo de compartir/guardar del sistema; en
 
 ## Qué incluye un respaldo
 
-El formato de respaldo es la **versión 10** e incluye:
+El formato de respaldo es la **versión 11** e incluye:
 
 - Configuración de la app (`cfg`): nombre de la tienda, tema, umbrales, etc.
 - **Todas las tablas de datos:** productos, lotes, ventas, compras, ajustes, arqueos, movCaja, cierres, capital, retiros, socios, distribuciones, gastos, **pasivos** y **auditorías**.
