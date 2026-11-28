@@ -15,3 +15,5 @@ bundle-report.html
 *.keystore
 *.jks
 android/app/tienda-pro-release.keystore
+
+test-results/
