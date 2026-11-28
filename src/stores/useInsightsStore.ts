@@ -4,8 +4,10 @@
  * stores de datos. Único responsable del análisis de recomendaciones.
  */
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { watchDebounced } from '@vueuse/core';
 import { generarRecomendaciones } from '../insights';
+import type { Recomendacion } from '../types';
 import { fmt, fmtCant } from '../utils/formato';
 import { useConfigStore } from './useConfigStore';
 import { useProductosStore } from './useProductosStore';
@@ -16,6 +18,34 @@ import { useAjustesStore } from './useAjustesStore';
 import { useGastosStore } from './useGastosStore';
 import { useCajaStore } from './useCajaStore';
 import { useCierresStore } from './useCierresStore';
+
+/**
+ * Debounce del recálculo de avisos (4.3).
+ * Antes `recomendaciones` era un `computed` síncrono que dependía de 9
+ * stores: cada venta, gasto o lote que cambiaba lo invalidaba y el
+ * siguiente render (el punto rojo de la barra lo lee siempre, no solo
+ * en el Dashboard) pagaba un `generarRecomendaciones()` entero. En una
+ * ráfaga — una venta con varios ítems, una sync que inserta decenas de
+ * registros, una importación — eso eran N recálculos completos seguidos.
+ * Ahora el cálculo vive en un `ref` que se refresca con debounce:
+ * los cambios que llegan dentro de la ventana se coalescen en UN solo
+ * recálculo, y `maxWait` garantiza que en una ráfaga continua el punto
+ * rojo no quede desactualizado más de 1 s. Valores iguales a los del
+ * libro diario (4.4: 250 ms) y al carrito (300 ms): un retraso que el
+ * usuario no percibe al registrar una venta.
+ * El primer cálculo es síncrono al crear el store, como antes: el
+ * primer render ya ve los avisos, el debounce solo retrasa los
+ * siguientes. Las reglas NO cambian: el recálculo ejecuta exactamente
+ * el mismo `generarRecomendaciones()` + filtro de descartadas + corte
+ * a 8; solo cambia CUÁNDO corre, nunca QUÉ avisos salen.
+ * No se trocea el motor en tandas: partir `generarRecomendaciones()`
+ * en secciones con pausas obligaría a rehacer su ordenación (las
+ * urgentes se cuentan DESPUÉS del corte a 8) y el coste de una sola
+ * pasada ya está acotado con los Map/índices de la primera mitad
+ * del 4.3; el problema que quedaba era la repetición, no la pasada.
+ */
+export const INSIGHTS_DEBOUNCE_MS = 250;
+export const INSIGHTS_MAX_WAIT_MS = 1000;
 
 export const useInsightsStore = defineStore('insights', () => {
   const configStore = useConfigStore();
@@ -28,12 +58,9 @@ export const useInsightsStore = defineStore('insights', () => {
   const cajaStore = useCajaStore();
   const cierresStore = useCierresStore();
 
-  // El computed se mantiene entero a propósito: trocearlo por secciones o
-  // con debounce cambiaría cuándo se actualiza el punto rojo (las
-  // recomendaciones se cortan a 8 y las urgentes se cuentan DESPUÉS del
-  // corte). El coste se atacó dentro de generarRecomendaciones (4.3):
-  // cada fecha se parsea una vez y los productos van por Map.
-  const recomendaciones = computed(() => {
+  // El cálculo puro, sin cambios: mismo motor, mismo filtro de
+  // descartadas y mismo corte a 8 que tenía el computed.
+  function calcularRecomendaciones(): Recomendacion[] {
     try {
       const list = generarRecomendaciones({
         ventas: ventasStore.ventas,
@@ -56,7 +83,36 @@ export const useInsightsStore = defineStore('insights', () => {
       console.error('recomendaciones', e);
       return [];
     }
-  });
+  }
+
+  // Primer cálculo síncrono: el primer render ve los avisos igual que
+  // con el computed. Los siguientes llegan por el watch con debounce.
+  const recomendaciones = ref<Recomendacion[]>(calcularRecomendaciones());
+
+  // `deep: true` es necesario: no solo importan los reemplazos de
+  // array (carga/sync) y los push (nueva venta), también las ediciones
+  // en el sitio (anular una venta, cambiar el precio de un producto,
+  // descartar una anomalía en cfg). El recorrido profundo solo lee
+  // propiedades — sin parsear fechas ni ordenar — y el cálculo caro
+  // corre una sola vez por ventana, en el callback.
+  watchDebounced(
+    () => [
+      ventasStore.ventas,
+      comprasStore.compras,
+      gastosStore.gastos,
+      ajustesStore.ajustes,
+      productosStore.productos,
+      lotesStore.lotes,
+      cierresStore.cierres,
+      cajaStore.movCaja,
+      cajaStore.saldoCaja,
+      configStore.cfg,
+    ],
+    () => {
+      recomendaciones.value = calcularRecomendaciones();
+    },
+    { deep: true, debounce: INSIGHTS_DEBOUNCE_MS, maxWait: INSIGHTS_MAX_WAIT_MS }
+  );
 
   const recomendacionesUrgentes = computed(() => recomendaciones.value.filter((r) => r.nivel === 'urgente').length);
 
