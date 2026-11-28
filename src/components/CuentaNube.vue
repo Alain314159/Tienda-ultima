@@ -5,9 +5,11 @@
  * La sync automática ya no vive aquí (3.1): el temporizador de fondo está en
  * useNubeStore y lo arranca App.vue, así que sincroniza aunque el panel esté
  * cerrado. Aquí queda el estado, el botón manual y el regreso a primer plano.
- * Cerrar sesión pide confirmación (con PIN si está activo) y ofrece borrar
- * los datos locales (1.10): sin eso la IndexedDB quedaba en el teléfono y
- * se mezclaba con la siguiente cuenta.
+ * Cerrar sesión abre una confirmación con dos opciones: conservar los datos
+ * locales o borrarlos. Borrarlos pide el PIN (si está activo) y solo con el
+ * PIN correcto se borran y se cierra la sesión (1.10): antes, tras pasar el
+ * PIN de entrada, un toque accidental en el botón rojo vaciaba la IndexedDB
+ * del teléfono sin más barrera.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { db, seguimiento } from '../db';
@@ -80,11 +82,20 @@ async function entrar(): Promise<void> {
   }
 }
 
-/** Primer toque a «Cerrar sesión»: pide el PIN (si está activo) y abre la confirmación. */
+/** Primer toque a «Cerrar sesión»: abre la confirmación. El PIN se pide al elegir borrar los datos, que es lo destructivo (1.10). */
 function pedirSalir(): void {
-  confirmandoSalida.value = false;
+  confirmandoSalida.value = true;
+}
+
+/**
+ * «Cerrar sesión y borrar los datos locales»: pide el PIN con el patrón
+ * habitual (`ui.pedirPin`, como anular una venta o borrar todos los datos)
+ * y solo con el PIN correcto borra y cierra la sesión. Cancelar o fallar el
+ * PIN no borra nada. Sin PIN activo `pedirPin` ejecuta directo.
+ */
+function pedirBorrarDatos(): void {
   ui.pedirPin(() => {
-    confirmandoSalida.value = true;
+    void salir(true);
   });
 }
 
@@ -184,7 +195,7 @@ onBeforeUnmount(() => {
         <button class="nube-boton" type="button" :disabled="ocupado" @click="salir(false)">
           Cerrar sesión y conservar los datos
         </button>
-        <button class="nube-boton nube-peligro" type="button" :disabled="ocupado" @click="salir(true)">
+        <button class="nube-boton nube-peligro" type="button" :disabled="ocupado" @click="pedirBorrarDatos">
           Cerrar sesión y borrar los datos locales
         </button>
         <button class="nube-boton nube-secundario" type="button" :disabled="ocupado" @click="confirmandoSalida = false">
