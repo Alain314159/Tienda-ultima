@@ -88,4 +88,20 @@ describe('sync WiFi compacta cambios al terminar', () => {
     expect(await A.cambios.count()).toBe(1);
     expect(await B.productos.get('p1')).toMatchObject({ nombre: 'Uno' });
   });
+
+  it('una sync fallida no compacta: lo no enviado sigue en `cambios`', async () => {
+    await A.productos.put({ id: 'p1', nombre: 'Uno' });
+    await A.productos.put({ id: 'p1', nombre: 'Uno v2' });
+    await A.productos.put({ id: 'p1', nombre: 'Uno v3' });
+    await A.productos.put({ id: 'p2', nombre: 'Dos' });
+    expect(await A.cambios.count()).toBe(4);
+
+    // Enlace mudo: el otro teléfono nunca responde y la sesión se corta
+    // por tiempo agotado, sin llegar a cerrarse con éxito.
+    const mudo = { abierto: Promise.resolve(), enviar() {}, alRecibir() {}, cerrar() {} };
+    await expect(sincronizarPorCanal(ctxA, mudo, { sinActividadMs: 40 })).rejects.toThrow('tiempo-agotado');
+
+    // Nada se compactó: las 4 entradas siguen ahí para la próxima sync.
+    expect(await A.cambios.count()).toBe(4);
+  });
 });
