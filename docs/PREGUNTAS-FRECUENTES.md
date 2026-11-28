@@ -41,10 +41,15 @@ Solo se puede archivar un producto **sin stock**. Vende o ajusta lo que queda y 
 - Si aparece «Google todavía no está conectado al proyecto de la nube», falta el paso del dueño de la cuenta de Supabase (ver [GUIA-CONECTAR-GOOGLE.md](GUIA-CONECTAR-GOOGLE.md)).
 
 ### ¿La sync por WiFi no conecta?
-- Los dos teléfonos deben estar en la **misma red WiFi** (mismo router). Con datos móviles o redes distintas no funciona: el canal WebRTC no usa servidores intermedios.
+- Los dos teléfonos deben estar en la **misma red WiFi** (mismo router). Con datos móviles o redes distintas no funciona.
+- Para conectar con el código de 6 dígitos, los dos teléfonos necesitan **internet** (solo para el intercambio inicial; los datos van directos por la WiFi). Sin internet, usa el código QR.
+- Si aparece «No hay ninguna sala con ese código», revisa que el código esté bien escrito y que el otro teléfono ya haya creado el enlace.
+- Si aparece «Los teléfonos no lograron verse en la red WiFi», el router puede tener activado el «aislamiento de clientes» o «AP isolation»: desactívalo en los ajustes del router, o prueba con otro router o con el punto de acceso de un teléfono.
+- Si la cámara no se abre, la app dice por qué: si está bloqueada, actívala en **Ajustes → Aplicaciones → Tienda Pro → Permisos → Cámara**; si otra app la está usando, ciérrala. Mientras tanto, toca **Pegar el código** y pega el código en texto copiado del otro teléfono.
 - Copia el código **entero**, sin cortar caracteres. Si el QR no cabe, usa **Copiar código** y pégalo.
 - Si un código no se reconoce, genera el código de nuevo en el otro teléfono.
-- Recuerda el orden: un teléfono crea el enlace, el otro se une escaneando, y el primero escanea la respuesta del segundo.
+- Recuerda el orden: un teléfono crea el enlace y muestra un código de 6 dígitos, y el otro lo escribe. Sin internet, el segundo escanea el QR y el primero escanea la respuesta del segundo.
+- El código de texto largo ya no hay que dictarlo: solo queda como último recurso en **«Ver código como texto (último recurso)»**.
 
 ### Edité lo mismo en dos teléfonos: ¿cuál queda?
 Queda la edición **más reciente** (gana por fecha del cambio y, si empatan, por dispositivo). La versión que pierde queda guardada en una tabla interna (`descartes`) por si hace falta recuperarla. Los cambios en registros distintos nunca chocan.

@@ -1,6 +1,6 @@
 /**
  * Tests de useCompartir (lista de precios / existencia) — antes 6.2% cubierto.
- * Cubre: formato WhatsApp (negritas, escalones, empaques), contacto ahora
+ * Cubre: formato WhatsApp (negritas, precio único), contacto ahora
  * editable por cfg (regresión: estaba hardcodeado), orden alfabético,
  * archivados excluidos, share/clipboard con fallback.
  */
@@ -32,17 +32,9 @@ async function sembrar(productos) {
 }
 
 describe('generarTextoPrecios', () => {
-  it('arma la lista con nombre, fecha, precios y escalones ordenados', async () => {
+  it('arma la lista con nombre, fecha y precio único por producto', async () => {
     await sembrar([
-      {
-        id: 'p1',
-        nombre: 'Refresco',
-        precio: 25,
-        preciosEscalonados: [
-          { min: 12, precio: 22 },
-          { min: 6, precio: 23 },
-        ],
-      },
+      { id: 'p1', nombre: 'Refresco', precio: 25 },
       { id: 'p2', nombre: 'Aceite', precio: 120 },
     ]);
     const { generarTextoPrecios } = useCompartir();
@@ -51,20 +43,26 @@ describe('generarTextoPrecios', () => {
     expect(texto).toContain('_Lista de precios · ');
     // orden alfabético: Aceite antes que Refresco
     expect(texto.indexOf('*Aceite*')).toBeLessThan(texto.indexOf('*Refresco*'));
-    // escalones ordenados por mínimo ascendente
-    const i6 = texto.indexOf('Mín. 6');
-    const i12 = texto.indexOf('Mín. 12');
-    expect(i6).toBeGreaterThan(-1);
-    expect(i6).toBeLessThan(i12);
     expect(texto).toContain('$25.00 c/u');
+    expect(texto).toContain('$120.00 c/u');
   });
 
-  it('incluye el costo de empaques (precio × unidades)', async () => {
-    await sembrar([{ id: 'p1', nombre: 'Cerveza', precio: 120, empaques: [{ nombre: 'Caja', unidades: 24 }] }]);
+  it('ignora escalones y empaques heredados de datos viejos (solo precio único)', async () => {
+    await sembrar([
+      {
+        id: 'p1',
+        nombre: 'Cerveza',
+        precio: 120,
+        preciosEscalonados: [{ min: 6, precio: 100 }],
+        empaques: [{ nombre: 'Caja', unidades: 24 }],
+      },
+    ]);
     const { generarTextoPrecios } = useCompartir();
     const texto = generarTextoPrecios();
-    expect(texto).toContain('📦 Caja x24');
-    expect(texto).toContain('$2,880.00');
+    expect(texto).toContain('$120.00 c/u');
+    expect(texto).not.toContain('Mín.');
+    expect(texto).not.toContain('📦');
+    expect(texto).not.toContain('Caja');
   });
 
   it('el contacto sale de la cfg, no del código (regresión hardcodeo)', async () => {

@@ -14,8 +14,9 @@ describe('productoSchema', () => {
     expect(r.precio).toBe(150);
     expect(r.stockMin).toBe(5);
     expect(r.nota).toBe('');
-    expect(r.preciosEscalonados).toEqual([]);
-    expect(r.empaques).toEqual([]);
+    // Precio único: ya no hay escalones ni empaques en el schema
+    expect('preciosEscalonados' in r).toBe(false);
+    expect('empaques' in r).toBe(false);
   });
 
   it('coercea números desde string (input de formulario)', () => {
@@ -34,7 +35,9 @@ describe('productoSchema', () => {
     expect(productoSchema.safeParse({ nombre: 'X', precio: 1, stockMin: -2 }).success).toBe(false);
   });
 
-  it('valida estructura de precios escalonados y empaques', () => {
+  it('ignora los campos heredados de precios por cantidad y empaques (respaldo viejo)', () => {
+    // Un respaldo viejo trae preciosEscalonados/empaques: la validación NO
+    // debe fallar por ellos, simplemente se descartan (precio único).
     const ok = productoSchema.safeParse({
       nombre: 'X',
       precio: 1,
@@ -42,13 +45,19 @@ describe('productoSchema', () => {
       empaques: [{ nombre: 'caja', unidades: 12 }],
     });
     expect(ok.success).toBe(true);
+    if (ok.success) {
+      expect('preciosEscalonados' in ok.data).toBe(false);
+      expect('empaques' in ok.data).toBe(false);
+    }
 
-    const mal = productoSchema.safeParse({
+    // Y los campos heredados corruptos tampoco rompen la validación
+    const corrupto = productoSchema.safeParse({
       nombre: 'X',
       precio: 1,
-      preciosEscalonados: [{ min: 'abc', precio: 1 }],
+      preciosEscalonados: [{ min: 'abc', precio: -50 }],
+      empaques: [{ nombre: 'caja', unidades: '0' }],
     });
-    expect(mal.success).toBe(false);
+    expect(corrupto.success).toBe(true);
   });
 });
 

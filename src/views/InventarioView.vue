@@ -181,7 +181,7 @@
           padding: 0 0.5rem;
         "
       >
-        <b>Precios:</b> lista con nombres, precios, escalones y empaques<br />
+        <b>Precios:</b> lista con nombres y precios<br />
         <b>Copiar:</b> lo mismo al portapapeles sin salir de la app<br />
         <b>Existencia:</b> solo nombres y stock actual
       </div>

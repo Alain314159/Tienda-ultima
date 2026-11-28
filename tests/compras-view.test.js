@@ -4,8 +4,9 @@
  *
  * Los casos TOCTOU (editar/eliminar con ventas de otra pestaña) ya viven en
  * tests/concurrencia.test.js. Aquí el flujo REAL del mostrador: buscar,
- * comprar con y sin empaque, resumen en vivo, caja insuficiente, editar y
- * eliminar felices, y el gate visual de lotes con ventas.
+ * comprar, resumen en vivo, caja insuficiente, editar y
+ * eliminar felices, y el gate visual de lotes con ventas. Cantidad y costo
+ * se registran directos en unidades base: sin empaques ni costo por empaque.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
@@ -14,6 +15,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { toast } from 'vue-sonner';
 
 import { db } from '../src/db';
+import { fmtFH } from '../src/utils/formato';
 import { useProductosStore } from '../src/stores/useProductosStore';
 import { useLotesStore } from '../src/stores/useLotesStore';
 import { useComprasStore } from '../src/stores/useComprasStore';
@@ -128,32 +130,28 @@ describe('ComprasView: registrar compra', () => {
     w.unmount();
   });
 
-  it('compra por empaque: unidades, costo unitario y empaqueInfo persistidos', async () => {
+  it('sin selector de empaque: cantidad y costo por unidad van directos', async () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
     await sembrarProducto({
       id: 'p1',
       nombre: 'Gaseosa',
       precio: 100,
       unidad: 'und',
+      // Empaques heredados de una versión vieja: ya no se ofrecen ni se usan
       empaques: [{ nombre: 'caja', unidades: 24 }],
     });
     await cargarTodo();
 
     const w = await montar();
     await seleccionarProducto(w, 'gaseosa');
-    // Elegir empaque y costo POR EMPAQUE
-    await w.find('select').setValue('caja');
-    await flushPromises();
-    await w.find('input[placeholder="Cant. empaques"]').setValue('2');
-    // El placeholder del costo cambia a "por empaque" SOLO tras activar el switch
-    await w.find('input[type="checkbox"]').setValue(true);
-    await flushPromises();
-    await w.find('input[placeholder="Costo por empaque"]').setValue('48');
+    expect(w.find('select').exists()).toBe(false);
+    expect(w.text()).not.toContain('Empaque');
+    expect(w.text()).not.toContain('por empaque');
+    await w.find('input[placeholder="Cantidad"]').setValue('48');
+    await w.find('input[placeholder="Costo por unidad"]').setValue('2');
     await flushPromises();
 
-    // Resumen en vivo: 2 cajas = 48 und, $2.00/unidad, TOTAL $96.00
-    expect(w.text()).toContain('2 cajas');
-    expect(w.text()).toContain('48 und');
+    // Resumen en vivo: 48 und × $2.00 = TOTAL $96.00, sin conversión
     expect(w.text()).toContain('$2.00');
     expect(w.text()).toContain('$96.00');
 
@@ -162,40 +160,53 @@ describe('ComprasView: registrar compra', () => {
 
     const c = (await db.compras.toArray())[0];
     expect(c.cantidad).toBe(48);
-    expect(c.costo).toBe(2); // 48 / 24
+    expect(c.costo).toBe(2);
     expect(c.total).toBe(96);
-    expect(c.empaqueInfo).toEqual({ nombre: 'caja', unidades: 24, cantidad: 2 });
+    expect('empaqueInfo' in c).toBe(false);
     expect(useLotesStore().stock('p1')).toBe(48);
     expect(useCajaStore().saldoCaja).toBe(904);
     w.unmount();
   });
 
-  it('costo por unidad (sin switch) con empaque: el costo no se divide', async () => {
+  it('editar una compra vieja con empaqueInfo carga las unidades base', async () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
-    await sembrarProducto({
-      id: 'p1',
-      nombre: 'Gaseosa',
-      precio: 100,
-      empaques: [{ nombre: 'caja', unidades: 24 }],
+    await sembrarProducto({ id: 'p1', nombre: 'Gaseosa', precio: 100, unidad: 'und' });
+    await db.compras.put({
+      id: 'c1',
+      fecha: '2026-10-01T10:00:00.000Z',
+      productoId: 'p1',
+      productoNombre: 'Gaseosa',
+      cantidad: 48,
+      costo: 2,
+      total: 96,
+      anulada: false,
+      empaqueInfo: { nombre: 'caja', unidades: 24, cantidad: 2 },
+    });
+    await db.lotes.put({
+      id: 'l1',
+      compraId: 'c1',
+      productoId: 'p1',
+      productoNombre: 'Gaseosa',
+      cantidadInicial: 48,
+      cantidadVendida: 0,
+      costo: 2,
+      fecha: '2026-10-01T10:00:00.000Z',
+      empaqueInfo: { nombre: 'caja', unidades: 24, cantidad: 2 },
     });
     await cargarTodo();
 
     const w = await montar();
-    await seleccionarProducto(w, 'gaseosa');
-    await w.find('select').setValue('caja');
+    await w.find('button[aria-label="Editar"]').trigger('click');
     await flushPromises();
-    await w.find('input[placeholder="Cant. empaques"]').setValue('1');
-    await w.find('input[placeholder="Costo por unidad"]').setValue('3');
-    await flushPromises();
-    // 1 caja = 24 und × $3 = $72
-    expect(w.text()).toContain('$72.00');
+    // El formulario muestra las unidades base guardadas, no las cajas
+    expect(w.find('input[placeholder="Cantidad"]').element.value).toBe('48');
+    expect(w.find('input[placeholder="Costo por unidad"]').element.value).toBe('2');
+    expect(w.find('select').exists()).toBe(false);
 
+    await w.find('input[placeholder="Cantidad"]').setValue('50');
     await clickGuardar(w);
-    await esperar(() => useComprasStore().compras.length === 1);
-    const c = (await db.compras.toArray())[0];
-    expect(c.cantidad).toBe(24);
-    expect(c.costo).toBe(3);
-    expect(c.total).toBe(72);
+    await esperar(() => useComprasStore().compras[0]?.cantidad === 50);
+    expect((await db.compras.get('c1')).total).toBe(100);
     w.unmount();
   });
 
@@ -339,6 +350,83 @@ describe('ComprasView: editar y eliminar', () => {
     expect(await db.lotes.count()).toBe(0);
     expect(useLotesStore().stock('p1')).toBe(0);
     expect(useCajaStore().saldoCaja).toBe(1000);
+    w.unmount();
+  });
+});
+
+describe('ComprasView: búsqueda en el historial', () => {
+  async function sembrarCompras() {
+    await sembrarProducto({ id: 'p1', nombre: 'Aceite', precio: 200, unidad: 'und' });
+    await sembrarProducto({ id: 'p2', nombre: 'Arroz', precio: 100, unidad: 'kg' });
+    await db.compras.put({
+      id: 'c1',
+      fecha: '2026-10-01T10:00:00.000Z',
+      productoId: 'p1',
+      productoNombre: 'Aceite',
+      cantidad: 10,
+      costo: 2,
+      total: 20,
+      anulada: false,
+    });
+    await db.compras.put({
+      id: 'c2',
+      fecha: '2026-10-02T11:00:00.000Z',
+      productoId: 'p2',
+      productoNombre: 'Arroz',
+      cantidad: 5,
+      costo: 3,
+      total: 15,
+      anulada: false,
+    });
+    await cargarTodo();
+  }
+
+  function inputHistorial(w) {
+    const input = w.find('input[placeholder="Buscar en historial..."]');
+    expect(input.exists()).toBe(true);
+    return input;
+  }
+
+  it('filtra por nombre de producto, insensible a mayúsculas', async () => {
+    await sembrarCompras();
+    const w = await montar();
+
+    await inputHistorial(w).setValue('ACEITE');
+    await flushPromises();
+    expect(w.text()).toContain('Aceite');
+    expect(w.text()).not.toContain('Arroz');
+
+    // Limpiar la búsqueda muestra todo de nuevo
+    await inputHistorial(w).setValue('');
+    await flushPromises();
+    expect(w.text()).toContain('Aceite');
+    expect(w.text()).toContain('Arroz');
+    w.unmount();
+  });
+
+  it('filtra por la fecha mostrada en el historial', async () => {
+    await sembrarCompras();
+    const w = await montar();
+
+    // La fecha tal como se muestra en la fila (dd/mm/aa), sin la hora
+    const fechaArroz = fmtFH('2026-10-02T11:00:00.000Z').split(' ')[0];
+    expect(fechaArroz).not.toBe('');
+    await inputHistorial(w).setValue(fechaArroz);
+    await flushPromises();
+    expect(w.text()).toContain('Arroz');
+    expect(w.text()).not.toContain('Aceite');
+    w.unmount();
+  });
+
+  it('sin coincidencias muestra el estado vacío', async () => {
+    await sembrarCompras();
+    const w = await montar();
+
+    await inputHistorial(w).setValue('xyz');
+    await flushPromises();
+    expect(w.text()).toContain('Sin compras');
+    expect(w.text()).not.toContain('Aceite');
+    expect(w.text()).not.toContain('Arroz');
     w.unmount();
   });
 });

@@ -107,7 +107,7 @@ beforeEach(async () => {
 });
 
 // ============================================================
-// CARRITO — búsqueda, cantidades, precios, escalones
+// CARRITO — búsqueda, cantidades, precios, precio único
 // ============================================================
 describe('VentasView: carrito', () => {
   it('buscar por nombre, agregar al carrito y ver total con ganancia', async () => {
@@ -213,11 +213,12 @@ describe('VentasView: carrito', () => {
     w.unmount();
   });
 
-  it('escalones: cambiar la cantidad APLICA el precio por cantidad (regresión de migración)', async () => {
+  it('precio único: cambiar la cantidad NO cambia el precio (escalones eliminados)', async () => {
     await sembrarProducto({
       id: 'p1',
       nombre: 'Cerveza',
       precio: 150,
+      // Escalones heredados de una versión vieja: se ignoran
       preciosEscalonados: [{ min: 6, precio: 130 }],
     });
     await sembrarLote({ id: 'l1', productoId: 'p1', cantidadInicial: 20, costo: 80 });
@@ -225,25 +226,23 @@ describe('VentasView: carrito', () => {
 
     const w = await montar();
     await agregarAlCarrito(w, 'cerveza');
-    // 1 unidad: precio base 150, tag "Por unidad"
+    // 1 unidad: precio único 150, sin etiqueta de precio por cantidad
     expect(w.find('.price-input').element.value).toBe('150');
-    expect(w.text()).toContain('Por unidad');
+    expect(w.text()).not.toContain('Por cantidad');
+    expect(w.text()).not.toContain('Por unidad');
 
-    // Subir a 6 con el botón +: el precio pasa SOLO a 130 (recalcularPrecio
-    // del monolito, perdido en la migración) y el tag a "Por cantidad"
+    // Subir a 6 con el botón +: el precio SIGUE en 150
     const btns = w.findAll('.qty-input button');
     for (let i = 0; i < 5; i++) await btns[1].trigger('click');
     await flushPromises();
     expect(w.find('.qty-input input').element.value).toBe('6');
-    expect(w.find('.price-input').element.value).toBe('130');
-    expect(w.text()).toContain('Por cantidad');
-    expect(w.text()).toContain('TOTAL $780.00');
+    expect(w.find('.price-input').element.value).toBe('150');
+    expect(w.text()).toContain('TOTAL $900.00');
 
-    // Bajar de nuevo a 2: vuelve al precio base
+    // Bajar de nuevo a 2: el precio no se mueve
     for (let i = 0; i < 4; i++) await btns[0].trigger('click');
     await flushPromises();
     expect(w.find('.price-input').element.value).toBe('150');
-    expect(w.text()).toContain('Por unidad');
     w.unmount();
   });
 

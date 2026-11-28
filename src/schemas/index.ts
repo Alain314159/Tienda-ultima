@@ -21,26 +21,10 @@ export const productoSchema = z.object({
   stockMin: numeroFin('Stock mín. inválido').nonnegative().default(5),
   nota: z.string().max(500, 'Nota demasiado larga').optional().default(''),
   unidad: z.string().trim().max(20, 'Unidad demasiado larga').optional().default(''),
-  preciosEscalonados: z
-    .array(
-      z.object({
-        // Un escalón arranca en ≥1 unidad: "desde 0" es el precio base, no un escalón
-        min: numeroFin('Mínimo del escalón inválido').min(1, 'Mínimo del escalón ≥ 1'),
-        precio: numeroFin('Precio del escalón inválido').positive('Precio del escalón debe ser > 0'),
-      })
-    )
-    .optional()
-    .default([]),
-  empaques: z
-    .array(
-      z.object({
-        nombre: z.string().trim().min(1, 'Nombre del empaque obligatorio').max(40, 'Nombre demasiado largo'),
-        // "caja = 0 unidades" rompe la matemática de compra (divide por mult)
-        unidades: numeroFin('Unidades del empaque inválidas').positive('Unidades del empaque > 0'),
-      })
-    )
-    .optional()
-    .default([]),
+  // Precio único por producto: los escalones de precio por cantidad y los
+  // empaques se eliminaron de la app. Los datos viejos que los traigan se
+  // ignoran al leer (Zod descarta las claves desconocidas) y no rompen
+  // la importación de respaldos viejos.
 });
 
 // ===== COMPRA =====

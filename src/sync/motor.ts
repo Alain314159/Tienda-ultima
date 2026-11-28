@@ -187,21 +187,6 @@ export function validarFilaRemota(f: FilaRemota): string | null {
       if (typeof it.nombre !== 'string' || !it.nombre.trim()) return 'ítem de venta sin nombre';
     }
   }
-  if (f.tabla === 'productos') {
-    if (Array.isArray(datos.preciosEscalonados)) {
-      for (const e of datos.preciosEscalonados as unknown[]) {
-        if (!e || typeof e !== 'object') return 'escalón de precio inválido';
-        const esc = e as Record<string, unknown>;
-        if (!esNoNegativo(esc.precio) || !esNoNegativo(esc.min)) return 'escalón de precio inválido';
-      }
-    }
-    if (Array.isArray(datos.empaques)) {
-      for (const e of datos.empaques as unknown[]) {
-        if (!e || typeof e !== 'object') return 'empaque inválido';
-        if (!esNoNegativo((e as Record<string, unknown>).unidades)) return 'empaque con unidades inválidas';
-      }
-    }
-  }
   if (f.tabla === 'distribuciones' && Array.isArray(datos.detalles)) {
     for (const d of datos.detalles as unknown[]) {
       if (!d || typeof d !== 'object') return 'detalle de distribución inválido';

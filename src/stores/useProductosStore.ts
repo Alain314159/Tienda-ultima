@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Producto, Escalon, Empaque } from '../types';
+import type { Producto } from '../types';
 import { n, stockMinEfectivo } from '../utils/numero';
 import { fmtCant } from '../utils/formato';
 import { P, genId } from '../utils/id';
@@ -90,70 +90,12 @@ export const useProductosStore = defineStore('productos', () => {
   }
 
   /**
-   * Verifica si un producto tiene escalones de precio
+   * Formatea el stock de un producto: la cantidad tal cual (respeta
+   * fracciones). Los empaques heredados de datos viejos se ignoran: el
+   * stock se muestra siempre en unidades base.
    */
-  function tieneEscalones(productoId: string) {
-    const prod = productos.value.find((p) => p.id === productoId);
-    return prod && prod.preciosEscalonados && prod.preciosEscalonados.length > 0;
-  }
-
-  /**
-   * Obtiene el precio para una cantidad específica
-   */
-  function precioParaCantidad(productoId: string, cantidad: number | string) {
-    const prod = productos.value.find((p) => p.id === productoId);
-    if (!prod) return 0;
-
-    if (!prod.preciosEscalonados || prod.preciosEscalonados.length === 0) {
-      return n(prod.precio);
-    }
-
-    // Buscar el escalón apropiado. Copia ANTES de ordenar: sort() muta el
-    // array reactivo del store in situ (efecto colateral en cada llamada) y
-    // se descartan escalones corruptos (precio ≤ 0 o no finito: un respaldo
-    // editado a mano o una versión vieja podían colar precios negativos que
-    // aquí se traducían en ventas con total negativo)
-    const cant = n(cantidad);
-    const escalones = prod.preciosEscalonados
-      .filter((e) => e && isFinite(n(e.min)) && isFinite(n(e.precio)) && n(e.precio) > 0 && n(e.min) >= 1)
-      .sort((a, b) => n(b.min) - n(a.min));
-
-    for (const e of escalones) {
-      if (cant >= n(e.min)) {
-        return n(e.precio);
-      }
-    }
-
-    return n(prod.precio);
-  }
-
-  /**
-   * Formatea el stock usando empaques (ej: "2 cajas + 5 und + 0.5").
-   */
-  function formatStock(prodId: string, cant: number | string) {
-    const p = productos.value.find((x) => x.id === prodId);
-    const total = n(cant);
-    // Sin empaques: mostrar la cantidad tal cual (respeta fracciones)
-    if (!p || !p.empaques || !p.empaques.length) return fmtCant(total);
-
-    const emps = p.empaques.slice().sort((a, b) => n(b.unidades) - n(a.unidades));
-    let rest = Math.floor(Math.abs(total));
-    const partes: string[] = [];
-    for (const e of emps) {
-      const u = Math.floor(n(e.unidades));
-      if (u <= 0) continue;
-      const cantEmp = Math.floor(rest / u);
-      if (cantEmp > 0) {
-        partes.push(cantEmp + ' ' + e.nombre + (cantEmp > 1 ? 's' : ''));
-        rest -= cantEmp * u;
-      }
-    }
-    // Residual: entero suelto + fraccion (kg, litros, etc.)
-    const fraccion = Math.abs(total) - Math.floor(Math.abs(total));
-    if (rest > 0) partes.push(rest + ' ' + (p.unidad || 'und'));
-    if (fraccion > 0.0001) partes.push(fmtCant(fraccion));
-    if (partes.length === 0) return fmtCant(total);
-    return partes.join(' + ');
+  function formatStock(_prodId: string, cant: number | string) {
+    return fmtCant(n(cant));
   }
 
   /**
@@ -198,21 +140,12 @@ export const useProductosStore = defineStore('productos', () => {
     precio: string | number;
     stockMin?: string | number;
     unidad?: string;
-    preciosEscalonados?: Escalon[];
-    empaques?: Empaque[];
     nota?: string;
   }) {
-    // Filas de subformulario agregadas y dejadas vacías NO bloquean el
-    // guardado: se descartan (una fila a medias — con nombre pero sin
-    // unidades — sí es error: es un dato perdido a medias).
-    const limpiarVacios = <T extends object>(filas: T[] | undefined) =>
-      (filas || []).filter((f) => Object.values(f).some((v) => String(v ?? '').trim() !== ''));
-
-    const v = validar(productoSchema, {
-      ...producto,
-      empaques: limpiarVacios(producto.empaques),
-      preciosEscalonados: limpiarVacios(producto.preciosEscalonados),
-    });
+    // El precio es único por producto: los campos heredados
+    // preciosEscalonados/empaques que traiga un respaldo viejo se ignoran
+    // (el schema los descarta) y nunca se vuelven a escribir en un alta.
+    const v = validar(productoSchema, producto);
     if (!v.ok) throw new Error(v.error);
     try {
       // Anti-duplicados (comportamiento del monolito original)
@@ -234,8 +167,6 @@ export const useProductosStore = defineStore('productos', () => {
           // unidad SE SOBRESCRIBE (vaciarla debe borrarla: el "|| original.unidad"
           // hacia imposible quitarla una vez puesta)
           unidad: v.data.unidad,
-          preciosEscalonados: v.data.preciosEscalonados,
-          empaques: v.data.empaques,
           nota: v.data.nota,
         });
       } else {
@@ -246,8 +177,6 @@ export const useProductosStore = defineStore('productos', () => {
           precio: v.data.precio,
           stockMinimo: v.data.stockMin,
           unidad: v.data.unidad,
-          preciosEscalonados: v.data.preciosEscalonados,
-          empaques: v.data.empaques,
           nota: v.data.nota,
           archivado: false,
         });
@@ -296,8 +225,6 @@ export const useProductosStore = defineStore('productos', () => {
     setFiltroStock,
     limpiarFiltroStock,
     stock,
-    tieneEscalones,
-    precioParaCantidad,
     formatStock,
     badgeStock,
     txtBadge,

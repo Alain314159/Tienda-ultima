@@ -4,8 +4,9 @@
  *
  * El catálogo es la puerta de entrada de TODO: compras, ventas, inventario
  * y reportes derivan de estos productos. Aquí se ejercita el flujo REAL por
- * el DOM: crear/editar/duplicados, empaques, escalones, archivado, búsqueda,
- * filtros de stock y la vista de lotes expandida.
+ * el DOM: crear/editar/duplicados, archivado, búsqueda,
+ * filtros de stock y la vista de lotes expandida. El precio es único por
+ * producto: ni empaques ni precios por cantidad.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
@@ -45,27 +46,10 @@ async function clickGuardar(w, cond) {
 /** Llena el formulario de producto por el DOM. */
 async function llenarForm(w, o = {}) {
   if (o.nombre !== undefined) await w.find('input[placeholder="Nombre del producto"]').setValue(o.nombre);
-  if (o.precio !== undefined) await w.find('input[placeholder="Precio base venta"]').setValue(o.precio);
+  if (o.precio !== undefined) await w.find('input[placeholder="Precio de venta"]').setValue(o.precio);
   if (o.stockMin !== undefined) await w.find('input[placeholder="Stock mín."]').setValue(o.stockMin);
   if (o.unidad !== undefined) await w.find('input[placeholder^="Unidad (opcional"]').setValue(o.unidad);
   if (o.nota !== undefined) await w.find('textarea[placeholder^="Nota interna"]').setValue(o.nota);
-}
-
-/** Agrega una fila de empaque (o escalón) y la llena. */
-async function agregarEmpaque(w, nombre, unidades) {
-  const btns = w.findAll('button').filter((b) => b.text().includes('+ Agregar'));
-  await btns[0].trigger('click');
-  await flushPromises();
-  if (nombre !== undefined) await w.find('input[placeholder="Nombre (caja...)"]').setValue(nombre);
-  if (unidades !== undefined) await w.find('input[placeholder="Unidades"]').setValue(unidades);
-}
-
-async function agregarEscalon(w, min, precio) {
-  const btns = w.findAll('button').filter((b) => b.text().includes('+ Agregar'));
-  await btns[1].trigger('click');
-  await flushPromises();
-  if (min !== undefined) await w.find('input[placeholder="Desde (cant)"]').setValue(min);
-  if (precio !== undefined) await w.find('input[placeholder="Precio c/u"]').setValue(precio);
 }
 
 async function sembrarProducto(p) {
@@ -106,19 +90,21 @@ describe('SONDA ProductosView: bugs del flujo real de edición', () => {
     w.unmount();
   });
 
-  it('filas VACÍAS de empaque/escalón no bloquean el guardado', async () => {
+  it('el formulario ya no ofrece empaques ni precio por cantidad', async () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
     vi.spyOn(toast, 'error').mockImplementation(() => {});
     const w = await montar();
+    expect(w.text()).not.toContain('Empaques');
+    expect(w.text()).not.toContain('Precio por cantidad');
+    expect(w.findAll('button').filter((b) => b.text().includes('+ Agregar')).length).toBe(0);
+    // El guardado sigue funcionando con solo nombre y precio único
     await llenarForm(w, { nombre: 'Gaseosa Cola', precio: '100' });
-    await agregarEmpaque(w, '', ''); // fila agregada y olvidada
-    await agregarEscalon(w, '', ''); // ídem
     await clickGuardar(w, () => useProductosStore().productos.length === 1);
 
     const prods = await db.productos.toArray();
     expect(prods.length).toBe(1);
-    expect(prods[0].empaques).toEqual([]);
-    expect(prods[0].preciosEscalonados).toEqual([]);
+    expect('empaques' in prods[0]).toBe(false);
+    expect('preciosEscalonados' in prods[0]).toBe(false);
     w.unmount();
   });
 
@@ -139,7 +125,7 @@ describe('SONDA ProductosView: bugs del flujo real de edición', () => {
     w.unmount();
   });
 
-  it('cambiar las unidades de un empaque refresca el Stock de la fila (v-memo)', async () => {
+  it('el stock de la fila ignora los empaques heredados: se muestra en unidades base', async () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
     vi.spyOn(toast, 'error').mockImplementation(() => {});
     await sembrarProducto({
@@ -152,18 +138,9 @@ describe('SONDA ProductosView: bugs del flujo real de edición', () => {
     await sembrarLote({ id: 'l1', productoId: 'p1', cantidadInicial: 53 });
 
     const w = await montar();
-    expect(w.text()).toContain('2 cajas + 5 und');
-
-    await w.find('button[aria-label="Editar"]').trigger('click');
-    await flushPromises();
-    await w.find('input[placeholder="Unidades"]').setValue('10');
-    await clickGuardar(
-      w,
-      () => useProductosStore().productos.find((p) => p.id === 'p1')?.empaques?.[0]?.unidades === 10
-    );
-
-    // 53 con cajas de 10 = 5 cajas + 3 und — la fila DEBE refrescarse
-    expect(w.text()).toContain('5 cajas + 3 und');
+    // 53 unidades tal cual: nada de "2 cajas + 5 und"
+    expect(w.text()).toContain('Stock: 53');
+    expect(w.text()).not.toContain('cajas');
     w.unmount();
   });
 });
@@ -189,19 +166,18 @@ describe('ProductosView: crear producto', () => {
     w.unmount();
   });
 
-  it('crea con empaques, escalones, unidad y nota completos', async () => {
+  it('crea con unidad y nota completos y precio único', async () => {
     vi.spyOn(toast, 'success').mockImplementation(() => {});
     const w = await montar();
     await llenarForm(w, { nombre: 'Cerveza', precio: '150', unidad: 'und', nota: 'nacional' });
-    await agregarEmpaque(w, 'caja', '24');
-    await agregarEscalon(w, '12', '130');
     await clickGuardar(w, () => useProductosStore().productos.length === 1);
 
     const p = (await db.productos.toArray())[0];
     expect(p.unidad).toBe('und');
     expect(p.nota).toBe('nacional');
-    expect(p.empaques).toEqual([{ nombre: 'caja', unidades: 24 }]);
-    expect(p.preciosEscalonados).toEqual([{ min: 12, precio: 130 }]);
+    expect(p.precio).toBe(150);
+    expect('empaques' in p).toBe(false);
+    expect('preciosEscalonados' in p).toBe(false);
     w.unmount();
   });
 
@@ -264,7 +240,7 @@ describe('ProductosView: editar producto', () => {
     await flushPromises();
     // Prefill completo
     expect(w.find('input[placeholder="Nombre del producto"]').element.value).toBe('Viejo nombre');
-    expect(w.find('input[placeholder="Precio base venta"]').element.value).toBe('10');
+    expect(w.find('input[placeholder="Precio de venta"]').element.value).toBe('10');
     await llenarForm(w, { nombre: 'Nombre nuevo', precio: '15' });
     await clickGuardar(w, () => useProductosStore().productos.find((p) => p.id === 'p1')?.nombre === 'Nombre nuevo');
 
@@ -432,47 +408,25 @@ describe('ProductosView: archivar y restaurar', () => {
 });
 
 // ============================================================
-// STORE — lógica de precios escalonados y formato de stock
+// STORE — precio único y formato de stock
 // ============================================================
-describe('useProductosStore: escalones y formatStock', () => {
-  it('precioParaCantidad aplica el escalón correcto desde su mínimo', async () => {
-    await sembrarProducto({
-      id: 'p1',
+describe('useProductosStore: precio único y formatStock', () => {
+  it('guardarProducto NO persiste escalones ni empaques heredados en un alta', async () => {
+    const s = useProductosStore();
+    await s.guardarProducto({
       nombre: 'Mayorista',
       precio: 100,
-      preciosEscalonados: [
-        { min: 12, precio: 85 },
-        { min: 24, precio: 80 },
-      ],
+      // Campos de una versión vieja: el store debe ignorarlos
+      preciosEscalonados: [{ min: 12, precio: 85 }],
+      empaques: [{ nombre: 'caja', unidades: 24 }],
     });
-    const s = useProductosStore();
-    expect(s.precioParaCantidad('p1', 11)).toBe(100); // base
-    expect(s.precioParaCantidad('p1', 12)).toBe(85); // borde del primer escalón
-    expect(s.precioParaCantidad('p1', 23)).toBe(85);
-    expect(s.precioParaCantidad('p1', 24)).toBe(80); // segundo escalón
-    expect(s.precioParaCantidad('p1', 100)).toBe(80);
-    expect(s.precioParaCantidad('inexistente', 5)).toBe(0);
+    const p = await db.productos.get(s.productos[0].id);
+    expect(p.precio).toBe(100);
+    expect('preciosEscalonados' in p).toBe(false);
+    expect('empaques' in p).toBe(false);
   });
 
-  it('precioParaCantidad descarta escalones corruptos (min 0, precio negativo o infinito)', async () => {
-    await sembrarProducto({
-      id: 'p1',
-      nombre: 'Corrupto',
-      precio: 50,
-      preciosEscalonados: [
-        { min: 0, precio: 10 },
-        { min: 5, precio: -1 },
-        { min: 6, precio: Infinity },
-        { min: 8, precio: 40 },
-      ],
-    });
-    const s = useProductosStore();
-    expect(s.precioParaCantidad('p1', 8)).toBe(40);
-    expect(s.precioParaCantidad('p1', 5)).toBe(50); // todos los corruptos fuera → base
-    expect(s.precioParaCantidad('p1', 4)).toBe(50);
-  });
-
-  it('formatStock descompone en empaques grandes primero + resto + fracción', async () => {
+  it('formatStock ignora los empaques heredados: cantidad tal cual', async () => {
     await sembrarProducto({
       id: 'p1',
       nombre: 'Gaseosa',
@@ -484,15 +438,10 @@ describe('useProductosStore: escalones y formatStock', () => {
       ],
     });
     const s = useProductosStore();
-    // 53 = 1 bandeja (30) + 23 und sueltas
-    expect(s.formatStock('p1', 53)).toBe('1 bandeja + 23 und');
-    // 54 = 1 bandeja + 1 caja exactas
-    expect(s.formatStock('p1', 54)).toBe('1 bandeja + 1 caja');
-    // 48 = 1 bandeja + 18 und (no alcanza para la caja)
-    expect(s.formatStock('p1', 48)).toBe('1 bandeja + 18 und');
-    // 53.5 = 1 bandeja + 23 und + 0.5
-    expect(s.formatStock('p1', 53.5)).toBe('1 bandeja + 23 und + 0.5');
-    // 0.5 (solo fracción)
+    // Antes: "1 bandeja + 23 und". Ahora: unidades base, sin descomponer
+    expect(s.formatStock('p1', 53)).toBe('53');
+    expect(s.formatStock('p1', 54)).toBe('54');
+    expect(s.formatStock('p1', 53.5)).toBe('53.5');
     expect(s.formatStock('p1', 0.5)).toBe('0.5');
   });
 

@@ -42,20 +42,6 @@
           <span>Producto</span><b>{{ compraForm.nombre }}</b>
         </div>
 
-        <div v-if="empaquesCompraActual.length" style="margin-bottom: 0.55rem">
-          <label
-            for="compra-empaque"
-            style="font-size: 0.75rem; color: var(--mut); font-weight: 700; display: block; margin-bottom: 0.3rem"
-            >Empaque</label
-          >
-          <select id="compra-empaque" v-model="compraForm.empaqueSel">
-            <option value="">Por unidad (sin empaque)</option>
-            <option v-for="e in empaquesCompraActual" :key="e.nombre" :value="e.nombre">
-              {{ e.nombre }} ({{ e.unidades }} und)
-            </option>
-          </select>
-        </div>
-
         <div class="grid2">
           <div>
             <label class="fld-label" for="compra-cantidad">Cantidad</label>
@@ -65,7 +51,7 @@
               type="number"
               inputmode="decimal"
               step="0.001"
-              :placeholder="compraForm.empaqueSel ? 'Cant. empaques' : 'Cantidad'"
+              placeholder="Cantidad"
             />
           </div>
           <div>
@@ -76,28 +62,14 @@
               type="number"
               inputmode="decimal"
               step="0.01"
-              :placeholder="compraForm.costoPorEmpaque ? 'Costo por empaque' : 'Costo por unidad'"
+              placeholder="Costo por unidad"
             />
           </div>
         </div>
 
-        <div v-if="compraForm.empaqueSel" class="set-row" style="margin-bottom: 0.4rem">
-          <span class="lbl" style="font-size: 0.78rem">El costo ingresado es por empaque completo</span>
-          <label class="switch">
-            <input type="checkbox" v-model="compraForm.costoPorEmpaque" aria-label="El costo ingresado es por empaque completo" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
         <div v-if="n(compraForm.cantidad) > 0 && n(compraForm.costo) >= 0" class="compra-resumen">
-          <div v-if="compraForm.empaqueSel" class="row" style="border: none; padding: 0.2rem 0">
-            <span
-              >{{ compraForm.cantidad }} {{ compraForm.empaqueSel }}{{ n(compraForm.cantidad) > 1 ? 's' : '' }}</span
-            >
-            <b>= {{ fmtCant(compraCantidadFinal()) }} und</b>
-          </div>
           <div class="row" style="border: none; padding: 0.2rem 0">
-            <span>Costo por unidad base</span>
+            <span>Costo por unidad</span>
             <b>{{ fmt(compraCostoUnitarioFinal()) }}</b>
           </div>
           <div class="row total" style="border: none; padding: 0.3rem 0">
@@ -117,7 +89,11 @@
       <h2 class="card-title">
         <icon name="list" :size="18" :color="sec === 'compras' ? '#2196F3' : mutColor"></icon> Historial de Compras
       </h2>
-      <div v-if="comprasOrdenadas.length === 0" class="empty">Sin compras</div>
+      <div class="search">
+        <label class="sr-only" for="busq-hist-compras">Buscar en el historial de compras</label>
+        <input id="busq-hist-compras" v-model="busqHist" type="text" placeholder="Buscar en historial..." />
+      </div>
+      <div v-if="comprasFiltradas.length === 0" class="empty">Sin compras</div>
 
       <div v-if="comprasPorPeriodo.actual.length" class="hist-grupo">
         <div class="hist-head">
@@ -216,8 +192,6 @@ const compraForm = ref<{
   nombre: string;
   cantidad: string;
   costo: string;
-  empaqueSel: string;
-  costoPorEmpaque: boolean;
   unidad?: string;
 }>({
   editId: '',
@@ -225,8 +199,6 @@ const compraForm = ref<{
   nombre: '',
   cantidad: '',
   costo: '',
-  empaqueSel: '',
-  costoPorEmpaque: false,
 });
 
 const listaCompra = computed(() => {
@@ -256,8 +228,6 @@ function selCompra(p: Producto) {
     nombre: p.nombre,
     cantidad: '',
     costo: '',
-    empaqueSel: '',
-    costoPorEmpaque: false,
   };
   busqCompra.value = '';
   focusCompra.value = false;
@@ -270,38 +240,33 @@ function resetCompra() {
     nombre: '',
     cantidad: '',
     costo: '',
-    empaqueSel: '',
-    costoPorEmpaque: false,
   };
 }
 
-// Empaques del producto actual en compra
-const empaquesCompraActual = computed(() => {
-  const p = productosStore.productos.find((x) => x.id === compraForm.value.productoId);
-  return (p && p.empaques) || [];
-});
-
-// Multiplicador segun empaque seleccionado
-const multiplicadorEmpaque = computed(() => {
-  if (!compraForm.value.empaqueSel) return 1;
-  const emp = empaquesCompraActual.value.find((e) => e.nombre === compraForm.value.empaqueSel);
-  return emp ? n(emp.unidades) : 1;
-});
-
+// Cantidad y costo se registran directos en unidades base (sin empaques)
 function compraCantidadFinal() {
-  return n(compraForm.value.cantidad) * multiplicadorEmpaque.value;
+  return n(compraForm.value.cantidad);
 }
 
 function compraCostoUnitarioFinal() {
-  const costo = n(compraForm.value.costo);
-  if (!compraForm.value.costoPorEmpaque) return costo;
-  const mult = multiplicadorEmpaque.value;
-  return mult > 0 ? m(costo / mult) : costo;
+  return n(compraForm.value.costo);
 }
 
+// ===== BÚSQUEDA DEL HISTORIAL (local a la vista) =====
+const busqHist = ref('');
+const comprasFiltradas = computed(() => {
+  const query = (busqHist.value || '').toLowerCase().trim();
+  const list = comprasStore.comprasOrdenadas;
+  if (!query) return list;
+  return list.filter(
+    (c) =>
+      (c.productoNombre || '').toLowerCase().includes(query) ||
+      fmtFH(c.fecha).toLowerCase().includes(query),
+  );
+});
+
 // ===== HISTORIAL =====
-const comprasOrdenadas = computed(() => comprasStore.comprasOrdenadas);
-const hist = useHistorial(() => comprasOrdenadas.value);
+const hist = useHistorial(() => comprasFiltradas.value);
 const comprasPorPeriodo = computed(() => hist.agruparActual());
 const histComprasMostrados = computed(() => hist.itemsMostrados(comprasPorPeriodo.value.actual));
 const histComprasHayMas = computed(() => hist.hayMas(comprasPorPeriodo.value.actual));
@@ -321,8 +286,6 @@ function editarCompra(id: string) {
     nombre: c?.productoNombre || '',
     cantidad: String(c?.cantidad || ''),
     costo: String(c?.costo || ''),
-    empaqueSel: '',
-    costoPorEmpaque: false,
     unidad: c?.unidad || '',
   };
   window.scrollTo(0, 0);
@@ -372,12 +335,10 @@ async function guardarCompra() {
   if (!isFinite(cantIngresada) || cantIngresada <= 0) return toastMsg('Cantidad debe ser > 0', TOAST.BAD);
   if (!isFinite(costoIngresado) || costoIngresado < 0) return toastMsg('Costo inválido', TOAST.BAD);
 
-  // Convertir a unidades base
-  const mult = multiplicadorEmpaque.value;
-  const cant = m(cantIngresada * mult);
-  const costo = f.costoPorEmpaque ? (mult > 0 ? m(costoIngresado / mult) : costoIngresado) : costoIngresado;
+  // Cantidad y costo ya vienen en unidades base (sin conversión por empaque)
+  const cant = m(cantIngresada);
+  const costo = costoIngresado;
   const total = m(cant * costo);
-  const empaqueInfo = f.empaqueSel ? { nombre: f.empaqueSel, unidades: mult, cantidad: cantIngresada } : null;
   const prodSel = productosStore.productos.find((p) => p.id === f.productoId);
   const unidadProd = prodSel ? prodSel.unidad || '' : '';
 
@@ -426,7 +387,6 @@ async function guardarCompra() {
           costo,
           total,
           anulada: false,
-          empaqueInfo,
         };
         const lote = {
           id: genId('l'),
@@ -437,7 +397,6 @@ async function guardarCompra() {
           cantidadVendida: 0,
           costo,
           fecha: compra.fecha,
-          empaqueInfo,
         };
         await db.transaction('rw', db.compras, db.lotes, async () => {
           await P(db.compras, compra as import('../types').Compra);

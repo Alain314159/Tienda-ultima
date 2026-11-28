@@ -147,11 +147,11 @@ export const useVentasStore = defineStore('ventas', () => {
         throw new Error('Stock máximo');
       }
     } else {
-      const precioInicial = productosStore.precioParaCantidad(p.id, 1);
+      // Precio único por producto (sin escalones por cantidad)
       carrito.value.push({
         productoId: p.id,
         nombre: p.nombre,
-        precio: String(precioInicial),
+        precio: String(n(p.precio)),
         cant: '1',
       });
     }
@@ -175,7 +175,6 @@ export const useVentasStore = defineStore('ventas', () => {
     }
 
     it.cant = String(val);
-    recalcularPrecio(it);
   }
 
   /**
@@ -201,7 +200,6 @@ export const useVentasStore = defineStore('ventas', () => {
     if (val > stock) {
       it.cant = String(stock);
     }
-    recalcularPrecio(it);
   }
   function validarPrecio(it: ItemCarrito) {
     const val = n(it.precio);
@@ -209,35 +207,9 @@ export const useVentasStore = defineStore('ventas', () => {
     // guardaba con precio ∞ crudo + total $0 (m() satura a 0): mercancía
     // saliendo sin registrar el dinero
     if (isNaN(val) || !isFinite(val) || val <= 0) {
-      it.precio = String(productosStore.precioParaCantidad(it.productoId, n(it.cant)));
-    }
-  }
-
-  /**
-   * Verifica si un precio es escalonado
-   */
-  function esPrecioEscalon(it: ItemCarrito) {
-    const p = productosStore.productos.find((x) => x.id === it.productoId);
-    if (!p || !p.preciosEscalonados || !p.preciosEscalonados.length) return false;
-    // Semántica del monolito: el precio en efecto difiere del BASE
-    // (escalón mayorista aplicado por recalcularPrecio). Comparar contra
-    // el escalón dejaba la etiqueta invertida y además mentía: sin
-    // recalcularPrecio el escalón JAMÁS se aplicaba al cambiar cantidad.
-    return Math.abs(n(it.precio) - n(p.precio)) > 0.001;
-  }
-
-  /**
-   * Recalcula el precio del item según los escalones para su cantidad.
-   * (Perdido en la migración a Pinia: sin esto, los precios por cantidad
-   * NUNCA se aplicaban — el cajero subía a 6 unidades y seguía cobrando
-   * el precio base.)
-   */
-  function recalcularPrecio(it: ItemCarrito) {
-    const prod = productosStore.productos.find((x) => x.id === it.productoId);
-    if (!prod || !prod.preciosEscalonados || !prod.preciosEscalonados.length) return;
-    const nuevo = productosStore.precioParaCantidad(it.productoId, n(it.cant));
-    if (n(it.precio) !== nuevo) {
-      it.precio = String(nuevo);
+      // Precio único por producto: vuelve al precio base del producto
+      const prod = productosStore.productos.find((x) => x.id === it.productoId);
+      it.precio = String(prod ? n(prod.precio) : 0);
     }
   }
 
@@ -391,7 +363,6 @@ export const useVentasStore = defineStore('ventas', () => {
     actualizarCantidadInput,
     validarCant,
     validarPrecio,
-    esPrecioEscalon,
     limpiarCarrito,
     cargarVentas,
     anularVenta,

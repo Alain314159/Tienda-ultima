@@ -3,16 +3,6 @@
  * Reflejan los registros persistidos en IndexedDB (Dexie).
  */
 
-export interface Escalon {
-  min: string | number;
-  precio: string | number;
-}
-
-export interface Empaque {
-  nombre: string;
-  unidades: string | number;
-}
-
 export interface Producto {
   id: string;
   nombre: string;
@@ -23,8 +13,6 @@ export interface Producto {
   nota?: string;
   archivado?: boolean;
   fechaCreacion?: string;
-  preciosEscalonados?: Escalon[];
-  empaques?: Empaque[];
 }
 
 export interface LoteUsado {
@@ -64,12 +52,6 @@ export interface Venta {
   fechaAnulacion?: string;
 }
 
-export interface EmpaqueInfo {
-  nombre: string;
-  unidades: number;
-  cantidad: number;
-}
-
 export interface Compra {
   id: string;
   fecha: string;
@@ -82,7 +64,6 @@ export interface Compra {
   unidad?: string;
   anulada?: boolean;
   fechaAnulacion?: string;
-  empaqueInfo?: EmpaqueInfo | null;
 }
 
 export interface Lote {
@@ -96,7 +77,6 @@ export interface Lote {
   costo: number;
   fecha: string;
   nota?: string;
-  empaqueInfo?: EmpaqueInfo | null;
 }
 
 export interface Ajuste {

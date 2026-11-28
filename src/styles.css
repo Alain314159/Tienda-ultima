@@ -1941,56 +1941,6 @@ body > .modal-box {
   background: rgba(100, 116, 139, 0.08);
 }
 
-/* ===== PRECIOS ESCALONADOS ===== */
-.escalones-box {
-  background: var(--bg);
-  border: 1px solid var(--brd);
-  border-radius: var(--r-sm);
-  padding: 0.7rem 0.8rem;
-  margin-bottom: 0.6rem;
-}
-.escalones-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--txt-2);
-  margin-bottom: 0.4rem;
-}
-.escalon-row {
-  display: grid;
-  grid-template-columns: auto 70px auto 90px 36px;
-  gap: 0.4rem;
-  align-items: center;
-  margin-bottom: 0.35rem;
-}
-.escalon-row input {
-  margin: 0;
-  padding: 0.45rem 0.5rem;
-  font-size: 0.85rem;
-  text-align: center;
-}
-.escalon-lbl {
-  font-size: 0.72rem;
-  color: var(--mut);
-  font-weight: 600;
-}
-
-/* ===== EMPAQUES ===== */
-.empaque-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 36px;
-  gap: 0.4rem;
-  align-items: center;
-  margin-bottom: 0.35rem;
-}
-.empaque-row input {
-  margin: 0;
-  padding: 0.45rem 0.55rem;
-  font-size: 0.85rem;
-}
-
 .compra-resumen {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.03) 100%);
   border: 1px solid rgba(59, 130, 246, 0.2);
@@ -2366,25 +2316,6 @@ html {
   color: var(--mut);
   flex-wrap: wrap;
 }
-.cart-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 99px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.cart-tag.tag-unit {
-  background: rgba(100, 116, 139, 0.15);
-  color: var(--mut);
-}
-.cart-tag.tag-esc {
-  background: rgba(22, 163, 74, 0.15);
-  color: var(--ok-txt);
-}
-
 /* ===== CONTABILIDAD COLAPSABLE ===== */
 .contab-card {
   padding: 1rem 1.15rem;
@@ -3158,40 +3089,6 @@ html {
 .status-warn {
   background: rgba(100, 116, 139, 0.15);
   color: var(--mut);
-}
-
-/* ===== Subformularios del formulario de producto (empaques / escalones) ===== */
-.prod-subform {
-  border: 1px solid var(--bg-2);
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: var(--bg);
-}
-.prod-subform-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.78rem;
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-.prod-subform-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 0.35rem;
-  align-items: center;
-  margin-bottom: 0.35rem;
-}
-.prod-subform-row input {
-  margin-bottom: 0;
-}
-.prod-subform-row .icon-btn {
-  width: 1.7rem;
-  height: 1.7rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ============================================ ACCESIBILIDAD (5.6) ============================================

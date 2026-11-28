@@ -89,13 +89,6 @@
               <b style="color: var(--pri-txt)">{{ fmt(ventasStore.subTotalItem(it)) }}</b></span
             >
             <span class="pos">+{{ fmt(gananciaItem(it)) }}</span>
-            <span
-              class="cart-tag"
-              :class="esPrecioEscalon(it) ? 'tag-esc' : 'tag-unit'"
-              v-if="tieneEscalones(it.productoId)"
-            >
-              {{ esPrecioEscalon(it) ? 'Por cantidad' : 'Por unidad' }}
-            </span>
           </div>
         </div>
         <div class="total-box">
@@ -397,8 +390,8 @@ const ventasStore = useVentasStore();
 const productosStore = useProductosStore();
 
 const { busqVenta, focusVenta, carrito, ventaExpandida, listaVenta } = storeToRefs(ventasStore);
-const { gananciaItem, validarPrecio, esPrecioEscalon, toggleExpandirVenta } = ventasStore;
-const { tieneEscalones, stock } = productosStore;
+const { gananciaItem, validarPrecio, toggleExpandirVenta } = ventasStore;
+const { stock } = productosStore;
 
 const sec = 'ventas';
 const cfg = configStore.cfg;

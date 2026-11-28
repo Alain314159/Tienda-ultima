@@ -15,6 +15,7 @@ import type { ContextoSync, ResultadoAplicar } from './motor';
 import { CLAVE_PUBLICA_NUBE, ENLACE_DE_REGRESO, URL_NUBE } from './config';
 import { TABLAS_SINCRONIZABLES } from './tipos';
 import type { Cambio, FilaRemota, RegistroSync } from './tipos';
+import type { SenalWifi } from './webrtc';
 import { Log } from '../services/logger';
 
 /** Punto local hasta el que ya se subió (`cambios.id`) y punto de la nube hasta el que se leyó. */
@@ -236,6 +237,63 @@ function sesionDe(s: SupabaseClient): Promise<SesionNube | null> {
     .then(({ data }) => (data.session?.user ? { correo: data.session.user.email ?? null } : null));
 }
 
+// ============================================================
+// Señalización WiFi por Realtime Broadcast (sin tabla ni migración)
+// ============================================================
+// Decisión: Broadcast y no una tabla. El intercambio de oferta/respuesta
+// es efímero (dura segundos) y no necesita guardarse: un canal Broadcast
+// por sala (`tp-wifi-<código>`) basta, no hace falta migración ni RLS, y
+// no se escribe nada en la base de datos. Por el canal solo viajan las
+// descripciones SDP; los datos de la tienda siguen yendo directos entre
+// los teléfonos por WebRTC, y el código de la sala es el mismo código de
+// emparejamiento de 6 dígitos (no hay otro código que dictar).
+//
+// No hace falta haber entrado con Google: el canal se abre con la clave
+// publicable y el código de la sala es el secreto. Si Realtime está
+// desactivado en el proyecto o no hay internet, la suscripción falla y
+// la app avisa que se use el QR en su lugar (ver SyncWifi.vue).
+const EVENTOS_SENAL_WIFI = ['pide-oferta', 'oferta', 'respuesta'] as const;
+
+/**
+ * Canal de señalización para una sala WiFi con el código dado. Lanza
+ * `senal-no-disponible` si no se puede suscribir (sin internet, Realtime
+ * desactivado…). El `clienteSupabase` opcional es solo para las pruebas.
+ */
+export async function canalSenalWifi(codigo: string, clienteSupabase?: SupabaseClient): Promise<SenalWifi> {
+  const s = clienteSupabase ?? (await supabase());
+  const canal = s.channel(`tp-wifi-${codigo}`, { config: { broadcast: { self: false } } });
+  let receptor: ((evento: string, datos: Record<string, unknown>) => void) | null = null;
+  for (const evento of EVENTOS_SENAL_WIFI) {
+    canal.on('broadcast', { event: evento }, (mensaje) => {
+      receptor?.(evento, (mensaje.payload ?? {}) as Record<string, unknown>);
+    });
+  }
+  // subscribe() no devuelve promesa: avisa por callback. Si no se suscribe
+  // en 15 s, la sala no sirve.
+  const estado = await new Promise<string>((resolver) => {
+    const tope = setTimeout(() => resolver('TIMED_OUT'), 15_000);
+    canal.subscribe((status) => {
+      clearTimeout(tope);
+      resolver(status);
+    });
+  });
+  if (estado !== 'SUBSCRIBED') {
+    await canal.unsubscribe().catch(() => undefined);
+    throw new Error('senal-no-disponible');
+  }
+  return {
+    enviar(evento, datos) {
+      void canal.send({ type: 'broadcast', event: evento, payload: datos }).catch(() => undefined);
+    },
+    alRecibir(fn) {
+      receptor = fn;
+    },
+    cerrar() {
+      void canal.unsubscribe().catch(() => undefined);
+    },
+  };
+}
+
 export async function sesionNube(): Promise<SesionNube | null> {
   return sesionDe(await supabase());
 }
@@ -251,10 +309,7 @@ export async function sesionNube(): Promise<SesionNube | null> {
  *   a entrar con Google.
  */
 export type ResultadoRestaurar =
-  | { sesion: SesionNube }
-  | { error: 'sin-sesion' }
-  | { error: 'transitorio' }
-  | { error: 'invalida' };
+  { sesion: SesionNube } | { error: 'sin-sesion' } | { error: 'transitorio' } | { error: 'invalida' };
 
 /**
  * Restaura la sesión guardada al arrancar la app. Lee la sesión persistida
@@ -487,10 +542,7 @@ export async function borrarDatosLocales(ctx: ContextoSync): Promise<void> {
  * (con confirmación + PIN), porque si no la IndexedDB completa queda en el
  * teléfono y se mezcla con la siguiente cuenta (1.10).
  */
-export async function salirDeNube(
-  ctx: ContextoSync,
-  opciones: { borrarDatosLocales?: boolean } = {}
-): Promise<void> {
+export async function salirDeNube(ctx: ContextoSync, opciones: { borrarDatosLocales?: boolean } = {}): Promise<void> {
   const s = await supabase();
   const { error } = await s.auth.signOut();
   if (error) throw error;

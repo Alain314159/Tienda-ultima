@@ -2,7 +2,7 @@
  * Composable de compartir: lista de precios (WhatsApp-ready),
  * copiar al portapapeles y existencia de inventario.
  */
-import { n, m } from '../utils/numero';
+import { n } from '../utils/numero';
 import { fmt, fmtCant, fmtFecha } from '../utils/formato';
 import { TOAST } from '../constants';
 import { toastMsg } from '../utils/toast';
@@ -62,26 +62,8 @@ export function useCompartir() {
       // Linea 1: nombre en negrita
       lineas.push('✔️ *' + p.nombre + '*');
 
-      // Linea 2: precio base
-      const partes: string[] = ['$' + fmt(precioBase).replace('$', '') + ' c/u'];
-
-      // Escalones
-      if (p.preciosEscalonados && p.preciosEscalonados.length) {
-        const esc = p.preciosEscalonados.slice().sort((a, b) => n(a.min) - n(b.min));
-        esc.forEach((e) => {
-          partes.push('Mín. ' + e.min + ': ' + fmt(e.precio));
-        });
-      }
-
-      lineas.push('   ' + partes.join(' · '));
-
-      // Linea 3 (opcional): empaques
-      if (p.empaques && p.empaques.length) {
-        p.empaques.forEach((e) => {
-          const total = m(precioBase * n(e.unidades));
-          lineas.push('   📦 ' + e.nombre + ' x' + e.unidades + ': ' + fmt(total));
-        });
-      }
+      // Linea 2: precio único
+      lineas.push('   $' + fmt(precioBase).replace('$', '') + ' c/u');
 
       lineas.push('');
     });

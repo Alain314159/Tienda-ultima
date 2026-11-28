@@ -4,7 +4,8 @@
  * Cada test reproduce un vector de ataque concreto que la IA atacante
  * propuso y que estaba ROTO antes de los fixes:
  *  1. Familia Infinity: "1e999"/"Infinity" pasaban todos los checks `<= 0`
- *  2. Escalones sin restricciones (precio negativo → venta con total negativo)
+ *  2. Escalones y empaques eliminados: los campos heredados se ignoran
+ *     (antes: escalón con precio negativo → venta con total negativo)
  *  3. Doble-tap en anulaciones (stock restaurado dos veces)
  *  4. Import de respaldo con venta sin items (pantalla en blanco permanente)
  *  5. Zip-bomb en descompresión gzip
@@ -57,49 +58,28 @@ describe('red-team: schemas rechazan Infinity y NaN', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('escalón con precio negativo es rechazado (antes: ventas con total negativo)', () => {
+  it('campos heredados de escalones/empaques NO rompen la validación ni se guardan', () => {
+    // Un respaldo viejo (o editado a mano) trae escalones con precio
+    // negativo y empaques con unidades 0: antes eran vectores de ataque
+    // (venta con total negativo, división por cero en compras). Ahora el
+    // schema los descarta y el precio queda único.
     const r = validar(productoSchema, {
       nombre: 'Mayorista',
       precio: '100',
-      preciosEscalonados: [{ min: '12', precio: '-50' }],
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('escalón con min 0/negativo es rechazado (el precio base ya cubre eso)', () => {
-    const r = validar(productoSchema, {
-      nombre: 'Mayorista',
-      precio: '100',
-      preciosEscalonados: [{ min: '0', precio: '85' }],
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('empaque con unidades 0 es rechazado (división por mult en compras)', () => {
-    const r = validar(productoSchema, {
-      nombre: 'Refresco',
-      precio: '100',
-      empaques: [{ nombre: 'caja', unidades: '0' }],
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('empaque con unidades Infinity es rechazado', () => {
-    const r = validar(productoSchema, {
-      nombre: 'Refresco',
-      precio: '100',
-      empaques: [{ nombre: 'caja', unidades: '1e999' }],
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('escalón válido SÍ pasa', () => {
-    const r = validar(productoSchema, {
-      nombre: 'Mayorista',
-      precio: '100',
-      preciosEscalonados: [{ min: '12', precio: '85' }],
+      preciosEscalonados: [
+        { min: '12', precio: '-50' },
+        { min: '0', precio: '85' },
+      ],
+      empaques: [
+        { nombre: 'caja', unidades: '0' },
+        { nombre: 'caja', unidades: '1e999' },
+      ],
     });
     expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect('preciosEscalonados' in r.data).toBe(false);
+      expect('empaques' in r.data).toBe(false);
+    }
   });
 });
 
@@ -146,8 +126,10 @@ describe('red-team: carrito neutraliza precios y cantidades infinitas', () => {
     expect(isFinite(n(fila.cant))).toBe(true);
   });
 
-  it('precioParaCantidad ignora escalones corruptos (precio negativo editado a mano en la BD)', async () => {
+  it('escalones heredados corruptos en la BD NO afectan el precio de venta (precio único)', async () => {
     const productos = useProductosStore();
+    const ventas = useVentasStore();
+    const lotes = useLotesStore();
     await db.productos.put({
       id: 'p9',
       nombre: 'Malvavisco',
@@ -156,34 +138,20 @@ describe('red-team: carrito neutraliza precios y cantidades infinitas', () => {
       preciosEscalonados: [
         { min: -50, precio: 1 }, // corrupto: min negativo
         { min: 12, precio: -85 }, // corrupto: precio negativo
-        { min: 12, precio: 85 }, // válido
+        { min: 12, precio: 85 }, // válido en la versión vieja
       ],
     });
+    await db.lotes.put({ id: 'l1', productoId: 'p9', cantidadInicial: 100, cantidadVendida: 0, costo: 50 });
     await productos.cargarProductos();
-    // Con cant 20 el escalón válido aplica; los corruptos se descartan
-    expect(productos.precioParaCantidad('p9', 20)).toBe(85);
-    // Con cant 5, ningún escalón válido aplica → precio base
-    expect(productos.precioParaCantidad('p9', 5)).toBe(100);
-  });
-
-  it('precioParaCantidad NO muta el array de escalones del store (sort in situ)', async () => {
-    const productos = useProductosStore();
-    await db.productos.put({
-      id: 'p8',
-      nombre: 'Caramelo',
-      precio: 100,
-      archivado: false,
-      preciosEscalonados: [
-        { min: 5, precio: 90 },
-        { min: 12, precio: 85 },
-      ],
-    });
-    await productos.cargarProductos();
-    const antes = JSON.stringify(productos.productos.find((p) => p.id === 'p8').preciosEscalonados);
-    productos.precioParaCantidad('p8', 20);
-    productos.precioParaCantidad('p8', 1);
-    const despues = JSON.stringify(productos.productos.find((p) => p.id === 'p8').preciosEscalonados);
-    expect(antes).toBe(despues);
+    await lotes.cargarLotes();
+    // El carrito toma el precio único, sea cual sea la cantidad
+    ventas.agregarCarrito({ id: 'p9', nombre: 'Malvavisco', precio: 100 });
+    const fila = ventas.carrito[0];
+    expect(n(fila.precio)).toBe(100);
+    ventas.cambiarCant(fila, 19); // 20 unidades: antes aplicaba el escalón de 85
+    expect(n(fila.precio)).toBe(100);
+    expect(n(fila.cant)).toBe(20);
+    expect(ventas.subTotalItem(fila)).toBe(2000);
   });
 });
 
@@ -395,19 +363,16 @@ describe('red-team: las vistas con UI restaurada montan sin reventar', () => {
     wrapper.unmount();
   });
 
-  it('ProductosView monta y muestra los editores de empaques/escalones/unidad', async () => {
+  it('ProductosView monta sin editores de empaques/escalones (solo unidad)', async () => {
     const { mount, flushPromises } = await import('@vue/test-utils');
     const { default: ProductosView } = await import('../src/views/ProductosView.vue');
     const wrapper = mount(ProductosView, { global: { stubs: { teleport: true } } });
     await flushPromises();
-    expect(wrapper.text()).toContain('Empaques (para compras)');
-    expect(wrapper.text()).toContain('Precio por cantidad');
+    expect(wrapper.text()).not.toContain('Empaques (para compras)');
+    expect(wrapper.text()).not.toContain('Precio por cantidad');
     expect(wrapper.find('input[placeholder="Unidad (opcional: und, kg, lt...)"]').exists()).toBe(true);
-    // El botón "+ Agregar" de empaque añade una fila
-    const btns = wrapper.findAll('button').filter((b) => b.text().includes('+ Agregar'));
-    expect(btns.length).toBe(2);
-    await btns[0].trigger('click');
-    expect(wrapper.find('input[placeholder="Nombre (caja...)"]').exists()).toBe(true);
+    // Ya no hay botones "+ Agregar" de subformularios
+    expect(wrapper.findAll('button').filter((b) => b.text().includes('+ Agregar')).length).toBe(0);
     wrapper.unmount();
   });
 });
