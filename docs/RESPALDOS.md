@@ -21,13 +21,13 @@ El autosave guarda una copia local sin que tengas que hacer nada:
 
 ### Restaurar el último backup automático
 
-En **Ajustes → Respaldos**, debajo de «Último backup auto», toca **Restaurar backup automático**. La app restaura esa copia. Es la forma más rápida de recuperar los datos si algo salió mal y no tienes un archivo exportado.
+En **Ajustes → Datos y respaldos**, debajo de «Último backup auto», toca **Restaurar backup automático**. La app restaura esa copia. Es la forma más rápida de recuperar los datos si algo salió mal y no tienes un archivo exportado.
 
 ## Exportar un respaldo
 
-En **Ajustes → Respaldos** hay dos botones:
+En **Ajustes → Datos y respaldos** hay dos botones:
 
-- **Exportar respaldo:** genera un archivo `.json` en texto plano con todos los datos. Guárdalo en un lugar seguro (otra carpeta del teléfono, una nube personal, un correo a ti mismo). Cualquiera que tenga ese archivo puede leer tus datos: no lo compartas.
+- **Exportar respaldo (JSON):** genera un archivo `.json` en texto plano con todos los datos. Guárdalo en un lugar seguro (otra carpeta del teléfono, una nube personal, un correo a ti mismo). Cualquiera que tenga ese archivo puede leer tus datos: no lo compartas.
 - **Exportar respaldo cifrado:** genera un archivo `.json` cifrado con **AES-256-GCM**; la clave se deriva de la contraseña que elijas con **PBKDF2 de 600.000 iteraciones**. Es la opción recomendada si el archivo va a salir del teléfono (correo, nube, memoria USB). Sin la contraseña no se puede abrir: **si la olvidas, el respaldo no se puede recuperar**.
 
 En Android, la exportación usa el diálogo de compartir/guardar del sistema; en web, descarga el archivo.
@@ -46,7 +46,7 @@ Lo que **no** incluye (y por qué):
 
 ## Importar un respaldo
 
-1. En **Ajustes → Respaldos**, toca **Importar respaldo** y elige el archivo.
+1. En **Ajustes → Datos y respaldos**, toca **Importar datos** y elige el archivo.
 2. La app lee el archivo y muestra una **vista previa**: qué trae el respaldo y qué datos hay ahora, para que compares antes de aceptar.
 3. Si el respaldo es cifrado, te pide la **contraseña**.
 4. Al confirmar, la app guarda primero una **copia de seguridad de tus datos actuales** (por si te arrepientes) y luego sustituye los datos por los del respaldo.
@@ -68,4 +68,4 @@ El importador valida el esquema del archivo antes de tocar tus datos y rechaza a
 
 ## Borrar todos los datos
 
-En **Ajustes → Respaldos**, el botón **Borrar todo** elimina todos los datos locales de la app. Es irreversible salvo que tengas un respaldo exportado. La app pide confirmación antes de hacerlo.
+En **Ajustes → Zona peligrosa**, el botón **Borrar TODOS los datos** elimina todos los datos locales de la app. Es irreversible salvo que tengas un respaldo exportado. La app pide confirmación antes de hacerlo.

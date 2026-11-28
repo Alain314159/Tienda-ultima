@@ -1,269 +1,5 @@
 <template>
   <section v-if="sec === 'reportes'" class="fade-up">
-    <!-- Cerrar Período -->
-    <div class="card">
-      <h2 class="card-title">
-        <icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período
-      </h2>
-      <div class="info-box" style="margin-bottom: 0.6rem">
-        Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
-      </div>
-      <div style="font-size: 0.82rem; color: var(--mut); margin-bottom: 0.5rem">
-        Período actual: desde {{ fmtFecha(cfg.periodoInicio) }}
-      </div>
-      <div class="grid2" style="margin-bottom: 0.5rem">
-        <div>
-          <span class="det">Ventas</span>
-          <div style="font-weight: 800">{{ fmt(ventasStore.ventasPeriodo) }}</div>
-        </div>
-        <div>
-          <span class="det">Compras</span>
-          <div style="font-weight: 800" class="neg">{{ fmt(cierresStore.comprasPeriodo) }}</div>
-        </div>
-      </div>
-      <div style="font-size: 0.9rem; font-weight: 800; margin-bottom: 0.6rem">
-        Ganancia:
-        <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
-      </div>
-      <button class="btn warn" @click="cerrarPeriodo()" :disabled="cerrandoPeriodo">
-        <icon name="calendar" :size="16" color="#fff"></icon>
-        {{ cerrandoPeriodo ? 'Cerrando…' : 'Cerrar Período y Empezar Nuevo' }}
-      </button>
-    </div>
-
-    <!-- Historial de Cierres -->
-    <div class="card">
-      <h2 class="card-title">
-        <icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres
-      </h2>
-      <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
-      <div
-        v-for="c in cierresStore.cierresOrdenados"
-        :key="c.id"
-        class="item"
-        style="flex-direction: column; align-items: stretch; gap: 0.3rem"
-      >
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem">
-          <div class="nm">{{ c.periodo }}</div>
-          <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
-        </div>
-        <div class="det" style="font-size: 0.72rem">
-          Cerrado {{ fmtFecha(c.fechaCierre || c.fecha || '') }}
-          <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
-        </div>
-        <div
-          v-if="c.cogs !== undefined"
-          style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.7rem; margin-top: 0.2rem"
-        >
-          <div style="color: var(--mut)">
-            Ventas: <b class="pos">{{ fmt(c.ventas) }}</b>
-          </div>
-          <div style="color: var(--mut)">
-            COGS: <b class="neg">-{{ fmt(c.cogs) }}</b>
-          </div>
-          <div style="color: var(--mut)">
-            Gastos: <b class="neg">-{{ fmt(c.gastos) }}</b>
-          </div>
-          <div style="color: var(--mut)">
-            Mermas: <b class="neg">-{{ fmt(c.mermas) }}</b>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- LIBRO DIARIO (PARTIDA DOBLE) -->
-    <div class="card">
-      <h2 class="card-title">
-        <icon name="book" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Libro Diario
-      </h2>
-      <div class="info-box" style="margin-bottom: 0.6rem">
-        Contabilidad de partida doble generada automáticamente: cada operación produce un cargo y un abono por el mismo
-        monto.
-      </div>
-
-      <div v-if="libro.asientos.length === 0" class="empty">Sin movimientos aún</div>
-
-      <template v-else>
-        <!-- Balanza de comprobación -->
-        <h3 class="card-title" style="margin-top: 0">
-          <icon name="chart" :size="16"></icon> Balanza de comprobación
-        </h3>
-        <div style="overflow-x: auto">
-          <table class="cuadre-table">
-            <thead>
-              <tr>
-                <th>Cuenta</th>
-                <th>Debe</th>
-                <th>Haber</th>
-                <th>Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="f in libro.balanza" :key="f.cuenta">
-                <td>
-                  <b>{{ f.cuenta }}</b>
-                </td>
-                <td>{{ fmt(f.debe) }}</td>
-                <td>{{ fmt(f.haber) }}</td>
-                <td :class="f.saldo >= 0 ? 'pos' : 'neg'">
-                  <b>{{ fmt(f.saldo) }}</b>
-                </td>
-              </tr>
-              <tr class="total-row">
-                <td>TOTAL</td>
-                <td>{{ fmt(libro.totalDebe) }}</td>
-                <td>{{ fmt(libro.totalHaber) }}</td>
-                <td :class="libro.balanceado ? 'pos' : 'neg'">
-                  {{ libro.balanceado ? '✓ Balanceado' : '✗ Descuadre' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Balance general (estado de situación) -->
-        <h3 class="card-title" style="margin-top: 0.8rem">
-          <icon name="book" :size="16"></icon> Balance general (estado de situación)
-        </h3>
-        <div style="overflow-x: auto">
-          <table class="cuadre-table">
-            <thead>
-              <tr>
-                <th>Activo</th>
-                <th>Monto</th>
-                <th>Patrimonio</th>
-                <th>Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Caja</td>
-                <td>{{ fmt(libro.bg.caja) }}</td>
-                <td>Capital aportado</td>
-                <td>{{ fmt(libro.bg.capital) }}</td>
-              </tr>
-              <tr>
-                <td>Inventario (FIFO)</td>
-                <td>{{ fmt(libro.bg.inventario) }}</td>
-                <td>Resultado histórico integral</td>
-                <td>{{ fmt(libro.bg.resultado) }}</td>
-              </tr>
-              <tr>
-                <td></td>
-                <td></td>
-                <td>Retiros de ganancia</td>
-                <td>-{{ fmt(libro.bg.retirosGanancia) }}</td>
-              </tr>
-              <tr v-if="libro.bg.fueraCaja !== 0">
-                <td></td>
-                <td></td>
-                <td>Pagos por fuera de caja</td>
-                <td>{{ fmt(libro.bg.fueraCaja) }}</td>
-              </tr>
-              <tr class="total-row">
-                <td>TOTAL ACTIVO</td>
-                <td>{{ fmt(libro.bg.totalActivo) }}</td>
-                <td>TOTAL PATRIMONIO</td>
-                <td :class="libro.bg.cuadra ? 'pos' : 'neg'">
-                  {{ fmt(libro.bg.totalPatrimonio) }} {{ libro.bg.cuadra ? '✓' : '✗' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="info-box" style="margin-top: 0.4rem">
-          Ecuación contable: Activo = Capital + Resultado − Retiros de ganancia + partidas fuera de caja. El resultado
-          integral incluye sobrantes de inventario y ajustes de arqueo.
-        </div>
-
-        <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
-        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</h3>
-        <div class="row">
-          <span>Caja según libro vs sistema</span>
-          <b :class="libro.cajaOk ? 'pos' : 'neg'"
-            >{{ fmt(libro.cajaLibro) }} {{ libro.cajaOk ? '✓' : '≠ ' + fmt(libro.cajaSistema) }}</b
-          >
-        </div>
-        <div class="row">
-          <span>Inventario según libro vs lotes</span>
-          <b :class="libro.invOk ? 'pos' : 'neg'"
-            >{{ fmt(libro.invLibro) }} {{ libro.invOk ? '✓' : '≠ ' + fmt(libro.invSistema) }}</b
-          >
-        </div>
-        <div class="row">
-          <span>Resultado neto histórico vs acumulado</span>
-          <b :class="libro.resOk ? 'pos' : 'neg'"
-            >{{ fmt(libro.resultado) }} {{ libro.resOk ? '✓' : '≠ ' + fmt(libro.acumuladas) }}</b
-          >
-        </div>
-
-        <!-- Últimos asientos -->
-        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</h3>
-        <div v-for="a in libro.ultimos" :key="a.id" class="item">
-          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
-            <div>
-              <div class="nm">{{ a.concepto }}</div>
-              <div class="det" style="font-size: 0.7rem">
-                {{ fmtFecha(a.fecha) }} · {{ a.cuentaDebe }} ← {{ a.cuentaHaber }}
-              </div>
-            </div>
-            <b>{{ fmt(a.monto) }}</b>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- ARQUEO DE CAJA (restaurado: la notificación diaria existía pero la UI
-         se perdió al eliminar la vista Caja) -->
-    <div class="card">
-      <h2 class="card-title">
-        <icon name="dollar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Arqueo de Caja
-      </h2>
-      <div class="row">
-        <span>Caja según sistema</span>
-        <b>{{ fmt(cajaStore.saldoCaja) }}</b>
-      </div>
-      <div class="grid2" style="margin-top: 0.4rem">
-        <div>
-          <label class="fld-label" for="arqueo-fisico">Contado físico en caja</label>
-          <input id="arqueo-fisico" v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
-        </div>
-        <div>
-          <label class="fld-label" for="arqueo-nota">Nota (opcional)</label>
-          <input id="arqueo-nota" v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
-        </div>
-      </div>
-      <div v-if="arqueoDiff !== null" class="row" style="margin-top: 0.4rem">
-        <span>Diferencia (físico − sistema)</span>
-        <b :class="Math.abs(arqueoDiff) < 0.01 ? 'pos' : 'neg'">
-          {{
-            Math.abs(arqueoDiff) < 0.01
-              ? 'Cuadra ✓'
-              : (arqueoDiff > 0 ? 'Sobra ' : 'Falta ') + fmt(Math.abs(arqueoDiff))
-          }}
-        </b>
-      </div>
-      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI" :disabled="guardandoArqueo">
-        {{ guardandoArqueo ? 'Registrando…' : 'Registrar arqueo' }}
-      </button>
-      <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
-        <h3 class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</h3>
-        <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
-          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
-            <div>
-              <div class="det">{{ fmtFH(a.fecha) }} · sistema {{ fmt(a.cajaSistema) }}</div>
-              <div class="det" style="font-size: 0.7rem">
-                físico {{ fmt(a.cajaFisica) }}<span v-if="a.nota"> · {{ a.nota }}</span>
-              </div>
-            </div>
-            <b :class="Math.abs(n(a.faltanteSobrante)) < 0.01 ? 'pos' : 'neg'">{{
-              Math.abs(n(a.faltanteSobrante)) < 0.01 ? '✓' : fmt(a.faltanteSobrante)
-            }}</b>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- CUADRE POR PERÍODO (NUEVO - reemplaza Reporte viejo) -->
     <div class="card">
       <h2 class="card-title">
@@ -508,7 +244,271 @@
         </div>
       </div>
     </div>
-  </section>
+    <!-- ARQUEO DE CAJA (restaurado: la notificación diaria existía pero la UI
+         se perdió al eliminar la vista Caja) -->
+    <div class="card" id="ref-arqueo">
+      <h2 class="card-title">
+        <icon name="dollar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Arqueo de Caja
+      </h2>
+      <div class="row">
+        <span>Caja según sistema</span>
+        <b>{{ fmt(cajaStore.saldoCaja) }}</b>
+      </div>
+      <div class="grid2" style="margin-top: 0.4rem">
+        <div>
+          <label class="fld-label" for="arqueo-fisico">Contado físico en caja</label>
+          <input id="arqueo-fisico" v-model="arqueoForm.fisico" type="text" inputmode="decimal" placeholder="Contado físico en caja" />
+        </div>
+        <div>
+          <label class="fld-label" for="arqueo-nota">Nota (opcional)</label>
+          <input id="arqueo-nota" v-model="arqueoForm.nota" type="text" placeholder="Nota (opcional)" maxlength="80" />
+        </div>
+      </div>
+      <div v-if="arqueoDiff !== null" class="row" style="margin-top: 0.4rem">
+        <span>Diferencia (físico − sistema)</span>
+        <b :class="Math.abs(arqueoDiff) < 0.01 ? 'pos' : 'neg'">
+          {{
+            Math.abs(arqueoDiff) < 0.01
+              ? 'Cuadra ✓'
+              : (arqueoDiff > 0 ? 'Sobra ' : 'Falta ') + fmt(Math.abs(arqueoDiff))
+          }}
+        </b>
+      </div>
+      <button class="btn pri" style="margin-top: 0.5rem" @click="hacerArqueoUI" :disabled="guardandoArqueo">
+        {{ guardandoArqueo ? 'Registrando…' : 'Registrar arqueo' }}
+      </button>
+      <div v-if="cajaStore.arqueosOrdenados.length" style="margin-top: 0.6rem">
+        <h3 class="card-title" style="margin-top: 0"><icon name="list" :size="16"></icon> Últimos arqueos</h3>
+        <div v-for="a in cajaStore.arqueosOrdenados.slice(0, 5)" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="det">{{ fmtFH(a.fecha) }} · sistema {{ fmt(a.cajaSistema) }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                físico {{ fmt(a.cajaFisica) }}<span v-if="a.nota"> · {{ a.nota }}</span>
+              </div>
+            </div>
+            <b :class="Math.abs(n(a.faltanteSobrante)) < 0.01 ? 'pos' : 'neg'">{{
+              Math.abs(n(a.faltanteSobrante)) < 0.01 ? '✓' : fmt(a.faltanteSobrante)
+            }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cerrar Período -->
+    <div class="card">
+      <h2 class="card-title">
+        <icon name="calendar" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Cerrar Período
+      </h2>
+      <div class="info-box" style="margin-bottom: 0.6rem">
+        Al cerrar, los contadores del inicio se reinician. El historial se conserva y la ganancia se acumula.
+      </div>
+      <div style="font-size: 0.82rem; color: var(--mut); margin-bottom: 0.5rem">
+        Período actual: desde {{ fmtFecha(cfg.periodoInicio) }}
+      </div>
+      <div class="grid2" style="margin-bottom: 0.5rem">
+        <div>
+          <span class="det">Ventas</span>
+          <div style="font-weight: 800">{{ fmt(ventasStore.ventasPeriodo) }}</div>
+        </div>
+        <div>
+          <span class="det">Compras</span>
+          <div style="font-weight: 800" class="neg">{{ fmt(cierresStore.comprasPeriodo) }}</div>
+        </div>
+      </div>
+      <div style="font-size: 0.9rem; font-weight: 800; margin-bottom: 0.6rem">
+        Ganancia:
+        <span :class="gananciaNetaPeriodo >= 0 ? 'pos' : 'neg'">{{ fmt(cierresStore.gananciaNetaPeriodo) }}</span>
+      </div>
+      <button class="btn warn" @click="cerrarPeriodo()" :disabled="cerrandoPeriodo">
+        <icon name="calendar" :size="16" color="#fff"></icon>
+        {{ cerrandoPeriodo ? 'Cerrando…' : 'Cerrar Período y Empezar Nuevo' }}
+      </button>
+    </div>
+
+    <!-- Historial de Cierres -->
+    <div class="card">
+      <h2 class="card-title">
+        <icon name="list" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Historial de Cierres
+      </h2>
+      <div v-if="cierres.length === 0" class="empty">Sin cierres</div>
+      <div
+        v-for="c in cierresStore.cierresOrdenados"
+        :key="c.id"
+        class="item"
+        style="flex-direction: column; align-items: stretch; gap: 0.3rem"
+      >
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem">
+          <div class="nm">{{ c.periodo }}</div>
+          <b :class="c.ganancia >= 0 ? 'pos' : 'neg'">{{ fmt(c.ganancia) }}</b>
+        </div>
+        <div class="det" style="font-size: 0.72rem">
+          Cerrado {{ fmtFecha(c.fechaCierre || c.fecha || '') }}
+          <span v-if="c.numVentas !== undefined"> · {{ c.numVentas }} venta(s)</span>
+        </div>
+        <div
+          v-if="c.cogs !== undefined"
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.7rem; margin-top: 0.2rem"
+        >
+          <div style="color: var(--mut)">
+            Ventas: <b class="pos">{{ fmt(c.ventas) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            COGS: <b class="neg">-{{ fmt(c.cogs) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            Gastos: <b class="neg">-{{ fmt(c.gastos) }}</b>
+          </div>
+          <div style="color: var(--mut)">
+            Mermas: <b class="neg">-{{ fmt(c.mermas) }}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIBRO DIARIO (PARTIDA DOBLE) -->
+    <div class="card">
+      <h2 class="card-title">
+        <icon name="book" :size="18" :color="sec === 'reportes' ? '#2196F3' : mutColor"></icon> Libro Diario
+      </h2>
+      <div class="info-box" style="margin-bottom: 0.6rem">
+        Contabilidad de partida doble generada automáticamente: cada operación produce un cargo y un abono por el mismo
+        monto.
+      </div>
+
+      <div v-if="libro.asientos.length === 0" class="empty">Sin movimientos aún</div>
+
+      <template v-else>
+        <!-- Balanza de comprobación -->
+        <h3 class="card-title" style="margin-top: 0">
+          <icon name="chart" :size="16"></icon> Balanza de comprobación
+        </h3>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Cuenta</th>
+                <th>Debe</th>
+                <th>Haber</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in libro.balanza" :key="f.cuenta">
+                <td>
+                  <b>{{ f.cuenta }}</b>
+                </td>
+                <td>{{ fmt(f.debe) }}</td>
+                <td>{{ fmt(f.haber) }}</td>
+                <td :class="f.saldo >= 0 ? 'pos' : 'neg'">
+                  <b>{{ fmt(f.saldo) }}</b>
+                </td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td>{{ fmt(libro.totalDebe) }}</td>
+                <td>{{ fmt(libro.totalHaber) }}</td>
+                <td :class="libro.balanceado ? 'pos' : 'neg'">
+                  {{ libro.balanceado ? '✓ Balanceado' : '✗ Descuadre' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Balance general (estado de situación) -->
+        <h3 class="card-title" style="margin-top: 0.8rem">
+          <icon name="book" :size="16"></icon> Balance general (estado de situación)
+        </h3>
+        <div style="overflow-x: auto">
+          <table class="cuadre-table">
+            <thead>
+              <tr>
+                <th>Activo</th>
+                <th>Monto</th>
+                <th>Patrimonio</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Caja</td>
+                <td>{{ fmt(libro.bg.caja) }}</td>
+                <td>Capital aportado</td>
+                <td>{{ fmt(libro.bg.capital) }}</td>
+              </tr>
+              <tr>
+                <td>Inventario (FIFO)</td>
+                <td>{{ fmt(libro.bg.inventario) }}</td>
+                <td>Resultado histórico integral</td>
+                <td>{{ fmt(libro.bg.resultado) }}</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td>Retiros de ganancia</td>
+                <td>-{{ fmt(libro.bg.retirosGanancia) }}</td>
+              </tr>
+              <tr v-if="libro.bg.fueraCaja !== 0">
+                <td></td>
+                <td></td>
+                <td>Pagos por fuera de caja</td>
+                <td>{{ fmt(libro.bg.fueraCaja) }}</td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL ACTIVO</td>
+                <td>{{ fmt(libro.bg.totalActivo) }}</td>
+                <td>TOTAL PATRIMONIO</td>
+                <td :class="libro.bg.cuadra ? 'pos' : 'neg'">
+                  {{ fmt(libro.bg.totalPatrimonio) }} {{ libro.bg.cuadra ? '✓' : '✗' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="info-box" style="margin-top: 0.4rem">
+          Ecuación contable: Activo = Capital + Resultado − Retiros de ganancia + partidas fuera de caja. El resultado
+          integral incluye sobrantes de inventario y ajustes de arqueo.
+        </div>
+
+        <!-- Diagnóstico contable: el libro contra los saldos del sistema -->
+        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="check" :size="16"></icon> Diagnóstico</h3>
+        <div class="row">
+          <span>Caja según libro vs sistema</span>
+          <b :class="libro.cajaOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.cajaLibro) }} {{ libro.cajaOk ? '✓' : '≠ ' + fmt(libro.cajaSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Inventario según libro vs lotes</span>
+          <b :class="libro.invOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.invLibro) }} {{ libro.invOk ? '✓' : '≠ ' + fmt(libro.invSistema) }}</b
+          >
+        </div>
+        <div class="row">
+          <span>Resultado neto histórico vs acumulado</span>
+          <b :class="libro.resOk ? 'pos' : 'neg'"
+            >{{ fmt(libro.resultado) }} {{ libro.resOk ? '✓' : '≠ ' + fmt(libro.acumuladas) }}</b
+          >
+        </div>
+
+        <!-- Últimos asientos -->
+        <h3 class="card-title" style="margin-top: 0.8rem"><icon name="list" :size="16"></icon> Últimos asientos</h3>
+        <div v-for="a in libro.ultimos" :key="a.id" class="item">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: center">
+            <div>
+              <div class="nm">{{ a.concepto }}</div>
+              <div class="det" style="font-size: 0.7rem">
+                {{ fmtFecha(a.fecha) }} · {{ a.cuentaDebe }} ← {{ a.cuentaHaber }}
+              </div>
+            </div>
+            <b>{{ fmt(a.monto) }}</b>
+          </div>
+        </div>
+      </template>
+    </div>
+
+      </section>
 </template>
 
 <script setup lang="ts">

@@ -4,7 +4,7 @@
 
 - **Los datos viven en tu teléfono** (IndexedDB). Sin tu acción, no salen de él.
 - **No hay anuncios, rastreadores ni analítica.**
-- **PIN** de 4 dígitos para proteger operaciones sensibles, guardado como hash (nunca en claro).
+- **PIN** de 4 a 6 dígitos para proteger operaciones sensibles, guardado como hash (nunca en claro).
 - **Respaldos cifrados** con AES-256-GCM y contraseña elegida por ti.
 - **Sincronización cifrada:** la nube usa HTTPS y la sesión de Google; el WiFi directo usa un canal WebRTC cifrado entre los dos teléfonos.
 
@@ -14,7 +14,7 @@ Los informes completos de auditoría están en [AUDITORIA-2026-10.md](AUDITORIA-
 
 El PIN protege las operaciones sensibles (por ejemplo, borrar todos los datos o restaurar respaldos).
 
-- Se activa en **Más → Ajustes → PIN de seguridad** y es un PIN de **4 dígitos**.
+- Se activa en **Más → Ajustes → Seguridad → PIN operaciones sensibles** y es un PIN de **4 a 6 dígitos**.
 - El PIN **nunca se guarda en claro**: se guarda su hash con **PBKDF2-SHA256, 600.000 iteraciones y sal aleatoria de 16 bytes**, en el formato `pbkdf2$<iteraciones>$<sal>$<hash>`. Cada vez que lo escribes, la app deriva el hash y lo compara.
 - Si ya tienes un PIN viejo guardado en claro de una versión anterior, la app lo convierte a hash la primera vez que se guarda la configuración.
 - El PIN es **por teléfono**: no se sincroniza con la nube ni con el WiFi. Cada teléfono tiene el suyo.

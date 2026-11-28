@@ -79,14 +79,21 @@ describe('AjustesModal: secciones', () => {
     return w;
   }
 
-  it('se renderiza abierto con todas las secciones', () => {
+  it('se renderiza abierto con todas las secciones en el orden nuevo', () => {
     const w = montarAjustes();
-    const t = w.text();
-    expect(t).toContain('Personalizacion');
-    expect(t).toContain('Seguridad');
-    expect(t).toContain('Datos y respaldos');
-    expect(t).toContain('Notificaciones y alertas');
-    expect(t).toContain('Zona peligrosa');
+    const grupos = w.findAll('.set-group').map((g) => g.text().trim());
+    expect(grupos).toEqual([
+      'Tienda',
+      'Apariencia',
+      'Seguridad',
+      'Ventas',
+      'Notificaciones y alertas',
+      'Datos y respaldos',
+      'Actualizaciones',
+      'Sistema',
+      'Zona peligrosa',
+      'Información',
+    ]);
     w.unmount();
   });
 
@@ -137,7 +144,7 @@ describe('AjustesModal: secciones', () => {
     const w = montarAjustes();
     const config = useConfigStore();
 
-    const filaBusq = w.findAll('.set-row').filter((r) => r.text().includes('Busqueda global'));
+    const filaBusq = w.findAll('.set-row').filter((r) => r.text().includes('Búsqueda global'));
     await filaBusq[0].find('input[type="checkbox"]').setValue(false);
     await flushPromises();
     expect(config.cfg.busquedaGlobalActiva).toBe(false);

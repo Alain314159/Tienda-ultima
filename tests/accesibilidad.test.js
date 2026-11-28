@@ -187,7 +187,15 @@ describe('encabezados para TalkBack (5.6)', () => {
     const w = await montar(ReportesView);
     expect(w.findAll('h2').length).toBe(5);
     expect(w.findAll('h3').length).toBe(4);
-    expect(w.find('h2').text()).toContain('Cerrar Período');
+    // Orden por frecuencia de uso: lo diario primero (cuadre, arqueo),
+    // lo ocasional después (cierre, historial) y la contabilidad al fondo.
+    expect(w.findAll('h2').map((h) => h.text())).toEqual([
+      'Cuadre por Período',
+      'Arqueo de Caja',
+      'Cerrar Período',
+      'Historial de Cierres',
+      'Libro Diario',
+    ]);
     w.unmount();
   });
 });

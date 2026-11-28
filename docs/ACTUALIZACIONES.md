@@ -21,8 +21,8 @@ GitHub Pages y los genera el workflow de despliegue.
 
 También puedes comprobarlo a mano, sin esperar al próximo arranque:
 
-- **Ajustes → Avanzado → Buscar actualizaciones** (botón «Buscar»).
-- **Estado del sistema** (desde Ajustes → Avanzado → «Estado del sistema»):
+- **Ajustes → Actualizaciones → Buscar actualizaciones** (botón «Buscar»).
+- **Estado del sistema** (desde Ajustes → Sistema → «Estado del sistema»):
   sección «Actualizaciones (OTA)», botón «Buscar actualización ahora».
 
 ## Qué significa cada mensaje
@@ -96,7 +96,7 @@ intactos. No hay reintentos en segundo plano que gasten datos.
 | `src/sync/ota.ts` | Toda la lógica: `validarManifiesto`, `versionActiva`, `comprobarActualizacion`, `reiniciarParaAplicar`, `inicializarOTA`. |
 | `src/main.ts` | Llama a `inicializarOTA()` en el bloque nativo al arrancar. |
 | `src/components/StatusPanel.vue` | Sección 1, «Actualizaciones (OTA)»: versión instalada, botón de búsqueda y «Reiniciar ahora». |
-| `src/components/AjustesModal.vue` | Botón «Buscar actualizaciones» en Avanzado. |
+| `src/components/AjustesModal.vue` | Botón «Buscar actualizaciones» en el grupo **Actualizaciones**. |
 | `.github/workflows/deploy.yml` | Genera `dist/updates/bundle-<versión>.zip` y `dist/updates.json` en el job `web`; define `VITE_APP_BUILD` en ambos jobs. |
 | `capacitor.config.json` | Modo manual del plugin (`autoUpdate: false`, sin `updateUrl`, `appId: com.tiendapro.app`). |
 | `tests/ota.test.js` | Tests del módulo (manifiesto, descarga, sin internet, fallos, promoción). |

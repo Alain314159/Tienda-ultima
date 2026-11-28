@@ -12,7 +12,7 @@ Sí. Todo (ventas, compras, inventario, caja, reportes) funciona sin internet po
 **Más → Ajustes**: interruptor de tema (claro/oscuro) y botones **A− / A+** para el tamaño de letra (de 1× a 2×).
 
 ### ¿Dónde está la sección de Nube o la de Compartir por WiFi?
-En el botón **Más** de la barra inferior, en el grupo **Sistema**: «Nube y cuenta» y «Compartir por WiFi». Al abrirlas, la hoja de «Más» se cierra sola y el panel queda a la vista.
+En el botón **Más** de la barra inferior, en el grupo **Sincronización y ajustes**: «Nube y cuenta» y «Compartir por WiFi». Al abrirlas, la hoja de «Más» se cierra sola y el panel queda a la vista.
 
 ### Hice una venta y no aparece en el historial
 Revisa que no esté filtrada: el historial muestra las ventas del período o del filtro activo. Si la venta se anuló por error, aparece marcada como anulada. Si de verdad no está, comprueba que no estés en otro teléfono sin sincronizar (ver [Sincronización](#sincronización)).
@@ -60,13 +60,13 @@ No. El PIN, el tema, el nombre de la tienda y demás ajustes son **por teléfono
 ## Respaldos y datos
 
 ### ¿Cómo recupero mis datos si cambio de teléfono?
-La vía rápida: en el teléfono viejo, **Ajustes → Exportar respaldo** (cifrado, recomendado), pasa el archivo al nuevo y en el nuevo toca **Importar respaldo**. También puedes entrar con Google en el nuevo y dejar que la nube baje los datos. Detalles en [RESPALDOS.md](RESPALDOS.md).
+La vía rápida: en el teléfono viejo, **Ajustes → Datos y respaldos → Exportar respaldo cifrado** (recomendado), pasa el archivo al nuevo y en el nuevo toca **Importar datos**. También puedes entrar con Google en el nuevo y dejar que la nube baje los datos. Detalles en [RESPALDOS.md](RESPALDOS.md).
 
 ### Olvidé la contraseña del respaldo cifrado
 No se puede recuperar: el respaldo está cifrado con AES-256-GCM y la clave sale de esa contraseña. Sin ella, el archivo no se puede abrir. Guarda la contraseña aparte del archivo.
 
 ### Olvidé el PIN
-No hay recuperación del PIN desde la app. Tendrás que borrar los datos locales (Ajustes → Borrar todo) y restaurarlos desde un respaldo exportado. Por eso conviene tener un respaldo al día.
+No hay recuperación del PIN desde la app. Tendrás que borrar los datos locales (**Ajustes → Zona peligrosa → Borrar TODOS los datos**) y restaurarlos desde un respaldo exportado. Por eso conviene tener un respaldo al día.
 
 ### ¿Dónde están mis datos? ¿Se borran si desinstalo?
 Los datos viven en la base local del teléfono (IndexedDB). **Si desinstalas la app o borras los datos del navegador, se pierden** salvo que tengas un respaldo exportado o la copia en la nube. Exporta un respaldo antes de desinstalar o cambiar de teléfono.

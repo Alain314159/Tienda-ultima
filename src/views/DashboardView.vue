@@ -51,6 +51,39 @@
       </div>
     </div>
 
+    <!-- ACCESOS RÁPIDOS -->
+    <div class="det" style="margin-top: 0.8rem; margin-bottom: 0.35rem">Accesos rápidos</div>
+    <div class="quick-row" style="display: flex; flex-wrap: wrap; gap: 0.5rem">
+      <button
+        class="btn ghost"
+        style="flex: 1 1 auto; width: auto; margin: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.6rem 0.7rem; font-size: 0.82rem"
+        @click="irSeccion('ventas')"
+      >
+        <icon name="cart" :size="16"></icon> Nueva venta
+      </button>
+      <button
+        class="btn ghost"
+        style="flex: 1 1 auto; width: auto; margin: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.6rem 0.7rem; font-size: 0.82rem"
+        @click="irSeccion('compras')"
+      >
+        <icon name="bag" :size="16"></icon> Nueva compra
+      </button>
+      <button
+        class="btn ghost"
+        style="flex: 1 1 auto; width: auto; margin: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.6rem 0.7rem; font-size: 0.82rem"
+        @click="irSeccion('gastos')"
+      >
+        <icon name="dollar" :size="16"></icon> Nuevo gasto
+      </button>
+      <button
+        class="btn ghost"
+        style="flex: 1 1 auto; width: auto; margin: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.6rem 0.7rem; font-size: 0.82rem"
+        @click="irSeccion('reportes', 'arqueo')"
+      >
+        <icon name="wallet" :size="16"></icon> Registrar arqueo
+      </button>
+    </div>
+
     <!-- GRAFICO_CIRCULAR_V1 -->
     <div class="card" style="margin-top: 0.8rem">
       <h2

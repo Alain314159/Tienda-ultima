@@ -4,7 +4,7 @@
     <div v-if="abierto" class="sheet no-print">
       <div class="handle"></div>
 
-      <div class="sheet-group">Operaciones</div>
+      <div class="sheet-group">Tienda</div>
       <div class="sheet-grid">
         <button class="sheet-btn" :class="{ activo: sec === 'productos' }" @click="$emit('ir', 'productos')">
           <icon name="tag" :size="22"></icon>Productos
@@ -24,10 +24,10 @@
         </button>
       </div>
 
-      <div class="sheet-group">Sistema</div>
+      <div class="sheet-group">Sincronización y ajustes</div>
       <div class="sheet-grid">
         <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-sync')">
-          <icon name="users" :size="22"></icon>Compartir por WiFi
+          <icon name="share" :size="22"></icon>Compartir por WiFi
         </button>
         <button class="sheet-btn" style="grid-column: 1/-1" @click="$emit('abrir-cuenta')">
           <icon name="refresh" :size="22"></icon>Nube y cuenta
