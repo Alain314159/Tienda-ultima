@@ -231,6 +231,10 @@ export interface Config {
   contactoDireccion?: string;
   contactoTelefonos?: string;
   contactoGrupoWa?: string;
+  /** Versión de la app instalada (OTA manual); si falta, se usa VITE_APP_BUILD. */
+  versionApp?: string;
+  /** Versión descargada por OTA y lista para aplicar al reiniciar. */
+  versionPendiente?: string;
   tutorialVisto: boolean;
   mostrarSplash: boolean;
   graficoVista: string;

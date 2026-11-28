@@ -213,4 +213,16 @@ El icono de lupa (arriba de cada pantalla) abre la búsqueda en **toda la app**:
 - **Respaldos:** exportar respaldo plano o cifrado, importar un respaldo, restaurar el último backup automático y borrar todos los datos (ver [RESPALDOS.md](RESPALDOS.md)).
 - **Días sin backup:** umbral (por defecto 7 días) para el aviso de respaldo pendiente.
 - **Estado del sistema:** información de almacenamiento y de la app.
+- **Buscar actualizaciones:** en **Ajustes → Avanzado** («Buscar actualizaciones») o en **Estado del sistema** («Buscar actualización ahora»). Comprueba si hay una versión nueva y, si la hay, la descarga para aplicarla al reiniciar (ver abajo).
 - **Consola de desarrollo (Eruda):** para depuración; no es necesaria para el uso normal.
+
+### Actualizaciones
+
+La app instalada (APK) se actualiza sola al abrirla con internet, sin reinstalarla. Si quieres comprobarlo a mano, usa **Ajustes → Avanzado → Buscar actualizaciones** o el botón **Buscar actualización ahora** de **Estado del sistema**. Lo que puede decirte:
+
+- **«Ya tienes la última versión»:** no hay nada nuevo.
+- **«Actualización lista: se aplicará al reiniciar»:** se descargó una versión nueva. Toca **Reiniciar ahora** (o cierra y abre la app) para aplicarla.
+- **«Sin conexión: no se pudo comprobar»:** sin internet no se comprueba nada y la app sigue con su versión.
+- **«En web, las actualizaciones llegan al recargar»:** estás en la versión del navegador; recarga la página.
+
+En **Estado del sistema** se ve la **Versión instalada** y, si la hay, la **Actualización pendiente**. Los cambios que tocan lo nativo (permisos, icono, nombre) siguen exigiendo instalar un APK nuevo. Detalle completo en [ACTUALIZACIONES.md](ACTUALIZACIONES.md).

@@ -31,7 +31,7 @@ Cada push a `main` corre el pipeline completo (tests → build → deploy) y dej
 
 - El APK se firma con un **keystore dedicado** (PKCS12, RSA 2048) que vive como *secrets* de GitHub Actions (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) y nunca está en el repositorio.
 - **Android solo acepta actualizaciones firmadas con la misma clave.** Guarda una copia del keystore y su contraseña fuera del repo (por ejemplo, en tu nube personal): sin él no se podrá actualizar la app instalada, solo reinstalarla perdiendo los datos locales.
-- La app incluye actualización en caliente (OTA) mediante Capgo: los cambios web llegan sin reinstalar el APK.
+- La app incluye actualización en caliente (OTA) manual, sin Capgo Cloud: los cambios web llegan sin reinstalar el APK (ver `docs/ACTUALIZACIONES.md`).
 
 ### Compilar el APK en local
 

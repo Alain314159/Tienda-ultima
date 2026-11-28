@@ -366,6 +366,21 @@
         </button>
       </div>
       <div class="set-row">
+        <span class="lbl"><icon name="refresh" :size="18"></icon> Buscar actualizaciones</span>
+        <button
+          class="btn ghost"
+          style="width: auto; margin: 0; padding: 0.4rem 0.7rem; font-size: 0.72rem"
+          :disabled="buscandoActualizacion"
+          @click="buscarActualizacion"
+        >
+          {{ buscandoActualizacion ? 'Buscando…' : 'Buscar' }}
+        </button>
+      </div>
+      <div style="font-size: 0.72rem; color: var(--mut); margin-top: 0.2rem; margin-bottom: 0.5rem">
+        Comprueba si hay una versión nueva en GitHub Pages y la descarga para aplicarla al reiniciar. En web las
+        actualizaciones llegan al recargar.
+      </div>
+      <div class="set-row">
         <span class="lbl"><icon name="package" :size="18"></icon> Respaldo automático</span>
         <button
           class="btn ghost"
@@ -403,6 +418,7 @@ import { useBackupStore } from '../stores/useBackupStore';
 import { useNotificacionesStore } from '../stores/useNotificacionesStore';
 import { useStorageInfo } from '../composables/useStorageInfo';
 import { validarPinNuevo } from '../services/pin';
+import { comprobarActualizacion, reiniciarParaAplicar } from '../sync/ota';
 import { toastMsg } from '../utils/toast';
 import { TOAST } from '../constants';
 
@@ -488,5 +504,43 @@ function aplicarEscalaFont() {
 
 // ===== NOTIFICACIONES =====
 const { pedirPermisoNotif, desactivarNotif, probarNotif } = notificaciones;
+
+// ===== ACTUALIZACIONES OTA (manual, sin Capgo Cloud) =====
+const buscandoActualizacion = ref(false);
+async function buscarActualizacion() {
+  if (buscandoActualizacion.value) return;
+  buscandoActualizacion.value = true;
+  try {
+    if (!Capacitor.isNativePlatform()) {
+      toastMsg('En web, las actualizaciones llegan al recargar', TOAST.WARN);
+      return;
+    }
+    const resultado = await comprobarActualizacion({ silencioso: false });
+    if (resultado.estado === 'actualizado') {
+      toastMsg('Ya tienes la última versión', TOAST.OK);
+    } else if (resultado.estado === 'disponible') {
+      // Hoy comprobarActualizacion no devuelve este estado (descarga de
+      // inmediato); se deja por si el módulo cambia en el futuro.
+      toastMsg('Nueva versión disponible: ' + resultado.version, TOAST.OK);
+    } else if (resultado.estado === 'lista') {
+      toastMsg(
+        `Actualización ${resultado.version} lista: se aplicará al reiniciar`,
+        TOAST.OK,
+        'Reiniciar ahora',
+        () => {
+          reiniciarParaAplicar().catch(() => {
+            toastMsg('No se pudo reiniciar. Cierra y abre la app para aplicar la actualización.', TOAST.WARN);
+          });
+        }
+      );
+    } else if (resultado.estado === 'sin-internet') {
+      toastMsg('Sin conexión: no se pudo comprobar', TOAST.WARN);
+    } else {
+      toastMsg(resultado.mensaje, TOAST.BAD);
+    }
+  } finally {
+    buscandoActualizacion.value = false;
+  }
+}
 
 </script>

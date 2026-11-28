@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  /** Versión del build inyectada por el workflow (p. ej. `6.0.1-a1b2c3d`). */
+  readonly VITE_APP_BUILD?: string;
+}
+
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }

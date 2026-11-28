@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { inicializarOTA } from './sync/ota';
 import { Autosave } from './services/autosave';
 import { Log } from './services/logger';
 import { db } from './db';
@@ -63,7 +63,7 @@ setTimeout(() => {
 // Botón back usando el store de UI (sin acoplarse a App.vue)
 // ============================================================
 if (Capacitor.isNativePlatform()) {
-  CapacitorUpdater.notifyAppReady().catch((e) => console.warn('notifyAppReady fallo:', e));
+  void inicializarOTA();
 
   StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   StatusBar.setBackgroundColor({ color: '#2196F3' }).catch(() => {});

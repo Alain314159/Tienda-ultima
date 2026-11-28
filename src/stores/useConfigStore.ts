@@ -58,6 +58,11 @@ export const useConfigStore = defineStore('config', () => {
     contactoTelefonos: '58154333 · 56763562 · 51438680 · 50102979 · 24429628',
     contactoGrupoWa: 'https://chat.whatsapp.com/I9U92wF5PmV7XGsvqbsfQm',
 
+    // Versiones OTA manual: sin valor hasta que se descargue o se
+    // promocione un paquete (versionActiva() usa VITE_APP_BUILD mientras).
+    versionApp: undefined,
+    versionPendiente: undefined,
+
     // UI
     tutorialVisto: false,
     mostrarSplash: true,

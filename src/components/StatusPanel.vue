@@ -7,7 +7,9 @@
       </div>
 
       <!-- ================================================ -->
-      <!-- SECCION 1: ACTUALIZACIONES (CAPGO OTA)           -->
+      <!-- SECCION 1: ACTUALIZACIONES (OTA MANUAL)          -->
+      <!-- Sin Capgo Cloud: el manifiesto y los paquetes    -->
+      <!-- viven en GitHub Pages (ver src/sync/ota.ts).    -->
       <!-- ================================================ -->
       <div class="status-section">
         <div class="status-section-title">
@@ -17,32 +19,39 @@
 
         <div class="info-box" style="margin-bottom: 0.6rem">
           <div class="status-row">
-            <span>Version instalada</span>
-            <b>{{ otaActual.version || '—' }}</b>
+            <span>Versión instalada</span>
+            <b>{{ otaVersion || '—' }}</b>
           </div>
           <div class="status-row">
             <span>Bundle ID</span>
-            <b style="font-size: 0.7rem">{{ otaActual.id || '—' }}</b>
+            <b style="font-size: 0.7rem">{{ otaBundleId || '—' }}</b>
           </div>
           <div class="status-row">
-            <span>Version nativa</span>
-            <b>{{ otaActual.native || '—' }}</b>
+            <span>Versión nativa</span>
+            <b>{{ otaNative || '—' }}</b>
           </div>
-          <div class="status-row" v-if="otaUltima">
-            <span>Disponible en la nube</span>
-            <b :style="{ color: otaUltima.version !== otaActual.version ? 'var(--ok)' : 'var(--mut)' }">
-              {{ otaUltima.version }}
-              <span v-if="otaUltima.version !== otaActual.version"> · nueva</span>
-            </b>
+          <div class="status-row" v-if="otaPendiente">
+            <span>Actualización pendiente</span>
+            <b :style="{ color: 'var(--ok)' }">{{ otaPendiente }}</b>
           </div>
           <div class="status-row" v-if="otaCheck">
-            <span>Ultima verificacion</span>
+            <span>Última verificación</span>
             <b style="font-size: 0.72rem">{{ otaCheck }}</b>
           </div>
         </div>
 
         <button class="btn pri" @click="verificarOTA" :disabled="otaBusy" style="width: 100%; margin-bottom: 0.5rem">
-          {{ otaBusy ? 'Verificando...' : 'Buscar actualizacion ahora' }}
+          {{ otaBusy ? 'Verificando...' : 'Buscar actualización ahora' }}
+        </button>
+
+        <button
+          v-if="otaPendiente"
+          class="btn pri"
+          @click="reiniciarAhora"
+          :disabled="otaReiniciando"
+          style="width: 100%; margin-bottom: 0.5rem"
+        >
+          {{ otaReiniciando ? 'Reiniciando...' : 'Reiniciar ahora' }}
         </button>
 
         <div
@@ -152,6 +161,7 @@ import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { useConfigStore } from '../stores/useConfigStore';
+import { comprobarActualizacion, reiniciarParaAplicar, versionActiva } from '../sync/ota';
 
 defineOptions({ name: 'StatusPanel' });
 
@@ -163,11 +173,15 @@ const GITHUB_REPO = 'Alain314159/Tienda-ultima';
 
 const configStore = useConfigStore();
 
-// OTA
-const otaActual = ref({ version: '', id: '', native: '' });
-const otaUltima = ref<{ version: string } | null>(null);
+// OTA manual (sin Capgo Cloud): la lógica vive en src/sync/ota.ts; aquí
+// solo se muestra el estado y el resultado de la comprobación.
+const otaVersion = ref('');
+const otaBundleId = ref('');
+const otaNative = ref('');
+const otaPendiente = ref('');
 const otaCheck = ref<string | null>(null);
 const otaBusy = ref(false);
+const otaReiniciando = ref(false);
 const otaMsg = ref('');
 const otaMsgTipo = ref('ok');
 
@@ -198,23 +212,17 @@ onMounted(async () => {
 // OTA
 // ==========================================
 async function cargarOTA() {
+  // La versión instalada es la que guarda la app (cfg.versionApp o el
+  // build inyectado por el workflow); nunca se inventa.
+  otaVersion.value = versionActiva();
+  otaPendiente.value = configStore.cfg.versionPendiente || '';
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    if (!Capacitor.isNativePlatform()) {
-      otaActual.value = { version: 'web', id: 'pwa', native: '—' };
-      return;
-    }
+    // Solo el Bundle ID y la versión nativa vienen del plugin: son datos
+    // del paquete instalado, no de ninguna nube.
     const info = await CapacitorUpdater.current();
-    otaActual.value = {
-      version: (info.bundle && info.bundle.version) || '—',
-      id: (info.bundle && info.bundle.id) || '—',
-      native: info.native || '—',
-    };
-    try {
-      const latest = await CapacitorUpdater.getLatest();
-      if (latest && latest.version) otaUltima.value = { version: latest.version };
-    } catch {
-      /* sin conexion */
-    }
+    otaBundleId.value = (info.bundle && info.bundle.id) || '';
+    otaNative.value = info.native || '';
   } catch (e) {
     console.warn('cargarOTA', e);
   }
@@ -229,28 +237,46 @@ async function verificarOTA() {
       otaMsgTipo.value = 'warn';
       return;
     }
-    const latest = await CapacitorUpdater.getLatest();
-    otaUltima.value = { version: latest.version };
-    const actual = otaActual.value.version;
+    const resultado = await comprobarActualizacion({ silencioso: false });
     otaCheck.value = new Date().toLocaleString();
-    if (latest.version === actual) {
-      otaMsg.value = 'Ya tienes la ultima version';
+    if (resultado.estado === 'actualizado') {
+      otaMsg.value = 'Ya tienes la última versión';
       otaMsgTipo.value = 'ok';
+    } else if (resultado.estado === 'disponible') {
+      // Hoy comprobarActualizacion no devuelve este estado (descarga de
+      // inmediato); se deja por si el módulo cambia en el futuro.
+      otaMsg.value = 'Nueva versión disponible: ' + resultado.version;
+      otaMsgTipo.value = 'ok';
+    } else if (resultado.estado === 'lista') {
+      otaPendiente.value = resultado.version;
+      otaMsg.value = 'Actualización lista: se aplicará al reiniciar';
+      otaMsgTipo.value = 'ok';
+    } else if (resultado.estado === 'sin-internet') {
+      otaMsg.value = 'Sin conexión: no se pudo comprobar';
+      otaMsgTipo.value = 'warn';
     } else {
-      otaMsg.value = 'Nueva version disponible: ' + latest.version + '. Cierra y abre la app.';
-      otaMsgTipo.value = 'ok';
-      try {
-        const dl = await CapacitorUpdater.download({ url: String(latest.url), version: String(latest.version) });
-        await CapacitorUpdater.set({ id: dl.id });
-      } catch {
-        otaMsg.value = 'Descarga iniciada. Se aplicara al reiniciar.';
-      }
+      otaMsg.value = resultado.mensaje;
+      otaMsgTipo.value = 'warn';
     }
   } catch (e) {
     otaMsg.value = 'Error: ' + (e instanceof Error && e.message ? e.message : 'sin conexion');
     otaMsgTipo.value = 'warn';
   } finally {
     otaBusy.value = false;
+  }
+}
+
+async function reiniciarAhora() {
+  otaReiniciando.value = true;
+  otaMsg.value = '';
+  try {
+    await reiniciarParaAplicar();
+  } catch (e) {
+    console.warn('reiniciarAhora', e);
+    otaMsg.value = 'No se pudo reiniciar. Cierra y abre la app para aplicar la actualización.';
+    otaMsgTipo.value = 'warn';
+  } finally {
+    otaReiniciando.value = false;
   }
 }
 

@@ -16,8 +16,22 @@ import AppIcon from '../src/components/AppIcon.vue';
 const mockCheckPerms = vi.fn();
 const mockRequestPerms = vi.fn();
 const mockSchedule = vi.fn();
+// OTA manual (sin Capgo Cloud): la UI ya no usa getLatest/set; la lógica
+// vive en src/sync/ota.ts, que descarga con download(), marca el paquete
+// con next() y lo aplica con reload(). current() solo da el Bundle ID y
+// la versión nativa del paquete instalado.
+const capState = vi.hoisted(() => ({ nativo: false }));
 const mockUpdaterCurrent = vi.fn();
-const mockUpdaterLatest = vi.fn();
+const mockUpdaterDownload = vi.fn();
+const mockUpdaterNext = vi.fn();
+const mockUpdaterReload = vi.fn();
+
+vi.mock('@capacitor/core', () => ({
+  Capacitor: {
+    isNativePlatform: () => capState.nativo,
+    getPlatform: () => (capState.nativo ? 'android' : 'web'),
+  },
+}));
 
 vi.mock('@capacitor/local-notifications', () => ({
   LocalNotifications: {
@@ -49,11 +63,28 @@ vi.mock('reka-ui', () => {
 vi.mock('@capgo/capacitor-updater', () => ({
   CapacitorUpdater: {
     current: (...a) => mockUpdaterCurrent(...a),
-    getLatest: (...a) => mockUpdaterLatest(...a),
-    download: vi.fn(),
-    set: vi.fn(),
+    download: (...a) => mockUpdaterDownload(...a),
+    next: (...a) => mockUpdaterNext(...a),
+    reload: (...a) => mockUpdaterReload(...a),
   },
 }));
+
+const SHA256_TEST = 'a'.repeat(64);
+const MANIFIESTO_TEST = {
+  version: '6.0.1-abcdef1',
+  url: 'https://alain314159.github.io/Tienda-ultima/updates/bundle-6.0.1-abcdef1.zip',
+  sha256: SHA256_TEST,
+};
+const mockFetch = vi.fn();
+
+/** fetch que responde con un JSON y HTTP 200. */
+function fetchJson(datos, ok = true, status = 200) {
+  mockFetch.mockResolvedValue({ ok, status, json: async () => datos });
+}
+
+function setOnline(valor) {
+  Object.defineProperty(window.navigator, 'onLine', { value: valor, configurable: true });
+}
 
 async function montar(componente, props = {}) {
   return mount(componente, {
@@ -65,11 +96,20 @@ async function montar(componente, props = {}) {
 beforeEach(async () => {
   setActivePinia(createPinia());
   vi.restoreAllMocks();
+  capState.nativo = false;
+  setOnline(true);
   mockCheckPerms.mockReset().mockResolvedValue({ display: 'granted' });
   mockRequestPerms.mockReset().mockResolvedValue({ display: 'granted' });
   mockSchedule.mockReset().mockResolvedValue(undefined);
-  mockUpdaterCurrent.mockReset();
-  mockUpdaterLatest.mockReset();
+  mockUpdaterCurrent.mockReset().mockResolvedValue({
+    bundle: { id: 'bundle-actual', version: '6.0.0-aaaaaaa' },
+    native: '6.0.0',
+  });
+  mockUpdaterDownload.mockReset().mockResolvedValue({ id: 'bundle-1', version: MANIFIESTO_TEST.version });
+  mockUpdaterNext.mockReset().mockResolvedValue({ id: 'bundle-1', version: MANIFIESTO_TEST.version });
+  mockUpdaterReload.mockReset().mockResolvedValue(undefined);
+  vi.stubGlobal('fetch', mockFetch);
+  mockFetch.mockReset().mockRejectedValue(new Error('fetch no mockeado en este test'));
   vi.spyOn(toast, 'success').mockImplementation(() => {});
   vi.spyOn(toast, 'warning').mockImplementation(() => {});
   vi.spyOn(toast, 'error').mockImplementation(() => {});
@@ -81,6 +121,11 @@ beforeEach(async () => {
     db.cierres.clear(),
     db.ventas.clear(),
   ]);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  delete window.navigator.onLine;
 });
 
 // ============================================================
@@ -227,28 +272,130 @@ describe('SkeletonLoader', () => {
 });
 
 // ============================================================
-// STATUS PANEL (modo web)
+// STATUS PANEL — OTA manual (sin Capgo Cloud)
 // ============================================================
-describe('StatusPanel (web)', () => {
-  it('OTA en web, GitHub sin token avisa, y el botón × emite close', async () => {
+// Antes la sección OTA llamaba a CapacitorUpdater.getLatest() y
+// download()/set() directamente; ahora toda la lógica vive en
+// src/sync/ota.ts y la UI solo muestra el resultado. Los tests viejos
+// ("en web la versión es web/pwa", "descarga con set()") ya no tienen
+// sentido y se sustituyen por estos, que cubren cada estado real:
+// web, sin internet, ya actualizado, nueva versión lista + reiniciar
+// y manifiesto que falla.
+describe('StatusPanel (OTA manual)', () => {
+  async function montarStatusPanel() {
     const { default: StatusPanel } = await import('../src/components/StatusPanel.vue');
     const w = await montar(StatusPanel, {});
     await flushPromises();
     await new Promise((r) => setTimeout(r, 50));
     await flushPromises();
+    return w;
+  }
 
-    const txt = w.text();
-    expect(txt).toContain('Estado del sistema');
-    // OTA: en web la "versión" es web/pwa
-    expect(txt).toContain('web');
-    // GitHub sin token (VITE_GITHUB_TOKEN vacío en tests)
-    expect(txt).toContain('Token de GitHub no configurado');
+  function botonBuscar(w) {
+    return w.findAll('button').filter((b) => b.text().includes('Buscar actualización'))[0];
+  }
 
-    // Buscar actualización en web → mensaje informativo
-    const btnOta = w.findAll('button').filter((b) => b.text().includes('Buscar actualizacion'))[0];
-    await btnOta.trigger('click');
+  it('en web muestra la versión activa y el botón explica que llega al recargar', async () => {
+    useConfigStore().cfg.versionApp = '6.0.0-aaaaaaa';
+    const w = await montarStatusPanel();
+    expect(w.text()).toContain('Estado del sistema');
+    expect(w.text()).toContain('6.0.0-aaaaaaa');
+    // En web no se toca el plugin: no hay Bundle ID nativo que leer
+    expect(mockUpdaterCurrent).not.toHaveBeenCalled();
+
+    await botonBuscar(w).trigger('click');
     await flushPromises();
     expect(w.text()).toContain('En web, las actualizaciones llegan al recargar');
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockUpdaterDownload).not.toHaveBeenCalled();
+    w.unmount();
+  });
+
+  it('nativo sin internet: avisa y no toca la red ni descarga', async () => {
+    capState.nativo = true;
+    setOnline(false);
+    useConfigStore().cfg.versionApp = '6.0.0-aaaaaaa';
+    const w = await montarStatusPanel();
+    // Bundle ID y versión nativa sí vienen del plugin
+    expect(w.text()).toContain('bundle-actual');
+
+    await botonBuscar(w).trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('Sin conexión: no se pudo comprobar');
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockUpdaterDownload).not.toHaveBeenCalled();
+    w.unmount();
+  });
+
+  it('nativo con la última versión: lo dice y no descarga nada', async () => {
+    capState.nativo = true;
+    useConfigStore().cfg.versionApp = MANIFIESTO_TEST.version;
+    fetchJson(MANIFIESTO_TEST);
+    const w = await montarStatusPanel();
+
+    await botonBuscar(w).trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('Ya tienes la última versión');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://alain314159.github.io/Tienda-ultima/updates.json',
+      expect.objectContaining({ signal: expect.anything() })
+    );
+    expect(mockUpdaterDownload).not.toHaveBeenCalled();
+    expect(mockUpdaterNext).not.toHaveBeenCalled();
+    w.unmount();
+  });
+
+  it('nativo con versión nueva: descarga, deja lista y Reiniciar ahora recarga', async () => {
+    capState.nativo = true;
+    const config = useConfigStore();
+    config.cfg.versionApp = '6.0.0-aaaaaaa';
+    fetchJson(MANIFIESTO_TEST);
+    const w = await montarStatusPanel();
+
+    await botonBuscar(w).trigger('click');
+    // La ruta "lista" guarda versionPendiente en Dexie (fake-indexeddb):
+    // hacen falta macrotareas, no basta flushPromises.
+    await new Promise((r) => setTimeout(r, 100));
+    await flushPromises();
+    expect(w.text()).toContain('Actualización lista: se aplicará al reiniciar');
+    expect(mockUpdaterDownload).toHaveBeenCalledWith({
+      url: MANIFIESTO_TEST.url,
+      version: MANIFIESTO_TEST.version,
+      checksum: MANIFIESTO_TEST.sha256,
+    });
+    expect(mockUpdaterNext).toHaveBeenCalledWith({ id: 'bundle-1' });
+    expect(config.cfg.versionPendiente).toBe(MANIFIESTO_TEST.version);
+    // La versión activa no cambia hasta reiniciar
+    expect(config.cfg.versionApp).toBe('6.0.0-aaaaaaa');
+
+    const btnReiniciar = w.findAll('button').filter((b) => b.text().includes('Reiniciar ahora'))[0];
+    expect(btnReiniciar.exists()).toBe(true);
+    await btnReiniciar.trigger('click');
+    await flushPromises();
+    expect(mockUpdaterReload).toHaveBeenCalledTimes(1);
+    w.unmount();
+  });
+
+  it('nativo con manifiesto que falla: muestra el error y la versión activa sigue intacta', async () => {
+    capState.nativo = true;
+    const config = useConfigStore();
+    config.cfg.versionApp = '6.0.0-aaaaaaa';
+    mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
+    const w = await montarStatusPanel();
+
+    await botonBuscar(w).trigger('click');
+    await flushPromises();
+    expect(w.text()).toMatch(/manifiesto|conexión/);
+    expect(mockUpdaterDownload).not.toHaveBeenCalled();
+    expect(config.cfg.versionApp).toBe('6.0.0-aaaaaaa');
+    expect(config.cfg.versionPendiente).toBeUndefined();
+    w.unmount();
+  });
+
+  it('GitHub sin token avisa, y el botón × emite close', async () => {
+    const w = await montarStatusPanel();
+    // GitHub sin token (VITE_GITHUB_TOKEN vacío en tests)
+    expect(w.text()).toContain('Token de GitHub no configurado');
 
     // Cerrar
     await w.find('.modal-title .link-btn').trigger('click');

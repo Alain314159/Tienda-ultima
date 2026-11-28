@@ -18,7 +18,7 @@ Documentación técnica para quien mantiene o modifica la app. La documentación
 | PWA | vite-plugin-pwa (Service Worker) |
 | Nube | @supabase/supabase-js (solo Auth con Google y las funciones RPC de sync) |
 | WiFi | WebRTC sin STUN/TURN (`iceServers: []`), QR con `qrcode`/`jsqr`, códigos en Base45 |
-| APK | Capacitor 8 (`com.tiendapro.app`), notificaciones locales, Capgo para OTA |
+| APK | Capacitor 8 (`com.tiendapro.app`), notificaciones locales, OTA manual con el plugin `@capgo/capacitor-updater` (sin Capgo Cloud; ver [ACTUALIZACIONES.md](ACTUALIZACIONES.md)) |
 | Tests | Vitest (unitarios + montaje de la app), Playwright (smoke y funcional) |
 | Calidad | ESLint, Stylelint, Prettier, vue-tsc, commitlint, Husky |
 
@@ -40,7 +40,7 @@ Tienda-ultima/
 │   ├── constants.ts     # Constantes (categorías de gasto, métodos de pago, ...)
 │   ├── insights.ts      # Motor de recomendaciones y anomalías
 │   ├── router/          # 8 rutas con lazy loading (hash history)
-│   ├── sync/            # Motor de sincronización + transportes
+│   ├── sync/            # Motor de sincronización + transportes (ota.ts: actualizaciones OTA manuales)
 │   ├── stores/          # Pinia: un store por responsabilidad
 │   ├── composables/     # useCobro, useCuadre, useGestos, useGraficos, ...
 │   ├── components/      # AjustesModal, BottomNav, SheetMas, SyncWifi, ...
@@ -174,10 +174,14 @@ Workflows en `.github/workflows/`:
 | `e2e.yml` | E2E con Playwright + Lighthouse |
 | `e2e-matrix.yml` | Matriz de E2E |
 | `ci.yml` | CI en PRs: quality + E2E |
-| `deploy.yml` | **Tests, Build & Deploy**: en cada push a `main`, quality → e2e → build web (Node 24) → GitHub Pages → APK firmado (artifact `tiendapro-release-…`) |
+| `deploy.yml` | **Tests, Build & Deploy**: en cada push a `main`, quality → e2e → build web (Node 24) → GitHub Pages (incluye el bundle OTA y `updates.json`) → APK firmado (artifact `tiendapro-release-…`) |
 | `supabase-keepalive.yml` | Mantiene despierto el proyecto de Supabase (programado) |
 
 El despliegue web publica en GitHub Pages con base `/Tienda-ultima/` (`https://alain314159.github.io/Tienda-ultima/`). El APK se firma con el keystore de los *secrets* de GitHub Actions y se verifica con `apksigner` antes de publicarlo.
+
+## Actualizaciones OTA (manual)
+
+Sin Capgo Cloud. El workflow `deploy.yml` genera en cada push a `main` el bundle `dist/updates/bundle-<versión>.zip` y el manifiesto `dist/updates.json` en GitHub Pages (versión = `package.json` + sha corto del commit, inyectada como `VITE_APP_BUILD`). La lógica vive en `src/sync/ota.ts` (`comprobarActualizacion`, `reiniciarParaAplicar`, `inicializarOTA`, llamada desde `main.ts` en el bloque nativo); la UI está en `StatusPanel.vue` (sección 1) y en `AjustesModal.vue` (botón «Buscar actualizaciones»). Detalle completo, mensajes y advertencia de seguridad en [ACTUALIZACIONES.md](ACTUALIZACIONES.md).
 
 ## Nube (Supabase)
 
